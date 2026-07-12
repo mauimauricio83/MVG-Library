@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Music Video Guy — Database</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="app-header">
+    <h1>The Music Video Guy</h1>
+    <p class="subtitle">A reference database of music videos, directors, and artists.</p>
+  </header>
+
+  <div class="controls">
+    <div class="tabs" role="tablist" aria-label="Browse by">
+      <button class="tab active" data-view="director" role="tab" aria-selected="true">By Director</button>
+      <button class="tab" data-view="artist" role="tab" aria-selected="false">By Artist</button>
+      <button class="tab" data-view="song" role="tab" aria-selected="false">By Song Title</button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+  <main id="results" class="results"></main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
