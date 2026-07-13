@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Music Video Guy — Database</title>
+<meta name="description" content="A reference database of music videos, directors, and artists — browsable by director, artist, or song.">
+<meta property="og:title" content="MVG Library">
+<meta property="og:description" content="A reference database of music videos, directors, and artists — browsable by director, artist, or song.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mauimauricio83.github.io/MVG-Library/">
+<meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,6 +18,7 @@
   <header class="app-header">
     <h1>MVG Library</h1>
     <p class="subtitle">A reference database of music videos, directors, and artists.</p>
+    <p class="subtitle subtitle-stats" id="subtitleStats"></p>
   </header>
 
   <div class="controls">
@@ -24,6 +31,8 @@
       <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
     </div>
   </div>
+
+  <div class="category-filters" id="categoryFilters"></div>
 
   <div id="status" class="status"></div>
   <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>

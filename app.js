@@ -13,15 +13,22 @@
     jumpTop: document.getElementById("jumpNavTop"),
     jumpBottom: document.getElementById("jumpNavBottom"),
     videoEmbed: document.getElementById("videoEmbed"),
-    videoBox: document.getElementById("videoEmbedBox")
+    videoBox: document.getElementById("videoEmbedBox"),
+    categoryFilters: document.getElementById("categoryFilters"),
+    subtitleStats: document.getElementById("subtitleStats")
   };
 
   var state = {
     rows: [],
     view: "director",
     query: "",
-    jumpMap: {}
+    category: "",
+    jumpMap: {},
+    recentSet: {},
+    nowPlaying: null
   };
+
+  var CACHE_KEY = "mvg-wiki-cache-v1";
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
@@ -36,23 +43,57 @@
     });
   }
 
+  function saveCache(rows) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: rows, savedAt: Date.now() }));
+    } catch (e) {}
+  }
+
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function fetchData() {
     els.status.textContent = "Loading database…";
+    els.status.classList.remove("error");
     Papa.parse(CSV_URL, {
       download: true,
       header: true,
       skipEmptyLines: true,
       complete: function (result) {
         state.rows = cleanRows(result.data);
+        saveCache(state.rows);
         els.status.textContent = state.rows.length ? "" : "No entries found.";
-        render();
+        els.status.classList.remove("error");
+        finishLoad();
       },
       error: function (err) {
-        els.status.textContent = "Couldn't load the database. Please try again later.";
-        els.status.classList.add("error");
         console.error("CSV load error:", err);
+        var cached = loadCache();
+        if (cached && cached.rows && cached.rows.length) {
+          state.rows = cached.rows;
+          els.status.textContent = "Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest sheet.";
+          els.status.classList.remove("error");
+          finishLoad();
+        } else {
+          els.status.textContent = "Couldn't load the database. Please try again later.";
+          els.status.classList.add("error");
+        }
       }
     });
+  }
+
+  function finishLoad() {
+    buildCategoryChips(state.rows);
+    updateSubtitleStats(state.rows);
+    state.recentSet = computeRecentSet(state.rows);
+    render();
+    applyDeepLinkFromHash();
   }
 
   function get(row, key) {
@@ -88,6 +129,60 @@
     );
   }
 
+  function matchesFilters(row) {
+    if (state.category && row.category !== state.category) return false;
+    return matchesQuery(row, state.query);
+  }
+
+  function buildCategoryChips(rows) {
+    var counts = {};
+    rows.forEach(function (r) {
+      if (r.category) counts[r.category] = (counts[r.category] || 0) + 1;
+    });
+    var cats = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    var html = '<button type="button" class="chip active" data-category="">All (' + rows.length + ")</button>";
+    cats.forEach(function (c) {
+      html += '<button type="button" class="chip" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + " (" + counts[c] + ")</button>";
+    });
+    els.categoryFilters.innerHTML = html;
+  }
+
+  function updateCategoryChipsActive() {
+    Array.prototype.forEach.call(els.categoryFilters.querySelectorAll(".chip"), function (chip) {
+      chip.classList.toggle("active", chip.getAttribute("data-category") === state.category);
+    });
+  }
+
+  els.categoryFilters.addEventListener("click", function (e) {
+    var chip = e.target.closest(".chip");
+    if (!chip) return;
+    state.category = chip.getAttribute("data-category") || "";
+    updateCategoryChipsActive();
+    render();
+  });
+
+  function updateSubtitleStats(rows) {
+    var counts = {};
+    rows.forEach(function (r) {
+      var c = r.category || "Uncategorized";
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    var parts = Object.keys(counts)
+      .sort(function (a, b) { return counts[b] - counts[a]; })
+      .map(function (c) { return counts[c] + " " + c + (counts[c] === 1 ? "" : "s"); });
+    els.subtitleStats.textContent = rows.length + " entries — " + parts.join(", ");
+  }
+
+  function computeRecentSet(rows) {
+    var withNum = rows
+      .map(function (r) { return { rowNum: r.rowNum, n: parseInt(r.rowNum, 10) }; })
+      .filter(function (x) { return !isNaN(x.n); })
+      .sort(function (a, b) { return b.n - a.n; });
+    var set = {};
+    withNum.slice(0, 8).forEach(function (x) { set[x.rowNum] = true; });
+    return set;
+  }
+
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
   }
@@ -104,12 +199,13 @@
     return m ? m[1] : null;
   }
 
-  function playVideo(url, label) {
+  function playVideo(url, label, director, rowNum) {
     var id = extractYouTubeId(url);
     if (!id) {
       window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
+    state.nowPlaying = { director: director || "", rowNum: rowNum || "" };
     els.videoBox.innerHTML =
       '<div class="video-embed-bar"><span class="video-embed-label">' + escapeHtml(label) + '</span>' +
       '<button type="button" class="video-embed-close" aria-label="Close video">&times;</button></div>' +
@@ -118,14 +214,41 @@
     els.videoEmbed.scrollIntoView({ block: "start" });
   }
 
+  function relatedEntries(director, excludeRowNum) {
+    if (!director) return [];
+    return state.rows.filter(function (r) {
+      return r.director === director && r.rowNum !== excludeRowNum && r.youtube;
+    }).slice(0, 3);
+  }
+
+  function renderRelated(director, excludeRowNum) {
+    var related = relatedEntries(director, excludeRowNum);
+    if (!related.length) return "";
+    var items = related.map(function (r) {
+      var lbl = (r.song || "(untitled)") + (r.artist ? " — " + r.artist : "");
+      return '<button type="button" class="related-btn" data-url="' + escapeHtml(r.youtube) + '" data-label="' + escapeHtml(lbl) + '" data-director="' + escapeHtml(r.director) + '" data-row="' + escapeHtml(r.rowNum) + '">' + escapeHtml(r.song || "(untitled)") + "</button>";
+    }).join("");
+    return '<div class="video-related"><span class="video-related-label">More by ' + escapeHtml(director) + ":</span>" + items + "</div>";
+  }
+
   function resetVideo() {
-    els.videoBox.innerHTML = '<p class="video-embed-hint">Click a link below to play it here.</p>';
+    var related = state.nowPlaying ? renderRelated(state.nowPlaying.director, state.nowPlaying.rowNum) : "";
+    els.videoBox.innerHTML = '<p class="video-embed-hint">Click a link below to play it here.</p>' + related;
+    state.nowPlaying = null;
   }
 
   els.videoBox.addEventListener("click", function (e) {
-    if (e.target.closest(".video-embed-close")) resetVideo();
+    if (e.target.closest(".video-embed-close")) {
+      resetVideo();
+      return;
+    }
+    var relBtn = e.target.closest(".related-btn");
+    if (relBtn) {
+      playVideo(relBtn.getAttribute("data-url"), relBtn.getAttribute("data-label"), relBtn.getAttribute("data-director"), relBtn.getAttribute("data-row"));
+    }
   });
 
+  var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.6 6.34"/><path d="M14 10a5 5 0 0 0-7.07 0l-2.12 2.12a5 5 0 0 0 7.07 7.07l1.53-1.53"/></svg>';
   var ICON_YOUTUBE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5v-7l6.3 3.5-6.3 3.5Z"/></svg>';
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
@@ -138,26 +261,29 @@
 
     var links = "";
     if (row.youtube) {
-      links += '<a class="icon-btn yt-link" href="' + escapeHtml(row.youtube) + '" data-label="' + escapeHtml(label) + '" target="_blank" rel="noopener noreferrer" title="Watch on YouTube" aria-label="Watch on YouTube">' + ICON_YOUTUBE + "</a>";
+      links += '<a class="icon-btn yt-link" href="' + escapeHtml(row.youtube) + '" data-label="' + escapeHtml(label) + '" data-director="' + escapeHtml(row.director) + '" data-row="' + escapeHtml(row.rowNum) + '" target="_blank" rel="noopener noreferrer" title="Watch on YouTube" aria-label="Watch on YouTube">' + ICON_YOUTUBE + "</a>";
     }
     if (row.mvg) {
       links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
     }
+    links += '<button type="button" class="icon-btn copy-link-btn" data-row="' + escapeHtml(row.rowNum) + '" title="Copy link to this entry" aria-label="Copy link to this entry">' + ICON_LINK + "</button>";
 
     var descHtml = row.description
       ? '<p class="entry-desc">' + escapeHtml(row.description) + "</p>"
       : '<p class="entry-desc placeholder">No writeup yet.</p>';
 
+    var newBadge = state.recentSet[row.rowNum] ? '<span class="new-badge">New</span>' : "";
+
     return (
-      '<li class="entry">' +
+      '<li class="entry" data-row="' + escapeHtml(row.rowNum) + '">' +
       '<div class="entry-row" role="button" tabindex="0" aria-expanded="false">' +
       '<span class="entry-chevron" aria-hidden="true">&#9656;</span>' +
       '<span class="entry-main">' +
-      '<span class="entry-title">' + escapeHtml(row.song || "(untitled)") + "</span>" +
+      '<span class="entry-title">' + escapeHtml(row.song || "(untitled)") + newBadge + "</span>" +
       (sub.length ? '<span class="entry-sub">' + sub.join(" &middot; ") + "</span>" : "") +
       "</span>" +
       (row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "") +
-      (links ? '<span class="entry-links">' + links + "</span>" : "") +
+      '<span class="entry-links">' + links + "</span>" +
       "</div>" +
       '<div class="entry-body" hidden>' + descHtml + "</div>" +
       "</li>"
@@ -207,9 +333,7 @@
   }
 
   function render() {
-    var filtered = state.rows.filter(function (row) {
-      return matchesQuery(row, state.query);
-    });
+    var filtered = state.rows.filter(matchesFilters);
 
     var jumpMap = {};
     var groupIdCounter = 0;
@@ -276,11 +400,31 @@
     if (body) body.hidden = expanded;
   }
 
+  function copyEntryLink(btn) {
+    var rowNum = btn.getAttribute("data-row");
+    var url = location.origin + location.pathname + "#row-" + encodeURIComponent(rowNum);
+    if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+    navigator.clipboard.writeText(url).then(function () {
+      var original = btn.getAttribute("title");
+      btn.classList.add("copied");
+      btn.setAttribute("title", "Copied!");
+      setTimeout(function () {
+        btn.classList.remove("copied");
+        btn.setAttribute("title", original);
+      }, 1200);
+    }).catch(function () {});
+  }
+
   els.results.addEventListener("click", function (e) {
+    var copyBtn = e.target.closest(".copy-link-btn");
+    if (copyBtn) {
+      copyEntryLink(copyBtn);
+      return;
+    }
     var ytLink = e.target.closest(".yt-link");
     if (ytLink) {
       e.preventDefault();
-      playVideo(ytLink.getAttribute("href"), ytLink.getAttribute("data-label"));
+      playVideo(ytLink.getAttribute("href"), ytLink.getAttribute("data-label"), ytLink.getAttribute("data-director"), ytLink.getAttribute("data-row"));
       return;
     }
     if (e.target.closest("a")) return;
@@ -297,18 +441,48 @@
     }
   });
 
+  function setActiveTab(view) {
+    state.view = view;
+    els.tabs.forEach(function (t) {
+      var active = t.getAttribute("data-view") === view;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+
   els.tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
-      els.tabs.forEach(function (t) {
-        t.classList.remove("active");
-        t.setAttribute("aria-selected", "false");
-      });
-      tab.classList.add("active");
-      tab.setAttribute("aria-selected", "true");
-      state.view = tab.getAttribute("data-view");
+      setActiveTab(tab.getAttribute("data-view"));
       render();
     });
   });
+
+  function applyDeepLinkFromHash() {
+    var m = location.hash.match(/^#row-(.+)$/);
+    if (!m || !state.rows.length) return;
+    var rowNum = decodeURIComponent(m[1]);
+    var row = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+    if (!row) return;
+    state.query = "";
+    els.search.value = "";
+    state.category = "";
+    updateCategoryChipsActive();
+    setActiveTab("song");
+    render();
+    setTimeout(function () {
+      var li = Array.prototype.filter.call(els.results.querySelectorAll(".entry"), function (el) {
+        return el.getAttribute("data-row") === rowNum;
+      })[0];
+      if (!li) return;
+      var rowEl = li.querySelector(".entry-row");
+      if (rowEl && rowEl.getAttribute("aria-expanded") !== "true") toggleEntry(rowEl);
+      li.scrollIntoView({ block: "center" });
+      li.classList.add("highlight");
+      setTimeout(function () { li.classList.remove("highlight"); }, 2000);
+    }, 0);
+  }
+
+  window.addEventListener("hashchange", applyDeepLinkFromHash);
 
   var searchTimer = null;
   els.search.addEventListener("input", function () {
