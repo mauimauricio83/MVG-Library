@@ -16,13 +16,29 @@
     videoBox: document.getElementById("videoEmbedBox"),
     categoryFilters: document.getElementById("categoryFilters"),
     subtitleStats: document.getElementById("subtitleStats"),
-    controls: document.querySelector(".controls")
+    controls: document.querySelector(".controls"),
+    adPlaceholder: document.querySelector(".ad-placeholder")
   };
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
     var y = el.getBoundingClientRect().top + window.scrollY - headerHeight - 10;
     window.scrollTo({ top: Math.max(y, 0), behavior: "auto" });
+  }
+
+  function moveVideoPairHome() {
+    els.jumpTop.after(els.adPlaceholder, els.videoEmbed);
+  }
+
+  function moveVideoPairTo(li) {
+    li.before(els.adPlaceholder, els.videoEmbed);
+  }
+
+  function findEntryLiByRow(rowNum) {
+    if (!rowNum) return null;
+    return Array.prototype.filter.call(els.results.querySelectorAll(".entry"), function (el) {
+      return el.getAttribute("data-row") === rowNum;
+    })[0] || null;
   }
 
   var state = {
@@ -230,6 +246,8 @@
       '<div class="video-embed-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
       'title="' + escapeHtml(label) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
       'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>';
+    var entryLi = findEntryLiByRow(rowNum);
+    if (entryLi) moveVideoPairTo(entryLi); else moveVideoPairHome();
     scrollBelowStickyHeader(els.videoEmbed);
   }
 
@@ -352,6 +370,7 @@
     state.tv.active = true;
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
+    moveVideoPairHome();
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     scrollBelowStickyHeader(els.videoEmbed);
@@ -369,6 +388,7 @@
     if (e.target.closest(".video-embed-close")) {
       if (state.tv.active) teardownTV();
       resetVideo();
+      moveVideoPairHome();
       return;
     }
     var relBtn = e.target.closest(".related-btn");
@@ -460,6 +480,7 @@
   }
 
   function render() {
+    moveVideoPairHome();
     var filtered = state.rows.filter(matchesFilters);
 
     var jumpMap = {};
