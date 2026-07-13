@@ -248,8 +248,6 @@
     }
   });
 
-  var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.6 6.34"/><path d="M14 10a5 5 0 0 0-7.07 0l-2.12 2.12a5 5 0 0 0 7.07 7.07l1.53-1.53"/></svg>';
-  var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
   var ICON_YOUTUBE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5v-7l6.3 3.5-6.3 3.5Z"/></svg>';
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
@@ -267,7 +265,6 @@
     if (row.mvg) {
       links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
     }
-    links += '<button type="button" class="icon-btn copy-link-btn" data-row="' + escapeHtml(row.rowNum) + '" title="Copy link to this entry" aria-label="Copy link to this entry">' + ICON_LINK + "</button>";
 
     var descHtml = row.description
       ? '<p class="entry-desc">' + escapeHtml(row.description) + "</p>"
@@ -284,7 +281,7 @@
       (sub.length ? '<span class="entry-sub">' + sub.join(" &middot; ") + "</span>" : "") +
       "</span>" +
       (row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "") +
-      '<span class="entry-links">' + links + "</span>" +
+      (links ? '<span class="entry-links">' + links + "</span>" : "") +
       "</div>" +
       '<div class="entry-body" hidden>' + descHtml + "</div>" +
       "</li>"
@@ -401,59 +398,7 @@
     if (body) body.hidden = expanded;
   }
 
-  function legacyCopy(text) {
-    var ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.top = "0";
-    ta.style.left = "0";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    var ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch (e) {}
-    document.body.removeChild(ta);
-    return ok;
-  }
-
-  function copyEntryLink(btn) {
-    var rowNum = btn.getAttribute("data-row");
-    var url = location.origin + location.pathname + "#row-" + encodeURIComponent(rowNum);
-
-    function showResult(ok) {
-      var originalTitle = btn.getAttribute("data-original-title") || btn.getAttribute("title");
-      btn.setAttribute("data-original-title", originalTitle);
-      btn.innerHTML = ok ? ICON_CHECK : ICON_LINK;
-      btn.classList.toggle("copied", ok);
-      btn.classList.toggle("copy-failed", !ok);
-      btn.setAttribute("title", ok ? "Copied!" : "Couldn't copy — link: " + url);
-      setTimeout(function () {
-        btn.innerHTML = ICON_LINK;
-        btn.classList.remove("copied", "copy-failed");
-        btn.setAttribute("title", originalTitle);
-      }, ok ? 1200 : 3000);
-    }
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(function () {
-        showResult(true);
-      }).catch(function () {
-        showResult(legacyCopy(url));
-      });
-    } else {
-      showResult(legacyCopy(url));
-    }
-  }
-
   els.results.addEventListener("click", function (e) {
-    var copyBtn = e.target.closest(".copy-link-btn");
-    if (copyBtn) {
-      copyEntryLink(copyBtn);
-      return;
-    }
     var ytLink = e.target.closest(".yt-link");
     if (ytLink) {
       e.preventDefault();
