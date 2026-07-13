@@ -221,7 +221,8 @@
       '<div class="video-embed-bar"><span class="video-embed-label">' + escapeHtml(label) + '</span>' +
       '<button type="button" class="video-embed-close" aria-label="Close video">&times;</button></div>' +
       '<div class="video-embed-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
-      'title="' + escapeHtml(label) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+      'title="' + escapeHtml(label) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
+      'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>';
     els.videoEmbed.scrollIntoView({ block: "start" });
   }
 
