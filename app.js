@@ -17,8 +17,11 @@
     categoryFilters: document.getElementById("categoryFilters"),
     subtitleStats: document.getElementById("subtitleStats"),
     controls: document.querySelector(".controls"),
-    adPlaceholder: document.querySelector(".ad-placeholder")
+    adPlaceholder: document.querySelector(".ad-placeholder"),
+    yearFilter: document.getElementById("yearFilter")
   };
+
+  var YEAR_NONE = "__no-year__";
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
@@ -46,6 +49,7 @@
     view: "director",
     query: "",
     category: "",
+    year: "",
     activeLetter: null,
     recentSet: {},
     nowPlaying: null,
@@ -114,6 +118,7 @@
 
   function finishLoad() {
     buildCategoryChips(state.rows);
+    buildYearOptions(state.rows);
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     render();
@@ -135,6 +140,7 @@
           category: get(row, "Category"),
           youtube: get(row, "YouTube Link"),
           mvg: get(row, "MVG Link"),
+          year: get(row, "Year"),
           description: get(row, "Description")
         };
       })
@@ -164,15 +170,21 @@
     return letterBucket(viewFieldFor(row)) === state.activeLetter;
   }
 
-  function matchesFilters(row) {
+  function matchesYear(row) {
+    if (!state.year) return true;
+    if (state.year === YEAR_NONE) return !row.year;
+    return row.year === state.year;
+  }
+
+  function matchesBaseFilters(row) {
     if (state.category && row.category !== state.category) return false;
-    if (!matchesLetter(row)) return false;
+    if (!matchesYear(row)) return false;
     return matchesQuery(row, state.query);
   }
 
-  function matchesCategoryAndQuery(row) {
-    if (state.category && row.category !== state.category) return false;
-    return matchesQuery(row, state.query);
+  function matchesFilters(row) {
+    if (!matchesBaseFilters(row)) return false;
+    return matchesLetter(row);
   }
 
   function buildCategoryChips(rows) {
@@ -187,6 +199,32 @@
     });
     els.categoryFilters.innerHTML = html;
   }
+
+  function yearSortKey(y) {
+    var m = String(y).match(/\d{4}/);
+    return m ? parseInt(m[0], 10) : 0;
+  }
+
+  function buildYearOptions(rows) {
+    var counts = {};
+    var blankCount = 0;
+    rows.forEach(function (r) {
+      if (!r.year) { blankCount++; return; }
+      counts[r.year] = (counts[r.year] || 0) + 1;
+    });
+    var years = Object.keys(counts).sort(function (a, b) { return yearSortKey(b) - yearSortKey(a); });
+    var html = '<option value="">All Years</option>';
+    if (blankCount) html += '<option value="' + YEAR_NONE + '">No Year Listed (' + blankCount + ")</option>";
+    years.forEach(function (y) {
+      html += '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + " (" + counts[y] + ")</option>";
+    });
+    els.yearFilter.innerHTML = html;
+  }
+
+  els.yearFilter.addEventListener("change", function () {
+    state.year = els.yearFilter.value;
+    render();
+  });
 
   function updateCategoryChipsActive() {
     Array.prototype.forEach.call(els.categoryFilters.querySelectorAll(".chip"), function (chip) {
@@ -421,6 +459,7 @@
     var sub = [];
     if (state.view !== "artist" && row.artist) sub.push(escapeHtml(row.artist));
     if (state.view !== "director" && row.director) sub.push("Dir. " + escapeHtml(row.director));
+    if (row.year) sub.push(escapeHtml(row.year));
 
     var label = (row.song || "(untitled)") + (row.artist ? " — " + row.artist : "");
 
@@ -499,7 +538,7 @@
   function render() {
     moveVideoPairHome();
 
-    var baseFiltered = state.rows.filter(matchesCategoryAndQuery);
+    var baseFiltered = state.rows.filter(matchesBaseFilters);
     var availableLetters = {};
     baseFiltered.forEach(function (row) {
       availableLetters[letterBucket(viewFieldFor(row))] = true;
@@ -614,6 +653,8 @@
     els.search.value = "";
     state.category = "";
     updateCategoryChipsActive();
+    state.year = "";
+    els.yearFilter.value = "";
     setActiveTab("song");
     render();
     setTimeout(function () {
