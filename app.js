@@ -46,7 +46,7 @@
     view: "director",
     query: "",
     category: "",
-    jumpMap: {},
+    activeLetter: null,
     recentSet: {},
     nowPlaying: null,
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
@@ -153,7 +153,24 @@
     );
   }
 
+  function viewFieldFor(row) {
+    if (state.view === "director") return row.director;
+    if (state.view === "artist") return row.artist;
+    return row.song;
+  }
+
+  function matchesLetter(row) {
+    if (!state.activeLetter) return true;
+    return letterBucket(viewFieldFor(row)) === state.activeLetter;
+  }
+
   function matchesFilters(row) {
+    if (state.category && row.category !== state.category) return false;
+    if (!matchesLetter(row)) return false;
+    return matchesQuery(row, state.query);
+  }
+
+  function matchesCategoryAndQuery(row) {
     if (state.category && row.category !== state.category) return false;
     return matchesQuery(row, state.query);
   }
@@ -481,26 +498,29 @@
 
   function render() {
     moveVideoPairHome();
-    var filtered = state.rows.filter(matchesFilters);
 
-    var jumpMap = {};
-    var groupIdCounter = 0;
+    var baseFiltered = state.rows.filter(matchesCategoryAndQuery);
+    var availableLetters = {};
+    baseFiltered.forEach(function (row) {
+      availableLetters[letterBucket(viewFieldFor(row))] = true;
+    });
+    renderJumpNav(availableLetters);
+
+    var filtered = state.activeLetter ? baseFiltered.filter(matchesLetter) : baseFiltered;
 
     if (!filtered.length) {
       els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
-      state.jumpMap = jumpMap;
-      renderJumpNav();
       return;
     }
 
     var html = "";
+    var groupIdCounter = 0;
 
     if (state.view === "song") {
       var byLetter = groupBy(filtered, function (r) { return letterBucket(r.song); });
       var keys = sortByJumpLetter(Object.keys(byLetter));
       keys.forEach(function (key) {
         var id = "grp-" + groupIdCounter++;
-        if (!(key in jumpMap)) jumpMap[key] = id;
         html += renderGroupSection(id, key, sortByField(byLetter[key], "song"));
       });
     } else {
@@ -509,21 +529,18 @@
       var names = sortedKeys(groups);
       names.forEach(function (name) {
         var id = "grp-" + groupIdCounter++;
-        var letter = letterBucket(name);
-        if (!(letter in jumpMap)) jumpMap[letter] = id;
         html += renderGroupSection(id, name, sortByField(groups[name], "song"));
       });
     }
 
     els.results.innerHTML = html;
-    state.jumpMap = jumpMap;
-    renderJumpNav();
   }
 
-  function renderJumpNav() {
+  function renderJumpNav(availableLetters) {
     var html = JUMP_LETTERS.map(function (letter) {
-      var enabled = state.jumpMap.hasOwnProperty(letter);
-      return '<button class="jump-btn" data-letter="' + letter + '"' + (enabled ? "" : " disabled") + ">" + letter + "</button>";
+      var enabled = availableLetters.hasOwnProperty(letter);
+      var active = state.activeLetter === letter;
+      return '<button class="jump-btn' + (active ? " active" : "") + '" data-letter="' + letter + '"' + (enabled ? "" : " disabled") + ">" + letter + "</button>";
     }).join("");
     els.jumpTop.innerHTML = html;
     els.jumpBottom.innerHTML = html;
@@ -532,9 +549,10 @@
   function onJumpClick(e) {
     var btn = e.target.closest(".jump-btn");
     if (!btn || btn.disabled) return;
-    var id = state.jumpMap[btn.getAttribute("data-letter")];
-    var target = id && document.getElementById(id);
-    if (target) scrollBelowStickyHeader(target);
+    var letter = btn.getAttribute("data-letter");
+    state.activeLetter = state.activeLetter === letter ? null : letter;
+    render();
+    scrollBelowStickyHeader(els.results);
   }
 
   els.jumpTop.addEventListener("click", onJumpClick);
@@ -571,6 +589,7 @@
 
   function setActiveTab(view) {
     state.view = view;
+    state.activeLetter = null;
     els.tabs.forEach(function (t) {
       var active = t.getAttribute("data-view") === view;
       t.classList.toggle("active", active);

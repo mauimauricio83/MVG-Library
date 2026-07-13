@@ -364,6 +364,12 @@ html, body {
   color: var(--accent);
 }
 
+.jump-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .jump-btn:disabled {
   color: var(--text-faint);
   opacity: 0.4;
