@@ -546,13 +546,35 @@ html, body {
   .tag-default { background: #232326; color: var(--text-muted); }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .app {
+    padding: 16px 8px 40px;
+  }
+
   .controls {
     flex-direction: column;
     align-items: stretch;
   }
+
   .search-wrap {
     flex: none;
     max-width: none;
+  }
+
+  .entry-row {
+    padding: 10px 10px;
+    gap: 8px;
+  }
+
+  .entry-body {
+    padding: 0 10px 12px 22px;
+  }
+
+  .video-embed-hint {
+    padding: 20px 12px;
+  }
+
+  .group-heading {
+    scroll-margin-top: 130px;
   }
 }

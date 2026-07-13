@@ -15,8 +15,15 @@
     videoEmbed: document.getElementById("videoEmbed"),
     videoBox: document.getElementById("videoEmbedBox"),
     categoryFilters: document.getElementById("categoryFilters"),
-    subtitleStats: document.getElementById("subtitleStats")
+    subtitleStats: document.getElementById("subtitleStats"),
+    controls: document.querySelector(".controls")
   };
+
+  function scrollBelowStickyHeader(el) {
+    var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
+    var y = el.getBoundingClientRect().top + window.scrollY - headerHeight - 10;
+    window.scrollTo({ top: Math.max(y, 0), behavior: "auto" });
+  }
 
   var state = {
     rows: [],
@@ -223,7 +230,7 @@
       '<div class="video-embed-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
       'title="' + escapeHtml(label) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
       'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>';
-    els.videoEmbed.scrollIntoView({ block: "start" });
+    scrollBelowStickyHeader(els.videoEmbed);
   }
 
   function relatedEntries(director, excludeRowNum) {
@@ -347,7 +354,7 @@
     state.tv.index = 0;
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
-    els.videoEmbed.scrollIntoView({ block: "start" });
+    scrollBelowStickyHeader(els.videoEmbed);
   }
 
   els.videoBox.addEventListener("click", function (e) {
@@ -506,7 +513,7 @@
     if (!btn || btn.disabled) return;
     var id = state.jumpMap[btn.getAttribute("data-letter")];
     var target = id && document.getElementById(id);
-    if (target) target.scrollIntoView({ block: "start" });
+    if (target) scrollBelowStickyHeader(target);
   }
 
   els.jumpTop.addEventListener("click", onJumpClick);
