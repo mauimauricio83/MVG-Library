@@ -119,7 +119,7 @@
   }
 
   function resetVideo() {
-    els.videoBox.innerHTML = '<p class="video-embed-hint">Click a YouTube link below to play it here.</p>';
+    els.videoBox.innerHTML = '<p class="video-embed-hint">Click a link below to play it here.</p>';
   }
 
   els.videoBox.addEventListener("click", function (e) {

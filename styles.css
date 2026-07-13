@@ -133,13 +133,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 90px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  color: var(--text-faint);
-  font-size: 0.8rem;
   margin-bottom: 18px;
-  background: var(--surface);
+}
+
+.ad-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
 }
 
 .video-embed {
