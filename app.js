@@ -25,7 +25,8 @@
     category: "",
     jumpMap: {},
     recentSet: {},
-    nowPlaying: null
+    nowPlaying: null,
+    tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
   var CACHE_KEY = "mvg-wiki-cache-v1";
@@ -199,7 +200,17 @@
     return m ? m[1] : null;
   }
 
+  function teardownTV() {
+    state.tv.active = false;
+    if (state.tv.player && state.tv.player.destroy) {
+      try { state.tv.player.destroy(); } catch (e) {}
+    }
+    state.tv.player = null;
+    state.tv.shellBuilt = false;
+  }
+
   function playVideo(url, label, director, rowNum) {
+    if (state.tv.active) teardownTV();
     var id = extractYouTubeId(url);
     if (!id) {
       window.open(url, "_blank", "noopener,noreferrer");
@@ -231,14 +242,124 @@
     return '<div class="video-related"><span class="video-related-label">More by ' + escapeHtml(director) + ":</span>" + items + "</div>";
   }
 
+  function hintMarkup() {
+    return '<div class="video-embed-hint"><p>Click a link below to play it here.</p>' +
+      '<button type="button" class="tv-mode-btn">📺 Start TV Mode</button></div>';
+  }
+
   function resetVideo() {
     var related = state.nowPlaying ? renderRelated(state.nowPlaying.director, state.nowPlaying.rowNum) : "";
-    els.videoBox.innerHTML = '<p class="video-embed-hint">Click a link below to play it here.</p>' + related;
+    els.videoBox.innerHTML = hintMarkup() + related;
     state.nowPlaying = null;
   }
 
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  var ytApiReady = false;
+  var ytApiCallbacks = [];
+  function loadYouTubeAPI(cb) {
+    if (ytApiReady) { cb(); return; }
+    ytApiCallbacks.push(cb);
+    if (ytApiCallbacks.length > 1) return;
+    window.onYouTubeIframeAPIReady = function () {
+      ytApiReady = true;
+      ytApiCallbacks.forEach(function (fn) { fn(); });
+      ytApiCallbacks = [];
+    };
+    var tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  }
+
+  function tvLabelFor(row) {
+    var parts = [row.song || "(untitled)"];
+    if (row.artist) parts.push(row.artist);
+    var label = parts.join(" — ");
+    if (row.director) label += " · Dir. " + row.director;
+    return label;
+  }
+
+  function ensureTVShell() {
+    if (state.tv.shellBuilt) return;
+    els.videoBox.innerHTML =
+      '<div class="video-embed-bar"><span class="video-embed-label" id="tvLabel">📺 Loading…</span>' +
+      '<span class="tv-controls">' +
+      '<button type="button" class="tv-skip">Skip ▶</button>' +
+      '<button type="button" class="video-embed-close" aria-label="Exit TV mode">&times;</button>' +
+      "</span></div>" +
+      '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
+    state.tv.shellBuilt = true;
+  }
+
+  function onTVStateChange(e) {
+    if (state.tv.active && e.data === YT.PlayerState.ENDED) advanceTV();
+  }
+
+  function loadTVTrack(row) {
+    var id = extractYouTubeId(row.youtube);
+    if (!id) {
+      advanceTV();
+      return;
+    }
+    var labelEl = document.getElementById("tvLabel");
+    if (labelEl) labelEl.textContent = "📺 " + tvLabelFor(row);
+    if (state.tv.player && state.tv.player.loadVideoById) {
+      state.tv.player.loadVideoById(id);
+    } else {
+      loadYouTubeAPI(function () {
+        if (!state.tv.active) return;
+        state.tv.player = new YT.Player("tvPlayerTarget", {
+          videoId: id,
+          playerVars: { autoplay: 1, rel: 0 },
+          events: { onStateChange: onTVStateChange }
+        });
+      });
+    }
+  }
+
+  function advanceTV() {
+    state.tv.index++;
+    if (state.tv.index >= state.tv.queue.length) {
+      state.tv.queue = shuffle(state.tv.queue);
+      state.tv.index = 0;
+    }
+    loadTVTrack(state.tv.queue[state.tv.index]);
+  }
+
+  function startTVMode() {
+    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    if (!pool.length) {
+      els.videoBox.innerHTML = '<div class="video-embed-hint"><p>No videos to play with the current filters.</p>' +
+        '<button type="button" class="tv-mode-btn">📺 Start TV Mode</button></div>';
+      return;
+    }
+    state.nowPlaying = null;
+    state.tv.active = true;
+    state.tv.queue = shuffle(pool);
+    state.tv.index = 0;
+    ensureTVShell();
+    loadTVTrack(state.tv.queue[0]);
+    els.videoEmbed.scrollIntoView({ block: "start" });
+  }
+
   els.videoBox.addEventListener("click", function (e) {
+    if (e.target.closest(".tv-mode-btn")) {
+      startTVMode();
+      return;
+    }
+    if (e.target.closest(".tv-skip")) {
+      advanceTV();
+      return;
+    }
     if (e.target.closest(".video-embed-close")) {
+      if (state.tv.active) teardownTV();
       resetVideo();
       return;
     }
