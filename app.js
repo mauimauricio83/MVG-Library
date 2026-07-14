@@ -88,9 +88,13 @@
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
-    "Dance Sequence": "tag-dance-sequence",
-    "Musical Montage": "tag-musical-montage",
-    "DVD": "tag-dvd"
+    "Dance": "tag-dance-sequence",
+    "Montage": "tag-musical-montage",
+    "DVD": "tag-dvd",
+    "Live": "tag-live",
+    "Installation": "tag-installation",
+    "Short": "tag-short",
+    "Docu": "tag-docu"
   };
 
   function escapeHtml(str) {

@@ -15,6 +15,14 @@
   --tag-montage-bg: #fcefe1;
   --tag-dvd: #1f8a5f;
   --tag-dvd-bg: #e6f5ee;
+  --tag-live: #c4293f;
+  --tag-live-bg: #fbe6ea;
+  --tag-installation: #0f7d8a;
+  --tag-installation-bg: #e2f5f7;
+  --tag-short: #5b4fd6;
+  --tag-short-bg: #ececfd;
+  --tag-docu: #92660f;
+  --tag-docu-bg: #faf1de;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(20, 20, 30, 0.04), 0 1px 8px rgba(20, 20, 30, 0.03);
 }
@@ -504,6 +512,10 @@ html, body {
 .tag-dance-sequence { color: var(--tag-dance); background: var(--tag-dance-bg); }
 .tag-musical-montage { color: var(--tag-montage); background: var(--tag-montage-bg); }
 .tag-dvd { color: var(--tag-dvd); background: var(--tag-dvd-bg); }
+.tag-live { color: var(--tag-live); background: var(--tag-live-bg); }
+.tag-installation { color: var(--tag-installation); background: var(--tag-installation-bg); }
+.tag-short { color: var(--tag-short); background: var(--tag-short-bg); }
+.tag-docu { color: var(--tag-docu); background: var(--tag-docu-bg); }
 .tag-default { color: var(--text-muted); background: #f0f0f2; }
 
 .entry-links {
@@ -576,6 +588,10 @@ html, body {
     --tag-dance-bg: #2c1f36;
     --tag-montage-bg: #33230f;
     --tag-dvd-bg: #123324;
+    --tag-live-bg: #3a1620;
+    --tag-installation-bg: #123338;
+    --tag-short-bg: #211f42;
+    --tag-docu-bg: #34270a;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
   }
   .tag-default { background: #232326; color: var(--text-muted); }
