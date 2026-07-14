@@ -18,7 +18,8 @@
     subtitleStats: document.getElementById("subtitleStats"),
     controls: document.querySelector(".controls"),
     adPlaceholder: document.querySelector(".ad-placeholder"),
-    yearFilter: document.getElementById("yearFilter")
+    yearFilter: document.getElementById("yearFilter"),
+    tvModeBtn: document.getElementById("tvModeBtn")
   };
 
   var YEAR_NONE = "__no-year__";
@@ -44,6 +45,32 @@
     })[0] || null;
   }
 
+  function findRowByNum(rowNum) {
+    return state.rows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
+  }
+
+  function collapseActiveEntryUI() {
+    if (!state.activeRowNum) return;
+    var li = findEntryLiByRow(state.activeRowNum);
+    if (li) {
+      var rowEl = li.querySelector(".entry-row");
+      if (rowEl) rowEl.setAttribute("aria-expanded", "false");
+      li.classList.remove("expanded");
+      var body = li.querySelector(".entry-body");
+      if (body) body.hidden = true;
+    }
+    state.activeRowNum = null;
+  }
+
+  function expandEntryUI(li, rowNum) {
+    var rowEl = li.querySelector(".entry-row");
+    if (rowEl) rowEl.setAttribute("aria-expanded", "true");
+    li.classList.add("expanded");
+    var body = li.querySelector(".entry-body");
+    if (body) body.hidden = false;
+    state.activeRowNum = rowNum;
+  }
+
   var state = {
     rows: [],
     view: "director",
@@ -51,6 +78,7 @@
     category: "",
     year: "",
     activeLetter: null,
+    activeRowNum: null,
     recentSet: {},
     nowPlaying: null,
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
@@ -278,6 +306,11 @@
     return m ? m[1] : null;
   }
 
+  function updateTVButtonState() {
+    els.tvModeBtn.classList.toggle("active", state.tv.active);
+    els.tvModeBtn.textContent = state.tv.active ? "⏹ Exit TV Mode" : "📺 TV Mode";
+  }
+
   function teardownTV() {
     state.tv.active = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -285,6 +318,7 @@
     }
     state.tv.player = null;
     state.tv.shellBuilt = false;
+    updateTVButtonState();
   }
 
   function playVideo(url, label, director, rowNum) {
@@ -324,14 +358,32 @@
   }
 
   function hintMarkup() {
-    return '<div class="video-embed-hint"><p>Click a link below to play it here.</p>' +
-      '<button type="button" class="tv-mode-btn">📺 Start TV Mode</button></div>';
+    return '<div class="video-embed-hint"><p>Click an entry below to play its video here.</p></div>';
   }
 
   function resetVideo() {
     var related = state.nowPlaying ? renderRelated(state.nowPlaying.director, state.nowPlaying.rowNum) : "";
     els.videoBox.innerHTML = hintMarkup() + related;
     state.nowPlaying = null;
+  }
+
+  function closeActiveEntry() {
+    collapseActiveEntryUI();
+    resetVideo();
+    moveVideoPairHome();
+  }
+
+  function openEntry(li, row) {
+    collapseActiveEntryUI();
+    expandEntryUI(li, row.rowNum);
+    if (row.youtube) {
+      var label = (row.song || "(untitled)") + (row.artist ? " — " + row.artist : "");
+      playVideo(row.youtube, label, row.director, row.rowNum);
+    } else {
+      state.nowPlaying = null;
+      els.videoBox.innerHTML = hintMarkup();
+      moveVideoPairHome();
+    }
   }
 
   function shuffle(arr) {
@@ -415,10 +467,11 @@
   }
 
   function startTVMode() {
+    collapseActiveEntryUI();
     var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
-      els.videoBox.innerHTML = '<div class="video-embed-hint"><p>No videos to play with the current filters.</p>' +
-        '<button type="button" class="tv-mode-btn">📺 Start TV Mode</button></div>';
+      els.videoBox.innerHTML = '<div class="video-embed-hint"><p>No videos to play with the current filters.</p></div>';
+      moveVideoPairHome();
       return;
     }
     state.nowPlaying = null;
@@ -429,30 +482,48 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     scrollBelowStickyHeader(els.videoEmbed);
+    updateTVButtonState();
   }
 
-  els.videoBox.addEventListener("click", function (e) {
-    if (e.target.closest(".tv-mode-btn")) {
+  els.tvModeBtn.addEventListener("click", function () {
+    if (state.tv.active) {
+      teardownTV();
+      resetVideo();
+      moveVideoPairHome();
+    } else {
       startTVMode();
-      return;
     }
+  });
+
+  els.videoBox.addEventListener("click", function (e) {
     if (e.target.closest(".tv-skip")) {
       advanceTV();
       return;
     }
     if (e.target.closest(".video-embed-close")) {
       if (state.tv.active) teardownTV();
-      resetVideo();
-      moveVideoPairHome();
+      if (state.activeRowNum) {
+        closeActiveEntry();
+      } else {
+        resetVideo();
+        moveVideoPairHome();
+      }
       return;
     }
     var relBtn = e.target.closest(".related-btn");
     if (relBtn) {
-      playVideo(relBtn.getAttribute("data-url"), relBtn.getAttribute("data-label"), relBtn.getAttribute("data-director"), relBtn.getAttribute("data-row"));
+      var relRowNum = relBtn.getAttribute("data-row");
+      var relRow = findRowByNum(relRowNum);
+      var relLi = findEntryLiByRow(relRowNum);
+      if (relRow && relLi) {
+        openEntry(relLi, relRow);
+      } else if (relRow) {
+        collapseActiveEntryUI();
+        playVideo(relRow.youtube, (relRow.song || "(untitled)") + (relRow.artist ? " — " + relRow.artist : ""), relRow.director, relRow.rowNum);
+      }
     }
   });
 
-  var ICON_YOUTUBE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5v-7l6.3 3.5-6.3 3.5Z"/></svg>';
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
   function renderEntry(row) {
@@ -461,12 +532,7 @@
     if (state.view !== "director" && row.director) sub.push("Dir. " + escapeHtml(row.director));
     if (row.year) sub.push(escapeHtml(row.year));
 
-    var label = (row.song || "(untitled)") + (row.artist ? " — " + row.artist : "");
-
     var links = "";
-    if (row.youtube) {
-      links += '<a class="icon-btn yt-link" href="' + escapeHtml(row.youtube) + '" data-label="' + escapeHtml(label) + '" data-director="' + escapeHtml(row.director) + '" data-row="' + escapeHtml(row.rowNum) + '" target="_blank" rel="noopener noreferrer" title="Watch on YouTube" aria-label="Watch on YouTube">' + ICON_YOUTUBE + "</a>";
-    }
     if (row.mvg) {
       links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
     }
@@ -597,24 +663,22 @@
   els.jumpTop.addEventListener("click", onJumpClick);
   els.jumpBottom.addEventListener("click", onJumpClick);
 
-  function toggleEntry(entryRow) {
-    var body = entryRow.nextElementSibling;
-    var expanded = entryRow.getAttribute("aria-expanded") === "true";
-    entryRow.setAttribute("aria-expanded", expanded ? "false" : "true");
-    entryRow.parentElement.classList.toggle("expanded", !expanded);
-    if (body) body.hidden = expanded;
+  function handleEntryActivate(rowEl) {
+    var li = rowEl.closest(".entry");
+    if (!li) return;
+    var rowNum = li.getAttribute("data-row");
+    if (state.activeRowNum === rowNum) {
+      closeActiveEntry();
+      return;
+    }
+    var row = findRowByNum(rowNum);
+    if (row) openEntry(li, row);
   }
 
   els.results.addEventListener("click", function (e) {
-    var ytLink = e.target.closest(".yt-link");
-    if (ytLink) {
-      e.preventDefault();
-      playVideo(ytLink.getAttribute("href"), ytLink.getAttribute("data-label"), ytLink.getAttribute("data-director"), ytLink.getAttribute("data-row"));
-      return;
-    }
     if (e.target.closest("a")) return;
     var row = e.target.closest(".entry-row");
-    if (row) toggleEntry(row);
+    if (row) handleEntryActivate(row);
   });
 
   els.results.addEventListener("keydown", function (e) {
@@ -622,7 +686,7 @@
     var row = e.target.closest(".entry-row");
     if (row) {
       e.preventDefault();
-      toggleEntry(row);
+      handleEntryActivate(row);
     }
   });
 
@@ -658,12 +722,9 @@
     setActiveTab("song");
     render();
     setTimeout(function () {
-      var li = Array.prototype.filter.call(els.results.querySelectorAll(".entry"), function (el) {
-        return el.getAttribute("data-row") === rowNum;
-      })[0];
+      var li = findEntryLiByRow(rowNum);
       if (!li) return;
-      var rowEl = li.querySelector(".entry-row");
-      if (rowEl && rowEl.getAttribute("aria-expanded") !== "true") toggleEntry(rowEl);
+      openEntry(li, row);
       li.scrollIntoView({ block: "center" });
       li.classList.add("highlight");
       setTimeout(function () { li.classList.remove("highlight"); }, 2000);

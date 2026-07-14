@@ -226,6 +226,7 @@ html, body {
 }
 
 .tv-mode-btn {
+  flex: 0 0 auto;
   border: none;
   background: var(--accent);
   color: #fff;
@@ -238,6 +239,10 @@ html, body {
 
 .tv-mode-btn:hover {
   opacity: 0.9;
+}
+
+.tv-mode-btn.active {
+  background: #b3261e;
 }
 
 .tv-controls {
