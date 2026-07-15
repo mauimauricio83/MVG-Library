@@ -19,7 +19,8 @@
     controls: document.querySelector(".controls"),
     adPlaceholder: document.querySelector(".ad-placeholder"),
     yearFilter: document.getElementById("yearFilter"),
-    tvModeBtn: document.getElementById("tvModeBtn")
+    tvModeBtn: document.getElementById("tvModeBtn"),
+    mvgOnlyToggle: document.getElementById("mvgOnlyToggle")
   };
 
   var YEAR_NONE = "__no-year__";
@@ -77,6 +78,7 @@
     query: "",
     category: "",
     year: "",
+    mvgOnly: false,
     activeLetter: null,
     activeRowNum: null,
     recentSet: {},
@@ -219,12 +221,27 @@
   function matchesBaseFilters(row) {
     if (state.category && row.category !== state.category) return false;
     if (!matchesYear(row)) return false;
+    if (state.mvgOnly && !row.mvg) return false;
     return matchesQuery(row, state.query);
   }
 
   function matchesFilters(row) {
     if (!matchesBaseFilters(row)) return false;
     return matchesLetter(row);
+  }
+
+  function hasActiveFilters() {
+    return !!(state.category || state.year || state.mvgOnly || state.activeLetter);
+  }
+
+  function clearAllFilters() {
+    state.category = "";
+    state.year = "";
+    state.mvgOnly = false;
+    state.activeLetter = null;
+    updateCategoryChipsActive();
+    els.yearFilter.value = "";
+    els.mvgOnlyToggle.checked = false;
   }
 
   function buildCategoryChips(rows) {
@@ -263,6 +280,11 @@
 
   els.yearFilter.addEventListener("change", function () {
     state.year = els.yearFilter.value;
+    render();
+  });
+
+  els.mvgOnlyToggle.addEventListener("change", function () {
+    state.mvgOnly = els.mvgOnlyToggle.checked;
     render();
   });
 
@@ -647,7 +669,13 @@
     var filtered = state.activeLetter ? baseFiltered.filter(matchesLetter) : baseFiltered;
 
     if (!filtered.length) {
-      els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
+      if (hasActiveFilters()) {
+        els.results.innerHTML = '<div class="empty-state">No entries match the current filters' +
+          (state.query ? ' for "' + escapeHtml(state.query) + '"' : "") + '.<br>' +
+          '<button type="button" class="clear-filters-btn">Clear filters</button></div>';
+      } else {
+        els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
+      }
       return;
     }
 
@@ -714,6 +742,11 @@
   }
 
   els.results.addEventListener("click", function (e) {
+    if (e.target.closest(".clear-filters-btn")) {
+      clearAllFilters();
+      render();
+      return;
+    }
     if (e.target.closest("a")) return;
     var row = e.target.closest(".entry-row");
     if (row) handleEntryActivate(row);
@@ -753,10 +786,7 @@
     if (!row) return;
     state.query = "";
     els.search.value = "";
-    state.category = "";
-    updateCategoryChipsActive();
-    state.year = "";
-    els.yearFilter.value = "";
+    clearAllFilters();
     setActiveTab("song");
     render(true);
     setTimeout(function () {
@@ -776,6 +806,7 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(function () {
       state.query = els.search.value.trim();
+      if (state.query) state.activeLetter = null;
       render();
     }, 120);
   });

@@ -36,7 +36,13 @@
 
   <div class="filters-row">
     <div class="category-filters" id="categoryFilters"></div>
-    <select id="yearFilter" class="year-filter" aria-label="Filter by release year"></select>
+    <div class="filters-row-right">
+      <label class="mvg-only-toggle">
+        <input type="checkbox" id="mvgOnlyToggle">
+        MVG Reels only
+      </label>
+      <select id="yearFilter" class="year-filter" aria-label="Filter by release year"></select>
+    </div>
   </div>
 
   <div id="status" class="status"></div>
