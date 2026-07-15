@@ -119,8 +119,17 @@
   }
 
   function fetchData() {
-    els.status.textContent = "Loading database…";
-    els.status.classList.remove("error");
+    var cached = loadCache();
+    if (cached && cached.rows && cached.rows.length) {
+      state.rows = cached.rows;
+      els.status.textContent = "Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — refreshing…";
+      els.status.classList.remove("error");
+      finishLoad();
+    } else {
+      els.status.textContent = "Loading database…";
+      els.status.classList.remove("error");
+    }
+
     Papa.parse(CSV_URL, {
       download: true,
       header: true,
@@ -134,12 +143,9 @@
       },
       error: function (err) {
         console.error("CSV load error:", err);
-        var cached = loadCache();
         if (cached && cached.rows && cached.rows.length) {
-          state.rows = cached.rows;
           els.status.textContent = "Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest sheet.";
           els.status.classList.remove("error");
-          finishLoad();
         } else {
           els.status.textContent = "Couldn't load the database. Please try again later.";
           els.status.classList.add("error");
@@ -150,7 +156,9 @@
 
   function finishLoad() {
     buildCategoryChips(state.rows);
+    updateCategoryChipsActive();
     buildYearOptions(state.rows);
+    els.yearFilter.value = state.year;
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     render();
@@ -605,8 +613,29 @@
     );
   }
 
-  function render() {
+  var renderToken = 0;
+  var CHUNK_ENTRY_BUDGET = 150;
+
+  function renderSectionsChunked(sections, startIndex, myToken) {
+    if (myToken !== renderToken) return;
+    var html = "";
+    var budget = CHUNK_ENTRY_BUDGET;
+    var i = startIndex;
+    while (i < sections.length && budget > 0) {
+      var section = sections[i];
+      html += renderGroupSection(section.id, section.heading, section.rows);
+      budget -= section.rows.length;
+      i++;
+    }
+    if (html) els.results.insertAdjacentHTML("beforeend", html);
+    if (i < sections.length) {
+      requestAnimationFrame(function () { renderSectionsChunked(sections, i, myToken); });
+    }
+  }
+
+  function render(sync) {
     moveVideoPairHome();
+    var myToken = ++renderToken;
 
     var baseFiltered = state.rows.filter(matchesBaseFilters);
     var availableLetters = {};
@@ -622,27 +651,32 @@
       return;
     }
 
-    var html = "";
     var groupIdCounter = 0;
+    var sections;
 
     if (state.view === "song") {
       var byLetter = groupBy(filtered, function (r) { return letterBucket(r.song); });
       var keys = sortByJumpLetter(Object.keys(byLetter));
-      keys.forEach(function (key) {
-        var id = "grp-" + groupIdCounter++;
-        html += renderGroupSection(id, key, sortByField(byLetter[key], "song"));
+      sections = keys.map(function (key) {
+        return { id: "grp-" + groupIdCounter++, heading: key, rows: sortByField(byLetter[key], "song") };
       });
     } else {
       var keyFn = state.view === "director" ? function (r) { return r.director; } : function (r) { return r.artist; };
       var groups = groupBy(filtered, keyFn);
       var names = sortedKeys(groups);
-      names.forEach(function (name) {
-        var id = "grp-" + groupIdCounter++;
-        html += renderGroupSection(id, name, sortByField(groups[name], "song"));
+      sections = names.map(function (name) {
+        return { id: "grp-" + groupIdCounter++, heading: name, rows: sortByField(groups[name], "song") };
       });
     }
 
-    els.results.innerHTML = html;
+    els.results.innerHTML = "";
+
+    if (sync) {
+      var html = sections.map(function (s) { return renderGroupSection(s.id, s.heading, s.rows); }).join("");
+      els.results.innerHTML = html;
+    } else {
+      renderSectionsChunked(sections, 0, myToken);
+    }
   }
 
   function renderJumpNav(availableLetters) {
@@ -724,7 +758,7 @@
     state.year = "";
     els.yearFilter.value = "";
     setActiveTab("song");
-    render();
+    render(true);
     setTimeout(function () {
       var li = findEntryLiByRow(rowNum);
       if (!li) return;
