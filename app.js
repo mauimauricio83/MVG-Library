@@ -19,11 +19,13 @@
     controls: document.querySelector(".controls"),
     adPlaceholder: document.querySelector(".ad-placeholder"),
     yearFilter: document.getElementById("yearFilter"),
+    genreFilter: document.getElementById("genreFilter"),
     tvModeBtn: document.getElementById("tvModeBtn"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle")
   };
 
   var YEAR_NONE = "__no-year__";
+  var GENRE_NONE = "__no-genre__";
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
@@ -78,6 +80,7 @@
     query: "",
     category: "",
     year: "",
+    genre: "",
     mvgOnly: false,
     activeLetter: null,
     activeRowNum: null,
@@ -161,6 +164,8 @@
     updateCategoryChipsActive();
     buildYearOptions(state.rows);
     els.yearFilter.value = state.year;
+    buildGenreOptions(state.rows);
+    els.genreFilter.value = state.genre;
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     render();
@@ -169,6 +174,22 @@
 
   function get(row, key) {
     return (row[key] || "").trim();
+  }
+
+  // Prefer the split Genre 1/2/3 columns; fall back to a single ";"-separated Genre column.
+  function readGenres(row) {
+    var out = [];
+    ["Genre 1", "Genre 2", "Genre 3"].forEach(function (k) {
+      var v = get(row, k);
+      if (v) out.push(v);
+    });
+    if (!out.length) {
+      var legacy = get(row, "Genre");
+      if (legacy) out = legacy.split(";").map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    // dedupe, preserve order
+    var seen = {};
+    return out.filter(function (g) { if (seen[g]) return false; seen[g] = true; return true; });
   }
 
   function cleanRows(rawRows) {
@@ -183,6 +204,7 @@
           youtube: get(row, "YouTube Link"),
           mvg: get(row, "MVG Link"),
           year: get(row, "Year"),
+          genres: readGenres(row),
           description: get(row, "Description")
         };
       })
@@ -218,9 +240,16 @@
     return row.year === state.year;
   }
 
+  function matchesGenre(row) {
+    if (!state.genre) return true;
+    if (state.genre === GENRE_NONE) return !row.genres.length;
+    return row.genres.indexOf(state.genre) !== -1;
+  }
+
   function matchesBaseFilters(row) {
     if (state.category && row.category !== state.category) return false;
     if (!matchesYear(row)) return false;
+    if (!matchesGenre(row)) return false;
     if (state.mvgOnly && !row.mvg) return false;
     return matchesQuery(row, state.query);
   }
@@ -231,16 +260,18 @@
   }
 
   function hasActiveFilters() {
-    return !!(state.category || state.year || state.mvgOnly || state.activeLetter);
+    return !!(state.category || state.year || state.genre || state.mvgOnly || state.activeLetter);
   }
 
   function clearAllFilters() {
     state.category = "";
     state.year = "";
+    state.genre = "";
     state.mvgOnly = false;
     state.activeLetter = null;
     updateCategoryChipsActive();
     els.yearFilter.value = "";
+    els.genreFilter.value = "";
     els.mvgOnlyToggle.checked = false;
   }
 
@@ -280,6 +311,30 @@
 
   els.yearFilter.addEventListener("change", function () {
     state.year = els.yearFilter.value;
+    render();
+  });
+
+  function buildGenreOptions(rows) {
+    var counts = {};
+    var blankCount = 0;
+    rows.forEach(function (r) {
+      if (!r.genres.length) { blankCount++; return; }
+      r.genres.forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
+    });
+    var genres = Object.keys(counts).sort(function (a, b) {
+      if (counts[b] !== counts[a]) return counts[b] - counts[a];
+      return a.localeCompare(b);
+    });
+    var html = '<option value="">All Genres</option>';
+    if (blankCount) html += '<option value="' + GENRE_NONE + '">No Genre Listed (' + blankCount + ")</option>";
+    genres.forEach(function (g) {
+      html += '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + " (" + counts[g] + ")</option>";
+    });
+    els.genreFilter.innerHTML = html;
+  }
+
+  els.genreFilter.addEventListener("change", function () {
+    state.genre = els.genreFilter.value;
     render();
   });
 
