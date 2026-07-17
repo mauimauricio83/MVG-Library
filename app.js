@@ -53,6 +53,7 @@
     mvgOnly: false,
     activeLetter: null,
     lightboxRowNum: null,
+    lightboxPlayer: null,
     recentSet: {},
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
@@ -551,15 +552,33 @@
 
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
+  function destroyLightboxPlayer() {
+    if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
+      try { state.lightboxPlayer.destroy(); } catch (e) {}
+    }
+    state.lightboxPlayer = null;
+  }
+
+  function showLightboxVideoFallback(youtubeUrl) {
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (!frame) return;
+    // replace the whole aspect-ratio-locked frame (not just its contents) since the
+    // fallback message isn't absolutely positioned the way the iframe/player is.
+    var replacement = document.createElement("div");
+    replacement.className = "lightbox-video-empty";
+    replacement.innerHTML = "This video can't be played here.<br>" +
+      '<a class="lightbox-fallback-link" href="' + escapeHtml(youtubeUrl) + '" target="_blank" rel="noopener noreferrer">▶ Watch on YouTube</a>';
+    frame.replaceWith(replacement);
+  }
+
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); resetVideo(); moveVideoPairHome(); }
+    destroyLightboxPlayer();
     state.lightboxRowNum = row.rowNum;
 
     var id = extractYouTubeId(row.youtube);
     var videoHtml = id
-      ? '<div class="lightbox-video-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
-        'title="' + escapeHtml(row.song || "video") + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
-        'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>'
+      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
       : '<div class="lightbox-video-empty">No video available for this entry.</div>';
 
     var sub = [];
@@ -594,10 +613,33 @@
 
     els.lightbox.hidden = false;
     document.body.style.overflow = "hidden";
+
+    if (id) {
+      var rowNumAtOpen = row.rowNum;
+      var youtubeUrl = row.youtube;
+      loadYouTubeAPI(function () {
+        // bail if the lightbox was closed or switched to another entry while the API was loading
+        if (els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen) return;
+        state.lightboxPlayer = new YT.Player("lightboxPlayerTarget", {
+          videoId: id,
+          playerVars: { autoplay: 1, rel: 0 },
+          events: {
+            onError: function (e) {
+              // 100: video not found/private, 101 & 150: embedding disabled by the owner
+              if (e.data === 100 || e.data === 101 || e.data === 150) {
+                destroyLightboxPlayer();
+                showLightboxVideoFallback(youtubeUrl);
+              }
+            }
+          }
+        });
+      });
+    }
   }
 
   function closeLightbox() {
     if (els.lightbox.hidden) return;
+    destroyLightboxPlayer();
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;
