@@ -177,6 +177,7 @@
           producer: get(row, "Producer"),
           dp: get(row, "DP"),
           editor: get(row, "Editor"),
+          choreographer: get(row, "Choreographer"),
           genres: readGenres(row),
           description: get(row, "Description")
         };
@@ -534,6 +535,7 @@
   function creditsHtml(row) {
     var pairs = [];
     if (row.director) pairs.push(["Director", row.director]);
+    if (row.choreographer) pairs.push(["Choreographer", row.choreographer]);
     if (row.releaseDate) pairs.push(["Release date", row.releaseDate]);
     else if (row.year) pairs.push(["Year", row.year]);
     if (row.studio) pairs.push(["Studio", row.studio]);
