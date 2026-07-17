@@ -89,7 +89,7 @@
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
-  var CACHE_KEY = "mvg-wiki-cache-v1";
+  var CACHE_KEY = "mvg-wiki-cache-v2"; // bumped: v1 rows predate the "genres" field
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
@@ -242,8 +242,9 @@
 
   function matchesGenre(row) {
     if (!state.genre) return true;
-    if (state.genre === GENRE_NONE) return !row.genres.length;
-    return row.genres.indexOf(state.genre) !== -1;
+    var genres = row.genres || [];
+    if (state.genre === GENRE_NONE) return !genres.length;
+    return genres.indexOf(state.genre) !== -1;
   }
 
   function matchesBaseFilters(row) {
@@ -318,8 +319,9 @@
     var counts = {};
     var blankCount = 0;
     rows.forEach(function (r) {
-      if (!r.genres.length) { blankCount++; return; }
-      r.genres.forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
+      var genres = r.genres || [];
+      if (!genres.length) { blankCount++; return; }
+      genres.forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
     });
     var genres = Object.keys(counts).sort(function (a, b) {
       if (counts[b] !== counts[a]) return counts[b] - counts[a];
