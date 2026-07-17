@@ -23,7 +23,9 @@
     tvModeBtn: document.getElementById("tvModeBtn"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     lightbox: document.getElementById("lightbox"),
-    lightboxContent: document.getElementById("lightboxContent")
+    lightboxPanel: document.querySelector(".lightbox-panel"),
+    lightboxContent: document.getElementById("lightboxContent"),
+    lightboxSizeToggle: document.getElementById("lightboxSizeToggle")
   };
 
   var YEAR_NONE = "__no-year__";
@@ -54,11 +56,13 @@
     activeLetter: null,
     lightboxRowNum: null,
     lightboxPlayer: null,
+    lightboxSize: loadLightboxSizePref(),
     recentSet: {},
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
   var CACHE_KEY = "mvg-wiki-cache-v2"; // bumped: v1 rows predate the "genres" field
+  var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
@@ -75,6 +79,20 @@
     return String(str || "").replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  function loadLightboxSizePref() {
+    try {
+      return localStorage.getItem(LIGHTBOX_SIZE_KEY) === "large" ? "large" : "small";
+    } catch (e) {
+      return "small";
+    }
+  }
+
+  function saveLightboxSizePref(size) {
+    try {
+      localStorage.setItem(LIGHTBOX_SIZE_KEY, size);
+    } catch (e) {}
   }
 
   function saveCache(rows) {
@@ -646,6 +664,21 @@
     document.body.style.overflow = "";
   }
 
+  function applyLightboxSize() {
+    var isLarge = state.lightboxSize === "large";
+    els.lightboxPanel.classList.toggle("size-large", isLarge);
+    els.lightboxSizeToggle.textContent = isLarge ? "⤡" : "⤢";
+    els.lightboxSizeToggle.title = isLarge ? "Shrink player" : "Widen player";
+  }
+
+  applyLightboxSize();
+
+  els.lightboxSizeToggle.addEventListener("click", function () {
+    state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
+    saveLightboxSizePref(state.lightboxSize);
+    applyLightboxSize();
+  });
+
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
       closeLightbox();
@@ -660,6 +693,14 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !els.lightbox.hidden) closeLightbox();
+  });
+
+  document.addEventListener("click", function (e) {
+    var tip = e.target.closest ? e.target.closest(".info-tip") : null;
+    document.querySelectorAll(".info-tip.is-open").forEach(function (el) {
+      if (el !== tip) el.classList.remove("is-open");
+    });
+    if (tip) tip.classList.toggle("is-open");
   });
 
   function renderEntry(row) {

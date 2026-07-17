@@ -29,19 +29,25 @@
       <button class="tab" data-view="song" role="tab" aria-selected="false">By Song Title</button>
     </div>
     <button type="button" id="tvModeBtn" class="tv-mode-btn">📺 TV Mode</button>
+    <span class="info-tip" tabindex="0" data-tip="TV Mode shuffles through whatever your current search and filters show. Narrow things down first for a more focused mix.">ⓘ</span>
     <div class="search-wrap">
       <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
     </div>
   </div>
 
   <div class="filters-row">
-    <div class="category-filters" id="categoryFilters"></div>
+    <div class="category-filters-group">
+      <div class="category-filters" id="categoryFilters"></div>
+      <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
+    </div>
     <div class="filters-row-right">
       <label class="mvg-only-toggle">
         <input type="checkbox" id="mvgOnlyToggle">
         MVG Reels only
       </label>
+      <span class="info-tip" tabindex="0" data-tip="Only shows entries The Music Video Guy has posted as an Instagram Reel.">ⓘ</span>
       <select id="genreFilter" class="filter-select" aria-label="Filter by genre"></select>
+      <span class="info-tip" tabindex="0" data-tip="Single-select — filters to one genre at a time, not a combination.">ⓘ</span>
       <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
     </div>
   </div>
@@ -70,6 +76,7 @@
 <div class="lightbox" id="lightbox" hidden>
   <div class="lightbox-backdrop"></div>
   <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Entry details">
+    <button type="button" class="lightbox-size-toggle" id="lightboxSizeToggle" title="Widen player" aria-label="Toggle player size">⤢</button>
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="lightbox-content" id="lightboxContent"></div>
   </div>
