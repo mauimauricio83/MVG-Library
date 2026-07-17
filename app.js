@@ -21,7 +21,9 @@
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
     tvModeBtn: document.getElementById("tvModeBtn"),
-    mvgOnlyToggle: document.getElementById("mvgOnlyToggle")
+    mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
+    lightbox: document.getElementById("lightbox"),
+    lightboxContent: document.getElementById("lightboxContent")
   };
 
   var YEAR_NONE = "__no-year__";
@@ -37,41 +39,8 @@
     els.jumpTop.after(els.adPlaceholder, els.videoEmbed);
   }
 
-  function moveVideoPairTo(li) {
-    li.before(els.adPlaceholder, els.videoEmbed);
-  }
-
-  function findEntryLiByRow(rowNum) {
-    if (!rowNum) return null;
-    return Array.prototype.filter.call(els.results.querySelectorAll(".entry"), function (el) {
-      return el.getAttribute("data-row") === rowNum;
-    })[0] || null;
-  }
-
   function findRowByNum(rowNum) {
     return state.rows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
-  }
-
-  function collapseActiveEntryUI() {
-    if (!state.activeRowNum) return;
-    var li = findEntryLiByRow(state.activeRowNum);
-    if (li) {
-      var rowEl = li.querySelector(".entry-row");
-      if (rowEl) rowEl.setAttribute("aria-expanded", "false");
-      li.classList.remove("expanded");
-      var body = li.querySelector(".entry-body");
-      if (body) body.hidden = true;
-    }
-    state.activeRowNum = null;
-  }
-
-  function expandEntryUI(li, rowNum) {
-    var rowEl = li.querySelector(".entry-row");
-    if (rowEl) rowEl.setAttribute("aria-expanded", "true");
-    li.classList.add("expanded");
-    var body = li.querySelector(".entry-body");
-    if (body) body.hidden = false;
-    state.activeRowNum = rowNum;
   }
 
   var state = {
@@ -83,9 +52,8 @@
     genre: "",
     mvgOnly: false,
     activeLetter: null,
-    activeRowNum: null,
+    lightboxRowNum: null,
     recentSet: {},
-    nowPlaying: null,
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
@@ -204,6 +172,11 @@
           youtube: get(row, "YouTube Link"),
           mvg: get(row, "MVG Link"),
           year: get(row, "Year"),
+          releaseDate: get(row, "Release date"),
+          studio: get(row, "Studio"),
+          producer: get(row, "Producer"),
+          dp: get(row, "DP"),
+          editor: get(row, "Editor"),
           genres: readGenres(row),
           description: get(row, "Description")
         };
@@ -412,69 +385,12 @@
     updateTVButtonState();
   }
 
-  function playVideo(url, label, director, rowNum) {
-    if (state.tv.active) teardownTV();
-    var id = extractYouTubeId(url);
-    if (!id) {
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    state.nowPlaying = { director: director || "", rowNum: rowNum || "" };
-    els.videoBox.innerHTML =
-      '<div class="video-embed-bar"><span class="video-embed-label">' + escapeHtml(label) + '</span>' +
-      '<button type="button" class="video-embed-close" aria-label="Close video">&times;</button></div>' +
-      '<div class="video-embed-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
-      'title="' + escapeHtml(label) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
-      'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>';
-    var entryLi = findEntryLiByRow(rowNum);
-    if (entryLi) moveVideoPairTo(entryLi); else moveVideoPairHome();
-    scrollBelowStickyHeader(els.videoEmbed);
-  }
-
-  function relatedEntries(director, excludeRowNum) {
-    if (!director) return [];
-    return state.rows.filter(function (r) {
-      return r.director === director && r.rowNum !== excludeRowNum && r.youtube;
-    }).slice(0, 3);
-  }
-
-  function renderRelated(director, excludeRowNum) {
-    var related = relatedEntries(director, excludeRowNum);
-    if (!related.length) return "";
-    var items = related.map(function (r) {
-      var lbl = (r.song || "(untitled)") + (r.artist ? " — " + r.artist : "");
-      return '<button type="button" class="related-btn" data-url="' + escapeHtml(r.youtube) + '" data-label="' + escapeHtml(lbl) + '" data-director="' + escapeHtml(r.director) + '" data-row="' + escapeHtml(r.rowNum) + '">' + escapeHtml(r.song || "(untitled)") + "</button>";
-    }).join("");
-    return '<div class="video-related"><span class="video-related-label">More by ' + escapeHtml(director) + ":</span>" + items + "</div>";
-  }
-
   function hintMarkup() {
-    return '<div class="video-embed-hint"><p>Click an entry below to play its video here.</p></div>';
+    return '<div class="video-embed-hint"><p>Click 📺 TV Mode above to start a shuffled playlist.</p></div>';
   }
 
   function resetVideo() {
-    var related = state.nowPlaying ? renderRelated(state.nowPlaying.director, state.nowPlaying.rowNum) : "";
-    els.videoBox.innerHTML = hintMarkup() + related;
-    state.nowPlaying = null;
-  }
-
-  function closeActiveEntry() {
-    collapseActiveEntryUI();
-    resetVideo();
-    moveVideoPairHome();
-  }
-
-  function openEntry(li, row) {
-    collapseActiveEntryUI();
-    expandEntryUI(li, row.rowNum);
-    if (row.youtube) {
-      var label = (row.song || "(untitled)") + (row.artist ? " — " + row.artist : "");
-      playVideo(row.youtube, label, row.director, row.rowNum);
-    } else {
-      state.nowPlaying = null;
-      els.videoBox.innerHTML = hintMarkup();
-      moveVideoPairHome();
-    }
+    els.videoBox.innerHTML = hintMarkup();
   }
 
   function shuffle(arr) {
@@ -558,14 +474,13 @@
   }
 
   function startTVMode() {
-    collapseActiveEntryUI();
+    closeLightbox();
     var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
       els.videoBox.innerHTML = '<div class="video-embed-hint"><p>No videos to play with the current filters.</p></div>';
       moveVideoPairHome();
       return;
     }
-    state.nowPlaying = null;
     state.tv.active = true;
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
@@ -593,29 +508,115 @@
     }
     if (e.target.closest(".video-embed-close")) {
       if (state.tv.active) teardownTV();
-      if (state.activeRowNum) {
-        closeActiveEntry();
-      } else {
-        resetVideo();
-        moveVideoPairHome();
-      }
+      resetVideo();
+      moveVideoPairHome();
+    }
+  });
+
+  // ---- Lightbox ----
+
+  function relatedEntries(director, excludeRowNum) {
+    if (!director) return [];
+    return state.rows.filter(function (r) {
+      return r.director === director && r.rowNum !== excludeRowNum && r.youtube;
+    }).slice(0, 3);
+  }
+
+  function lightboxRelatedHtml(director, excludeRowNum) {
+    var related = relatedEntries(director, excludeRowNum);
+    if (!related.length) return "";
+    var items = related.map(function (r) {
+      return '<button type="button" class="related-btn" data-row="' + escapeHtml(r.rowNum) + '">' + escapeHtml(r.song || "(untitled)") + "</button>";
+    }).join("");
+    return '<div class="lightbox-related"><span class="lightbox-related-label">More by ' + escapeHtml(director) + ":</span>" + items + "</div>";
+  }
+
+  function creditsHtml(row) {
+    var pairs = [];
+    if (row.director) pairs.push(["Director", row.director]);
+    if (row.releaseDate) pairs.push(["Release date", row.releaseDate]);
+    else if (row.year) pairs.push(["Year", row.year]);
+    if (row.studio) pairs.push(["Studio", row.studio]);
+    if (row.producer) pairs.push(["Producer", row.producer]);
+    if (row.dp) pairs.push(["DP", row.dp]);
+    if (row.editor) pairs.push(["Editor", row.editor]);
+    if (!pairs.length) return "";
+    var rowsHtml = pairs.map(function (p) {
+      return "<dt>" + escapeHtml(p[0]) + "</dt><dd>" + escapeHtml(p[1]) + "</dd>";
+    }).join("");
+    return '<dl class="lightbox-credits">' + rowsHtml + "</dl>";
+  }
+
+  var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
+
+  function openLightbox(row) {
+    if (state.tv.active) { teardownTV(); resetVideo(); moveVideoPairHome(); }
+    state.lightboxRowNum = row.rowNum;
+
+    var id = extractYouTubeId(row.youtube);
+    var videoHtml = id
+      ? '<div class="lightbox-video-frame"><iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0" ' +
+        'title="' + escapeHtml(row.song || "video") + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" ' +
+        'allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>'
+      : '<div class="lightbox-video-empty">No video available for this entry.</div>';
+
+    var sub = [];
+    if (row.artist) sub.push(escapeHtml(row.artist));
+
+    var tagHtml = row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "";
+    var genreTags = (row.genres || []).map(function (g) {
+      return '<span class="tag tag-default">' + escapeHtml(g) + "</span>";
+    }).join("");
+
+    var descHtml = row.description
+      ? '<p class="lightbox-desc">' + escapeHtml(row.description) + "</p>"
+      : '<p class="lightbox-desc placeholder">No writeup yet.</p>';
+
+    var links = "";
+    if (row.mvg) {
+      links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
+    }
+
+    els.lightboxContent.innerHTML =
+      els.adPlaceholder.outerHTML +
+      videoHtml +
+      '<div class="lightbox-body">' +
+      '<h2 class="lightbox-title">' + escapeHtml(row.song || "(untitled)") + "</h2>" +
+      (sub.length ? '<p class="lightbox-subtitle">' + sub.join(" · ") + "</p>" : "") +
+      '<div class="lightbox-tag-row">' + tagHtml + genreTags + "</div>" +
+      creditsHtml(row) +
+      descHtml +
+      (links ? '<div class="lightbox-links">' + links + "</div>" : "") +
+      lightboxRelatedHtml(row.director, row.rowNum) +
+      "</div>";
+
+    els.lightbox.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeLightbox() {
+    if (els.lightbox.hidden) return;
+    els.lightbox.hidden = true;
+    els.lightboxContent.innerHTML = "";
+    state.lightboxRowNum = null;
+    document.body.style.overflow = "";
+  }
+
+  els.lightbox.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
+      closeLightbox();
       return;
     }
     var relBtn = e.target.closest(".related-btn");
     if (relBtn) {
-      var relRowNum = relBtn.getAttribute("data-row");
-      var relRow = findRowByNum(relRowNum);
-      var relLi = findEntryLiByRow(relRowNum);
-      if (relRow && relLi) {
-        openEntry(relLi, relRow);
-      } else if (relRow) {
-        collapseActiveEntryUI();
-        playVideo(relRow.youtube, (relRow.song || "(untitled)") + (relRow.artist ? " — " + relRow.artist : ""), relRow.director, relRow.rowNum);
-      }
+      var row = findRowByNum(relBtn.getAttribute("data-row"));
+      if (row) openLightbox(row);
     }
   });
 
-  var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !els.lightbox.hidden) closeLightbox();
+  });
 
   function renderEntry(row) {
     var sub = [];
@@ -628,15 +629,11 @@
       links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
     }
 
-    var descHtml = row.description
-      ? '<p class="entry-desc">' + escapeHtml(row.description) + "</p>"
-      : '<p class="entry-desc placeholder">No writeup yet.</p>';
-
     var newBadge = state.recentSet[row.rowNum] ? '<span class="new-badge">New</span>' : "";
 
     return (
       '<li class="entry" data-row="' + escapeHtml(row.rowNum) + '">' +
-      '<div class="entry-row" role="button" tabindex="0" aria-expanded="false">' +
+      '<div class="entry-row" role="button" tabindex="0" aria-haspopup="dialog">' +
       '<span class="entry-chevron" aria-hidden="true">&#9656;</span>' +
       '<span class="entry-main">' +
       '<span class="entry-title">' + escapeHtml(row.song || "(untitled)") + newBadge + "</span>" +
@@ -645,7 +642,6 @@
       (row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "") +
       (links ? '<span class="entry-links">' + links + "</span>" : "") +
       "</div>" +
-      '<div class="entry-body" hidden>' + descHtml + "</div>" +
       "</li>"
     );
   }
@@ -790,12 +786,8 @@
     var li = rowEl.closest(".entry");
     if (!li) return;
     var rowNum = li.getAttribute("data-row");
-    if (state.activeRowNum === rowNum) {
-      closeActiveEntry();
-      return;
-    }
     var row = findRowByNum(rowNum);
-    if (row) openEntry(li, row);
+    if (row) openLightbox(row);
   }
 
   els.results.addEventListener("click", function (e) {
@@ -839,21 +831,9 @@
     var m = location.hash.match(/^#row-(.+)$/);
     if (!m || !state.rows.length) return;
     var rowNum = decodeURIComponent(m[1]);
-    var row = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+    var row = findRowByNum(rowNum);
     if (!row) return;
-    state.query = "";
-    els.search.value = "";
-    clearAllFilters();
-    setActiveTab("song");
-    render(true);
-    setTimeout(function () {
-      var li = findEntryLiByRow(rowNum);
-      if (!li) return;
-      openEntry(li, row);
-      li.scrollIntoView({ block: "center" });
-      li.classList.add("highlight");
-      setTimeout(function () { li.classList.remove("highlight"); }, 2000);
-    }, 0);
+    openLightbox(row);
   }
 
   window.addEventListener("hashchange", applyDeepLinkFromHash);

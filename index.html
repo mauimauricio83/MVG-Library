@@ -58,13 +58,21 @@
   <section class="video-embed" id="videoEmbed">
     <div class="video-embed-box" id="videoEmbedBox">
       <div class="video-embed-hint">
-        <p>Click an entry below to play its video here.</p>
+        <p>Click 📺 TV Mode above to start a shuffled playlist.</p>
       </div>
     </div>
   </section>
 
   <main id="results" class="results"></main>
   <nav id="jumpNavBottom" class="jumpnav" aria-label="Jump to letter"></nav>
+</div>
+
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Entry details">
+    <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
