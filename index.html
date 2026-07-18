@@ -22,14 +22,21 @@
     <a class="submit-link" href="https://forms.gle/8Tq1XXpPMHnSip5i6" target="_blank" rel="noopener noreferrer">Submit your music video here</a>
   </header>
 
+  <section class="media-strip" id="latestStrip" hidden>
+    <div class="media-strip-title">🆕 Latest Submissions</div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="latestStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="latestStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="latestStripNext" aria-label="Show next">›</button>
+    </div>
+  </section>
+
   <div class="controls">
     <div class="tabs" role="tablist" aria-label="Browse by">
       <button class="tab active" data-view="director" role="tab" aria-selected="true">By Director</button>
       <button class="tab" data-view="artist" role="tab" aria-selected="false">By Artist</button>
       <button class="tab" data-view="song" role="tab" aria-selected="false">By Song Title</button>
     </div>
-    <button type="button" id="tvModeBtn" class="tv-mode-btn">📺 TV Mode</button>
-    <span class="info-tip" tabindex="0" data-tip="TV Mode shuffles through whatever your current search and filters show. Narrow things down first for a more focused mix.">ⓘ</span>
     <div class="search-wrap">
       <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
     </div>
@@ -61,10 +68,21 @@
     </a>
   </div>
 
+  <section class="media-strip" id="featuredStrip" hidden>
+    <div class="media-strip-title">⭐ Featured</div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="featuredStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="featuredStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="featuredStripNext" aria-label="Show next">›</button>
+    </div>
+  </section>
+
   <section class="video-embed" id="videoEmbed">
     <div class="video-embed-box" id="videoEmbedBox">
       <div class="video-embed-hint">
-        <p>Click 📺 TV Mode above to start a shuffled playlist.</p>
+        <p>Shuffle through a curated playlist of videos matching your current filters.</p>
+        <button type="button" class="tv-mode-btn" id="tvStartBtn">📺 Start TV Mode</button>
+        <span class="info-tip" tabindex="0" data-tip="TV Mode shuffles through whatever your current search and filters show. Narrow things down first for a more focused mix.">ⓘ</span>
       </div>
     </div>
   </section>

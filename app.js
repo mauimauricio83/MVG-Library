@@ -20,13 +20,16 @@
     adPlaceholder: document.querySelector(".ad-placeholder"),
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
-    tvModeBtn: document.getElementById("tvModeBtn"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
-    lightboxSizeToggle: document.getElementById("lightboxSizeToggle")
+    lightboxSizeToggle: document.getElementById("lightboxSizeToggle"),
+    latestStrip: document.getElementById("latestStrip"),
+    featuredStrip: document.getElementById("featuredStrip")
   };
+
+  var LATEST_STRIP_COUNT = 50;
 
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
@@ -38,7 +41,7 @@
   }
 
   function moveVideoPairHome() {
-    els.jumpTop.after(els.adPlaceholder, els.videoEmbed);
+    els.jumpTop.after(els.adPlaceholder, els.featuredStrip, els.videoEmbed);
   }
 
   function findRowByNum(rowNum) {
@@ -155,6 +158,8 @@
     els.genreFilter.value = state.genre;
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
+    renderLatestStrip(state.rows);
+    renderFeaturedStrip(state.rows);
     render();
     applyDeepLinkFromHash();
   }
@@ -198,7 +203,8 @@
           editor: get(row, "Editor"),
           choreographer: get(row, "Choreographer"),
           genres: readGenres(row),
-          description: get(row, "Description")
+          description: get(row, "Description"),
+          feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature"))
         };
       })
       .filter(function (row) {
@@ -374,6 +380,74 @@
     return set;
   }
 
+  // Shared factory for the arrow-paginated media strips (Latest Submissions, Featured).
+  function createMediaStrip(sectionEl) {
+    var track = sectionEl.querySelector(".media-strip-track");
+    var prev = sectionEl.querySelector(".media-strip-arrow:first-child");
+    var next = sectionEl.querySelector(".media-strip-arrow:last-child");
+
+    function updateArrows() {
+      prev.disabled = track.scrollLeft <= 0;
+      next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+    }
+
+    track.addEventListener("click", function (e) {
+      var card = e.target.closest(".media-strip-card");
+      if (!card) return;
+      var row = findRowByNum(card.getAttribute("data-row"));
+      if (row) openLightbox(row);
+    });
+
+    prev.addEventListener("click", function () {
+      track.scrollBy({ left: -track.clientWidth, behavior: "smooth" });
+    });
+    next.addEventListener("click", function () {
+      track.scrollBy({ left: track.clientWidth, behavior: "smooth" });
+    });
+    track.addEventListener("scroll", updateArrows);
+
+    return {
+      render: function (rows) {
+        if (!rows.length) {
+          sectionEl.hidden = true;
+          return;
+        }
+        track.innerHTML = rows.map(function (row) {
+          var id = extractYouTubeId(row.youtube);
+          var thumb = id
+            ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="" loading="lazy">'
+            : "";
+          return (
+            '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+              '<div class="media-strip-thumb">' + thumb + "</div>" +
+              '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+              '<div class="media-strip-artist">' + escapeHtml(row.artist || "") + "</div>" +
+            "</div>"
+          );
+        }).join("");
+        sectionEl.hidden = false;
+        updateArrows();
+      }
+    };
+  }
+
+  var latestStrip = createMediaStrip(els.latestStrip);
+  var featuredStrip = createMediaStrip(els.featuredStrip);
+
+  function renderLatestStrip(rows) {
+    var latest = rows
+      .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
+      .filter(function (x) { return !isNaN(x.n); })
+      .sort(function (a, b) { return b.n - a.n; })
+      .slice(0, LATEST_STRIP_COUNT)
+      .map(function (x) { return x.row; });
+    latestStrip.render(latest);
+  }
+
+  function renderFeaturedStrip(rows) {
+    featuredStrip.render(rows.filter(function (r) { return r.feature; }));
+  }
+
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
   }
@@ -390,11 +464,6 @@
     return m ? m[1] : null;
   }
 
-  function updateTVButtonState() {
-    els.tvModeBtn.classList.toggle("active", state.tv.active);
-    els.tvModeBtn.textContent = state.tv.active ? "⏹ Exit TV Mode" : "📺 TV Mode";
-  }
-
   function teardownTV() {
     state.tv.active = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -402,11 +471,13 @@
     }
     state.tv.player = null;
     state.tv.shellBuilt = false;
-    updateTVButtonState();
   }
 
-  function hintMarkup() {
-    return '<div class="video-embed-hint"><p>Click 📺 TV Mode above to start a shuffled playlist.</p></div>';
+  function hintMarkup(message) {
+    return '<div class="video-embed-hint"><p>' + (message || "Shuffle through a curated playlist of videos matching your current filters.") + "</p>" +
+      '<button type="button" class="tv-mode-btn" id="tvStartBtn">📺 Start TV Mode</button> ' +
+      '<span class="info-tip" tabindex="0" data-tip="TV Mode shuffles through whatever your current search and filters show. Narrow things down first for a more focused mix.">ⓘ</span>' +
+      "</div>";
   }
 
   function resetVideo() {
@@ -497,7 +568,7 @@
     closeLightbox();
     var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
-      els.videoBox.innerHTML = '<div class="video-embed-hint"><p>No videos to play with the current filters.</p></div>';
+      els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
       moveVideoPairHome();
       return;
     }
@@ -508,20 +579,13 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     scrollBelowStickyHeader(els.videoEmbed);
-    updateTVButtonState();
   }
 
-  els.tvModeBtn.addEventListener("click", function () {
-    if (state.tv.active) {
-      teardownTV();
-      resetVideo();
-      moveVideoPairHome();
-    } else {
-      startTVMode();
-    }
-  });
-
   els.videoBox.addEventListener("click", function (e) {
+    if (e.target.closest("#tvStartBtn")) {
+      startTVMode();
+      return;
+    }
     if (e.target.closest(".tv-skip")) {
       advanceTV();
       return;
