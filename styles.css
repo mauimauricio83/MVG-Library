@@ -89,11 +89,33 @@ html, body {
   background: var(--surface);
 }
 
-.media-strip-title {
+.media-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 0 14px 8px;
+}
+
+.media-strip-title {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.media-strip-play-all {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.media-strip-play-all:hover {
+  text-decoration: underline;
 }
 
 .media-strip-body {

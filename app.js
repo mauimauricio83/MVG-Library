@@ -26,7 +26,8 @@
     lightboxContent: document.getElementById("lightboxContent"),
     lightboxSizeToggle: document.getElementById("lightboxSizeToggle"),
     latestStrip: document.getElementById("latestStrip"),
-    featuredStrip: document.getElementById("featuredStrip")
+    featuredStrip: document.getElementById("featuredStrip"),
+    featuredPlayAll: document.getElementById("featuredPlayAll")
   };
 
   var LATEST_STRIP_COUNT = 50;
@@ -444,8 +445,10 @@
     latestStrip.render(latest);
   }
 
+  var featuredPool = [];
   function renderFeaturedStrip(rows) {
-    featuredStrip.render(rows.filter(function (r) { return r.feature; }));
+    featuredPool = shuffle(rows.filter(function (r) { return r.feature; }));
+    featuredStrip.render(featuredPool);
   }
 
   function categoryTagClass(cat) {
@@ -564,9 +567,9 @@
     loadTVTrack(state.tv.queue[state.tv.index]);
   }
 
-  function startTVMode() {
+  function startTVMode(customPool) {
     closeLightbox();
-    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    var pool = customPool || state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
       els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
       moveVideoPairHome();
@@ -580,6 +583,10 @@
     loadTVTrack(state.tv.queue[0]);
     scrollBelowStickyHeader(els.videoEmbed);
   }
+
+  els.featuredPlayAll.addEventListener("click", function () {
+    startTVMode(featuredPool.filter(function (r) { return !!r.youtube; }));
+  });
 
   els.videoBox.addEventListener("click", function (e) {
     if (e.target.closest("#tvStartBtn")) {
