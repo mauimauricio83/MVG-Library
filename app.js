@@ -114,16 +114,22 @@
     }
   }
 
+  function setStatus(message, opts) {
+    opts = opts || {};
+    els.status.classList.toggle("error", !!opts.error);
+    els.status.innerHTML = opts.spinner
+      ? '<span class="spinner-small"></span><span>' + escapeHtml(message) + "</span>"
+      : escapeHtml(message);
+  }
+
   function fetchData() {
     var cached = loadCache();
     if (cached && cached.rows && cached.rows.length) {
       state.rows = cached.rows;
-      els.status.textContent = "Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — refreshing…";
-      els.status.classList.remove("error");
+      setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — refreshing…", { spinner: true });
       finishLoad();
     } else {
-      els.status.textContent = "Loading database…";
-      els.status.classList.remove("error");
+      setStatus("Loading database…", { spinner: true });
     }
 
     Papa.parse(CSV_URL, {
@@ -133,18 +139,15 @@
       complete: function (result) {
         state.rows = cleanRows(result.data);
         saveCache(state.rows);
-        els.status.textContent = state.rows.length ? "" : "No entries found.";
-        els.status.classList.remove("error");
+        setStatus(state.rows.length ? "" : "No entries found.");
         finishLoad();
       },
       error: function (err) {
         console.error("CSV load error:", err);
         if (cached && cached.rows && cached.rows.length) {
-          els.status.textContent = "Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest sheet.";
-          els.status.classList.remove("error");
+          setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest sheet.");
         } else {
-          els.status.textContent = "Couldn't load the database. Please try again later.";
-          els.status.classList.add("error");
+          setStatus("Couldn't load the database. Please try again later.", { error: true });
         }
       }
     });
