@@ -42,7 +42,7 @@
   }
 
   function moveVideoPairHome() {
-    els.jumpTop.after(els.adPlaceholder, els.featuredStrip, els.videoEmbed);
+    els.jumpTop.after(els.featuredStrip, els.adPlaceholder, els.videoEmbed);
   }
 
   function findRowByNum(rowNum) {
