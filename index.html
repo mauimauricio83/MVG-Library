@@ -44,7 +44,13 @@
     </div>
   </div>
 
-  <div class="filters-row">
+  <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
+    <span>Filters</span>
+    <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
+    <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
+  </button>
+
+  <div class="filters-row" id="filtersPanel" hidden>
     <div class="category-filters-group">
       <div class="category-filters" id="categoryFilters"></div>
       <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
@@ -58,6 +64,7 @@
       <select id="genreFilter" class="filter-select" aria-label="Filter by genre"></select>
       <span class="info-tip" tabindex="0" data-tip="Single-select — filters to one genre at a time, not a combination.">ⓘ</span>
       <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
+      <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
     </div>
   </div>
 

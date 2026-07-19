@@ -40,7 +40,11 @@
     adPlaceholder: document.querySelector(".ad-placeholder"),
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
+    countryFilter: document.getElementById("countryFilter"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
+    filtersToggle: document.getElementById("filtersToggle"),
+    filtersPanel: document.getElementById("filtersPanel"),
+    filtersToggleCount: document.getElementById("filtersToggleCount"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
@@ -53,6 +57,7 @@
 
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
+  var COUNTRY_NONE = "__no-country__";
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
@@ -75,6 +80,7 @@
     category: "",
     year: "",
     genre: "",
+    country: "",
     mvgOnly: false,
     activeLetter: null,
     lightboxRowNum: null,
@@ -190,6 +196,22 @@
     } catch (e) {}
   }
 
+  var FILTERS_EXPANDED_KEY = "mvg-filters-expanded";
+
+  function loadFiltersExpandedPref() {
+    try {
+      return localStorage.getItem(FILTERS_EXPANDED_KEY) === "true";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveFiltersExpandedPref(expanded) {
+    try {
+      localStorage.setItem(FILTERS_EXPANDED_KEY, expanded ? "true" : "false");
+    } catch (e) {}
+  }
+
   function saveCache(rows) {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: rows, savedAt: Date.now() }));
@@ -251,6 +273,9 @@
     els.yearFilter.value = state.year;
     buildGenreOptions(state.rows);
     els.genreFilter.value = state.genre;
+    buildCountryOptions(state.rows);
+    els.countryFilter.value = state.country;
+    updateFiltersToggleCount();
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
@@ -342,10 +367,17 @@
     return genres.indexOf(state.genre) !== -1;
   }
 
+  function matchesCountry(row) {
+    if (!state.country) return true;
+    if (state.country === COUNTRY_NONE) return !row.country;
+    return normalizeCountry(row.country) === state.country;
+  }
+
   function matchesBaseFilters(row) {
     if (state.category && row.category !== state.category) return false;
     if (!matchesYear(row)) return false;
     if (!matchesGenre(row)) return false;
+    if (!matchesCountry(row)) return false;
     if (state.mvgOnly && !row.mvg) return false;
     return matchesQuery(row, state.query);
   }
@@ -356,19 +388,38 @@
   }
 
   function hasActiveFilters() {
-    return !!(state.category || state.year || state.genre || state.mvgOnly || state.activeLetter);
+    return !!(state.category || state.year || state.genre || state.country || state.mvgOnly || state.activeLetter);
+  }
+
+  function activeFilterCount() {
+    var n = 0;
+    if (state.category) n++;
+    if (state.year) n++;
+    if (state.genre) n++;
+    if (state.country) n++;
+    if (state.mvgOnly) n++;
+    return n;
+  }
+
+  function updateFiltersToggleCount() {
+    var n = activeFilterCount();
+    els.filtersToggleCount.hidden = n === 0;
+    els.filtersToggleCount.textContent = String(n);
   }
 
   function clearAllFilters() {
     state.category = "";
     state.year = "";
     state.genre = "";
+    state.country = "";
     state.mvgOnly = false;
     state.activeLetter = null;
     updateCategoryChipsActive();
     els.yearFilter.value = "";
     els.genreFilter.value = "";
+    els.countryFilter.value = "";
     els.mvgOnlyToggle.checked = false;
+    updateFiltersToggleCount();
   }
 
   function buildCategoryChips(rows) {
@@ -433,6 +484,44 @@
   els.genreFilter.addEventListener("change", function () {
     state.genre = els.genreFilter.value;
     render();
+  });
+
+  function buildCountryOptions(rows) {
+    var counts = {};
+    var blankCount = 0;
+    rows.forEach(function (r) {
+      if (!r.country) { blankCount++; return; }
+      var name = normalizeCountry(r.country);
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    var countries = Object.keys(counts).sort(function (a, b) {
+      if (counts[b] !== counts[a]) return counts[b] - counts[a];
+      return a.localeCompare(b);
+    });
+    var html = '<option value="">All Countries</option>';
+    if (blankCount) html += '<option value="' + COUNTRY_NONE + '">No Country Listed (' + blankCount + ")</option>";
+    countries.forEach(function (c) {
+      html += '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + " (" + counts[c] + ")</option>";
+    });
+    els.countryFilter.innerHTML = html;
+  }
+
+  els.countryFilter.addEventListener("change", function () {
+    state.country = els.countryFilter.value;
+    render();
+  });
+
+  function applyFiltersExpanded(expanded) {
+    els.filtersPanel.hidden = !expanded;
+    els.filtersToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
+  applyFiltersExpanded(loadFiltersExpandedPref());
+
+  els.filtersToggle.addEventListener("click", function () {
+    var expanded = els.filtersToggle.getAttribute("aria-expanded") !== "true";
+    applyFiltersExpanded(expanded);
+    saveFiltersExpandedPref(expanded);
   });
 
   els.mvgOnlyToggle.addEventListener("change", function () {
@@ -975,6 +1064,7 @@
 
   function render(sync) {
     moveVideoPairHome();
+    updateFiltersToggleCount();
     var myToken = ++renderToken;
 
     var baseFiltered = state.rows.filter(matchesBaseFilters);
