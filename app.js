@@ -1145,6 +1145,16 @@
     });
     renderJumpNav(availableLetters);
 
+    // Rendering all ~12,000+ rows up front is the single biggest cost on first
+    // load. Nothing is filtered/searched/letter-jumped yet, so there's nothing
+    // useful to show anyway — skip the render entirely until the user acts.
+    // TV Mode is unaffected: it reads state.rows directly, not this DOM.
+    if (!state.query && !hasActiveFilters()) {
+      els.results.innerHTML = '<div class="empty-state">' +
+        state.rows.length + ' videos — search above, or pick a filter or letter to start browsing.</div>';
+      return;
+    }
+
     var filtered = state.activeLetter ? baseFiltered.filter(matchesLetter) : baseFiltered;
 
     if (!filtered.length) {
