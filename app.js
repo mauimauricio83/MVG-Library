@@ -98,6 +98,78 @@
     "Docu": "tag-docu"
   };
 
+  // The sheet's Country column may hold an ISO code (from the automated lookup
+  // pass) or a full name (from new form submissions) — normalize either to a
+  // clean full name at display time rather than enforcing one format upstream.
+  var COUNTRY_CODE_TO_NAME = {
+    AF: "Afghanistan", AL: "Albania", DZ: "Algeria", AD: "Andorra", AO: "Angola",
+    AG: "Antigua and Barbuda", AR: "Argentina", AM: "Armenia", AU: "Australia", AT: "Austria",
+    AZ: "Azerbaijan", BS: "Bahamas", BH: "Bahrain", BD: "Bangladesh", BB: "Barbados",
+    BY: "Belarus", BE: "Belgium", BZ: "Belize", BJ: "Benin", BT: "Bhutan",
+    BO: "Bolivia", BA: "Bosnia and Herzegovina", BW: "Botswana", BR: "Brazil", BN: "Brunei",
+    BG: "Bulgaria", BF: "Burkina Faso", BI: "Burundi", CV: "Cabo Verde", KH: "Cambodia",
+    CM: "Cameroon", CA: "Canada", CF: "Central African Republic", TD: "Chad", CL: "Chile",
+    CN: "China", CO: "Colombia", KM: "Comoros", CG: "Congo", CD: "Congo",
+    CR: "Costa Rica", HR: "Croatia", CU: "Cuba", CY: "Cyprus", CZ: "Czechia",
+    DK: "Denmark", DJ: "Djibouti", DM: "Dominica", DO: "Dominican Republic", EC: "Ecuador",
+    EG: "Egypt", SV: "El Salvador", GQ: "Equatorial Guinea", ER: "Eritrea", EE: "Estonia",
+    SZ: "Eswatini", ET: "Ethiopia", FJ: "Fiji", FI: "Finland", FR: "France",
+    GA: "Gabon", GM: "Gambia", GE: "Georgia", DE: "Germany", GH: "Ghana",
+    GR: "Greece", GD: "Grenada", GT: "Guatemala", GN: "Guinea", GW: "Guinea-Bissau",
+    GY: "Guyana", HT: "Haiti", HN: "Honduras", HU: "Hungary", IS: "Iceland",
+    IN: "India", ID: "Indonesia", IR: "Iran", IQ: "Iraq", IE: "Ireland",
+    IL: "Israel", IT: "Italy", JM: "Jamaica", JP: "Japan", JO: "Jordan",
+    KZ: "Kazakhstan", KE: "Kenya", KI: "Kiribati", XK: "Kosovo", KW: "Kuwait",
+    KG: "Kyrgyzstan", LA: "Laos", LV: "Latvia", LB: "Lebanon", LS: "Lesotho",
+    LR: "Liberia", LY: "Libya", LI: "Liechtenstein", LT: "Lithuania", LU: "Luxembourg",
+    MG: "Madagascar", MW: "Malawi", MY: "Malaysia", MV: "Maldives", ML: "Mali",
+    MT: "Malta", MH: "Marshall Islands", MR: "Mauritania", MU: "Mauritius", MX: "Mexico",
+    FM: "Micronesia", MD: "Moldova", MC: "Monaco", MN: "Mongolia", ME: "Montenegro",
+    MA: "Morocco", MZ: "Mozambique", MM: "Myanmar", NA: "Namibia", NR: "Nauru",
+    NP: "Nepal", NL: "Netherlands", NZ: "New Zealand", NI: "Nicaragua", NE: "Niger",
+    NG: "Nigeria", KP: "North Korea", MK: "North Macedonia", NO: "Norway", OM: "Oman",
+    PK: "Pakistan", PW: "Palau", PS: "Palestine", PA: "Panama", PG: "Papua New Guinea",
+    PY: "Paraguay", PE: "Peru", PH: "Philippines", PL: "Poland", PT: "Portugal",
+    PR: "Puerto Rico", QA: "Qatar", RO: "Romania", RU: "Russia", RW: "Rwanda",
+    KN: "Saint Kitts and Nevis", LC: "Saint Lucia", VC: "Saint Vincent and the Grenadines", WS: "Samoa", SM: "San Marino",
+    ST: "Sao Tome and Principe", SA: "Saudi Arabia", SN: "Senegal", RS: "Serbia", SC: "Seychelles",
+    SL: "Sierra Leone", SG: "Singapore", SK: "Slovakia", SI: "Slovenia", SB: "Solomon Islands",
+    SO: "Somalia", ZA: "South Africa", KR: "South Korea", SS: "South Sudan", ES: "Spain",
+    LK: "Sri Lanka", SD: "Sudan", SR: "Suriname", SE: "Sweden", CH: "Switzerland",
+    SY: "Syria", TW: "Taiwan", TJ: "Tajikistan", TZ: "Tanzania", TH: "Thailand",
+    TL: "Timor-Leste", TG: "Togo", TO: "Tonga", TT: "Trinidad and Tobago", TN: "Tunisia",
+    TR: "Turkey", TM: "Turkmenistan", TV: "Tuvalu", UG: "Uganda", UA: "Ukraine",
+    AE: "United Arab Emirates", GB: "United Kingdom", US: "United States", UY: "Uruguay", UZ: "Uzbekistan",
+    VU: "Vanuatu", VA: "Vatican City", VE: "Venezuela", VN: "Vietnam", YE: "Yemen",
+    ZM: "Zambia", ZW: "Zimbabwe"
+  };
+
+  var COUNTRY_ALIASES = {
+    usa: "United States", "u.s.a.": "United States", "u.s.": "United States", america: "United States",
+    uk: "United Kingdom", "u.k.": "United Kingdom", england: "United Kingdom",
+    "south korea": "South Korea", korea: "South Korea", "republic of korea": "South Korea",
+    "russian federation": "Russia", holland: "Netherlands", uae: "United Arab Emirates",
+    "czech republic": "Czechia"
+  };
+
+  var COUNTRY_NAME_SET = (function () {
+    var set = {};
+    Object.keys(COUNTRY_CODE_TO_NAME).forEach(function (code) {
+      set[COUNTRY_CODE_TO_NAME[code].toLowerCase()] = COUNTRY_CODE_TO_NAME[code];
+    });
+    return set;
+  })();
+
+  function normalizeCountry(raw) {
+    var v = String(raw || "").trim();
+    if (!v) return "";
+    if (v.length === 2 && COUNTRY_CODE_TO_NAME[v.toUpperCase()]) return COUNTRY_CODE_TO_NAME[v.toUpperCase()];
+    var lower = v.toLowerCase();
+    if (COUNTRY_NAME_SET[lower]) return COUNTRY_NAME_SET[lower];
+    if (COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
+    return v; // unrecognized — show whatever's there rather than hide it
+  }
+
   function escapeHtml(str) {
     return String(str || "").replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -225,6 +297,7 @@
           dp: get(row, "DP"),
           editor: get(row, "Editor"),
           choreographer: get(row, "Choreographer"),
+          country: get(row, "Country"),
           genres: readGenres(row),
           description: get(row, "Description"),
           feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature"))
@@ -654,6 +727,7 @@
     if (row.releaseDate) pairs.push(["Release date", row.releaseDate]);
     else if (row.year) pairs.push(["Year", row.year]);
     if (row.studio) pairs.push(["Studio", row.studio]);
+    if (row.country) pairs.push(["Country", normalizeCountry(row.country)]);
     if (row.producer) pairs.push(["Producer", row.producer]);
     if (row.dp) pairs.push(["DP", row.dp]);
     if (row.editor) pairs.push(["Editor", row.editor]);
