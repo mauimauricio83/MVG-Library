@@ -838,27 +838,6 @@ html, body {
   max-width: 1080px;
 }
 
-.lightbox-size-toggle {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 2;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.lightbox-size-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .lightbox-close {
   position: absolute;
   top: 10px;
@@ -878,6 +857,128 @@ html, body {
 .lightbox-close:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.lightbox-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lightbox-title-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.lightbox-widen-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-widen-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lightbox-report-link {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b3261e;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lightbox-report-link:hover,
+.lightbox-report-link.active {
+  text-decoration: underline;
+}
+
+.lightbox-report-popover {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.lightbox-report-head {
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lightbox-report-select,
+.lightbox-report-textarea {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+
+.lightbox-report-textarea {
+  resize: vertical;
+}
+
+.lightbox-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.lightbox-report-cancel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.lightbox-report-submit {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.lightbox-report-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.lightbox-report-status {
+  margin-top: 8px;
+  font-size: 0.76rem;
+  color: var(--accent);
+  text-align: center;
 }
 
 .lightbox-panel .ad-placeholder {
@@ -1061,7 +1162,7 @@ html, body {
     border-radius: 0;
   }
 
-  .lightbox-size-toggle {
+  .lightbox-widen-btn {
     display: none;
   }
 }

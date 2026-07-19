@@ -3,6 +3,11 @@
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
+  // Apps Script Web App URL (doPost) that appends to the "Reports" sheet tab.
+  // Deploy report_issue_webapp.gs as a Web App (Execute as: Me, Who has access: Anyone)
+  // and paste the resulting /exec URL here.
+  var REPORT_WEBAPP_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
   var JUMP_LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
   var els = {
@@ -24,7 +29,6 @@
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
-    lightboxSizeToggle: document.getElementById("lightboxSizeToggle"),
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
     featuredPlayAll: document.getElementById("featuredPlayAll")
@@ -666,6 +670,7 @@
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); resetVideo(); moveVideoPairHome(); }
     destroyLightboxPlayer();
+    closeReportPopover();
     state.lightboxRowNum = row.rowNum;
 
     var id = extractYouTubeId(row.youtube);
@@ -694,7 +699,28 @@
       els.adPlaceholder.outerHTML +
       videoHtml +
       '<div class="lightbox-body">' +
+      '<div class="lightbox-title-row">' +
       '<h2 class="lightbox-title">' + escapeHtml(row.song || "(untitled)") + "</h2>" +
+      '<div class="lightbox-title-actions">' +
+      '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
+      '<button type="button" class="lightbox-report-link">Report issue</button>' +
+      "</div>" +
+      "</div>" +
+      '<div class="lightbox-report-popover" hidden>' +
+      '<div class="lightbox-report-head">Report an issue</div>' +
+      '<select class="lightbox-report-select">' +
+      '<option value="Broken or wrong video">Broken or wrong video link</option>' +
+      '<option value="Wrong or missing credit">Wrong or missing credit</option>' +
+      '<option value="Wrong info">Wrong artist / song / year</option>' +
+      '<option value="Other">Other</option>' +
+      "</select>" +
+      '<textarea class="lightbox-report-textarea" rows="3" placeholder="What\'s wrong? (optional)"></textarea>' +
+      '<div class="lightbox-report-actions">' +
+      '<button type="button" class="lightbox-report-cancel">Cancel</button>' +
+      '<button type="button" class="lightbox-report-submit">Submit</button>' +
+      "</div>" +
+      '<div class="lightbox-report-status" hidden></div>' +
+      "</div>" +
       (sub.length ? '<p class="lightbox-subtitle">' + sub.join(" · ") + "</p>" : "") +
       '<div class="lightbox-tag-row">' + tagHtml + genreTags + "</div>" +
       creditsHtml(row) +
@@ -705,6 +731,7 @@
 
     els.lightbox.hidden = false;
     document.body.style.overflow = "hidden";
+    applyLightboxSize();
 
     if (id) {
       var rowNumAtOpen = row.rowNum;
@@ -732,31 +759,106 @@
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     destroyLightboxPlayer();
+    closeReportPopover();
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;
     document.body.style.overflow = "";
   }
 
+  // The size-toggle button and report popover live inside the per-entry HTML
+  // openLightbox() regenerates, so they're queried fresh each time rather than
+  // cached — a stale reference would point at a node that's already gone.
+  function closeReportPopover() {
+    var pop = els.lightboxContent.querySelector(".lightbox-report-popover");
+    var link = els.lightboxContent.querySelector(".lightbox-report-link");
+    if (pop) pop.hidden = true;
+    if (link) link.classList.remove("active");
+  }
+
+  function openReportPopover() {
+    var pop = els.lightboxContent.querySelector(".lightbox-report-popover");
+    var link = els.lightboxContent.querySelector(".lightbox-report-link");
+    if (!pop || !link) return;
+    pop.querySelector(".lightbox-report-select").value = "Broken or wrong video";
+    pop.querySelector(".lightbox-report-textarea").value = "";
+    var status = pop.querySelector(".lightbox-report-status");
+    status.hidden = true;
+    status.textContent = "";
+    var submitBtn = pop.querySelector(".lightbox-report-submit");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit";
+    pop.hidden = false;
+    link.classList.add("active");
+  }
+
+  function submitReport() {
+    var row = findRowByNum(state.lightboxRowNum);
+    var pop = els.lightboxContent.querySelector(".lightbox-report-popover");
+    if (!row || !pop) return;
+    var submitBtn = pop.querySelector(".lightbox-report-submit");
+    var status = pop.querySelector(".lightbox-report-status");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending…";
+    var body = new URLSearchParams({
+      rowNum: row.rowNum || "",
+      artist: row.artist || "",
+      song: row.song || "",
+      youtube: row.youtube || "",
+      issueType: pop.querySelector(".lightbox-report-select").value,
+      details: pop.querySelector(".lightbox-report-textarea").value
+    });
+    fetch(REPORT_WEBAPP_URL, { method: "POST", mode: "no-cors", body: body })
+      .then(function () {
+        status.textContent = "Thanks — reported!";
+        status.hidden = false;
+        submitBtn.textContent = "Submit";
+        setTimeout(closeReportPopover, 1500);
+      })
+      .catch(function () {
+        status.textContent = "Couldn't send — try again.";
+        status.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit";
+      });
+  }
+
   function applyLightboxSize() {
     var isLarge = state.lightboxSize === "large";
     els.lightboxPanel.classList.toggle("size-large", isLarge);
-    els.lightboxSizeToggle.textContent = isLarge ? "⤡" : "⤢";
-    els.lightboxSizeToggle.title = isLarge ? "Shrink player" : "Widen player";
+    var btn = els.lightboxContent.querySelector(".lightbox-widen-btn");
+    if (!btn) return;
+    btn.textContent = isLarge ? "⤡" : "⤢";
+    btn.title = isLarge ? "Shrink player" : "Widen player";
   }
-
-  applyLightboxSize();
-
-  els.lightboxSizeToggle.addEventListener("click", function () {
-    state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
-    saveLightboxSizePref(state.lightboxSize);
-    applyLightboxSize();
-  });
 
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
       closeLightbox();
       return;
+    }
+    if (e.target.closest(".lightbox-widen-btn")) {
+      state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
+      saveLightboxSizePref(state.lightboxSize);
+      applyLightboxSize();
+      return;
+    }
+    if (e.target.closest(".lightbox-report-link")) {
+      var pop = els.lightboxContent.querySelector(".lightbox-report-popover");
+      if (pop && pop.hidden) openReportPopover(); else closeReportPopover();
+      return;
+    }
+    if (e.target.closest(".lightbox-report-cancel")) {
+      closeReportPopover();
+      return;
+    }
+    if (e.target.closest(".lightbox-report-submit")) {
+      submitReport();
+      return;
+    }
+    var popNow = els.lightboxContent.querySelector(".lightbox-report-popover");
+    if (popNow && !popNow.hidden && !e.target.closest(".lightbox-report-popover") && !e.target.closest(".lightbox-report-link")) {
+      closeReportPopover();
     }
     var relBtn = e.target.closest(".related-btn");
     if (relBtn) {
