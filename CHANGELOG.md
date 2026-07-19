@@ -2,7 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v2.9.0 — current
+## v3.0.0 — current — Spotlight sidebar
+- New sticky sidebar next to the results list: up to 3 curated videos (sheet row order, not shuffled), via a "Spotlight" checkbox column
+- Clicking a Spotlight card plays it directly in TV Mode, reusing the existing single-video-queue path
+- Fades out while the lightbox is open; hidden entirely on mobile (no room for a second column)
+- Stubbed an empty vertical-ad slot below the cards for future use
+- First structural/breaking change since v2.0 (new results-layout wrapper, cross-cutting lightbox behavior) — hence the major bump
+
+## v2.9.0
 - Search: tokenized, order-independent, cross-field matching ("romanek hurt" finds Johnny Cash's "Hurt")
 - Country field: MusicBrainz-backed data pipeline, lightbox display, filter dropdown, collapsible filters panel with Clear filters
 - Report Issue: per-entry flag in the lightbox and TV Mode, pre-filled Google Form

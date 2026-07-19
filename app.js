@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "2.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.0.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
