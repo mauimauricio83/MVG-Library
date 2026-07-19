@@ -529,6 +529,19 @@ html, body {
   background: var(--accent-soft);
 }
 
+.tv-report-link {
+  flex: 0 0 auto;
+  color: #b3261e;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.tv-report-link:hover {
+  text-decoration: underline;
+}
+
 .video-embed-bar {
   display: flex;
   align-items: center;

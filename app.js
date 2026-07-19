@@ -548,6 +548,7 @@
       '<div class="video-embed-bar"><span class="video-embed-label" id="tvLabel">📺 Loading…</span>' +
       '<span class="tv-controls">' +
       '<button type="button" class="tv-skip">Skip ▶</button>' +
+      '<a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       '<button type="button" class="video-embed-close" aria-label="Exit TV mode">&times;</button>' +
       "</span></div>" +
       '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
@@ -566,6 +567,8 @@
     }
     var labelEl = document.getElementById("tvLabel");
     if (labelEl) labelEl.textContent = "📺 " + tvLabelFor(row);
+    var reportLink = document.getElementById("tvReportLink");
+    if (reportLink) reportLink.href = reportFormUrl(row);
     if (state.tv.player && state.tv.player.loadVideoById) {
       state.tv.player.loadVideoById(id);
     } else {
