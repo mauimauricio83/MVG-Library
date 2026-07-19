@@ -91,7 +91,7 @@
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
-  var CACHE_KEY = "mvg-wiki-cache-v2"; // bumped: v1 rows predate the "genres" field
+  var CACHE_KEY = "mvg-wiki-cache-v3"; // bumped: v2 rows predate the "searchHaystack" field
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
 
   var CATEGORY_CLASS = {
@@ -308,11 +308,14 @@
   function cleanRows(rawRows) {
     return rawRows
       .map(function (row) {
+        var artist = get(row, "Artist");
+        var song = get(row, "Song Title");
+        var director = get(row, "Director");
         return {
           rowNum: get(row, "Row #"),
-          artist: get(row, "Artist"),
-          song: get(row, "Song Title"),
-          director: get(row, "Director"),
+          artist: artist,
+          song: song,
+          director: director,
           category: get(row, "Category"),
           youtube: get(row, "YouTube Link"),
           mvg: get(row, "MVG Link"),
@@ -326,7 +329,10 @@
           country: get(row, "Country"),
           genres: readGenres(row),
           description: get(row, "Description"),
-          feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature"))
+          feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature")),
+          // Precomputed once so search doesn't re-lowercase/concatenate these
+          // on every keystroke across 12,000+ rows.
+          searchHaystack: (artist + " " + song + " " + director).toLowerCase()
         };
       })
       .filter(function (row) {
@@ -334,14 +340,15 @@
       });
   }
 
+  // Tokenized, order-independent, cross-field search: every word in the query
+  // must appear *somewhere* across artist/song/director combined — so
+  // "romanek hurt" matches director "Mark Romanek" + song "Hurt", and
+  // "mark romanek" / "romanek mark" both match the same entries.
   function matchesQuery(row, q) {
     if (!q) return true;
-    q = q.toLowerCase();
-    return (
-      row.artist.toLowerCase().indexOf(q) !== -1 ||
-      row.song.toLowerCase().indexOf(q) !== -1 ||
-      row.director.toLowerCase().indexOf(q) !== -1
-    );
+    var tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    return tokens.every(function (t) { return row.searchHaystack.indexOf(t) !== -1; });
   }
 
   function viewFieldFor(row) {
