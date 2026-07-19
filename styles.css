@@ -352,6 +352,10 @@ html, body {
   font-weight: 700;
 }
 
+.filters-toggle-count[hidden] {
+  display: none;
+}
+
 .filters-toggle-chevron {
   font-size: 0.7rem;
   transition: transform 0.15s ease;
@@ -368,6 +372,10 @@ html, body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.filters-row[hidden] {
+  display: none;
 }
 
 .category-filters-group {
