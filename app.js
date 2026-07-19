@@ -45,6 +45,7 @@
     filtersToggle: document.getElementById("filtersToggle"),
     filtersPanel: document.getElementById("filtersPanel"),
     filtersToggleCount: document.getElementById("filtersToggleCount"),
+    clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
@@ -508,6 +509,11 @@
 
   els.countryFilter.addEventListener("change", function () {
     state.country = els.countryFilter.value;
+    render();
+  });
+
+  els.clearFiltersBtn.addEventListener("click", function () {
+    clearAllFilters();
     render();
   });
 
