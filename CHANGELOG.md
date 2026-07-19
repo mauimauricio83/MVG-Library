@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.0.0 — current — Spotlight sidebar
+## v3.1.0 — current
+- Results list starts blank instead of rendering all ~12,500 rows on load — populates on search, filter, or letter-jump. TV Mode's "shuffle everything" default is unaffected, since it reads the data directly rather than the rendered list.
+
+## v3.0.0 — Spotlight sidebar
 - New sticky sidebar next to the results list: up to 3 curated videos (sheet row order, not shuffled), via a "Spotlight" checkbox column
 - Clicking a Spotlight card plays it directly in TV Mode, reusing the existing single-video-queue path
 - Fades out while the lightbox is open; hidden entirely on mobile (no room for a second column)
