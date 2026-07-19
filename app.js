@@ -53,10 +53,13 @@
     lightboxContent: document.getElementById("lightboxContent"),
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
-    featuredPlayAll: document.getElementById("featuredPlayAll")
+    featuredPlayAll: document.getElementById("featuredPlayAll"),
+    spotlightSidebar: document.getElementById("spotlightSidebar"),
+    spotlightCards: document.getElementById("spotlightCards")
   };
 
   var LATEST_STRIP_COUNT = 50;
+  var SPOTLIGHT_COUNT = 3;
 
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
@@ -283,9 +286,14 @@
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
     renderFeaturedStrip(state.rows);
+    renderSpotlightSidebar(state.rows);
     render();
     applyDeepLinkFromHash();
   }
+
+  window.addEventListener("resize", function () {
+    if (!els.spotlightSidebar.hidden) positionSpotlightSidebar();
+  });
 
   function get(row, key) {
     return (row[key] || "").trim();
@@ -332,6 +340,7 @@
           genres: readGenres(row),
           description: get(row, "Description"),
           feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature")),
+          spotlight: /^(true|yes|y|1|x)$/i.test(get(row, "Spotlight")),
           // Precomputed once so search doesn't re-lowercase/concatenate these
           // on every keystroke across 12,000+ rows.
           searchHaystack: (artist + " " + song + " " + director).toLowerCase()
@@ -650,6 +659,51 @@
     featuredStrip.render(featuredPool);
   }
 
+  // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
+  // placement — kept in sheet row order rather than randomized.
+  function renderSpotlightSidebar(rows) {
+    var picks = rows
+      .filter(function (r) { return r.spotlight; })
+      .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
+      .slice(0, SPOTLIGHT_COUNT);
+
+    if (!picks.length) {
+      els.spotlightSidebar.hidden = true;
+      return;
+    }
+
+    els.spotlightCards.innerHTML = picks.map(function (row) {
+      var id = extractYouTubeId(row.youtube);
+      var thumb = id
+        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="" loading="lazy">'
+        : "";
+      return (
+        '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+          '<div class="spotlight-card-thumb">' + thumb + "</div>" +
+          '<div class="spotlight-card-info">' +
+            '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+            '<div class="spotlight-card-artist">' + escapeHtml(row.artist || "") + "</div>" +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+
+    els.spotlightSidebar.hidden = false;
+    positionSpotlightSidebar();
+  }
+
+  function positionSpotlightSidebar() {
+    var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
+    els.spotlightSidebar.style.top = (headerHeight + 12) + "px";
+  }
+
+  els.spotlightCards.addEventListener("click", function (e) {
+    var card = e.target.closest(".spotlight-card");
+    if (!card) return;
+    var row = findRowByNum(card.getAttribute("data-row"));
+    if (row) startTVMode([row]);
+  });
+
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
   }
@@ -866,6 +920,7 @@
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); resetVideo(); moveVideoPairHome(); }
     destroyLightboxPlayer();
+    els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
 
     var id = extractYouTubeId(row.youtube);
@@ -939,6 +994,7 @@
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     destroyLightboxPlayer();
+    els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;

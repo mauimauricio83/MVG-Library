@@ -677,6 +677,104 @@ html, body {
   margin-left: 6px;
 }
 
+.results-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.results-layout .results {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.spotlight-sidebar {
+  flex: 0 0 260px;
+  width: 260px;
+  position: sticky;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.spotlight-sidebar[hidden] {
+  display: none;
+}
+
+.spotlight-sidebar.is-hidden-for-lightbox {
+  opacity: 0;
+  transform: translateX(16px);
+  pointer-events: none;
+}
+
+.spotlight-sidebar-title {
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.spotlight-card {
+  cursor: pointer;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.spotlight-card:last-child {
+  margin-bottom: 0;
+}
+
+.spotlight-card-thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+}
+
+.spotlight-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.spotlight-card-info {
+  padding: 8px 10px;
+}
+
+.spotlight-card-song {
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spotlight-card-artist {
+  overflow: hidden;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spotlight-vertical-ad:empty {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .spotlight-sidebar {
+    display: none;
+  }
+}
+
 .jumpnav {
   display: flex;
   flex-wrap: wrap;

@@ -100,12 +100,19 @@
     </div>
   </section>
 
-  <main id="results" class="results">
-    <div class="loading-state">
-      <span class="spinner"></span>
-      <p>Loading the full database — this can take a few seconds on your first visit…</p>
-    </div>
-  </main>
+  <div class="results-layout">
+    <main id="results" class="results">
+      <div class="loading-state">
+        <span class="spinner"></span>
+        <p>Loading the full database — this can take a few seconds on your first visit…</p>
+      </div>
+    </main>
+    <aside class="spotlight-sidebar" id="spotlightSidebar" hidden>
+      <div class="spotlight-sidebar-title">Spotlight</div>
+      <div class="spotlight-sidebar-cards" id="spotlightCards"></div>
+      <div class="spotlight-vertical-ad" id="spotlightVerticalAd"></div>
+    </aside>
+  </div>
   <nav id="jumpNavBottom" class="jumpnav" aria-label="Jump to letter"></nav>
 </div>
 
