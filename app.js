@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.7.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.7.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1333,7 +1333,6 @@
     var letter = btn.getAttribute("data-letter");
     state.activeLetter = state.activeLetter === letter ? null : letter;
     render();
-    scrollBelowStickyHeader(els.results);
   }
 
   els.jumpTop.addEventListener("click", onJumpClick);
