@@ -1,7 +1,9 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.2.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.3.0"; // bump alongside CHANGELOG.md on each meaningful commit
+
+  var DEFAULT_TITLE = document.title;
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
@@ -626,8 +628,9 @@
         }
         track.innerHTML = rows.map(function (row) {
           var id = extractYouTubeId(row.youtube);
+          var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
           var thumb = id
-            ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="" loading="lazy">'
+            ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
             : "";
           return (
             '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
@@ -679,8 +682,9 @@
 
     els.spotlightCards.innerHTML = picks.map(function (row) {
       var id = extractYouTubeId(row.youtube);
+      var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
       var thumb = id
-        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="" loading="lazy">'
+        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
         : "";
       return (
         '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
@@ -933,6 +937,7 @@
     destroyLightboxPlayer();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
+    document.title = (row.song || "Untitled") + (row.artist ? " — " + row.artist : "") + " | MVG Library";
 
     var id = extractYouTubeId(row.youtube);
     var videoHtml = id
@@ -1009,6 +1014,7 @@
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;
+    document.title = DEFAULT_TITLE;
     document.body.style.overflow = "";
   }
 

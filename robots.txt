@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mauimauricio83.github.io/MVG-Library/sitemap.xml

@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.2.0 — current
+## v3.3.0 — current
+- SEO pass: unique/keyword-rich title and meta description, canonical link, robots meta, `robots.txt`, `sitemap.xml`, sitewide JSON-LD (`WebSite`) schema, favicon
+- Thumbnail images (Latest/Featured/Spotlight cards) now have descriptive alt text instead of empty strings
+- Tab title updates to the video's song/artist while the lightbox is open, reverting on close
+
+## v3.2.0
 - Spotlight sidebar's vertical ad slot is live: adaptive image (any width/height, scales to the sidebar's width, no cropping) linking to the video submission form
 
 ## v3.1.2
