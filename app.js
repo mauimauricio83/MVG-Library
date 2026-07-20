@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.6.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.7.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -63,6 +63,7 @@
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
+    latestPlayAll: document.getElementById("latestPlayAll"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
@@ -203,9 +204,9 @@
 
   function loadLightboxSizePref() {
     try {
-      return localStorage.getItem(LIGHTBOX_SIZE_KEY) === "large" ? "large" : "small";
+      return localStorage.getItem(LIGHTBOX_SIZE_KEY) === "small" ? "small" : "large";
     } catch (e) {
-      return "small";
+      return "large";
     }
   }
 
@@ -446,6 +447,8 @@
     state.country = "";
     state.mvgOnly = false;
     state.activeLetter = null;
+    state.query = "";
+    els.search.value = "";
     updateCategoryChipsActive();
     els.yearFilter.value = "";
     els.genreFilter.value = "";
@@ -657,14 +660,15 @@
   var latestStrip = createMediaStrip(els.latestStrip);
   var featuredStrip = createMediaStrip(els.featuredStrip);
 
+  var latestPool = [];
   function renderLatestStrip(rows) {
-    var latest = rows
+    latestPool = rows
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
       .filter(function (x) { return !isNaN(x.n); })
       .sort(function (a, b) { return b.n - a.n; })
       .slice(0, LATEST_STRIP_COUNT)
       .map(function (x) { return x.row; });
-    latestStrip.render(latest);
+    latestStrip.render(latestPool);
   }
 
   var featuredPool = [];
@@ -718,7 +722,7 @@
     var card = e.target.closest(".spotlight-card");
     if (!card) return;
     var row = findRowByNum(card.getAttribute("data-row"));
-    if (row) startTVMode([row]);
+    if (row) openLightbox(row);
   });
 
   // Shared by both ad placements (sidebar vertical + top horizontal), each
@@ -941,6 +945,10 @@
 
   els.featuredPlayAll.addEventListener("click", function () {
     startTVMode(featuredPool.filter(function (r) { return !!r.youtube; }));
+  });
+
+  els.latestPlayAll.addEventListener("click", function () {
+    startTVMode(latestPool.filter(function (r) { return !!r.youtube; }));
   });
 
   els.videoBox.addEventListener("click", function (e) {

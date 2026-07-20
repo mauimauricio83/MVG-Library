@@ -34,7 +34,7 @@
 
 <div class="app">
   <header class="app-header">
-    <h1>The Music Video Guy Library</h1>
+    <h1>MUSIC VIDEO LIBRARY</h1>
     <p class="subtitle">A reference database of music videos, directors, and artists. For corrections please email us at maui@themusicvideoguy.com</p>
     <p class="subtitle subtitle-stats" id="subtitleStats"></p>
     <a class="submit-link" href="https://forms.gle/8Tq1XXpPMHnSip5i6" target="_blank" rel="noopener noreferrer">Submit your music video here</a>
@@ -43,6 +43,7 @@
   <section class="media-strip" id="latestStrip" hidden>
     <div class="media-strip-head">
       <span class="media-strip-title">🆕 Latest Submissions</span>
+      <button type="button" class="media-strip-play-all" id="latestPlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
       <button type="button" class="media-strip-arrow" id="latestStripPrev" aria-label="Show previous">‹</button>
@@ -62,11 +63,14 @@
     </div>
   </div>
 
-  <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
-    <span>Filters</span>
-    <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
-    <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
-  </button>
+  <div class="filters-toggle-row">
+    <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
+      <span>Filters</span>
+      <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
+      <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
+    </button>
+    <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
+  </div>
 
   <div class="filters-row" id="filtersPanel" hidden>
     <div class="category-filters-group">
@@ -83,7 +87,6 @@
       <span class="info-tip" tabindex="0" data-tip="Single-select — filters to one genre at a time, not a combination.">ⓘ</span>
       <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
       <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
-      <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
     </div>
   </div>
 

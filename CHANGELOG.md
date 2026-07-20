@@ -2,7 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.6.1 — current
+## v3.7.0 — current
+- Latest Submissions strip now has a Play All button, same as Featured
+- Spotlight cards open the lightbox instead of jumping into TV Mode
+- Clear filters button moved outside the collapsible filters panel (next to the Filters toggle) so it's always reachable, and now also clears the search box
+- Lightbox opens at large size by default (still remembers your last choice if you've switched it before)
+- Latest Submissions and Featured strips lose their card frame/background on mobile
+- Page header changed to "MUSIC VIDEO LIBRARY"
+
+## v3.6.1
 - Fixed: the two ad sheets were swapped (sidebar was reading the top banner's sheet and vice versa) — corrected to their actual intended placements
 
 ## v3.6.0

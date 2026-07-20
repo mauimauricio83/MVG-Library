@@ -318,11 +318,17 @@ html, body {
   to { transform: rotate(360deg); }
 }
 
+.filters-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .filters-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
@@ -1023,7 +1029,7 @@ html, body {
   opacity: 0.9;
 }
 
-.filters-row-right .clear-filters-btn {
+.filters-toggle-row .clear-filters-btn {
   margin-top: 0;
   padding: 5px 14px;
   font-size: 0.76rem;
@@ -1315,5 +1321,12 @@ html, body {
 
   .lightbox-widen-btn {
     display: none;
+  }
+
+  .media-strip {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 10px 0 12px;
   }
 }
