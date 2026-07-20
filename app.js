@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.6.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9,10 +9,9 @@
 
   // Ad slideshows, each sourced from its own small published sheet —
   // columns: Seconds (how long that ad shows before advancing), Image, Link.
-  var AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
+  var AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1370999706&single=true&output=csv";
   var AD_DEFAULT_SECONDS = 6;
-  // TODO: replace with the published CSV URL for the top banner's own sheet.
-  var TOP_AD_CSV_URL = "";
+  var TOP_AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
   var TOP_AD_DEFAULT_SECONDS = 6;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
