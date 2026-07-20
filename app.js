@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.1.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.1.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
@@ -664,12 +664,14 @@
 
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
   // placement — kept in sheet row order rather than randomized.
+  var hasSpotlightContent = false;
   function renderSpotlightSidebar(rows) {
     var picks = rows
       .filter(function (r) { return r.spotlight; })
       .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
       .slice(0, SPOTLIGHT_COUNT);
 
+    hasSpotlightContent = picks.length > 0;
     if (!picks.length) {
       els.spotlightSidebar.hidden = true;
       return;
@@ -1162,6 +1164,7 @@
       els.results.innerHTML = '<div class="empty-state">' +
         state.rows.length + ' videos — search above, or pick a filter or letter to start browsing.</div>';
       els.jumpBottom.hidden = true;
+      els.spotlightSidebar.hidden = true;
       return;
     }
 
@@ -1176,10 +1179,17 @@
         els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
       }
       els.jumpBottom.hidden = true;
+      els.spotlightSidebar.hidden = true;
       return;
     }
 
     els.jumpBottom.hidden = false;
+    if (hasSpotlightContent) {
+      els.spotlightSidebar.hidden = false;
+      positionSpotlightSidebar();
+    } else {
+      els.spotlightSidebar.hidden = true;
+    }
 
     var groupIdCounter = 0;
     var sections;
