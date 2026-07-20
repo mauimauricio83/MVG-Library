@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.7.1 — current
+## v3.7.2 — current
+- New subtitle: "Every music video, every credit, all in one place." (dropped the corrections-email line)
+- Added a "Feedback" mailto link beside Discord in the header
+
+## v3.7.1
 - Added a "Join our Discord" link in the header, next to the submission link
 
 ## v3.7.0
