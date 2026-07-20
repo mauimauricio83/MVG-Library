@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.7.4 — current
+## v3.7.5 — current
+- Header title now uses Archivo Black (loaded from Google Fonts) instead of the system font stack, for a wider/heavier look closer to the "THE MUSIC VIDEO GUY" wordmark above it
+
+## v3.7.4
 - Clicking a jump-nav letter/number no longer auto-scrolls the page — stays put at your current scroll position
 
 ## v3.7.3
