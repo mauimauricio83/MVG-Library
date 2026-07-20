@@ -782,6 +782,19 @@ html, body {
   margin-bottom: 18px;
 }
 
+.jumpnav[hidden] {
+  display: none;
+}
+
+.app-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
 .jump-btn {
   min-width: 26px;
   height: 26px;

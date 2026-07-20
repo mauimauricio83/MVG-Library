@@ -55,8 +55,11 @@
     featuredStrip: document.getElementById("featuredStrip"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
-    spotlightCards: document.getElementById("spotlightCards")
+    spotlightCards: document.getElementById("spotlightCards"),
+    appFooter: document.getElementById("appFooter")
   };
+
+  els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
 
   var LATEST_STRIP_COUNT = 50;
   var SPOTLIGHT_COUNT = 3;
@@ -831,10 +834,16 @@
       moveVideoPairHome();
       return;
     }
+    // Relocating a live <iframe> in the DOM forces the browser to reload it,
+    // silently discarding whatever loadVideoById() just did. Only re-home the
+    // elements when actually transitioning into TV mode — if it's already
+    // active (e.g. switching tracks via a Spotlight click), they're already
+    // in place and moving them again would kill the player mid-swap.
+    var wasActive = state.tv.active;
     state.tv.active = true;
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
-    moveVideoPairHome();
+    if (!wasActive) moveVideoPairHome();
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     scrollBelowStickyHeader(els.videoEmbed);
@@ -1152,6 +1161,7 @@
     if (!state.query && !hasActiveFilters()) {
       els.results.innerHTML = '<div class="empty-state">' +
         state.rows.length + ' videos — search above, or pick a filter or letter to start browsing.</div>';
+      els.jumpBottom.hidden = true;
       return;
     }
 
@@ -1165,8 +1175,11 @@
       } else {
         els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
       }
+      els.jumpBottom.hidden = true;
       return;
     }
+
+    els.jumpBottom.hidden = false;
 
     var groupIdCounter = 0;
     var sections;
