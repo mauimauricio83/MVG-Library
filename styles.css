@@ -69,9 +69,21 @@ html, body {
   min-height: 1.1em;
 }
 
+.header-links {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-links-sep {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+}
+
 .submit-link {
   display: inline-block;
-  margin-top: 8px;
   font-size: 0.78rem;
   color: var(--accent);
   text-decoration: underline;

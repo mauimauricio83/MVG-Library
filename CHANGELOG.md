@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.7.0 — current
+## v3.7.1 — current
+- Added a "Join our Discord" link in the header, next to the submission link
+
+## v3.7.0
 - Latest Submissions strip now has a Play All button, same as Featured
 - Spotlight cards open the lightbox instead of jumping into TV Mode
 - Clear filters button moved outside the collapsible filters panel (next to the Filters toggle) so it's always reachable, and now also clears the search box
