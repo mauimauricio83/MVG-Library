@@ -793,8 +793,25 @@ html, body {
   display: none;
 }
 
-.app-footer {
+.hub-links {
   margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 0.82rem;
+}
+
+.hub-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.hub-links a:hover {
+  color: var(--accent);
+}
+
+.app-footer {
+  margin-top: 12px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
   color: var(--text-faint);
