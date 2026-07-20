@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.5.0 — current
+## v3.6.0 — current
+- Top horizontal ad banner can now also run as a rotating slideshow, sourced from its own separate sheet (same Seconds/Image/Link format as the sidebar's) — pending: sheet not set up yet, so it currently still shows the static fallback banner
+- Refactored both ad placements (sidebar + top) onto one shared slideshow implementation, each with its own independent rotation
+
+## v3.5.0
 - Spotlight sidebar's vertical ad slot is now a slideshow: sourced from its own published Google Sheet (`Seconds`, `Image`, `Link` columns), crossfading through as many ads as the sheet has, each with its own on-screen duration, pausing on hover
 
 ## v3.4.0

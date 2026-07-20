@@ -1,17 +1,19 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
-  // Vertical ad slideshow, sourced from its own small published sheet —
+  // Ad slideshows, each sourced from its own small published sheet —
   // columns: Seconds (how long that ad shows before advancing), Image, Link.
   var AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
   var AD_DEFAULT_SECONDS = 6;
-  var adRotateTimer = null;
+  // TODO: replace with the published CSV URL for the top banner's own sheet.
+  var TOP_AD_CSV_URL = "";
+  var TOP_AD_DEFAULT_SECONDS = 6;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
   // Entry IDs read directly from the form's own field definitions.
@@ -720,72 +722,81 @@
     if (row) startTVMode([row]);
   });
 
-  function fetchAds() {
-    if (!AD_CSV_URL) return;
-    Papa.parse(AD_CSV_URL, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function (result) {
-        var ads = result.data
-          .map(function (row) {
-            return {
-              seconds: parseFloat(get(row, "Seconds")) || AD_DEFAULT_SECONDS,
-              image: get(row, "Image"),
-              link: get(row, "Link")
-            };
-          })
-          .filter(function (ad) { return ad.image; });
-        renderAdSlideshow(ads);
-      },
-      error: function (err) {
-        console.error("Ad sheet load error:", err);
+  // Shared by both ad placements (sidebar vertical + top horizontal), each
+  // pointed at its own sheet so they can rotate independently.
+  function createAdSlideshow(container, csvUrl, defaultSeconds) {
+    var rotateTimer = null;
+
+    function render(ads) {
+      clearTimeout(rotateTimer);
+      rotateTimer = null;
+
+      if (!ads.length) {
+        container.hidden = true;
+        container.innerHTML = "";
+        return;
       }
-    });
-  }
 
-  function renderAdSlideshow(ads) {
-    clearTimeout(adRotateTimer);
-    adRotateTimer = null;
+      container.innerHTML = ads.map(function (ad, i) {
+        var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
+        var slideInner = ad.link
+          ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
+          : img;
+        return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
+      }).join("");
+      container.hidden = false;
 
-    if (!ads.length) {
-      els.spotlightVerticalAd.hidden = true;
-      els.spotlightVerticalAd.innerHTML = "";
-      return;
+      if (ads.length <= 1) return;
+
+      var slides = Array.prototype.slice.call(container.querySelectorAll(".ad-slide"));
+      var index = 0;
+      var paused = false;
+
+      // A timeout chain (rather than setInterval) lets each ad carry its own
+      // duration from the sheet instead of one fixed interval for all of them.
+      function scheduleNext() {
+        rotateTimer = setTimeout(function () {
+          if (paused) { scheduleNext(); return; }
+          slides[index].classList.remove("is-active");
+          index = (index + 1) % slides.length;
+          slides[index].classList.add("is-active");
+          scheduleNext();
+        }, Math.max(1, ads[index].seconds) * 1000);
+      }
+
+      container.onmouseenter = function () { paused = true; };
+      container.onmouseleave = function () { paused = false; };
+
+      scheduleNext();
     }
 
-    els.spotlightVerticalAd.innerHTML = ads.map(function (ad, i) {
-      var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
-      var slideInner = ad.link
-        ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
-        : img;
-      return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
-    }).join("");
-    els.spotlightVerticalAd.hidden = false;
-
-    if (ads.length <= 1) return;
-
-    var slides = Array.prototype.slice.call(els.spotlightVerticalAd.querySelectorAll(".ad-slide"));
-    var index = 0;
-    var paused = false;
-
-    // A timeout chain (rather than setInterval) lets each ad carry its own
-    // duration from the sheet instead of one fixed interval for all of them.
-    function scheduleNext() {
-      adRotateTimer = setTimeout(function () {
-        if (paused) { scheduleNext(); return; }
-        slides[index].classList.remove("is-active");
-        index = (index + 1) % slides.length;
-        slides[index].classList.add("is-active");
-        scheduleNext();
-      }, Math.max(1, ads[index].seconds) * 1000);
-    }
-
-    els.spotlightVerticalAd.onmouseenter = function () { paused = true; };
-    els.spotlightVerticalAd.onmouseleave = function () { paused = false; };
-
-    scheduleNext();
+    return function fetchAndRender() {
+      if (!csvUrl) return;
+      Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function (result) {
+          var ads = result.data
+            .map(function (row) {
+              return {
+                seconds: parseFloat(get(row, "Seconds")) || defaultSeconds,
+                image: get(row, "Image"),
+                link: get(row, "Link")
+              };
+            })
+            .filter(function (ad) { return ad.image; });
+          render(ads);
+        },
+        error: function (err) {
+          console.error("Ad sheet load error:", err);
+        }
+      });
+    };
   }
+
+  var fetchSidebarAds = createAdSlideshow(els.spotlightVerticalAd, AD_CSV_URL, AD_DEFAULT_SECONDS);
+  var fetchTopAds = createAdSlideshow(els.adPlaceholder, TOP_AD_CSV_URL, TOP_AD_DEFAULT_SECONDS);
 
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
@@ -1388,5 +1399,6 @@
   });
 
   fetchData();
-  fetchAds();
+  fetchSidebarAds();
+  fetchTopAds();
 })();

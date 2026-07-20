@@ -453,10 +453,13 @@ html, body {
 }
 
 .ad-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
   margin-bottom: 18px;
+}
+
+.ad-placeholder[hidden] {
+  display: none;
 }
 
 .ad-image {
