@@ -765,11 +765,30 @@ html, body {
   white-space: nowrap;
 }
 
-.spotlight-vertical-ad:empty {
+.spotlight-vertical-ad {
+  display: grid;
+  margin-top: 14px;
+}
+
+.spotlight-vertical-ad[hidden] {
   display: none;
 }
 
-.spotlight-vertical-ad img {
+/* All slides share the same grid cell so the container's height tracks the
+   tallest ad rather than jumping per-slide, and crossfading is just opacity. */
+.ad-slide {
+  grid-area: 1 / 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.ad-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ad-slide img {
   display: block;
   width: 100%;
   height: auto;

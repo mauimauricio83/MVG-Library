@@ -1,11 +1,17 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.4.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
+
+  // Vertical ad slideshow, sourced from its own small published sheet —
+  // columns: Seconds (how long that ad shows before advancing), Image, Link.
+  var AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
+  var AD_DEFAULT_SECONDS = 6;
+  var adRotateTimer = null;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
   // Entry IDs read directly from the form's own field definitions.
@@ -58,6 +64,7 @@
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
+    spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
     appFooter: document.getElementById("appFooter")
   };
 
@@ -713,6 +720,73 @@
     if (row) startTVMode([row]);
   });
 
+  function fetchAds() {
+    if (!AD_CSV_URL) return;
+    Papa.parse(AD_CSV_URL, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function (result) {
+        var ads = result.data
+          .map(function (row) {
+            return {
+              seconds: parseFloat(get(row, "Seconds")) || AD_DEFAULT_SECONDS,
+              image: get(row, "Image"),
+              link: get(row, "Link")
+            };
+          })
+          .filter(function (ad) { return ad.image; });
+        renderAdSlideshow(ads);
+      },
+      error: function (err) {
+        console.error("Ad sheet load error:", err);
+      }
+    });
+  }
+
+  function renderAdSlideshow(ads) {
+    clearTimeout(adRotateTimer);
+    adRotateTimer = null;
+
+    if (!ads.length) {
+      els.spotlightVerticalAd.hidden = true;
+      els.spotlightVerticalAd.innerHTML = "";
+      return;
+    }
+
+    els.spotlightVerticalAd.innerHTML = ads.map(function (ad, i) {
+      var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
+      var slideInner = ad.link
+        ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
+        : img;
+      return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
+    }).join("");
+    els.spotlightVerticalAd.hidden = false;
+
+    if (ads.length <= 1) return;
+
+    var slides = Array.prototype.slice.call(els.spotlightVerticalAd.querySelectorAll(".ad-slide"));
+    var index = 0;
+    var paused = false;
+
+    // A timeout chain (rather than setInterval) lets each ad carry its own
+    // duration from the sheet instead of one fixed interval for all of them.
+    function scheduleNext() {
+      adRotateTimer = setTimeout(function () {
+        if (paused) { scheduleNext(); return; }
+        slides[index].classList.remove("is-active");
+        index = (index + 1) % slides.length;
+        slides[index].classList.add("is-active");
+        scheduleNext();
+      }, Math.max(1, ads[index].seconds) * 1000);
+    }
+
+    els.spotlightVerticalAd.onmouseenter = function () { paused = true; };
+    els.spotlightVerticalAd.onmouseleave = function () { paused = false; };
+
+    scheduleNext();
+  }
+
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
   }
@@ -1314,4 +1388,5 @@
   });
 
   fetchData();
+  fetchAds();
 })();
