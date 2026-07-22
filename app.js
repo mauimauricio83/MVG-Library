@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.0.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.0.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -874,54 +874,60 @@
     if (row) openLightbox(row);
   });
 
-  // Shared by both ad placements (sidebar vertical + top horizontal), each
-  // pointed at its own sheet so they can rotate independently.
-  function createAdSlideshow(container, csvUrl, defaultSeconds) {
+  // Renders a crossfading ad slideshow into any container, independent of
+  // whoever else is showing the same ad list. Returns a handle so the caller
+  // can stop its rotation timer once the container goes away (e.g. the
+  // lightbox tearing down its content on every open/close) -- otherwise the
+  // timeout chain runs forever against detached nodes.
+  function renderAdSlideshowInto(container, ads, defaultSeconds) {
     var rotateTimer = null;
+    function stop() { clearTimeout(rotateTimer); }
 
-    function render(ads) {
-      clearTimeout(rotateTimer);
-      rotateTimer = null;
-
-      if (!ads.length) {
-        container.hidden = true;
-        container.innerHTML = "";
-        return;
-      }
-
-      container.innerHTML = ads.map(function (ad, i) {
-        var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
-        var slideInner = ad.link
-          ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
-          : img;
-        return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
-      }).join("");
-      container.hidden = false;
-
-      if (ads.length <= 1) return;
-
-      var slides = Array.prototype.slice.call(container.querySelectorAll(".ad-slide"));
-      var index = 0;
-      var paused = false;
-
-      // A timeout chain (rather than setInterval) lets each ad carry its own
-      // duration from the sheet instead of one fixed interval for all of them.
-      function scheduleNext() {
-        rotateTimer = setTimeout(function () {
-          if (paused) { scheduleNext(); return; }
-          slides[index].classList.remove("is-active");
-          index = (index + 1) % slides.length;
-          slides[index].classList.add("is-active");
-          scheduleNext();
-        }, Math.max(1, ads[index].seconds) * 1000);
-      }
-
-      container.onmouseenter = function () { paused = true; };
-      container.onmouseleave = function () { paused = false; };
-
-      scheduleNext();
+    if (!ads.length) {
+      container.hidden = true;
+      container.innerHTML = "";
+      return { stop: stop };
     }
 
+    container.innerHTML = ads.map(function (ad, i) {
+      var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
+      var slideInner = ad.link
+        ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
+        : img;
+      return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
+    }).join("");
+    container.hidden = false;
+
+    if (ads.length <= 1) return { stop: stop };
+
+    var slides = Array.prototype.slice.call(container.querySelectorAll(".ad-slide"));
+    var index = 0;
+    var paused = false;
+
+    // A timeout chain (rather than setInterval) lets each ad carry its own
+    // duration from the sheet instead of one fixed interval for all of them.
+    function scheduleNext() {
+      rotateTimer = setTimeout(function () {
+        if (paused) { scheduleNext(); return; }
+        slides[index].classList.remove("is-active");
+        index = (index + 1) % slides.length;
+        slides[index].classList.add("is-active");
+        scheduleNext();
+      }, Math.max(1, ads[index].seconds) * 1000);
+    }
+
+    container.onmouseenter = function () { paused = true; };
+    container.onmouseleave = function () { paused = false; };
+
+    scheduleNext();
+    return { stop: stop };
+  }
+
+  // Shared by both persistent ad placements (sidebar vertical + top
+  // horizontal), each pointed at its own sheet so they rotate independently.
+  // onLoaded (optional) hands back the parsed ad list for reuse elsewhere,
+  // e.g. the lightbox mirroring the top banner without a second fetch.
+  function createAdSlideshow(container, csvUrl, defaultSeconds, onLoaded) {
     return function fetchAndRender() {
       if (!csvUrl) return;
       Papa.parse(csvUrl, {
@@ -938,7 +944,8 @@
               };
             })
             .filter(function (ad) { return ad.image; });
-          render(ads);
+          renderAdSlideshowInto(container, ads, defaultSeconds);
+          if (onLoaded) onLoaded(ads);
         },
         error: function (err) {
           console.error("Ad sheet load error:", err);
@@ -947,8 +954,12 @@
     };
   }
 
+  var topAdsCache = [];
+  var lightboxAdController = null;
   var fetchSidebarAds = createAdSlideshow(els.spotlightVerticalAd, AD_CSV_URL, AD_DEFAULT_SECONDS);
-  var fetchTopAds = createAdSlideshow(els.adPlaceholder, TOP_AD_CSV_URL, TOP_AD_DEFAULT_SECONDS);
+  var fetchTopAds = createAdSlideshow(els.adPlaceholder, TOP_AD_CSV_URL, TOP_AD_DEFAULT_SECONDS, function (ads) {
+    topAdsCache = ads;
+  });
 
   function categoryTagClass(cat) {
     return CATEGORY_CLASS[cat] || "tag-default";
@@ -1212,8 +1223,10 @@
       links += '<a class="icon-btn" href="' + escapeHtml(row.mvg) + '" target="_blank" rel="noopener noreferrer" title="View on Instagram" aria-label="View on Instagram">' + ICON_INSTAGRAM + "</a>";
     }
 
+    if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
+
     els.lightboxContent.innerHTML =
-      els.adPlaceholder.outerHTML +
+      '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
       videoHtml +
       '<div class="lightbox-body">' +
       '<div class="lightbox-title-row">' +
@@ -1231,6 +1244,9 @@
       (links ? '<div class="lightbox-links">' + links + "</div>" : "") +
       lightboxRelatedHtml(row.director, row.rowNum) +
       "</div>";
+
+    var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
+    if (lightboxAdEl) lightboxAdController = renderAdSlideshowInto(lightboxAdEl, topAdsCache, TOP_AD_DEFAULT_SECONDS);
 
     els.lightbox.hidden = false;
     document.body.style.overflow = "hidden";
@@ -1262,6 +1278,7 @@
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     destroyLightboxPlayer();
+    if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
