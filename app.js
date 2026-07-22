@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.3.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.3.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1375,6 +1375,15 @@
   }
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
+
+  // Lets external links (e.g. an ad banner) open the submit modal directly,
+  // e.g. https://mauimauricio83.github.io/MVG-Library/#submit -- doesn't
+  // need state.rows loaded, so it's independent of applyDeepLinkFromHash().
+  function applySubmitHash() {
+    if (location.hash === "#submit") openSubmitModal();
+  }
+  window.addEventListener("hashchange", applySubmitHash);
+  applySubmitHash();
 
   els.submitModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSubmitModal();
