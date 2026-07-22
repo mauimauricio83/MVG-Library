@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v3.7.5 — current
+## v3.8.0 — current
+- Added Google Analytics (GA4) — first real visibility into traffic and usage on the site
+
+## v3.7.5
 - Header title now uses Archivo Black (loaded from Google Fonts) instead of the system font stack, for a wider/heavier look closer to the "THE MUSIC VIDEO GUY" wordmark above it
 
 ## v3.7.4
