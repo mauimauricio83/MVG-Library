@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -157,7 +157,7 @@
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
-  var CACHE_KEY = "mvg-wiki-cache-v4"; // bumped: v3 rows predate crew fields in searchHaystack
+  var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
 
   var CATEGORY_CLASS = {
@@ -232,6 +232,19 @@
     });
     return set;
   })();
+
+  // The sheet's "Release date" column is date-formatted, so cells holding a
+  // bare year (e.g. 1996) publish as that serial number's date -- 1996 days
+  // from Sheets' 1899-12-30 epoch is "June 18, 1905". The mapping is
+  // invertible (days-since-epoch IS the original year), so decode it here
+  // rather than showing thousands of bogus 1905 dates in the lightbox.
+  var SHEET_MONTHS = { January: 0, February: 1, March: 2, April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11 };
+  function fixReleaseDate(raw) {
+    var m = String(raw || "").match(/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (19[0-1]\d)$/);
+    if (!m) return raw;
+    var serial = Math.round((Date.UTC(+m[3], SHEET_MONTHS[m[1]], +m[2]) - Date.UTC(1899, 11, 30)) / 86400000);
+    return serial >= 1900 && serial <= 2100 ? String(serial) : raw;
+  }
 
   function normalizeCountry(raw) {
     var v = String(raw || "").trim();
@@ -521,7 +534,7 @@
           youtube: get(row, "YouTube Link"),
           mvg: get(row, "MVG Link"),
           year: get(row, "Year"),
-          releaseDate: get(row, "Release date"),
+          releaseDate: fixReleaseDate(get(row, "Release date")),
           studio: get(row, "Studio"),
           producer: get(row, "Producer"),
           dp: get(row, "DP"),

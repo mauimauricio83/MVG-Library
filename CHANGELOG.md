@@ -2,7 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.5.0 — current
+## v4.6.0 — current
+- Per-video SEO landing pages: `/videos/<artist-song>/` for every entry with a YouTube link (12,197 pages) — each with an embedded player, full credits, description, VideoObject JSON-LD, and links to the director/artist hub pages plus a deep link into the app
+- Hub pages' video listings now link to those video pages (internal linking) instead of straight to the app deep link
+- Fixed a systemic sheet artifact: "Release date" cells holding a bare year published as dates like "June 18, 1905" (Sheets date-serial rendering, ~4,400 rows affected). Both the generator and the app's lightbox now decode the serial back to the intended year
+- Video pages expand 2-letter country codes ("GB" → "United Kingdom"), matching the app
+- Sitemap now carries all 13,649 URLs; the daily Action regenerates and commits video pages too
+
+## v4.5.0
 - New ⚙ Settings modal (header link): first action is "Clear history" for Recently Viewed — clears this device, and the signed-in account's copy too when logged in
 - Audited playback paths: confirmed only TV Mode's own entry points (Start TV Mode + the four Play All buttons) trigger TV playback; every individual-video interaction opens the lightbox. No fix needed
 
