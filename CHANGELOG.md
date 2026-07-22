@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.1.2 — current
+## v4.2.0 — current
+- Search now also matches Producer, DP, Editor, Choreographer, and Studio — not just artist/song/director. Genre/Country/Description stay out since those already have dedicated filters
+- Bumped the local cache key so returning visitors get the wider search immediately instead of waiting on a stale cached copy
+
+## v4.1.2
 - Shortened header link text: "Submit music video", "Discord", "Sign in" (Feedback was already short)
 
 ## v4.1.1

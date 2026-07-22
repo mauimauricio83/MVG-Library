@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.1.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.2.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -148,7 +148,7 @@
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
   };
 
-  var CACHE_KEY = "mvg-wiki-cache-v3"; // bumped: v2 rows predate the "searchHaystack" field
+  var CACHE_KEY = "mvg-wiki-cache-v4"; // bumped: v3 rows predate crew fields in searchHaystack
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
 
   var CATEGORY_CLASS = {
@@ -495,8 +495,14 @@
           feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature")),
           spotlight: /^(true|yes|y|1|x)$/i.test(get(row, "Spotlight")),
           // Precomputed once so search doesn't re-lowercase/concatenate these
-          // on every keystroke across 12,000+ rows.
-          searchHaystack: (artist + " " + song + " " + director).toLowerCase()
+          // on every keystroke across 12,000+ rows. Covers the named-person/
+          // crew fields; Genre/Country/Description are left out since those
+          // already have their own filter dropdowns.
+          searchHaystack: [
+            artist, song, director,
+            get(row, "Producer"), get(row, "DP"), get(row, "Editor"),
+            get(row, "Choreographer"), get(row, "Studio")
+          ].join(" ").toLowerCase()
         };
       })
       .filter(function (row) {
