@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "3.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -62,8 +62,12 @@
     lightboxContent: document.getElementById("lightboxContent"),
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
+    recentStrip: document.getElementById("recentStrip"),
+    favoritesStrip: document.getElementById("favoritesStrip"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     latestPlayAll: document.getElementById("latestPlayAll"),
+    recentPlayAll: document.getElementById("recentPlayAll"),
+    favoritesPlayAll: document.getElementById("favoritesPlayAll"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
@@ -86,7 +90,7 @@
   }
 
   function moveVideoPairHome() {
-    els.jumpTop.after(els.featuredStrip, els.adPlaceholder, els.videoEmbed);
+    els.jumpTop.after(els.featuredStrip, els.favoritesStrip, els.adPlaceholder, els.videoEmbed);
   }
 
   function findRowByNum(rowNum) {
@@ -232,6 +236,58 @@
     } catch (e) {}
   }
 
+  // Favorites/recently-viewed live only in this browser's localStorage for
+  // now — no accounts yet, so nothing syncs across devices.
+  var FAVORITES_KEY = "mvg-favorites";
+  var RECENT_KEY = "mvg-recently-viewed";
+  var RECENT_MAX = 12;
+
+  function loadFavorites() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveFavorites(list) {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  function isFavorite(rowNum) {
+    return loadFavorites().indexOf(rowNum) !== -1;
+  }
+
+  function toggleFavorite(rowNum) {
+    var list = loadFavorites();
+    var idx = list.indexOf(rowNum);
+    var nowFavorite = idx === -1;
+    if (nowFavorite) list.push(rowNum);
+    else list.splice(idx, 1);
+    saveFavorites(list);
+    return nowFavorite;
+  }
+
+  function loadRecentlyViewed() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function pushRecentlyViewed(rowNum) {
+    var list = loadRecentlyViewed().filter(function (n) { return n !== rowNum; });
+    list.unshift(rowNum);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+    } catch (e) {}
+  }
+
   function saveCache(rows) {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: rows, savedAt: Date.now() }));
@@ -300,6 +356,8 @@
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
     renderFeaturedStrip(state.rows);
+    renderRecentStrip(state.rows);
+    renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
     render();
     applyDeepLinkFromHash();
@@ -659,6 +717,8 @@
 
   var latestStrip = createMediaStrip(els.latestStrip);
   var featuredStrip = createMediaStrip(els.featuredStrip);
+  var recentStrip = createMediaStrip(els.recentStrip);
+  var favoritesStrip = createMediaStrip(els.favoritesStrip);
 
   var latestPool = [];
   function renderLatestStrip(rows) {
@@ -675,6 +735,27 @@
   function renderFeaturedStrip(rows) {
     featuredPool = shuffle(rows.filter(function (r) { return r.feature; }));
     featuredStrip.render(featuredPool);
+  }
+
+  // Most-recently-viewed first; entries are pushed by openLightbox().
+  var recentPool = [];
+  function renderRecentStrip(rows) {
+    recentPool = loadRecentlyViewed()
+      .map(function (n) { return findRowByNum(n); })
+      .filter(Boolean);
+    recentStrip.render(recentPool);
+  }
+
+  // Most-recently-favorited first.
+  var favoritesPool = [];
+  function renderFavoritesStrip(rows) {
+    var favIds = loadFavorites();
+    favoritesPool = favIds
+      .slice()
+      .reverse()
+      .map(function (n) { return findRowByNum(n); })
+      .filter(Boolean);
+    favoritesStrip.render(favoritesPool);
   }
 
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
@@ -951,6 +1032,14 @@
     startTVMode(latestPool.filter(function (r) { return !!r.youtube; }));
   });
 
+  els.recentPlayAll.addEventListener("click", function () {
+    startTVMode(recentPool.filter(function (r) { return !!r.youtube; }));
+  });
+
+  els.favoritesPlayAll.addEventListener("click", function () {
+    startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
+  });
+
   els.videoBox.addEventListener("click", function (e) {
     if (e.target.closest("#tvStartBtn")) {
       startTVMode();
@@ -1030,6 +1119,8 @@
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
     document.title = (row.song || "Untitled") + (row.artist ? " — " + row.artist : "") + " | MVG Library";
+    pushRecentlyViewed(row.rowNum);
+    renderRecentStrip(state.rows);
 
     var id = extractYouTubeId(row.youtube);
     var videoHtml = id
@@ -1060,6 +1151,7 @@
       '<div class="lightbox-title-row">' +
       '<h2 class="lightbox-title">' + escapeHtml(row.song || "(untitled)") + "</h2>" +
       '<div class="lightbox-title-actions">' +
+      '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       "</div>" +
@@ -1131,6 +1223,14 @@
       state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
       saveLightboxSizePref(state.lightboxSize);
       applyLightboxSize();
+      return;
+    }
+    var favBtn = e.target.closest(".lightbox-fav-btn");
+    if (favBtn) {
+      var nowFavorite = toggleFavorite(favBtn.getAttribute("data-rownum"));
+      favBtn.classList.toggle("is-active", nowFavorite);
+      favBtn.textContent = nowFavorite ? "♥" : "♡";
+      renderFavoritesStrip(state.rows);
       return;
     }
     var relBtn = e.target.closest(".related-btn");

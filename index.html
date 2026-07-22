@@ -68,6 +68,18 @@
     </div>
   </section>
 
+  <section class="media-strip" id="recentStrip" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">🕘 Recently Viewed</span>
+      <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
+    </div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="recentStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="recentStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="recentStripNext" aria-label="Show next">›</button>
+    </div>
+  </section>
+
   <div class="controls">
     <div class="tabs" role="tablist" aria-label="Browse by">
       <button class="tab active" data-view="director" role="tab" aria-selected="true">By Director</button>
@@ -118,6 +130,18 @@
       <button type="button" class="media-strip-arrow" id="featuredStripPrev" aria-label="Show previous">‹</button>
       <div class="media-strip-track" id="featuredStripTrack"></div>
       <button type="button" class="media-strip-arrow" id="featuredStripNext" aria-label="Show next">›</button>
+    </div>
+  </section>
+
+  <section class="media-strip" id="favoritesStrip" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">❤ Favorites</span>
+      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
+    </div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="favoritesStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
     </div>
   </section>
 
