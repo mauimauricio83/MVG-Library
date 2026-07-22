@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.3.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.3.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -925,6 +925,14 @@
     if (row) openLightbox(row);
   });
 
+  function isSameOriginUrl(url) {
+    try {
+      return new URL(url, location.href).origin === location.origin;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Renders a crossfading ad slideshow into any container, independent of
   // whoever else is showing the same ad list. Returns a handle so the caller
   // can stop its rotation timer once the container goes away (e.g. the
@@ -942,8 +950,13 @@
 
     container.innerHTML = ads.map(function (ad, i) {
       var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
+      // Same-site links (e.g. #submit) should navigate in place -- if this
+      // banner sits inside an embedded iframe on the main site, target="_blank"
+      // would blow past that embed into a bare new tab on the raw GitHub
+      // Pages URL instead of just updating the hash where the user already is.
+      var isSameOrigin = ad.link && isSameOriginUrl(ad.link);
       var slideInner = ad.link
-        ? '<a href="' + escapeHtml(ad.link) + '" target="_blank" rel="noopener noreferrer">' + img + "</a>"
+        ? '<a href="' + escapeHtml(ad.link) + '"' + (isSameOrigin ? "" : ' target="_blank" rel="noopener noreferrer"') + ">" + img + "</a>"
         : img;
       return '<div class="ad-slide' + (i === 0 ? " is-active" : "") + '">' + slideInner + "</div>";
     }).join("");

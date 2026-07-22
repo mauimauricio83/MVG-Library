@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.3.1 — current
+## v4.3.2 — current
+- Fixed: ad banners always opened links in a new tab, even same-site ones like `#submit` — which broke out of the embedded iframe on the main site into a bare new tab on the raw GitHub Pages URL. Same-origin ad links now navigate in place instead; genuinely external links (hisong.io, forms.gle, etc.) still open in a new tab as before
+
+## v4.3.1
 - The submit modal can now be opened via a link ending in `#submit` (e.g. `https://mauimauricio83.github.io/MVG-Library/#submit`) — for pointing ad banners at the in-page form instead of the old external Google Form
 
 ## v4.3.0
