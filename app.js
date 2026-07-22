@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.6.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -726,7 +726,6 @@
       counts[name] = (counts[name] || 0) + 1;
     });
     var countries = Object.keys(counts).sort(function (a, b) {
-      if (counts[b] !== counts[a]) return counts[b] - counts[a];
       return a.localeCompare(b);
     });
     var html = '<option value="">All Countries</option>';
