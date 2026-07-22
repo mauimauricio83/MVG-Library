@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.1.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.1.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -15,8 +15,7 @@
   var TOP_AD_DEFAULT_SECONDS = 6;
 
   // Google Apps Script Web App bound to the "Submissions" tab.
-  // TODO: replace with the deployed Web App /exec URL once that's set up.
-  var SUBMIT_WEBAPP_URL = "";
+  var SUBMIT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw6gTzYbfWEKoceJofWrgTnmfnk0S0DHnPWN6owX0YlsqrvN4DqdyYCVC_WNzsDdnYb/exec";
 
   // Client-side Firebase config -- safe to be public; Firestore's security
   // rules (not this config) are what actually gate access.
@@ -1358,12 +1357,9 @@
     els.submitFormBtn.disabled = true;
     els.submitFormStatus.hidden = true;
 
-    // The Apps Script Web App doesn't send CORS headers, so the response
-    // body/status can't be read from here -- mode: "no-cors" avoids a
-    // console error, and a resolved fetch (vs. a network-level rejection)
-    // is treated as success.
-    fetch(SUBMIT_WEBAPP_URL, { method: "POST", mode: "no-cors", body: formData })
-      .then(function () {
+    fetch(SUBMIT_WEBAPP_URL, { method: "POST", body: formData })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
         els.submitFormStatus.textContent = "Thanks! We'll review it and add it to the library.";
         els.submitFormStatus.className = "submit-form-status is-success";
         els.submitFormStatus.hidden = false;
