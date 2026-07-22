@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.2.0 — current
+## v4.3.0 — current
+- Recently Viewed and Favorites are now collapsible (chevron in the strip header), and collapsed by default — they're secondary/personalized content, unlike Featured/Latest which stay always-expanded. Your expand/collapse choice is remembered per strip
+
+## v4.2.0
 - Search now also matches Producer, DP, Editor, Choreographer, and Studio — not just artist/song/director. Genre/Country/Description stay out since those already have dedicated filters
 - Bumped the local cache key so returning visitors get the wider search immediately instead of waiting on a stale cached copy
 

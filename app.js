@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.2.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.3.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -88,6 +88,8 @@
     latestPlayAll: document.getElementById("latestPlayAll"),
     recentPlayAll: document.getElementById("recentPlayAll"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
+    recentCollapseBtn: document.getElementById("recentCollapseBtn"),
+    favoritesCollapseBtn: document.getElementById("favoritesCollapseBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
@@ -268,6 +270,33 @@
     try {
       localStorage.setItem(FILTERS_EXPANDED_KEY, expanded ? "true" : "false");
     } catch (e) {}
+  }
+
+  // Recently Viewed/Favorites default to collapsed (unlike the filters
+  // panel, which defaults open) -- they're secondary, personalized content,
+  // not something most visitors need expanded on every visit.
+  function loadCollapsedPref(key) {
+    try {
+      return localStorage.getItem(key) !== "false";
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function saveCollapsedPref(key, collapsed) {
+    try {
+      localStorage.setItem(key, collapsed ? "true" : "false");
+    } catch (e) {}
+  }
+
+  function setupCollapsibleStrip(sectionEl, toggleBtn, prefKey) {
+    var collapsed = loadCollapsedPref(prefKey);
+    sectionEl.classList.toggle("is-collapsed", collapsed);
+    toggleBtn.addEventListener("click", function () {
+      collapsed = !collapsed;
+      sectionEl.classList.toggle("is-collapsed", collapsed);
+      saveCollapsedPref(prefKey, collapsed);
+    });
   }
 
   // Favorites/recently-viewed are localStorage-first (instant, works
@@ -806,6 +835,9 @@
   var featuredStrip = createMediaStrip(els.featuredStrip);
   var recentStrip = createMediaStrip(els.recentStrip);
   var favoritesStrip = createMediaStrip(els.favoritesStrip);
+
+  setupCollapsibleStrip(els.recentStrip, els.recentCollapseBtn, "mvg-recent-collapsed");
+  setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed");
 
   var latestPool = [];
   function renderLatestStrip(rows) {

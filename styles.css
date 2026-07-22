@@ -149,6 +149,31 @@ html, body {
   color: var(--text);
 }
 
+.media-strip-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.media-strip-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.media-strip.is-collapsed .media-strip-chevron {
+  transform: rotate(-90deg);
+}
+
+.media-strip.is-collapsed .media-strip-body {
+  display: none;
+}
+
 .media-strip-play-all {
   flex: 0 0 auto;
   border: none;
