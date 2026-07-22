@@ -988,7 +988,6 @@
   function creditsHtml(row) {
     var pairs = [];
     if (row.director) pairs.push(["Director", row.director]);
-    if (row.choreographer) pairs.push(["Choreographer", row.choreographer]);
     if (row.releaseDate) pairs.push(["Release date", row.releaseDate]);
     else if (row.year) pairs.push(["Year", row.year]);
     if (row.studio) pairs.push(["Studio", row.studio]);
@@ -996,6 +995,7 @@
     if (row.producer) pairs.push(["Producer", row.producer]);
     if (row.dp) pairs.push(["DP", row.dp]);
     if (row.editor) pairs.push(["Editor", row.editor]);
+    if (row.choreographer) pairs.push(["Choreographer", row.choreographer]);
     if (!pairs.length) return "";
     var rowsHtml = pairs.map(function (p) {
       return "<dt>" + escapeHtml(p[0]) + "</dt><dd>" + escapeHtml(p[1]) + "</dd>";
