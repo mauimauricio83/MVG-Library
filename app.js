@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.4.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -109,7 +109,12 @@
     submitGenre: document.getElementById("submitGenre"),
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
-    submitFormStatus: document.getElementById("submitFormStatus")
+    submitFormStatus: document.getElementById("submitFormStatus"),
+    openSettingsBtn: document.getElementById("openSettingsBtn"),
+    settingsModal: document.getElementById("settingsModal"),
+    settingsSyncNote: document.getElementById("settingsSyncNote"),
+    clearRecentBtn: document.getElementById("clearRecentBtn"),
+    settingsStatus: document.getElementById("settingsStatus")
   };
 
   els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
@@ -1404,6 +1409,37 @@
   window.addEventListener("hashchange", applySubmitHash);
   applySubmitHash();
 
+  function openSettingsModal() {
+    els.settingsSyncNote.hidden = !currentUser;
+    els.settingsStatus.hidden = true;
+    els.settingsModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeSettingsModal() {
+    if (els.settingsModal.hidden) return;
+    els.settingsModal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  els.openSettingsBtn.addEventListener("click", openSettingsModal);
+
+  els.settingsModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSettingsModal();
+  });
+
+  els.clearRecentBtn.addEventListener("click", function () {
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch (e) {}
+    // pushToFirestore() sends the now-empty list, so the account copy is
+    // cleared too rather than resurrecting the history on next sign-in.
+    pushToFirestore();
+    renderRecentStrip(state.rows);
+    els.settingsStatus.textContent = "Recently Viewed history cleared.";
+    els.settingsStatus.hidden = false;
+  });
+
   els.submitModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSubmitModal();
   });
@@ -1485,6 +1521,7 @@
     if (e.key !== "Escape") return;
     if (!els.lightbox.hidden) closeLightbox();
     if (!els.submitModal.hidden) closeSubmitModal();
+    if (!els.settingsModal.hidden) closeSettingsModal();
   });
 
   document.addEventListener("click", function (e) {

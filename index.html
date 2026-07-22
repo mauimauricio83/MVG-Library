@@ -60,6 +60,8 @@
         <span class="header-account-name" id="headerUserName"></span>
         <button type="button" class="submit-link header-account-btn" id="signOutBtn">Sign out</button>
       </span>
+      <span class="header-links-sep">·</span>
+      <button type="button" class="submit-link header-account-btn" id="openSettingsBtn">⚙ Settings</button>
     </div>
   </header>
 
@@ -206,6 +208,24 @@
   <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Entry details">
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="lightbox-content" id="lightboxContent"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="settingsModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
+    <button type="button" class="lightbox-close" id="settingsClose" aria-label="Close">&times;</button>
+    <div class="settings-body">
+      <h2 class="settings-title">Settings</h2>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Recently Viewed history</div>
+          <div class="settings-row-hint">Removes all entries from your Recently Viewed strip on this device<span id="settingsSyncNote" hidden> and your signed-in account</span>.</div>
+        </div>
+        <button type="button" class="settings-action-btn" id="clearRecentBtn">Clear history</button>
+      </div>
+      <p class="settings-status" id="settingsStatus" hidden></p>
+    </div>
   </div>
 </div>
 

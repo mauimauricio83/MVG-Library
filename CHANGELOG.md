@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.4.0 — current
+## v4.5.0 — current
+- New ⚙ Settings modal (header link): first action is "Clear history" for Recently Viewed — clears this device, and the signed-in account's copy too when logged in
+- Audited playback paths: confirmed only TV Mode's own entry points (Start TV Mode + the four Play All buttons) trigger TV playback; every individual-video interaction opens the lightbox. No fix needed
+
+## v4.4.0
 - Collapsed Recently Viewed/Favorites are now a compact, left-aligned row with no Play All button (only shown when expanded), instead of a full-width bar
 - Latest Submissions and Featured are now collapsible too, same chevron toggle — but default to expanded, unlike Recently Viewed/Favorites
 
