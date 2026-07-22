@@ -5,7 +5,8 @@
       "name": "mvg-wiki",
       "runtimeExecutable": "node",
       "runtimeArgs": ["serve.js"],
-      "port": 8420
+      "port": 8420,
+      "autoPort": true
     }
   ]
 }

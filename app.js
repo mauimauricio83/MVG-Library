@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.0.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.1.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -13,6 +13,10 @@
   var AD_DEFAULT_SECONDS = 6;
   var TOP_AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
   var TOP_AD_DEFAULT_SECONDS = 6;
+
+  // Google Apps Script Web App bound to the "Submissions" tab.
+  // TODO: replace with the deployed Web App /exec URL once that's set up.
+  var SUBMIT_WEBAPP_URL = "";
 
   // Client-side Firebase config -- safe to be public; Firestore's security
   // rules (not this config) are what actually gate access.
@@ -93,7 +97,16 @@
     signOutBtn: document.getElementById("signOutBtn"),
     headerAccount: document.getElementById("headerAccount"),
     headerAvatar: document.getElementById("headerAvatar"),
-    headerUserName: document.getElementById("headerUserName")
+    headerUserName: document.getElementById("headerUserName"),
+    openSubmitBtn: document.getElementById("openSubmitBtn"),
+    submitModal: document.getElementById("submitModal"),
+    submitClose: document.getElementById("submitClose"),
+    submitForm: document.getElementById("submitForm"),
+    submitCategory: document.getElementById("submitCategory"),
+    submitGenre: document.getElementById("submitGenre"),
+    submitCountry: document.getElementById("submitCountry"),
+    submitFormBtn: document.getElementById("submitFormBtn"),
+    submitFormStatus: document.getElementById("submitFormStatus")
   };
 
   els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
@@ -419,6 +432,7 @@
     els.genreFilter.value = state.genre;
     buildCountryOptions(state.rows);
     els.countryFilter.value = state.country;
+    buildSubmitDropdowns(state.rows);
     updateFiltersToggleCount();
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
@@ -1287,6 +1301,86 @@
     document.body.style.overflow = "";
   }
 
+  // Populated once real data loads -- same live-derived, always-current
+  // lists the filter dropdowns use, so there's no separate static list to
+  // maintain here.
+  function buildSubmitDropdowns(rows) {
+    function uniqueSorted(getValues) {
+      var seen = {};
+      rows.forEach(function (r) {
+        getValues(r).forEach(function (v) { if (v) seen[v] = true; });
+      });
+      return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+    }
+
+    var categories = uniqueSorted(function (r) { return [r.category]; });
+    els.submitCategory.innerHTML = '<option value="">Choose…</option>' +
+      categories.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
+
+    var genres = uniqueSorted(function (r) { return r.genres || []; });
+    els.submitGenre.innerHTML = '<option value="">Choose…</option>' +
+      genres.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + "</option>"; }).join("");
+
+    var countries = uniqueSorted(function (r) { return r.country ? [normalizeCountry(r.country)] : []; });
+    els.submitCountry.innerHTML = '<option value="">Choose…</option>' +
+      countries.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
+  }
+
+  function openSubmitModal() {
+    els.submitModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeSubmitModal() {
+    if (els.submitModal.hidden) return;
+    els.submitModal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  els.openSubmitBtn.addEventListener("click", openSubmitModal);
+
+  els.submitModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSubmitModal();
+  });
+
+  els.submitForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var formData = new FormData(els.submitForm);
+    // Honeypot: real visitors never see or fill this field.
+    if (formData.get("website")) return;
+
+    if (!SUBMIT_WEBAPP_URL) {
+      console.error("SUBMIT_WEBAPP_URL isn't configured yet.");
+      return;
+    }
+
+    els.submitFormBtn.disabled = true;
+    els.submitFormStatus.hidden = true;
+
+    // The Apps Script Web App doesn't send CORS headers, so the response
+    // body/status can't be read from here -- mode: "no-cors" avoids a
+    // console error, and a resolved fetch (vs. a network-level rejection)
+    // is treated as success.
+    fetch(SUBMIT_WEBAPP_URL, { method: "POST", mode: "no-cors", body: formData })
+      .then(function () {
+        els.submitFormStatus.textContent = "Thanks! We'll review it and add it to the library.";
+        els.submitFormStatus.className = "submit-form-status is-success";
+        els.submitFormStatus.hidden = false;
+        els.submitForm.reset();
+        setTimeout(closeSubmitModal, 2200);
+      })
+      .catch(function (err) {
+        console.error("Submission failed:", err);
+        els.submitFormStatus.textContent = "Something went wrong -- please try again in a moment.";
+        els.submitFormStatus.className = "submit-form-status is-error";
+        els.submitFormStatus.hidden = false;
+      })
+      .finally(function () {
+        els.submitFormBtn.disabled = false;
+      });
+  });
+
   // The widen button lives inside the per-entry HTML openLightbox() regenerates,
   // so it's queried fresh each time rather than cached — a stale reference would
   // point at a node that's already gone.
@@ -1326,7 +1420,9 @@
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !els.lightbox.hidden) closeLightbox();
+    if (e.key !== "Escape") return;
+    if (!els.lightbox.hidden) closeLightbox();
+    if (!els.submitModal.hidden) closeSubmitModal();
   });
 
   document.addEventListener("click", function (e) {

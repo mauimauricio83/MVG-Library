@@ -48,7 +48,7 @@
     <p class="subtitle">Every music video, every credit, all in one place.</p>
     <p class="subtitle subtitle-stats" id="subtitleStats"></p>
     <div class="header-links">
-      <a class="submit-link" href="https://forms.gle/8Tq1XXpPMHnSip5i6" target="_blank" rel="noopener noreferrer">Submit your music video here</a>
+      <button type="button" class="submit-link header-account-btn" id="openSubmitBtn">Submit your music video here</button>
       <span class="header-links-sep">·</span>
       <a class="submit-link" href="https://discord.gg/3UCVQzXuf5" target="_blank" rel="noopener noreferrer">Join our Discord</a>
       <span class="header-links-sep">·</span>
@@ -194,6 +194,81 @@
   <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Entry details">
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="lightbox-content" id="lightboxContent"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="submitModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel submit-panel" role="dialog" aria-modal="true" aria-label="Submit your music video">
+    <button type="button" class="lightbox-close" id="submitClose" aria-label="Close">&times;</button>
+    <form class="submit-form" id="submitForm">
+      <h2 class="submit-form-title">Submit your music video</h2>
+      <p class="submit-form-intro">We review every submission before it's added to the library.</p>
+
+      <label>Artist<span class="submit-required">*</span>
+        <input type="text" name="artist" id="submitArtist" required>
+      </label>
+      <label>Song Title<span class="submit-required">*</span>
+        <input type="text" name="song" id="submitSong" required>
+      </label>
+      <label>YouTube Link <span class="submit-optional">(optional but recommended)</span>
+        <input type="url" name="youtube" placeholder="https://youtube.com/watch?v=…">
+      </label>
+      <label>Director
+        <input type="text" name="director" placeholder="Last name, first name">
+      </label>
+      <label>Category
+        <select name="category" id="submitCategory">
+          <option value="">Choose…</option>
+        </select>
+      </label>
+      <label>Your email
+        <input type="email" name="email">
+      </label>
+
+      <details class="submit-more">
+        <summary>More details (optional)</summary>
+        <label>Description
+          <textarea name="description" rows="3"></textarea>
+        </label>
+        <label>Genre
+          <select name="genre" id="submitGenre">
+            <option value="">Choose…</option>
+          </select>
+        </label>
+        <label>Country
+          <select name="country" id="submitCountry">
+            <option value="">Choose…</option>
+          </select>
+        </label>
+        <label>Year of release
+          <input type="text" name="year" inputmode="numeric" placeholder="2024">
+        </label>
+        <label>Release date
+          <input type="text" name="releaseDate" placeholder="e.g. April 12, 2024">
+        </label>
+        <label>Producer
+          <input type="text" name="producer">
+        </label>
+        <label>Director of Photography
+          <input type="text" name="dp">
+        </label>
+        <label>Editor
+          <input type="text" name="editor">
+        </label>
+        <label>Choreographer
+          <input type="text" name="choreographer">
+        </label>
+        <label>Studio
+          <input type="text" name="studio">
+        </label>
+      </details>
+
+      <input type="text" name="website" class="submit-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button type="submit" class="submit-form-btn" id="submitFormBtn">Submit</button>
+      <p class="submit-form-status" id="submitFormStatus" hidden></p>
+    </form>
   </div>
 </div>
 

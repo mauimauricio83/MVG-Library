@@ -1327,6 +1327,121 @@ html, body {
   margin-right: 4px;
 }
 
+.submit-panel {
+  max-width: 520px;
+  padding: 28px;
+}
+
+.submit-form-title {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+}
+
+.submit-form-intro {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.submit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.submit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.submit-form input,
+.submit-form select,
+.submit-form textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.submit-form textarea {
+  resize: vertical;
+}
+
+.submit-required {
+  color: #c4293f;
+  margin-left: 2px;
+}
+
+.submit-optional {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.submit-more {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.submit-more summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.submit-more label {
+  margin-top: 12px;
+}
+
+.submit-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.submit-form-btn {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.submit-form-btn:hover {
+  opacity: 0.9;
+}
+
+.submit-form-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.submit-form-status {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.submit-form-status.is-success {
+  color: #1f8a5f;
+}
+
+.submit-form-status.is-error {
+  color: #c4293f;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #121214;
