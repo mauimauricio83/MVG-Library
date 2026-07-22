@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "3.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.0.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -13,6 +13,23 @@
   var AD_DEFAULT_SECONDS = 6;
   var TOP_AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
   var TOP_AD_DEFAULT_SECONDS = 6;
+
+  // Client-side Firebase config -- safe to be public; Firestore's security
+  // rules (not this config) are what actually gate access.
+  var firebaseConfig = {
+    apiKey: "AIzaSyAStHfrJ9NwLfaIclL9ODHFchxMm5MBlMw",
+    authDomain: "mvg-library.firebaseapp.com",
+    projectId: "mvg-library",
+    storageBucket: "mvg-library.firebasestorage.app",
+    messagingSenderId: "231351803618",
+    appId: "1:231351803618:web:abc5015bccc8361296c8bb",
+    measurementId: "G-GS1TQ1CXRZ"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+  var googleProvider = new firebase.auth.GoogleAuthProvider();
+  var currentUser = null;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
   // Entry IDs read directly from the form's own field definitions.
@@ -71,7 +88,12 @@
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
-    appFooter: document.getElementById("appFooter")
+    appFooter: document.getElementById("appFooter"),
+    signInBtn: document.getElementById("signInBtn"),
+    signOutBtn: document.getElementById("signOutBtn"),
+    headerAccount: document.getElementById("headerAccount"),
+    headerAvatar: document.getElementById("headerAvatar"),
+    headerUserName: document.getElementById("headerUserName")
   };
 
   els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
@@ -236,8 +258,9 @@
     } catch (e) {}
   }
 
-  // Favorites/recently-viewed live only in this browser's localStorage for
-  // now — no accounts yet, so nothing syncs across devices.
+  // Favorites/recently-viewed are localStorage-first (instant, works
+  // signed-out) and pushed to Firestore too when signed in, so they sync
+  // across devices. See syncFromFirestore()/pushToFirestore() below.
   var FAVORITES_KEY = "mvg-favorites";
   var RECENT_KEY = "mvg-recently-viewed";
   var RECENT_MAX = 12;
@@ -268,6 +291,7 @@
     if (nowFavorite) list.push(rowNum);
     else list.splice(idx, 1);
     saveFavorites(list);
+    pushToFirestore();
     return nowFavorite;
   }
 
@@ -286,6 +310,50 @@
     try {
       localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
     } catch (e) {}
+    pushToFirestore();
+  }
+
+  // Fire-and-forget: local writes should never wait on the network, and this
+  // fires on every favorite/view so silent failure (offline, rules issue) is
+  // the right behavior rather than surfacing an error to the user.
+  function pushToFirestore() {
+    if (!currentUser) return;
+    db.collection("users").doc(currentUser.uid).set({
+      favorites: loadFavorites(),
+      recentlyViewed: loadRecentlyViewed()
+    }, { merge: true }).catch(function (err) {
+      console.error("Firestore sync (push) failed:", err);
+    });
+  }
+
+  // Runs once per sign-in: reconciles this browser's local data with
+  // whatever's already saved for this account, so signing in on a fresh
+  // device doesn't wipe out favorites picked up elsewhere (or vice versa).
+  function syncFromFirestore() {
+    if (!currentUser) return;
+    db.collection("users").doc(currentUser.uid).get().then(function (doc) {
+      var remote = doc.exists ? doc.data() : {};
+      var remoteFavorites = Array.isArray(remote.favorites) ? remote.favorites : [];
+      var remoteRecent = Array.isArray(remote.recentlyViewed) ? remote.recentlyViewed : [];
+      var localFavorites = loadFavorites();
+      var localRecent = loadRecentlyViewed();
+
+      var mergedFavorites = remoteFavorites.concat(
+        localFavorites.filter(function (id) { return remoteFavorites.indexOf(id) === -1; })
+      );
+      var mergedRecent = remoteRecent.length ? remoteRecent : localRecent;
+
+      saveFavorites(mergedFavorites);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(mergedRecent.slice(0, RECENT_MAX)));
+      } catch (e) {}
+
+      pushToFirestore();
+      renderFavoritesStrip(state.rows);
+      renderRecentStrip(state.rows);
+    }).catch(function (err) {
+      console.error("Firestore sync (pull) failed:", err);
+    });
   }
 
   function saveCache(rows) {
@@ -1502,6 +1570,27 @@
       if (state.query) state.activeLetter = null;
       render();
     }, 120);
+  });
+
+  els.signInBtn.addEventListener("click", function () {
+    auth.signInWithPopup(googleProvider).catch(function (err) {
+      console.error("Sign-in failed:", err);
+    });
+  });
+
+  els.signOutBtn.addEventListener("click", function () {
+    auth.signOut();
+  });
+
+  auth.onAuthStateChanged(function (user) {
+    currentUser = user;
+    els.signInBtn.hidden = !!user;
+    els.headerAccount.hidden = !user;
+    if (user) {
+      els.headerAvatar.src = user.photoURL || "";
+      els.headerUserName.textContent = user.displayName || user.email || "";
+      syncFromFirestore();
+    }
   });
 
   fetchData();

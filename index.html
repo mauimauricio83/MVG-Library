@@ -53,6 +53,13 @@
       <a class="submit-link" href="https://discord.gg/3UCVQzXuf5" target="_blank" rel="noopener noreferrer">Join our Discord</a>
       <span class="header-links-sep">·</span>
       <a class="submit-link" href="mailto:maui@themusicvideoguy.com">Feedback</a>
+      <span class="header-links-sep">·</span>
+      <button type="button" class="submit-link header-account-btn" id="signInBtn">Sign in with Google</button>
+      <span class="header-account" id="headerAccount" hidden>
+        <img class="header-avatar" id="headerAvatar" alt="">
+        <span class="header-account-name" id="headerUserName"></span>
+        <button type="button" class="submit-link header-account-btn" id="signOutBtn">Sign out</button>
+      </span>
     </div>
   </header>
 
@@ -191,6 +198,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

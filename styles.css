@@ -75,6 +75,7 @@ html, body {
 .header-links {
   margin-top: 8px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 8px;
@@ -94,6 +95,36 @@ html, body {
 
 .submit-link:hover {
   opacity: 0.8;
+}
+
+.header-account-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.header-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-account[hidden] {
+  display: none;
+}
+
+.header-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: block;
+}
+
+.header-account-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 .media-strip {
