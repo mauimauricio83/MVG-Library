@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.3.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.4.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -90,6 +90,8 @@
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
     recentCollapseBtn: document.getElementById("recentCollapseBtn"),
     favoritesCollapseBtn: document.getElementById("favoritesCollapseBtn"),
+    latestCollapseBtn: document.getElementById("latestCollapseBtn"),
+    featuredCollapseBtn: document.getElementById("featuredCollapseBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
@@ -272,14 +274,16 @@
     } catch (e) {}
   }
 
-  // Recently Viewed/Favorites default to collapsed (unlike the filters
-  // panel, which defaults open) -- they're secondary, personalized content,
-  // not something most visitors need expanded on every visit.
-  function loadCollapsedPref(key) {
+  // All four media strips are collapsible; each picks its own default via
+  // the defaultCollapsed param below -- Recently Viewed/Favorites start
+  // collapsed (secondary, personalized content), Latest/Featured start
+  // expanded (primary content most visitors want to see right away).
+  function loadCollapsedPref(key, defaultCollapsed) {
     try {
-      return localStorage.getItem(key) !== "false";
+      var raw = localStorage.getItem(key);
+      return raw === null ? defaultCollapsed : raw === "true";
     } catch (e) {
-      return true;
+      return defaultCollapsed;
     }
   }
 
@@ -289,8 +293,8 @@
     } catch (e) {}
   }
 
-  function setupCollapsibleStrip(sectionEl, toggleBtn, prefKey) {
-    var collapsed = loadCollapsedPref(prefKey);
+  function setupCollapsibleStrip(sectionEl, toggleBtn, prefKey, defaultCollapsed) {
+    var collapsed = loadCollapsedPref(prefKey, defaultCollapsed);
     sectionEl.classList.toggle("is-collapsed", collapsed);
     toggleBtn.addEventListener("click", function () {
       collapsed = !collapsed;
@@ -836,8 +840,10 @@
   var recentStrip = createMediaStrip(els.recentStrip);
   var favoritesStrip = createMediaStrip(els.favoritesStrip);
 
-  setupCollapsibleStrip(els.recentStrip, els.recentCollapseBtn, "mvg-recent-collapsed");
-  setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed");
+  setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
+  setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
+  setupCollapsibleStrip(els.recentStrip, els.recentCollapseBtn, "mvg-recent-collapsed", true);
+  setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed", true);
 
   var latestPool = [];
   function renderLatestStrip(rows) {
