@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.17.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.18.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -94,6 +94,8 @@
     recentList: document.getElementById("recentList"),
     latestCollapseBtn: document.getElementById("latestCollapseBtn"),
     featuredCollapseBtn: document.getElementById("featuredCollapseBtn"),
+    latestSeeMoreBtn: document.getElementById("latestSeeMoreBtn"),
+    featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
     spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
@@ -103,6 +105,12 @@
     headerAccount: document.getElementById("headerAccount"),
     headerAvatar: document.getElementById("headerAvatar"),
     headerUserName: document.getElementById("headerUserName"),
+    sidebarHomeBtn: document.getElementById("sidebarHomeBtn"),
+    sidebarTVBtn: document.getElementById("sidebarTVBtn"),
+    topBarSearchBtn: document.getElementById("topBarSearchBtn"),
+    topBarSearchOverlay: document.getElementById("topBarSearchOverlay"),
+    topBarSearchInput: document.getElementById("topBarSearchInput"),
+    topBarSearchClose: document.getElementById("topBarSearchClose"),
     openSubmitBtn: document.getElementById("openSubmitBtn"),
     submitModal: document.getElementById("submitModal"),
     submitClose: document.getElementById("submitClose"),
@@ -1003,6 +1011,19 @@
   setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
   setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed", true);
 
+  // Desktop-only: the gallery grid is capped to ~2 rows by default (see
+  // styles.css) so it doesn't push everything else several scrolls down.
+  // Not used on mobile, which keeps the horizontal scroll strip.
+  function setupSeeMore(sectionEl, btn) {
+    btn.addEventListener("click", function () {
+      var expanded = sectionEl.classList.toggle("is-expanded");
+      btn.textContent = expanded ? "See less ▴" : "See more ▾";
+    });
+  }
+
+  setupSeeMore(els.latestStrip, els.latestSeeMoreBtn);
+  setupSeeMore(els.featuredStrip, els.featuredSeeMoreBtn);
+
   var latestPool = [];
   function renderLatestStrip(rows) {
     latestPool = rows
@@ -1691,6 +1712,57 @@
 
   els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
+  // Desktop's equivalent of the mobile view switch above: Home (default,
+  // no class) is the full page exactly as it's always been -- Latest/TV
+  // Mode/Featured/search all stay right where they are. Search and TV are
+  // dedicated alternate views (see styles.css) reached via the sidebar's
+  // Home/TV Mode links or the top-bar search icon.
+  function setDesktopView(view) {
+    document.body.classList.toggle("desktop-view-search", view === "search");
+    document.body.classList.toggle("desktop-view-tv", view === "tv");
+  }
+
+  els.sidebarHomeBtn.addEventListener("click", function () {
+    setDesktopView("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.sidebarTVBtn.addEventListener("click", function () {
+    setDesktopView("tv");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.topBarSearchBtn.addEventListener("click", function () {
+    els.topBarSearchOverlay.hidden = false;
+    els.topBarSearchInput.value = state.query;
+    els.topBarSearchInput.focus();
+  });
+
+  els.topBarSearchClose.addEventListener("click", function () {
+    els.topBarSearchOverlay.hidden = true;
+  });
+
+  var topBarSearchTimer = null;
+  els.topBarSearchInput.addEventListener("input", function () {
+    clearTimeout(topBarSearchTimer);
+    topBarSearchTimer = setTimeout(function () {
+      state.query = els.topBarSearchInput.value.trim();
+      if (state.query) state.activeLetter = null;
+      els.search.value = state.query; // keep the inline home-page search in sync
+      setDesktopView("search");
+      render();
+    }, 120);
+  });
+
+  els.topBarSearchInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      els.topBarSearchInput.blur();
+    } else if (e.key === "Escape") {
+      els.topBarSearchOverlay.hidden = true;
+    }
+  });
+
   // On mobile the sidebar is a fullscreen modal (history-integrated,
   // scroll-locked, auto-closes on item click/outside click/Escape). On
   // desktop it's a persistent rail that just widens/narrows on toggle --
@@ -2248,6 +2320,7 @@
     searchTimer = setTimeout(function () {
       state.query = els.search.value.trim();
       if (state.query) state.activeLetter = null;
+      els.topBarSearchInput.value = state.query; // keep the top-bar search overlay in sync
       render();
     }, 120);
   });

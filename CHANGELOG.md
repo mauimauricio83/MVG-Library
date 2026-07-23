@@ -2,7 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.17.0 — current
+## v4.18.0 — current
+- Fixed sidebar icon misalignment: `.header-account-btn`'s `padding: 0` was overriding `.submit-link`'s padding for `<button>` items (but not `<a>` items, which don't have that class), so button icons sat 8px left of link icons
+- Simplified the "about" strip: removed the blurb paragraph, kept the subtitle + stats line, centered
+- Featured and Latest Submissions are now capped to ~2 rows on desktop by default, with a "See more" toggle to expand -- previously required several scrolls just to get past them
+- Added a top-bar search icon (upper right, in line with the title) that pops out a search bar on top of the hamburger/logo/title. Typing in it opens a dedicated search-results page (hiding Latest/TV Mode/Featured/about strip) -- the existing inline search between Latest and TV Mode is unchanged and still filters in place on the home page; the two stay in sync
+- Added Home and TV Mode links to the top of the left sidebar (desktop only -- mobile already has both via the bottom nav) so users can get back to the main gallery or reach a dedicated TV Mode page (banner, player, filters only) from anywhere
+- Fixed a second sidebar icon bug found along the way: Discord's icon was an accidental copy of the Home icon's house-shaped path from the original sidebar build -- now a proper chat-bubble icon
+
+## v4.17.0
 - Redesigned the desktop layout to a YouTube-style shell: a full-width top bar (hamburger leftmost, then logo, then title), a persistent left sidebar (icon rail collapsed, icons + plain-text labels when expanded via the hamburger -- no more blue/underlined links), and a maximized (not centered) main content area
 - The old centered subtitle/stats block is now a compact "about" strip under the top bar, with a short blurb (loosely adapted from the Support page) added alongside it
 - Featured and Latest Submissions are now dominant, gallery-style grids on desktop with much bigger thumbnails, instead of a small horizontal scroll strip. Favorites keeps the compact strip. Mobile is unaffected -- still the horizontal scroll strips and fullscreen hamburger menu built over the last several updates

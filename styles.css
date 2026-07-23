@@ -44,11 +44,48 @@ html, body {
    media query below re-centers the logo/title and pulls the hamburger out
    to an absolute top-right position instead. */
 .top-bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
+}
+
+.top-bar-search-btn {
+  margin-left: auto;
+}
+
+.top-bar-search-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  background: var(--bg);
+}
+
+.top-bar-search-overlay[hidden] {
+  display: none;
+}
+
+.top-bar-search-overlay-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.top-bar-search-overlay input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
 }
 
 .header-icon-btn {
@@ -105,20 +142,13 @@ html, body {
 
 .about-strip {
   margin-bottom: 28px;
+  text-align: center;
 }
 
 .subtitle {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
-}
-
-.about-blurb {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  max-width: 640px;
-  line-height: 1.5;
 }
 
 .subtitle-stats {
@@ -197,7 +227,6 @@ html, body {
 .header-account-btn {
   border: none;
   background: none;
-  padding: 0;
   font-family: inherit;
   cursor: pointer;
   width: 100%;
@@ -272,14 +301,6 @@ html, body {
   .header-icon-btn svg {
     width: 18px;
     height: 18px;
-  }
-
-  .about-strip {
-    text-align: center;
-  }
-
-  .about-blurb {
-    max-width: none;
   }
 
   .app {
@@ -415,6 +436,16 @@ html, body {
 
   /* Settings moved to the bottom nav on mobile -- desktop keeps it inline. */
   #openSettingsBtn {
+    display: none;
+  }
+
+  /* Home/TV Mode links and the top-bar search icon are desktop-only --
+     mobile already has these via the bottom nav. #headerLinks. prefix
+     needed so this beats .header-links.is-open .submit-link's
+     display:flex on specificity (2 classes) when the mobile menu is open. */
+  #headerLinks .sidebar-page-link,
+  .top-bar-search-btn,
+  .top-bar-search-overlay {
     display: none;
   }
 }
@@ -586,6 +617,10 @@ html, body {
 /* Featured and Latest Submissions are the dominant, gallery-style
    sections on desktop -- a real grid instead of the horizontal scroll
    strip Favorites/mobile still use, with bigger thumbnails. */
+.media-strip-see-more {
+  display: none;
+}
+
 @media (min-width: 641px) {
   #latestStrip,
   #featuredStrip {
@@ -640,6 +675,64 @@ html, body {
   #latestStrip .media-strip-artist,
   #featuredStrip .media-strip-artist {
     font-size: 0.82rem;
+  }
+
+  /* Capped to roughly two rows by default so the gallery doesn't push
+     everything else several scrolls down -- "See more" lifts the cap. */
+  #latestStrip .media-strip-track,
+  #featuredStrip .media-strip-track {
+    max-height: 380px;
+    overflow: hidden;
+  }
+
+  #latestStrip.is-expanded .media-strip-track,
+  #featuredStrip.is-expanded .media-strip-track {
+    max-height: none;
+  }
+
+  .media-strip-see-more {
+    display: block;
+    margin: 14px auto 0;
+    padding: 8px 22px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .media-strip-see-more:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Desktop "pages", switched via the sidebar's Home/TV Mode links or the
+     top-bar search icon. Home (default, no class) is today's full page,
+     completely unchanged -- Latest/TV Mode/Featured/about strip stay
+     exactly where they are, and search/filters/results stay reachable
+     inline between Latest and Featured just like before. Search and TV
+     are dedicated alternate views that hide the Home-only sections.
+     Nothing needs to be shown/moved for them -- the sections they DO
+     want (search+filters+results; ad banner+TV Mode+filters) are already
+     visible by default, so hiding just the Home-only ones is enough. */
+  body.desktop-view-search .about-strip,
+  body.desktop-view-search #latestStrip,
+  body.desktop-view-search .ad-placeholder,
+  body.desktop-view-search #videoEmbed,
+  body.desktop-view-search #featuredStrip {
+    display: none;
+  }
+
+  body.desktop-view-tv .about-strip,
+  body.desktop-view-tv #latestStrip,
+  body.desktop-view-tv #featuredStrip,
+  body.desktop-view-tv .controls,
+  body.desktop-view-tv #status,
+  body.desktop-view-tv #jumpNavTop,
+  body.desktop-view-tv .results-layout,
+  body.desktop-view-tv #jumpNavBottom {
+    display: none;
   }
 }
 
