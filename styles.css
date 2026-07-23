@@ -272,6 +272,11 @@ html, body {
     font-size: 1.05rem;
     border-bottom: none;
   }
+
+  /* Settings moved to the bottom nav on mobile -- desktop keeps it inline. */
+  #openSettingsBtn {
+    display: none;
+  }
 }
 
 .media-strip {
@@ -1949,7 +1954,8 @@ html, body {
     cursor: pointer;
   }
 
-  .bottom-nav-item:active {
+  .bottom-nav-item:active,
+  .bottom-nav-item.is-active {
     color: var(--accent);
   }
 
@@ -1958,19 +1964,66 @@ html, body {
   }
 
   .bottom-nav-icon svg {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
   }
 
   .bottom-nav-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 600;
   }
 
-  /* Featured sits between the search box and the results list -- while
-     actively searching, hide it so results aren't pushed further down
-     (worse still with the on-screen keyboard eating vertical space). */
-  body.is-searching #featuredStrip {
+  /* Favorites is a popup on mobile (bottomNavFavorites), not an inline
+     strip -- desktop keeps the inline strip. */
+  #favoritesStrip {
     display: none;
+  }
+
+  /* Two mutually-exclusive mobile views: Home (browse -- Latest
+     Submissions, the ad banner, TV Mode, Featured) and Search (tabs,
+     search box, filters, jump nav, results). Home is the default;
+     switching to Search hides the Home-only sections instead of just
+     pushing them off-screen, so results aren't buried below the fold
+     (worse still with the on-screen keyboard open). */
+  .controls,
+  .filters-toggle-row,
+  .filters-row,
+  #status,
+  #jumpNavTop,
+  .results-layout,
+  #jumpNavBottom {
+    display: none;
+  }
+
+  body.mobile-view-search #latestStrip,
+  body.mobile-view-search .ad-placeholder,
+  body.mobile-view-search #videoEmbed,
+  body.mobile-view-search #featuredStrip {
+    display: none;
+  }
+
+  body.mobile-view-search .controls {
+    display: flex;
+  }
+
+  body.mobile-view-search .filters-toggle-row {
+    display: flex;
+  }
+
+  body.mobile-view-search .filters-row {
+    display: flex;
+  }
+
+  body.mobile-view-search #status {
+    display: flex;
+  }
+
+  body.mobile-view-search #jumpNavTop,
+  body.mobile-view-search #jumpNavBottom {
+    display: flex;
+  }
+
+  body.mobile-view-search .results-layout {
+    display: flex;
   }
 }

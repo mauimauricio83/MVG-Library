@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.14.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.15.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -115,10 +115,15 @@
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
     headerMenuClose: document.getElementById("headerMenuClose"),
-    headerSearchBtn: document.getElementById("headerSearchBtn"),
     bottomNavHome: document.getElementById("bottomNavHome"),
     bottomNavFavorites: document.getElementById("bottomNavFavorites"),
+    bottomNavSearch: document.getElementById("bottomNavSearch"),
     bottomNavTV: document.getElementById("bottomNavTV"),
+    bottomNavSettings: document.getElementById("bottomNavSettings"),
+    favoritesModal: document.getElementById("favoritesModal"),
+    favoritesModalClose: document.getElementById("favoritesModalClose"),
+    favoritesModalList: document.getElementById("favoritesModalList"),
+    favoritesModalPlayAll: document.getElementById("favoritesModalPlayAll"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -191,6 +196,7 @@
     closeSubmitModal();
     closeSettingsModal();
     closeRecentModal();
+    closeFavoritesModal();
     closeHeaderMenu();
   }
 
@@ -1016,6 +1022,32 @@
     favoritesStrip.render(favoritesPool);
   }
 
+  // Favorites is a vertical popup on mobile (bottomNavFavorites), not a
+  // horizontal strip -- reuses favoritesPool from renderFavoritesStrip.
+  function renderFavoritesModalList() {
+    if (!favoritesPool.length) {
+      els.favoritesModalList.innerHTML = '<p class="recent-empty">Videos you favorite will show up here.</p>';
+      return;
+    }
+
+    els.favoritesModalList.innerHTML = favoritesPool.map(function (row) {
+      var id = extractYouTubeId(row.youtube);
+      var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+      var thumb = id
+        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
+        : "";
+      return (
+        '<button type="button" class="recent-item" data-row="' + escapeHtml(row.rowNum) + '">' +
+          '<div class="recent-item-thumb">' + thumb + "</div>" +
+          '<div class="recent-item-info">' +
+            '<div class="recent-item-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+            '<div class="recent-item-artist">' + escapeHtml(row.artist || "") + "</div>" +
+          "</div>" +
+        "</button>"
+      );
+    }).join("");
+  }
+
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
   // placement — kept in sheet row order rather than randomized.
   var hasSpotlightContent = false;
@@ -1549,22 +1581,46 @@
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
 
+  // Two mutually-exclusive mobile views (see styles.css): Home (browse --
+  // Latest Submissions, ad banner, TV Mode, Featured) and Search (tabs,
+  // search box, filters, results). Home is the default landing state;
+  // Search is only entered via the bottom nav's Search button. No-op on
+  // desktop, where both sets of sections are always shown regardless.
+  var bottomNavViewButtons = [
+    { btn: els.bottomNavHome, view: "home" },
+    { btn: els.bottomNavSearch, view: "search" }
+  ];
+
+  function setMobileView(view) {
+    state.mobileView = view;
+    document.body.classList.toggle("mobile-view-home", view === "home");
+    document.body.classList.toggle("mobile-view-search", view === "search");
+    bottomNavViewButtons.forEach(function (entry) {
+      entry.btn.classList.toggle("is-active", entry.view === view);
+    });
+  }
+
+  setMobileView("home");
+
   els.bottomNavHome.addEventListener("click", function () {
+    setMobileView("home");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  els.headerSearchBtn.addEventListener("click", function () {
-    scrollBelowStickyHeader(els.search);
+  els.bottomNavSearch.addEventListener("click", function () {
+    setMobileView("search");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     els.search.focus();
   });
 
-  els.bottomNavFavorites.addEventListener("click", function () {
-    scrollBelowStickyHeader(els.favoritesStrip);
-  });
+  els.bottomNavFavorites.addEventListener("click", openFavoritesModal);
 
   els.bottomNavTV.addEventListener("click", function () {
+    setMobileView("home");
     scrollBelowStickyHeader(els.videoEmbed);
   });
+
+  els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
   function closeHeaderMenu() {
     if (!els.headerLinks.classList.contains("is-open")) return;
@@ -1658,6 +1714,40 @@
         openLightbox(row);
       }
     }
+  });
+
+  function openFavoritesModal() {
+    renderFavoritesStrip(state.rows);
+    renderFavoritesModalList();
+    els.favoritesModal.hidden = false;
+    els.favoritesModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeFavoritesModal() {
+    if (els.favoritesModal.hidden) return;
+    els.favoritesModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.favoritesModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
+      dismissTopModal();
+      return;
+    }
+    var item = e.target.closest(".recent-item");
+    if (item) {
+      var row = findRowByNum(item.getAttribute("data-row"));
+      if (row) {
+        closeFavoritesModal();
+        openLightbox(row);
+      }
+    }
+  });
+
+  els.favoritesModalPlayAll.addEventListener("click", function () {
+    startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
   });
 
   function openSettingsModal() {
@@ -1775,7 +1865,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     var anyOpen = !els.lightbox.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
-      !els.recentModal.hidden || els.headerLinks.classList.contains("is-open");
+      !els.recentModal.hidden || !els.favoritesModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
   });
 

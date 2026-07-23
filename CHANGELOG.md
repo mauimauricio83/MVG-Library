@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.14.2 — current
+## v4.15.0 — current
+- Mobile now has two distinct views instead of one long page: Home (default -- Latest Submissions, ad banner, TV Mode, Featured) and Search (tabs, search box, filters, jump nav, results), switched via the bottom nav's Search/Home buttons. Supersedes the previous "hide Featured while typing" patch -- Featured now only ever appears in Home view, full stop
+- Favorites is now a vertical popup (matching Recently Viewed) instead of an inline horizontal strip on mobile; desktop keeps the inline strip
+- Bottom nav reordered to Home / Favorites / Search / TV Mode / Settings; Settings moved here from the mobile hamburger menu (desktop keeps it in the header)
+
+## v4.14.2
 - On mobile, hide the Featured strip while actively typing a search query. It sits between the search box and the results list, so it was pushing results further down the page right when screen space is already tight from the on-screen keyboard. Reappears once the search box is cleared; desktop is unaffected
 
 ## v4.14.1
