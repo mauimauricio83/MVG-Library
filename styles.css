@@ -142,6 +142,10 @@ html, body {
   color: var(--text-muted);
 }
 
+.header-menu-close {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .header-menu-btn {
     display: flex;
@@ -161,41 +165,84 @@ html, body {
 
   .header-links {
     display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-    margin: 10px 0 0 auto;
-    padding: 18px;
-    max-width: 320px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    text-align: center;
   }
 
   .header-links.is-open {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    margin: 0;
+    padding: 72px 28px 28px;
+    max-width: none;
+    border: none;
+    border-radius: 0;
+    background: var(--bg);
+    text-align: left;
+    overflow-y: auto;
+  }
+
+  .header-links.is-open .header-menu-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
   }
 
   .header-links .header-links-sep {
     display: none;
   }
 
-  .header-links .submit-link {
-    font-size: 0.9rem;
+  .header-links.is-open .submit-link {
+    display: block;
+    width: 100%;
+    padding: 18px 2px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-links.is-open .submit-link:active {
+    color: var(--accent);
   }
 
   .header-account-area {
     margin-left: 0;
     flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
+    align-items: stretch;
+    gap: 0;
+    padding-top: 0;
+    border-top: none;
   }
 
-  .header-account {
-    justify-content: center;
+  .header-links.is-open .header-account {
+    justify-content: flex-start;
+    padding: 18px 2px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-links.is-open .header-account .submit-link {
+    display: inline;
+    padding: 0;
+    font-size: 1.05rem;
+    border-bottom: none;
   }
 }
 

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.12.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -114,6 +114,7 @@
     submitFormStatus: document.getElementById("submitFormStatus"),
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
+    headerMenuClose: document.getElementById("headerMenuClose"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -1466,11 +1467,13 @@
   function closeHeaderMenu() {
     els.headerLinks.classList.remove("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
   }
 
   els.headerMenuBtn.addEventListener("click", function () {
     var isOpen = els.headerLinks.classList.toggle("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", String(isOpen));
+    document.body.style.overflow = isOpen ? "hidden" : "";
   });
 
   // Closing on any link/button click inside the menu covers navigation,

@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.12.2 — current
+## v4.13.0 — current
+- Redesigned the mobile hamburger menu: it's now a fullscreen panel (like the submit-form modal) instead of a small dropdown, with large plain-text items (no blue link styling/underlines), dividers, and a close (X) button; locks body scroll while open
+
+## v4.12.2
 - Right-align the mobile hamburger button and its dropdown panel (was centered under the title, which looked odd)
 
 ## v4.12.1
