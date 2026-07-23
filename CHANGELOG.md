@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.13.2 — current
+## v4.14.0 — current
+- Added a mobile-only bottom nav bar (Home, Search, Favorites, TV Mode) as a first step toward a more app-like mobile layout -- Search scrolls to and focuses the search box, Favorites/TV Mode scroll to their sections, Home scrolls to top. Hidden on desktop
+- Fixed the browser/Android back button exiting the app entirely instead of dismissing whatever popup was open (video lightbox, Submit, Settings, Recently Viewed, the mobile header menu). Each popup now pushes one history entry on open; back triggers a proper close instead of leaving the page. X/backdrop/Escape dismissals now go through the same path (so back afterward doesn't leave a stale history entry), while switching between popups (e.g. Recently Viewed -> lightbox) reuses the same entry instead of stacking
+
+## v4.13.2
 - Fixed all four popups (video lightbox, Submit, Settings, Recently Viewed) opening pre-scrolled to wherever their panel was left scrolled to on a previous view, instead of the top. The panels reuse the same DOM node across opens and only their inner HTML was replaced, so a leftover `scrollTop` from a prior viewing (e.g. having scrolled down to read credits) persisted into the next one -- most visible on the video lightbox, where it could scroll the video itself out of view. Each panel's `scrollTop` now resets to 0 on open
 
 ## v4.13.1

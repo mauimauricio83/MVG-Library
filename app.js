@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.13.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -115,6 +115,10 @@
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
     headerMenuClose: document.getElementById("headerMenuClose"),
+    bottomNavHome: document.getElementById("bottomNavHome"),
+    bottomNavSearch: document.getElementById("bottomNavSearch"),
+    bottomNavFavorites: document.getElementById("bottomNavFavorites"),
+    bottomNavTV: document.getElementById("bottomNavTV"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -164,6 +168,50 @@
       window.scrollTo(0, scrollLockY);
     }
   }
+
+  // Popups (lightbox, submit/settings/recent modals, the mobile header menu)
+  // don't otherwise touch browser history, so the Android/browser back
+  // button skips right past them and exits the app/tab instead of just
+  // closing whatever's open. Pushing one history entry per "layer" makes
+  // back behave like a dismiss instead of a full exit: popstate closes
+  // whatever's open rather than navigating away. Only one entry is ever
+  // pushed at a time (modalHistoryActive) since only one popup is open at
+  // once -- switching between popups (e.g. Recently Viewed -> lightbox)
+  // reuses the same layer rather than stacking a new history entry per hop.
+  var modalHistoryActive = false;
+
+  function pushModalHistory() {
+    if (modalHistoryActive) return;
+    modalHistoryActive = true;
+    history.pushState({ mvgModal: true }, "", location.href);
+  }
+
+  function closeAllModalsHard() {
+    closeLightbox();
+    closeSubmitModal();
+    closeSettingsModal();
+    closeRecentModal();
+    closeHeaderMenu();
+  }
+
+  // Call this from user-facing dismiss actions (X buttons, backdrop clicks,
+  // Escape, clicking outside). Internal transitions between popups (e.g. a
+  // Recently Viewed item opening the lightbox) should keep calling the
+  // specific close*() function directly instead, so they don't trigger an
+  // actual back-navigation.
+  function dismissTopModal() {
+    if (modalHistoryActive) {
+      history.back();
+    } else {
+      closeAllModalsHard();
+    }
+  }
+
+  window.addEventListener("popstate", function () {
+    if (!modalHistoryActive) return;
+    modalHistoryActive = false;
+    closeAllModalsHard();
+  });
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
@@ -1423,6 +1471,7 @@
     els.lightbox.hidden = false;
     els.lightboxPanel.scrollTop = 0;
     lockBodyScroll();
+    pushModalHistory();
     applyLightboxSize();
 
     if (id) {
@@ -1489,6 +1538,7 @@
     els.submitModal.hidden = false;
     els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
+    pushModalHistory();
   }
 
   function closeSubmitModal() {
@@ -1499,6 +1549,23 @@
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
 
+  els.bottomNavHome.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.bottomNavSearch.addEventListener("click", function () {
+    scrollBelowStickyHeader(els.search);
+    els.search.focus();
+  });
+
+  els.bottomNavFavorites.addEventListener("click", function () {
+    scrollBelowStickyHeader(els.favoritesStrip);
+  });
+
+  els.bottomNavTV.addEventListener("click", function () {
+    scrollBelowStickyHeader(els.videoEmbed);
+  });
+
   function closeHeaderMenu() {
     if (!els.headerLinks.classList.contains("is-open")) return;
     els.headerLinks.classList.remove("is-open");
@@ -1507,21 +1574,33 @@
   }
 
   els.headerMenuBtn.addEventListener("click", function () {
-    var isOpen = els.headerLinks.classList.toggle("is-open");
-    els.headerMenuBtn.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) lockBodyScroll(); else unlockBodyScroll();
+    if (els.headerLinks.classList.contains("is-open")) {
+      dismissTopModal();
+      return;
+    }
+    els.headerLinks.classList.add("is-open");
+    els.headerMenuBtn.setAttribute("aria-expanded", "true");
+    lockBodyScroll();
+    pushModalHistory();
   });
 
   // Closing on any link/button click inside the menu covers navigation,
   // opening a modal, or signing in/out -- all of which should collapse it.
+  // The explicit close (X) button is a dismiss action, so it goes through
+  // dismissTopModal() to consume the pushed history entry via a real back
+  // navigation, same as the outside-click handler below.
   els.headerLinks.addEventListener("click", function (e) {
+    if (e.target.closest("#headerMenuClose")) {
+      dismissTopModal();
+      return;
+    }
     if (e.target.closest("a, button")) closeHeaderMenu();
   });
 
   document.addEventListener("click", function (e) {
     if (!els.headerLinks.classList.contains("is-open")) return;
     if (e.target.closest("#headerLinks") || e.target.closest("#headerMenuBtn")) return;
-    closeHeaderMenu();
+    dismissTopModal();
   });
 
   // Lets external links (e.g. an ad banner) open the submit modal directly,
@@ -1555,6 +1634,7 @@
     els.recentModal.hidden = false;
     els.recentModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
+    pushModalHistory();
   }
 
   function closeRecentModal() {
@@ -1567,7 +1647,7 @@
 
   els.recentModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
-      closeRecentModal();
+      dismissTopModal();
       return;
     }
     var item = e.target.closest(".recent-item");
@@ -1588,6 +1668,7 @@
     els.settingsModal.hidden = false;
     els.settingsModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
+    pushModalHistory();
   }
 
   function closeSettingsModal() {
@@ -1599,7 +1680,7 @@
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
 
   els.settingsModal.addEventListener("click", function (e) {
-    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSettingsModal();
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
 
   els.clearRecentBtn.addEventListener("click", function () {
@@ -1615,7 +1696,7 @@
   });
 
   els.submitModal.addEventListener("click", function (e) {
-    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeSubmitModal();
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
 
   els.submitForm.addEventListener("submit", function (e) {
@@ -1667,7 +1748,7 @@
 
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
-      closeLightbox();
+      dismissTopModal();
       return;
     }
     if (e.target.closest(".lightbox-widen-btn")) {
@@ -1693,11 +1774,9 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
-    if (!els.lightbox.hidden) closeLightbox();
-    if (!els.submitModal.hidden) closeSubmitModal();
-    if (!els.settingsModal.hidden) closeSettingsModal();
-    if (!els.recentModal.hidden) closeRecentModal();
-    if (els.headerLinks.classList.contains("is-open")) closeHeaderMenu();
+    var anyOpen = !els.lightbox.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
+      !els.recentModal.hidden || els.headerLinks.classList.contains("is-open");
+    if (anyOpen) dismissTopModal();
   });
 
   document.addEventListener("click", function (e) {
