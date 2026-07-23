@@ -1966,4 +1966,11 @@ html, body {
     font-size: 0.65rem;
     font-weight: 600;
   }
+
+  /* Featured sits between the search box and the results list -- while
+     actively searching, hide it so results aren't pushed further down
+     (worse still with the on-screen keyboard eating vertical space). */
+  body.is-searching #featuredStrip {
+    display: none;
+  }
 }

@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.14.1 — current
+## v4.14.2 — current
+- On mobile, hide the Featured strip while actively typing a search query. It sits between the search box and the results list, so it was pushing results further down the page right when screen space is already tight from the on-screen keyboard. Reappears once the search box is cleared; desktop is unaffected
+
+## v4.14.1
 - Moved Search out of the bottom nav (it barely helped, since the search box was often already on screen right above it) and into a dedicated icon button next to the hamburger menu, reachable from anywhere via one scroll-to-and-focus tap. Bottom nav is now Home / Favorites / TV Mode
 - Replaced all the emoji icons (bottom nav, hamburger, search) with consistent inline SVG icons -- emoji render inconsistently across platforms and read as visually mismatched next to each other
 

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.14.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.14.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1880,6 +1880,11 @@
   function render(sync) {
     moveVideoPairHome();
     updateFiltersToggleCount();
+    // On mobile, Featured sits between the search box and the results list,
+    // so while actively typing (results often obscured further by the
+    // on-screen keyboard) it just pushes the results the user is looking
+    // for further down. Hidden via CSS (see styles.css) while searching.
+    document.body.classList.toggle("is-searching", !!state.query);
     var myToken = ++renderToken;
 
     var baseFiltered = state.rows.filter(matchesBaseFilters);
