@@ -109,56 +109,6 @@ html, body {
   display: none;
 }
 
-@media (max-width: 640px) {
-  .header-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    margin: 10px auto 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font-size: 1.1rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .header-links {
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    margin: 10px auto 0;
-    padding: 16px;
-    max-width: 320px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-  }
-
-  .header-links.is-open {
-    display: flex;
-  }
-
-  .header-links .header-links-sep {
-    display: none;
-  }
-
-  .header-account-area {
-    margin-left: 0;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .header-account {
-    justify-content: center;
-  }
-}
-
 .header-account {
   display: inline-flex;
   align-items: center;
@@ -190,6 +140,63 @@ html, body {
 .header-account-name {
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .header-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin: 10px auto 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .header-links {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin: 10px auto 0;
+    padding: 18px;
+    max-width: 320px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .header-links.is-open {
+    display: flex;
+  }
+
+  .header-links .header-links-sep {
+    display: none;
+  }
+
+  .header-links .submit-link {
+    font-size: 0.9rem;
+  }
+
+  .header-account-area {
+    margin-left: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .header-account {
+    justify-content: center;
+  }
 }
 
 .media-strip {

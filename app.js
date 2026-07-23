@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.12.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1142,6 +1142,23 @@
     tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
   }
+
+  // Force landscape while a YouTube player (TV Mode or the lightbox) is
+  // fullscreen. The Fullscreen API bubbles up from the player's iframe to
+  // this top document even though the iframe itself is cross-origin, so we
+  // can react to it here. Screen Orientation lock only works on Chrome/
+  // Android (incl. this app's TWA wrapper) and silently no-ops elsewhere
+  // (e.g. iOS Safari, which has no lock API and just follows device rotation).
+  document.addEventListener("fullscreenchange", function () {
+    var el = document.fullscreenElement;
+    var isOurPlayer = el && (els.videoBox.contains(el) || els.lightbox.contains(el));
+    if (!screen.orientation || !screen.orientation.lock) return;
+    if (isOurPlayer) {
+      screen.orientation.lock("landscape").catch(function () {});
+    } else if (screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
+  });
 
   function tvLabelFor(row) {
     var parts = [row.song || "(untitled)"];

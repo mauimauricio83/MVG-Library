@@ -2,8 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.12.0 — current
+## v4.12.1 — current
+- Fixed the mobile hamburger menu: a leftover unconditional `.header-account-area` rule (further down the stylesheet, same specificity) was winning the cascade and right-aligning Settings/Sign in inside the dropdown. Moved the mobile overrides after the base rules and restyled the panel — centered items, a divider before Settings/Sign in — for a cleaner look
+
+## v4.12.0
 - Header links (Submit, Recently Viewed, Discord, Support, Settings, Sign in/account) now collapse into a hamburger menu below 640px, instead of wrapping onto multiple lines; the menu closes on item click, outside click, or Escape
+- YouTube fullscreen (TV Mode and the lightbox) now requests landscape orientation lock while fullscreen, via the Screen Orientation API on `fullscreenchange`. Chrome/Android (including this app's installed TWA) honors it; iOS Safari has no such API and silently falls back to its normal rotate-to-fullscreen behavior
 
 ## v4.11.1
 - Fixed header subtitle wording: "search below" (search bar is below the subtitle, not above)
