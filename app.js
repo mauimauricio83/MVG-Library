@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -82,14 +82,16 @@
     lightboxContent: document.getElementById("lightboxContent"),
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
-    recentStrip: document.getElementById("recentStrip"),
     favoritesStrip: document.getElementById("favoritesStrip"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     latestPlayAll: document.getElementById("latestPlayAll"),
     recentPlayAll: document.getElementById("recentPlayAll"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
-    recentCollapseBtn: document.getElementById("recentCollapseBtn"),
     favoritesCollapseBtn: document.getElementById("favoritesCollapseBtn"),
+    openRecentBtn: document.getElementById("openRecentBtn"),
+    recentModal: document.getElementById("recentModal"),
+    recentModalClose: document.getElementById("recentModalClose"),
+    recentList: document.getElementById("recentList"),
     latestCollapseBtn: document.getElementById("latestCollapseBtn"),
     featuredCollapseBtn: document.getElementById("featuredCollapseBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
@@ -134,11 +136,10 @@
   }
 
   function moveVideoPairHome() {
-    // TV Mode's video player + the ad banner live right below Latest
-    // Submissions; Featured/Favorites stay anchored after the jump nav.
-    // Split into two calls since they're no longer adjacent in the DOM.
-    els.latestStrip.after(els.adPlaceholder, els.videoEmbed);
-    els.jumpTop.after(els.featuredStrip, els.favoritesStrip);
+    // TV Mode's video player + the ad banner + Favorites live right below
+    // Latest Submissions; Featured stays anchored after the jump nav.
+    els.latestStrip.after(els.adPlaceholder, els.videoEmbed, els.favoritesStrip);
+    els.jumpTop.after(els.featuredStrip);
   }
 
   function findRowByNum(rowNum) {
@@ -418,7 +419,7 @@
 
       pushToFirestore();
       renderFavoritesStrip(state.rows);
-      renderRecentStrip(state.rows);
+      renderRecentList(state.rows);
     }).catch(function (err) {
       console.error("Firestore sync (pull) failed:", err);
     });
@@ -493,7 +494,7 @@
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
     renderFeaturedStrip(state.rows);
-    renderRecentStrip(state.rows);
+    renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
     render();
@@ -783,7 +784,9 @@
     render();
   });
 
-  function updateSubtitleStats(rows) {
+  // Full category breakdown -- shown in the blank-results empty state, not
+  // the header (see updateSubtitleStats below for that swap).
+  function categoryBreakdownText(rows) {
     var counts = {};
     rows.forEach(function (r) {
       var c = r.category || "Uncategorized";
@@ -792,7 +795,11 @@
     var parts = Object.keys(counts)
       .sort(function (a, b) { return counts[b] - counts[a]; })
       .map(function (c) { return counts[c] + " " + c + (counts[c] === 1 ? "" : "s"); });
-    els.subtitleStats.textContent = rows.length + " entries — " + parts.join(", ");
+    return rows.length + " entries — " + parts.join(", ");
+  }
+
+  function updateSubtitleStats(rows) {
+    els.subtitleStats.textContent = rows.length + " videos — search above, or pick a filter or letter to start browsing.";
   }
 
   function computeRecentSet(rows) {
@@ -859,12 +866,10 @@
 
   var latestStrip = createMediaStrip(els.latestStrip);
   var featuredStrip = createMediaStrip(els.featuredStrip);
-  var recentStrip = createMediaStrip(els.recentStrip);
   var favoritesStrip = createMediaStrip(els.favoritesStrip);
 
   setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
   setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
-  setupCollapsibleStrip(els.recentStrip, els.recentCollapseBtn, "mvg-recent-collapsed", true);
   setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed", true);
 
   var latestPool = [];
@@ -884,13 +889,35 @@
     featuredStrip.render(featuredPool);
   }
 
-  // Most-recently-viewed first; entries are pushed by openLightbox().
+  // Most-recently-viewed first; entries are pushed by openLightbox(). Shown
+  // in a vertical popup (recentModal) rather than a horizontal strip.
   var recentPool = [];
-  function renderRecentStrip(rows) {
+  function renderRecentList(rows) {
     recentPool = loadRecentlyViewed()
       .map(function (n) { return findRowByNum(n); })
       .filter(Boolean);
-    recentStrip.render(recentPool);
+
+    if (!recentPool.length) {
+      els.recentList.innerHTML = '<p class="recent-empty">Videos you open will show up here.</p>';
+      return;
+    }
+
+    els.recentList.innerHTML = recentPool.map(function (row) {
+      var id = extractYouTubeId(row.youtube);
+      var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+      var thumb = id
+        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
+        : "";
+      return (
+        '<button type="button" class="recent-item" data-row="' + escapeHtml(row.rowNum) + '">' +
+          '<div class="recent-item-thumb">' + thumb + "</div>" +
+          '<div class="recent-item-info">' +
+            '<div class="recent-item-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+            '<div class="recent-item-artist">' + escapeHtml(row.artist || "") + "</div>" +
+          "</div>" +
+        "</button>"
+      );
+    }).join("");
   }
 
   // Most-recently-favorited first.
@@ -1291,7 +1318,7 @@
     state.lightboxRowNum = row.rowNum;
     document.title = (row.song || "Untitled") + (row.artist ? " — " + row.artist : "") + " | MVG Library";
     pushRecentlyViewed(row.rowNum);
-    renderRecentStrip(state.rows);
+    renderRecentList(state.rows);
 
     var id = extractYouTubeId(row.youtube);
     var videoHtml = id
@@ -1443,6 +1470,35 @@
     applyTheme(theme);
   });
 
+  function openRecentModal() {
+    renderRecentList(state.rows);
+    els.recentModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeRecentModal() {
+    if (els.recentModal.hidden) return;
+    els.recentModal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  els.openRecentBtn.addEventListener("click", openRecentModal);
+
+  els.recentModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
+      closeRecentModal();
+      return;
+    }
+    var item = e.target.closest(".recent-item");
+    if (item) {
+      var row = findRowByNum(item.getAttribute("data-row"));
+      if (row) {
+        closeRecentModal();
+        openLightbox(row);
+      }
+    }
+  });
+
   function openSettingsModal() {
     els.settingsSyncNote.hidden = !currentUser;
     els.settingsStatus.hidden = true;
@@ -1471,7 +1527,7 @@
     // pushToFirestore() sends the now-empty list, so the account copy is
     // cleared too rather than resurrecting the history on next sign-in.
     pushToFirestore();
-    renderRecentStrip(state.rows);
+    renderRecentList(state.rows);
     els.settingsStatus.textContent = "Recently Viewed history cleared.";
     els.settingsStatus.hidden = false;
   });
@@ -1558,6 +1614,7 @@
     if (!els.lightbox.hidden) closeLightbox();
     if (!els.submitModal.hidden) closeSubmitModal();
     if (!els.settingsModal.hidden) closeSettingsModal();
+    if (!els.recentModal.hidden) closeRecentModal();
   });
 
   document.addEventListener("click", function (e) {
@@ -1675,8 +1732,7 @@
     // useful to show anyway — skip the render entirely until the user acts.
     // TV Mode is unaffected: it reads state.rows directly, not this DOM.
     if (!state.query && !hasActiveFilters()) {
-      els.results.innerHTML = '<div class="empty-state">' +
-        state.rows.length + ' videos — search above, or pick a filter or letter to start browsing.</div>';
+      els.results.innerHTML = '<div class="empty-state">' + escapeHtml(categoryBreakdownText(state.rows)) + "</div>";
       els.jumpBottom.hidden = true;
       els.spotlightSidebar.hidden = true;
       return;

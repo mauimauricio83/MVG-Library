@@ -62,11 +62,14 @@
     <div class="header-links">
       <button type="button" class="submit-link header-account-btn" id="openSubmitBtn">Submit music video</button>
       <span class="header-links-sep">·</span>
-      <a class="submit-link" href="https://discord.gg/3UCVQzXuf5" target="_blank" rel="noopener noreferrer">Discord</a>
-      <a class="submit-link" href="support.html">Support! ❤️</a>
+      <button type="button" class="submit-link header-account-btn" id="openRecentBtn">Recently Viewed</button>
       <span class="header-links-sep">·</span>
-      <button type="button" class="submit-link header-account-btn" id="openSettingsBtn">⚙ Settings</button>
+      <a class="submit-link" href="https://discord.gg/3UCVQzXuf5" target="_blank" rel="noopener noreferrer">Discord</a>
+      <span class="header-links-sep">·</span>
+      <a class="submit-link" href="support.html">Support! ❤️</a>
       <div class="header-account-area">
+        <button type="button" class="submit-link header-account-btn" id="openSettingsBtn">⚙ Settings</button>
+        <span class="header-links-sep">·</span>
         <button type="button" class="submit-link header-account-btn" id="signInBtn">Sign in</button>
         <span class="header-account" id="headerAccount" hidden>
           <img class="header-avatar" id="headerAvatar" alt="">
@@ -108,18 +111,18 @@
     </div>
   </section>
 
-  <section class="media-strip" id="recentStrip" hidden>
+  <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="recentCollapseBtn" aria-label="Expand or collapse">
+      <button type="button" class="media-strip-collapse-btn" id="favoritesCollapseBtn" aria-label="Expand or collapse">
         <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">🕘 Recently Viewed</span>
+        <span class="media-strip-title">❤ Favorites</span>
       </button>
-      <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
+      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
-      <button type="button" class="media-strip-arrow" id="recentStripPrev" aria-label="Show previous">‹</button>
-      <div class="media-strip-track" id="recentStripTrack"></div>
-      <button type="button" class="media-strip-arrow" id="recentStripNext" aria-label="Show next">›</button>
+      <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="favoritesStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
     </div>
   </section>
 
@@ -179,21 +182,6 @@
     </div>
   </section>
 
-  <section class="media-strip" id="favoritesStrip" hidden>
-    <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="favoritesCollapseBtn" aria-label="Expand or collapse">
-        <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">❤ Favorites</span>
-      </button>
-      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
-    </div>
-    <div class="media-strip-body">
-      <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
-      <div class="media-strip-track" id="favoritesStripTrack"></div>
-      <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
-    </div>
-  </section>
-
   <div class="results-layout">
     <main id="results" class="results">
       <div class="loading-state">
@@ -222,6 +210,20 @@
   <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Entry details">
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="lightbox-content" id="lightboxContent"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="recentModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel recent-panel" role="dialog" aria-modal="true" aria-label="Recently Viewed">
+    <button type="button" class="lightbox-close" id="recentModalClose" aria-label="Close">&times;</button>
+    <div class="recent-body">
+      <div class="recent-header">
+        <h2 class="recent-title">🕘 Recently Viewed</h2>
+        <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
+      </div>
+      <div class="recent-list" id="recentList"></div>
+    </div>
   </div>
 </div>
 

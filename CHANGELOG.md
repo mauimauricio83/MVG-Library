@@ -2,7 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.10.0 — current
+## v4.11.0 — current
+- Header stats swap: the header subtitle now shows the short "N videos — search above..." message, while the full category breakdown ("N entries — N Music Videos, N Dances, ...") moved to the blank-results empty state
+- Settings now sits directly beside (left of) Sign in/account in the header's right-aligned cluster
+- Recently Viewed converted from a horizontal media strip to a vertical popup, opened via a new "Recently Viewed" link in the header (next to Submit music video); clicking an item closes the popup and opens that video's lightbox
+- Favorites strip moved to directly below TV Mode/the ad banner, right after Latest Submissions
+
+## v4.10.0
 - Header cleanup: Sign in/account area moved to the far right, separated from the main link cluster; fixed a bug where "Sign in" stayed visible even while signed in (same `[hidden]`-vs-explicit-`display` class of bug as a few other elements this project has hit)
 - Jump-nav letter/number bar now omits letters with zero matches entirely, instead of showing them grayed out
 - TV Mode's video player and the ad banner now sit right below Latest Submissions instead of near the bottom of the filters area — verified TV Mode itself (start, skip, and staying stable through a search-triggered re-render) is unaffected by the reshuffle
