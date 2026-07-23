@@ -2,7 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.16.4 — current
+## v4.17.0 — current
+- Redesigned the desktop layout to a YouTube-style shell: a full-width top bar (hamburger leftmost, then logo, then title), a persistent left sidebar (icon rail collapsed, icons + plain-text labels when expanded via the hamburger -- no more blue/underlined links), and a maximized (not centered) main content area
+- The old centered subtitle/stats block is now a compact "about" strip under the top bar, with a short blurb (loosely adapted from the Support page) added alongside it
+- Featured and Latest Submissions are now dominant, gallery-style grids on desktop with much bigger thumbnails, instead of a small horizontal scroll strip. Favorites keeps the compact strip. Mobile is unaffected -- still the horizontal scroll strips and fullscreen hamburger menu built over the last several updates
+- Desktop's sidebar toggle is a simple, non-modal expand/collapse (no history entry, no scroll lock, doesn't auto-close when something inside it is clicked) since it's a persistent nav element, not a transient overlay like the mobile version of the same menu
+
+## v4.16.4
 - TV view (mobile, via the bottom nav's TV Mode button) now also hides Latest Submissions, so the ad banner and TV Mode section sit right after the header instead of further down the page
 
 ## v4.16.3

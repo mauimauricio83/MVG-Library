@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.16.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.17.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1691,30 +1691,45 @@
 
   els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
+  // On mobile the sidebar is a fullscreen modal (history-integrated,
+  // scroll-locked, auto-closes on item click/outside click/Escape). On
+  // desktop it's a persistent rail that just widens/narrows on toggle --
+  // no history entry, no scroll lock, and it doesn't auto-collapse just
+  // because something inside it was clicked.
+  function isMobileHeaderMenu() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
   function closeHeaderMenu() {
     if (!els.headerLinks.classList.contains("is-open")) return;
     els.headerLinks.classList.remove("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", "false");
-    unlockBodyScroll();
+    if (isMobileHeaderMenu()) unlockBodyScroll();
   }
 
   els.headerMenuBtn.addEventListener("click", function () {
-    if (els.headerLinks.classList.contains("is-open")) {
-      dismissTopModal();
+    var isOpen = els.headerLinks.classList.contains("is-open");
+    if (isOpen) {
+      if (isMobileHeaderMenu()) dismissTopModal(); else closeHeaderMenu();
       return;
     }
     els.headerLinks.classList.add("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", "true");
-    lockBodyScroll();
-    pushModalHistory();
+    if (isMobileHeaderMenu()) {
+      lockBodyScroll();
+      pushModalHistory();
+    }
   });
 
   // Closing on any link/button click inside the menu covers navigation,
-  // opening a modal, or signing in/out -- all of which should collapse it.
-  // The explicit close (X) button is a dismiss action, so it goes through
-  // dismissTopModal() to consume the pushed history entry via a real back
-  // navigation, same as the outside-click handler below.
+  // opening a modal, or signing in/out -- all of which should collapse it
+  // on mobile (a transient fullscreen overlay). The explicit close (X)
+  // button is a dismiss action, so it goes through dismissTopModal() to
+  // consume the pushed history entry via a real back navigation, same as
+  // the outside-click handler below. Desktop's persistent rail ignores
+  // both -- it only opens/closes via the hamburger itself.
   els.headerLinks.addEventListener("click", function (e) {
+    if (!isMobileHeaderMenu()) return;
     if (e.target.closest("#headerMenuClose")) {
       dismissTopModal();
       return;
@@ -1723,6 +1738,7 @@
   });
 
   document.addEventListener("click", function (e) {
+    if (!isMobileHeaderMenu()) return;
     if (!els.headerLinks.classList.contains("is-open")) return;
     if (e.target.closest("#headerLinks") || e.target.closest("#headerMenuBtn")) return;
     dismissTopModal();

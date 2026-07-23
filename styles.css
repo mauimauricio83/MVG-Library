@@ -39,38 +39,72 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-.app {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 28px 20px 60px;
-}
-
-.app-header {
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-.app-header-title-row {
-  display: inline-flex;
+/* Top bar: hamburger, logo, title -- full width, not centered. Desktop
+   shows it as a plain left-to-right row (hamburger leftmost); the mobile
+   media query below re-centers the logo/title and pulls the hamburger out
+   to an absolute top-right position instead. */
+.top-bar {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.header-icon-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .app-header-logo {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   flex: 0 0 auto;
 }
 
-.app-header h1 {
+.top-bar-title {
   font-family: "Archivo Black", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 400;
   margin: 0;
   letter-spacing: 0;
   color: var(--brand-yellow);
+  white-space: nowrap;
+}
+
+/* Shell: sidebar + main content side by side. On desktop the sidebar is a
+   real flex sibling, so expanding it (.is-open) naturally pushes the main
+   content over -- no JS-driven width/margin math needed. The mobile media
+   query turns the sidebar into a hidden-until-opened fullscreen overlay
+   instead (see below), at which point it's positioned out of flow and
+   .shell's own layout stops mattering for it. */
+.shell {
+  display: flex;
+  align-items: flex-start;
+}
+
+.app {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 24px 32px 60px;
+}
+
+.about-strip {
+  margin-bottom: 28px;
 }
 
 .subtitle {
@@ -79,36 +113,85 @@ html, body {
   font-size: 0.95rem;
 }
 
+.about-blurb {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
 .subtitle-stats {
   font-size: 0.8rem;
   color: var(--text-faint);
-  margin-top: 4px;
+  margin-top: 8px;
   min-height: 1.1em;
 }
 
+/* Sidebar (desktop): a persistent icon rail by default, widening on
+   .is-open to show labels too. */
 .header-links {
-  margin-top: 8px;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 0 0 auto;
+  width: 60px;
+  box-sizing: border-box;
+  overflow: hidden;
+  gap: 2px;
+  padding: 16px 10px;
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  transition: width 0.18s ease;
+}
+
+.header-links.is-open {
+  width: 230px;
 }
 
 .header-links-sep {
-  color: var(--text-faint);
-  font-size: 0.78rem;
+  display: none;
 }
 
 .submit-link {
-  display: inline-block;
-  font-size: 0.78rem;
-  color: var(--accent);
-  text-decoration: underline;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .submit-link:hover {
-  opacity: 0.8;
+  background: var(--accent-soft);
+  opacity: 1;
+}
+
+.header-links-icon {
+  display: flex;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: var(--text-muted);
+}
+
+.header-links-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.header-links-label {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.header-links.is-open .header-links-label {
+  opacity: 1;
 }
 
 .header-account-btn {
@@ -117,16 +200,15 @@ html, body {
   padding: 0;
   font-family: inherit;
   cursor: pointer;
-}
-
-.mobile-header-icons {
-  display: none;
+  width: 100%;
+  text-align: left;
 }
 
 .header-account {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
+  padding: 10px 8px;
 }
 
 .header-account[hidden] {
@@ -134,10 +216,12 @@ html, body {
 }
 
 .header-account-area {
-  margin-left: auto;
+  margin-top: auto;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 #signInBtn[hidden] {
@@ -145,15 +229,24 @@ html, body {
 }
 
 .header-avatar {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
+  flex: 0 0 auto;
   display: block;
 }
 
 .header-account-name {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.header-links.is-open .header-account-name {
+  opacity: 1;
 }
 
 .header-menu-close {
@@ -161,36 +254,19 @@ html, body {
 }
 
 @media (max-width: 640px) {
-  /* Sits beside the title/subtitle block (top-right corner) instead of on
-     its own row below. No padding-right on .app-header itself -- that
-     would shift the subtitle/stats text (which must stay centered to the
-     true screen width) off-center along with everything else. The title
-     row is short enough now (shrunk text + small logo) not to reach the
-     button. */
-  .app-header {
+  /* Top bar: logo/title centered, hamburger pulled out to the top-right
+     corner instead of sitting in normal flow beside them. */
+  .top-bar {
     position: relative;
-  }
-
-  .mobile-header-icons {
-    display: flex;
-    width: fit-content;
-    align-items: center;
-    gap: 8px;
-    position: absolute;
-    top: 0;
-    right: 0;
+    justify-content: center;
+    padding: 16px 54px 12px 20px;
+    border-bottom: none;
   }
 
   .header-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: none;
-    color: var(--text);
-    cursor: pointer;
+    position: absolute;
+    top: 12px;
+    right: 16px;
   }
 
   .header-icon-btn svg {
@@ -198,8 +274,16 @@ html, body {
     height: 18px;
   }
 
-  .header-links {
-    display: none;
+  .about-strip {
+    text-align: center;
+  }
+
+  .about-blurb {
+    max-width: none;
+  }
+
+  .app {
+    padding: 20px 20px 60px;
   }
 
   /* This app is often embedded via an auto-height iframe (e.g. on a
@@ -210,11 +294,24 @@ html, body {
      covering the wrong slice of that box once the outer page has
      scrolled -- there's no way to read the outer page's scroll position
      across origins to correct for it. Anchoring the menu in normal
-     document flow, right where the button that opened it lives, sidesteps
-     the problem entirely: that spot is guaranteed to be on-screen, since
-     the user just tapped a button there. */
-  .app-header {
+     document flow, right at the top of .shell (just below the top bar),
+     sidesteps the problem entirely: that spot is guaranteed to be
+     on-screen, since the user just tapped a button in the top bar above it. */
+  .shell {
     position: relative;
+    display: block;
+  }
+
+  /* Full override of the desktop sidebar rail -- mobile has no persistent
+     rail, just hidden-until-opened. */
+  .header-links {
+    display: none;
+    width: auto;
+    height: auto;
+    position: static;
+    overflow: visible;
+    border-right: none;
+    padding: 0;
   }
 
   .header-links.is-open {
@@ -227,11 +324,11 @@ html, body {
     top: 0;
     left: 0;
     right: 0;
+    width: auto;
     min-height: 100vh;
     z-index: 1000;
     margin: 0;
     padding: 72px 28px 28px;
-    max-width: none;
     border: none;
     border-radius: 0;
     background: var(--bg);
@@ -261,7 +358,9 @@ html, body {
   }
 
   .header-links.is-open .submit-link {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 16px;
     width: 100%;
     padding: 18px 2px;
     font-size: 1.25rem;
@@ -270,14 +369,25 @@ html, body {
     text-decoration: none;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    border-radius: 0;
   }
 
   .header-links.is-open .submit-link:active {
     color: var(--accent);
   }
 
+  .header-links.is-open .header-links-icon {
+    width: 26px;
+    height: 26px;
+    opacity: 1;
+  }
+
+  .header-links.is-open .header-links-label {
+    opacity: 1;
+  }
+
   .header-account-area {
-    margin-left: 0;
+    margin-top: 0;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
@@ -292,10 +402,15 @@ html, body {
   }
 
   .header-links.is-open .header-account .submit-link {
-    display: inline;
+    display: inline-flex;
+    width: auto;
     padding: 0;
     font-size: 1.05rem;
     border-bottom: none;
+  }
+
+  .header-links.is-open .header-account-name {
+    opacity: 1;
   }
 
   /* Settings moved to the bottom nav on mobile -- desktop keeps it inline. */
@@ -466,6 +581,66 @@ html, body {
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Featured and Latest Submissions are the dominant, gallery-style
+   sections on desktop -- a real grid instead of the horizontal scroll
+   strip Favorites/mobile still use, with bigger thumbnails. */
+@media (min-width: 641px) {
+  #latestStrip,
+  #featuredStrip {
+    border: none;
+    background: none;
+    padding: 0;
+    margin-bottom: 36px;
+  }
+
+  #latestStrip .media-strip-title,
+  #featuredStrip .media-strip-title {
+    font-size: 1.05rem;
+  }
+
+  #latestStrip .media-strip-body,
+  #featuredStrip .media-strip-body {
+    padding: 0;
+  }
+
+  #latestStrip .media-strip-arrow,
+  #featuredStrip .media-strip-arrow {
+    display: none;
+  }
+
+  #latestStrip .media-strip-track,
+  #featuredStrip .media-strip-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 24px;
+    overflow: visible;
+  }
+
+  #latestStrip .media-strip-card,
+  #featuredStrip .media-strip-card {
+    width: auto;
+  }
+
+  #latestStrip .media-strip-thumb,
+  #featuredStrip .media-strip-thumb {
+    width: 100%;
+    height: 130px;
+    border-radius: var(--radius);
+  }
+
+  #latestStrip .media-strip-song,
+  #featuredStrip .media-strip-song {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    white-space: normal;
+  }
+
+  #latestStrip .media-strip-artist,
+  #featuredStrip .media-strip-artist {
+    font-size: 0.82rem;
+  }
 }
 
 .controls {
