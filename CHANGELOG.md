@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.6.1 — current
+## v4.7.0 — current
+- Added a web app manifest + generated icons (192, 512, and a padded maskable variant from the real MVG badge) — first step toward wrapping the site as an installable Android app via Trusted Web Activity
+
+## v4.6.1
 - Country filter dropdown is now alphabetized instead of sorted by frequency — much easier to scan for a specific country
 
 ## v4.6.0

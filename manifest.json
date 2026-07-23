@@ -1,0 +1,32 @@
+{
+  "name": "MVG Library",
+  "short_name": "MVG Library",
+  "description": "Browse thousands of music videos by director, artist, or song — full credits, YouTube links, and behind-the-scenes details from The Music Video Guy.",
+  "start_url": "/MVG-Library/?source=pwa",
+  "id": "/MVG-Library/",
+  "scope": "/MVG-Library/",
+  "display": "standalone",
+  "background_color": "#121214",
+  "theme_color": "#121214",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/MVG-Library/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/MVG-Library/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/MVG-Library/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
