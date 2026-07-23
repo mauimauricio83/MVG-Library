@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.14.0 — current
+## v4.14.1 — current
+- Moved Search out of the bottom nav (it barely helped, since the search box was often already on screen right above it) and into a dedicated icon button next to the hamburger menu, reachable from anywhere via one scroll-to-and-focus tap. Bottom nav is now Home / Favorites / TV Mode
+- Replaced all the emoji icons (bottom nav, hamburger, search) with consistent inline SVG icons -- emoji render inconsistently across platforms and read as visually mismatched next to each other
+
+## v4.14.0
 - Added a mobile-only bottom nav bar (Home, Search, Favorites, TV Mode) as a first step toward a more app-like mobile layout -- Search scrolls to and focuses the search box, Favorites/TV Mode scroll to their sections, Home scrolls to top. Hidden on desktop
 - Fixed the browser/Android back button exiting the app entirely instead of dismissing whatever popup was open (video lightbox, Submit, Settings, Recently Viewed, the mobile header menu). Each popup now pushes one history entry on open; back triggers a proper close instead of leaving the page. X/backdrop/Escape dismissals now go through the same path (so back afterward doesn't leave a stale history entry), while switching between popups (e.g. Recently Viewed -> lightbox) reuses the same entry instead of stacking
 

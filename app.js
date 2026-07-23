@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.14.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -115,8 +115,8 @@
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
     headerMenuClose: document.getElementById("headerMenuClose"),
+    headerSearchBtn: document.getElementById("headerSearchBtn"),
     bottomNavHome: document.getElementById("bottomNavHome"),
-    bottomNavSearch: document.getElementById("bottomNavSearch"),
     bottomNavFavorites: document.getElementById("bottomNavFavorites"),
     bottomNavTV: document.getElementById("bottomNavTV"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
@@ -1553,7 +1553,7 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  els.bottomNavSearch.addEventListener("click", function () {
+  els.headerSearchBtn.addEventListener("click", function () {
     scrollBelowStickyHeader(els.search);
     els.search.focus();
   });

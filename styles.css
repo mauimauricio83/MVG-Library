@@ -105,7 +105,7 @@ html, body {
   cursor: pointer;
 }
 
-.header-menu-btn {
+.mobile-header-icons {
   display: none;
 }
 
@@ -147,20 +147,30 @@ html, body {
 }
 
 @media (max-width: 640px) {
-  .header-menu-btn {
+  .mobile-header-icons {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 0 auto;
+  }
+
+  .header-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 38px;
     height: 38px;
-    margin: 10px 0 0 auto;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
     color: var(--text);
-    font-size: 1.1rem;
-    line-height: 1;
     cursor: pointer;
+  }
+
+  .header-icon-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .header-links {
@@ -1944,8 +1954,12 @@ html, body {
   }
 
   .bottom-nav-icon {
-    font-size: 1.3rem;
-    line-height: 1;
+    display: flex;
+  }
+
+  .bottom-nav-icon svg {
+    width: 22px;
+    height: 22px;
   }
 
   .bottom-nav-label {
