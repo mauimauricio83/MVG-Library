@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.13.1 — current
+## v4.13.2 — current
+- Fixed all four popups (video lightbox, Submit, Settings, Recently Viewed) opening pre-scrolled to wherever their panel was left scrolled to on a previous view, instead of the top. The panels reuse the same DOM node across opens and only their inner HTML was replaced, so a leftover `scrollTop` from a prior viewing (e.g. having scrolled down to read credits) persisted into the next one -- most visible on the video lightbox, where it could scroll the video itself out of view. Each panel's `scrollTop` now resets to 0 on open
+
+## v4.13.1
 - Fixed the mobile menu rendering blank/off-screen when this app is embedded via the auto-height iframe on themusicvideoguy.com (Squarespace): `position: fixed` is relative to the iframe's own render box in that setup, which can be far taller than the physical screen, so the fullscreen overlay was centering itself (a leftover `justify-content: center` from the desktop header rule) in the middle of that oversized box instead of at the top. Switched the panel to `position: absolute` anchored right at the header (a spot guaranteed visible, since the user just tapped the button there) with explicit top alignment
 - Introduced a shared body-scroll-lock helper (`lockBodyScroll`/`unlockBodyScroll`, using the position:fixed+top-offset technique) used by all modals (lightbox, submit, settings, recent, header menu) instead of a plain `overflow: hidden`
 - Note: the video lightbox, submit, and settings modals still use `position: fixed` and can exhibit the same off-screen rendering if opened while scrolled deep into the page inside that same iframe embed — from inside a cross-origin iframe there's no way to read the outer page's scroll position to correct for it. The durable fix is on the Squarespace side: give the iframe a fixed height with its own internal scrolling (`scrolling="yes"`/`overflow:auto`) instead of auto-resizing to match content height, so the iframe has a real, correctly-sized viewport of its own

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.13.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.13.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1421,6 +1421,7 @@
     if (lightboxAdEl) lightboxAdController = renderAdSlideshowInto(lightboxAdEl, topAdsCache, TOP_AD_DEFAULT_SECONDS);
 
     els.lightbox.hidden = false;
+    els.lightboxPanel.scrollTop = 0;
     lockBodyScroll();
     applyLightboxSize();
 
@@ -1486,6 +1487,7 @@
 
   function openSubmitModal() {
     els.submitModal.hidden = false;
+    els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
   }
 
@@ -1551,6 +1553,7 @@
   function openRecentModal() {
     renderRecentList(state.rows);
     els.recentModal.hidden = false;
+    els.recentModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
   }
 
@@ -1583,6 +1586,7 @@
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     els.settingsModal.hidden = false;
+    els.settingsModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
   }
 
