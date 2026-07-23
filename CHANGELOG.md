@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.16.0 — current
+## v4.16.1 — current
+- Added the MVG logo to the left of the "MUSIC VIDEO LIBRARY" title and shrunk the title text to balance it. The subtitle and stats line are separate elements centered independently to the screen, not to the title/logo row, so they stay aligned the same way regardless of the row's own width
+
+## v4.16.0
 - Added an Autoplay setting (Settings modal) -- when off, opening a video no longer starts it playing automatically. Scoped to the lightbox only; TV Mode always autoplays since that's the point of it
 - Added a "Clear favorites" action (Settings modal), matching the existing "Clear Recently Viewed history" one
 - The last-used browse tab (By Director/Artist/Song Title) is now remembered across visits instead of always resetting to By Director. Fixed a bug in this while building it: the preference-reading function was declared after `state` initialized (which calls it), so the `var`-hoisted-but-not-yet-assigned lookup table it depended on was `undefined` at that point, silently breaking on every load and always falling back to the default -- moved the declarations above `state`
