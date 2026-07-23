@@ -162,11 +162,13 @@ html, body {
 
 @media (max-width: 640px) {
   /* Sits beside the title/subtitle block (top-right corner) instead of on
-     its own row below -- padding-right keeps the centered title/subtitle
-     text from running under it. */
+     its own row below. No padding-right on .app-header itself -- that
+     would shift the subtitle/stats text (which must stay centered to the
+     true screen width) off-center along with everything else. The title
+     row is short enough now (shrunk text + small logo) not to reach the
+     button. */
   .app-header {
     position: relative;
-    padding-right: 54px;
   }
 
   .mobile-header-icons {

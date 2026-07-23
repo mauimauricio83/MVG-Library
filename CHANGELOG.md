@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.16.1 — current
+## v4.16.2 — current
+- Fixed mobile header centering: the last commit's `padding-right` on `.app-header` (reserved for the hamburger button) was shifting the subtitle and stats line off true screen-center along with the title row. Removed it -- the shrunk title/logo row is short enough not to reach the button anyway, and the subtitle/stats now measure dead-center regardless
+
+## v4.16.1
 - Added the MVG logo to the left of the "MUSIC VIDEO LIBRARY" title and shrunk the title text to balance it. The subtitle and stats line are separate elements centered independently to the screen, not to the title/logo row, so they stay aligned the same way regardless of the row's own width
 
 ## v4.16.0
