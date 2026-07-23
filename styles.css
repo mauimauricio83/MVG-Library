@@ -185,11 +185,10 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
     color: var(--text);
     cursor: pointer;
   }

@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.16.2 — current
+## v4.16.3 — current
+- Stripped the border/background box off the mobile hamburger button, leaving just the three lines -- smaller footprint gives the title more breathing room so it's not at risk of touching the button
+
+## v4.16.2
 - Fixed mobile header centering: the last commit's `padding-right` on `.app-header` (reserved for the hamburger button) was shifting the subtitle and stats line off true screen-center along with the title row. Removed it -- the shrunk title/logo row is short enough not to reach the button anyway, and the subtitle/stats now measure dead-center regardless
 
 ## v4.16.1
