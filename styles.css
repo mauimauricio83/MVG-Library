@@ -167,13 +167,32 @@ html, body {
     display: none;
   }
 
+  /* This app is often embedded via an auto-height iframe (e.g. on a
+     Squarespace page) with no independent scrolling -- the OUTER page
+     scrolls the (tall) iframe instead. `position: fixed` is relative to
+     the iframe's own render box in that setup, which can be much taller
+     than the physical screen, so a fixed fullscreen overlay ends up
+     covering the wrong slice of that box once the outer page has
+     scrolled -- there's no way to read the outer page's scroll position
+     across origins to correct for it. Anchoring the menu in normal
+     document flow, right where the button that opened it lives, sidesteps
+     the problem entirely: that spot is guaranteed to be on-screen, since
+     the user just tapped a button there. */
+  .app-header {
+    position: relative;
+  }
+
   .header-links.is-open {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     gap: 0;
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 100vh;
     z-index: 1000;
     margin: 0;
     padding: 72px 28px 28px;
@@ -182,7 +201,6 @@ html, body {
     border-radius: 0;
     background: var(--bg);
     text-align: left;
-    overflow-y: auto;
   }
 
   .header-links.is-open .header-menu-close {

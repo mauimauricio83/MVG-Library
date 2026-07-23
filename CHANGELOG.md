@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.13.0 — current
+## v4.13.1 — current
+- Fixed the mobile menu rendering blank/off-screen when this app is embedded via the auto-height iframe on themusicvideoguy.com (Squarespace): `position: fixed` is relative to the iframe's own render box in that setup, which can be far taller than the physical screen, so the fullscreen overlay was centering itself (a leftover `justify-content: center` from the desktop header rule) in the middle of that oversized box instead of at the top. Switched the panel to `position: absolute` anchored right at the header (a spot guaranteed visible, since the user just tapped the button there) with explicit top alignment
+- Introduced a shared body-scroll-lock helper (`lockBodyScroll`/`unlockBodyScroll`, using the position:fixed+top-offset technique) used by all modals (lightbox, submit, settings, recent, header menu) instead of a plain `overflow: hidden`
+- Note: the video lightbox, submit, and settings modals still use `position: fixed` and can exhibit the same off-screen rendering if opened while scrolled deep into the page inside that same iframe embed — from inside a cross-origin iframe there's no way to read the outer page's scroll position to correct for it. The durable fix is on the Squarespace side: give the iframe a fixed height with its own internal scrolling (`scrolling="yes"`/`overflow:auto`) instead of auto-resizing to match content height, so the iframe has a real, correctly-sized viewport of its own
+
+## v4.13.0
 - Redesigned the mobile hamburger menu: it's now a fullscreen panel (like the submit-form modal) instead of a small dropdown, with large plain-text items (no blue link styling/underlines), dividers, and a close (X) button; locks body scroll while open
 
 ## v4.12.2

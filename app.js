@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.13.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -131,6 +131,39 @@
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
   var COUNTRY_NONE = "__no-country__";
+
+  // This app is often embedded in a Squarespace page via an auto-height
+  // iframe (no independent scrolling inside the iframe -- the OUTER page
+  // scrolls a tall iframe instead). `position: fixed` is relative to the
+  // iframe's own viewport, which in that setup spans the iframe's full
+  // (tall) document rather than just the visible slice, so fixed overlays
+  // drift far off-screen once the outer page has scrolled. Freezing the
+  // body at scroll position 0 via `position: fixed; top: -Ypx` while a
+  // modal is open keeps our fixed overlays aligned with what's actually
+  // visible, and is restored (with scroll position) on close.
+  var scrollLockCount = 0;
+  var scrollLockY = 0;
+  function lockBodyScroll() {
+    if (scrollLockCount === 0) {
+      scrollLockY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.position = "fixed";
+      document.body.style.top = "-" + scrollLockY + "px";
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+    }
+    scrollLockCount++;
+  }
+
+  function unlockBodyScroll() {
+    scrollLockCount = Math.max(0, scrollLockCount - 1);
+    if (scrollLockCount === 0) {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      window.scrollTo(0, scrollLockY);
+    }
+  }
 
   function scrollBelowStickyHeader(el) {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
@@ -1388,7 +1421,7 @@
     if (lightboxAdEl) lightboxAdController = renderAdSlideshowInto(lightboxAdEl, topAdsCache, TOP_AD_DEFAULT_SECONDS);
 
     els.lightbox.hidden = false;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     applyLightboxSize();
 
     if (id) {
@@ -1423,7 +1456,7 @@
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;
     document.title = DEFAULT_TITLE;
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   // Populated once real data loads -- same live-derived, always-current
@@ -1453,27 +1486,28 @@
 
   function openSubmitModal() {
     els.submitModal.hidden = false;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
   }
 
   function closeSubmitModal() {
     if (els.submitModal.hidden) return;
     els.submitModal.hidden = true;
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
 
   function closeHeaderMenu() {
+    if (!els.headerLinks.classList.contains("is-open")) return;
     els.headerLinks.classList.remove("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", "false");
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   els.headerMenuBtn.addEventListener("click", function () {
     var isOpen = els.headerLinks.classList.toggle("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", String(isOpen));
-    document.body.style.overflow = isOpen ? "hidden" : "";
+    if (isOpen) lockBodyScroll(); else unlockBodyScroll();
   });
 
   // Closing on any link/button click inside the menu covers navigation,
@@ -1517,13 +1551,13 @@
   function openRecentModal() {
     renderRecentList(state.rows);
     els.recentModal.hidden = false;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
   }
 
   function closeRecentModal() {
     if (els.recentModal.hidden) return;
     els.recentModal.hidden = true;
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   els.openRecentBtn.addEventListener("click", openRecentModal);
@@ -1549,13 +1583,13 @@
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     els.settingsModal.hidden = false;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
   }
 
   function closeSettingsModal() {
     if (els.settingsModal.hidden) return;
     els.settingsModal.hidden = true;
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
