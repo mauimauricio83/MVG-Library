@@ -2,7 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.15.2 — current
+## v4.16.0 — current
+- Added an Autoplay setting (Settings modal) -- when off, opening a video no longer starts it playing automatically. Scoped to the lightbox only; TV Mode always autoplays since that's the point of it
+- Added a "Clear favorites" action (Settings modal), matching the existing "Clear Recently Viewed history" one
+- The last-used browse tab (By Director/Artist/Song Title) is now remembered across visits instead of always resetting to By Director. Fixed a bug in this while building it: the preference-reading function was declared after `state` initialized (which calls it), so the `var`-hoisted-but-not-yet-assigned lookup table it depended on was `undefined` at that point, silently breaking on every load and always falling back to the default -- moved the declarations above `state`
+- Pressing Enter in the search box now blurs it (dismissing the on-screen keyboard on mobile) and scrolls down toward the results
+- Repositioned the mobile hamburger button to sit beside the title/subtitle block (top-right corner) instead of on its own row further down the page
+
+## v4.15.2
 - Fixed the lightbox's ad banner sometimes not appearing at all (video shown at the very top of the lightbox with no banner above it) -- most noticeable on a cold app launch, where the banner's own data fetch competes with the much larger main data fetch and can lose the race if a video gets opened quickly. The lightbox previously just read whatever was in the shared ad cache at that exact instant and gave up permanently if it was empty; it now waits for the data to actually arrive. Fixed a second bug introduced while fixing the first: the "did the lightbox close while we were waiting" bail-out check ran before the lightbox was actually marked open, so it incorrectly bailed out every time the data was already cached (the common case after the first ad loads in a session) -- reordered so the check happens after the lightbox is marked open
 
 ## v4.15.1

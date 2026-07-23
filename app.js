@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.15.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.16.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -128,6 +128,9 @@
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
     clearRecentBtn: document.getElementById("clearRecentBtn"),
+    favoritesSyncNote: document.getElementById("favoritesSyncNote"),
+    clearFavoritesBtn: document.getElementById("clearFavoritesBtn"),
+    autoplayToggle: document.getElementById("autoplayToggle"),
     themeToggle: document.getElementById("themeToggle"),
     settingsStatus: document.getElementById("settingsStatus")
   };
@@ -236,9 +239,25 @@
     return state.rows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
   }
 
+  // Must be declared before `state` below -- state.view calls this at
+  // initialization time, and `var`-hoisted-but-unassigned constants (like
+  // a LAST_TAB_KEY declared further down the file) would still be
+  // `undefined` at that point, silently breaking the restore.
+  var LAST_TAB_KEY = "mvg-last-tab";
+  var VALID_TABS = { director: true, artist: true, song: true };
+
+  function loadLastTabPref() {
+    try {
+      var saved = localStorage.getItem(LAST_TAB_KEY);
+      return VALID_TABS[saved] ? saved : "director";
+    } catch (e) {
+      return "director";
+    }
+  }
+
   var state = {
     rows: [],
-    view: "director",
+    view: loadLastTabPref(),
     query: "",
     category: "",
     year: "",
@@ -369,6 +388,28 @@
   function saveLightboxSizePref(size) {
     try {
       localStorage.setItem(LIGHTBOX_SIZE_KEY, size);
+    } catch (e) {}
+  }
+
+  function saveLastTabPref(view) {
+    try {
+      localStorage.setItem(LAST_TAB_KEY, view);
+    } catch (e) {}
+  }
+
+  var AUTOPLAY_KEY = "mvg-autoplay";
+
+  function loadAutoplayPref() {
+    try {
+      return localStorage.getItem(AUTOPLAY_KEY) !== "off";
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function saveAutoplayPref(on) {
+    try {
+      localStorage.setItem(AUTOPLAY_KEY, on ? "on" : "off");
     } catch (e) {}
   }
 
@@ -1540,7 +1581,7 @@
         if (els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen) return;
         state.lightboxPlayer = new YT.Player("lightboxPlayerTarget", {
           videoId: id,
-          playerVars: { autoplay: 1, rel: 0 },
+          playerVars: { autoplay: loadAutoplayPref() ? 1 : 0, rel: 0 },
           events: {
             onError: function (e) {
               // 100: video not found/private, 101 & 150: embedding disabled by the owner
@@ -1778,11 +1819,27 @@
     startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
   });
 
+  function applyAutoplayToggle(on) {
+    Array.prototype.forEach.call(els.autoplayToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-autoplay-choice") === "on") === on);
+    });
+  }
+
+  els.autoplayToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    var on = btn.getAttribute("data-autoplay-choice") === "on";
+    saveAutoplayPref(on);
+    applyAutoplayToggle(on);
+  });
+
   function openSettingsModal() {
     els.settingsSyncNote.hidden = !currentUser;
+    els.favoritesSyncNote.hidden = !currentUser;
     els.settingsStatus.hidden = true;
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
+    applyAutoplayToggle(loadAutoplayPref());
     els.settingsModal.hidden = false;
     els.settingsModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
@@ -1810,6 +1867,17 @@
     pushToFirestore();
     renderRecentList(state.rows);
     els.settingsStatus.textContent = "Recently Viewed history cleared.";
+    els.settingsStatus.hidden = false;
+  });
+
+  els.clearFavoritesBtn.addEventListener("click", function () {
+    saveFavorites([]);
+    // pushToFirestore() sends the now-empty list, so the account copy is
+    // cleared too rather than resurrecting the favorites on next sign-in.
+    pushToFirestore();
+    renderFavoritesStrip(state.rows);
+    renderFavoritesModalList();
+    els.settingsStatus.textContent = "Favorites cleared.";
     els.settingsStatus.hidden = false;
   });
 
@@ -2136,10 +2204,16 @@
 
   els.tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
-      setActiveTab(tab.getAttribute("data-view"));
+      var view = tab.getAttribute("data-view");
+      setActiveTab(view);
+      saveLastTabPref(view);
       render();
     });
   });
+
+  // Sync the tab buttons' active/aria state to the restored view -- the
+  // HTML hardcodes "By Director" as active by default.
+  setActiveTab(state.view);
 
   function applyDeepLinkFromHash() {
     var m = location.hash.match(/^#row-(.+)$/);
@@ -2160,6 +2234,13 @@
       if (state.query) state.activeLetter = null;
       render();
     }, 120);
+  });
+
+  els.search.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    els.search.blur(); // dismisses the on-screen keyboard on mobile
+    scrollBelowStickyHeader(els.results);
   });
 
   els.signInBtn.addEventListener("click", function () {

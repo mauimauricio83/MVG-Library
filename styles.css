@@ -147,12 +147,22 @@ html, body {
 }
 
 @media (max-width: 640px) {
+  /* Sits beside the title/subtitle block (top-right corner) instead of on
+     its own row below -- padding-right keeps the centered title/subtitle
+     text from running under it. */
+  .app-header {
+    position: relative;
+    padding-right: 54px;
+  }
+
   .mobile-header-icons {
     display: flex;
     width: fit-content;
     align-items: center;
     gap: 8px;
-    margin: 10px 0 0 auto;
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .header-icon-btn {

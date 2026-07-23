@@ -298,10 +298,27 @@
       </div>
       <div class="settings-row">
         <div>
+          <div class="settings-row-label">Autoplay</div>
+          <div class="settings-row-hint">Start playing automatically when you open a video.</div>
+        </div>
+        <div class="settings-theme-toggle" id="autoplayToggle" role="group" aria-label="Autoplay">
+          <button type="button" class="settings-theme-btn" data-autoplay-choice="on">On</button>
+          <button type="button" class="settings-theme-btn" data-autoplay-choice="off">Off</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
           <div class="settings-row-label">Recently Viewed history</div>
           <div class="settings-row-hint">Removes all entries from your Recently Viewed strip on this device<span id="settingsSyncNote" hidden> and your signed-in account</span>.</div>
         </div>
         <button type="button" class="settings-action-btn" id="clearRecentBtn">Clear history</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Favorites</div>
+          <div class="settings-row-hint">Removes all your favorited videos on this device<span id="favoritesSyncNote" hidden> and your signed-in account</span>.</div>
+        </div>
+        <button type="button" class="settings-action-btn" id="clearFavoritesBtn">Clear favorites</button>
       </div>
       <p class="settings-status" id="settingsStatus" hidden></p>
     </div>
