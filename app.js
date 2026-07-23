@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.11.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -799,7 +799,7 @@
   }
 
   function updateSubtitleStats(rows) {
-    els.subtitleStats.textContent = rows.length + " videos — search above, or pick a filter or letter to start browsing.";
+    els.subtitleStats.textContent = rows.length + " videos — search below, or pick a filter or letter to start browsing.";
   }
 
   function computeRecentSet(rows) {

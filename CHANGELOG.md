@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.11.0 — current
+## v4.11.1 — current
+- Fixed header subtitle wording: "search below" (search bar is below the subtitle, not above)
+- Removed the default browser-button bevel/border from Recently Viewed list items
+- Added `.nojekyll` at the repo root — GitHub Pages runs Jekyll by default, which was silently excluding `/.well-known/`, so `assetlinks.json` 404'd and the installed Android app fell back to showing browser chrome (address bar, close/share/menu) instead of running fullscreen. Verified the signing cert fingerprint in `assetlinks.json` matches the release keystore, so this was the only blocker
+
+## v4.11.0
 - Header stats swap: the header subtitle now shows the short "N videos — search above..." message, while the full category breakdown ("N entries — N Music Videos, N Dances, ...") moved to the blank-results empty state
 - Settings now sits directly beside (left of) Sign in/account in the header's right-aligned cluster
 - Recently Viewed converted from a horizontal media strip to a vertical popup, opened via a new "Recently Viewed" link in the header (next to Submit music video); clicking an item closes the popup and opens that video's lightbox
