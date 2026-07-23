@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.12.1 — current
+## v4.12.2 — current
+- Right-align the mobile hamburger button and its dropdown panel (was centered under the title, which looked odd)
+
+## v4.12.1
 - Fixed the mobile hamburger menu: a leftover unconditional `.header-account-area` rule (further down the stylesheet, same specificity) was winning the cascade and right-aligning Settings/Sign in inside the dropdown. Moved the mobile overrides after the base rules and restyled the panel — centered items, a divider before Settings/Sign in — for a cleaner look
 
 ## v4.12.0

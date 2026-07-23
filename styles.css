@@ -149,7 +149,7 @@ html, body {
     justify-content: center;
     width: 38px;
     height: 38px;
-    margin: 10px auto 0;
+    margin: 10px 0 0 auto;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
@@ -164,7 +164,7 @@ html, body {
     flex-direction: column;
     align-items: stretch;
     gap: 14px;
-    margin: 10px auto 0;
+    margin: 10px 0 0 auto;
     padding: 18px;
     max-width: 320px;
     border: 1px solid var(--border);
