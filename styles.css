@@ -2058,7 +2058,8 @@ html, body {
 
   /* TV view: same Home-section baseline, but Featured is irrelevant here
      and filters become reachable since TV Mode shuffles through them. */
-  body.mobile-view-tv #featuredStrip {
+  body.mobile-view-tv #featuredStrip,
+  body.mobile-view-tv #latestStrip {
     display: none;
   }
 

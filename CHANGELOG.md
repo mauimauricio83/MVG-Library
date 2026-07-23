@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.16.3 — current
+## v4.16.4 — current
+- TV view (mobile, via the bottom nav's TV Mode button) now also hides Latest Submissions, so the ad banner and TV Mode section sit right after the header instead of further down the page
+
+## v4.16.3
 - Stripped the border/background box off the mobile hamburger button, leaving just the three lines -- smaller footprint gives the title more breathing room so it's not at risk of touching the button
 
 ## v4.16.2
