@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.11.1 — current
+## v4.12.0 — current
+- Header links (Submit, Recently Viewed, Discord, Support, Settings, Sign in/account) now collapse into a hamburger menu below 640px, instead of wrapping onto multiple lines; the menu closes on item click, outside click, or Escape
+
+## v4.11.1
 - Fixed header subtitle wording: "search below" (search bar is below the subtitle, not above)
 - Removed the default browser-button bevel/border from Recently Viewed list items
 - Added `.nojekyll` at the repo root — GitHub Pages runs Jekyll by default, which was silently excluding `/.well-known/`, so `assetlinks.json` 404'd and the installed Android app fell back to showing browser chrome (address bar, close/share/menu) instead of running fullscreen. Verified the signing cert fingerprint in `assetlinks.json` matches the release keystore, so this was the only blocker

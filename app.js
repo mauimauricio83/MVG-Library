@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.11.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -112,6 +112,8 @@
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitFormStatus: document.getElementById("submitFormStatus"),
+    headerMenuBtn: document.getElementById("headerMenuBtn"),
+    headerLinks: document.getElementById("headerLinks"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -1444,6 +1446,28 @@
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
 
+  function closeHeaderMenu() {
+    els.headerLinks.classList.remove("is-open");
+    els.headerMenuBtn.setAttribute("aria-expanded", "false");
+  }
+
+  els.headerMenuBtn.addEventListener("click", function () {
+    var isOpen = els.headerLinks.classList.toggle("is-open");
+    els.headerMenuBtn.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  // Closing on any link/button click inside the menu covers navigation,
+  // opening a modal, or signing in/out -- all of which should collapse it.
+  els.headerLinks.addEventListener("click", function (e) {
+    if (e.target.closest("a, button")) closeHeaderMenu();
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!els.headerLinks.classList.contains("is-open")) return;
+    if (e.target.closest("#headerLinks") || e.target.closest("#headerMenuBtn")) return;
+    closeHeaderMenu();
+  });
+
   // Lets external links (e.g. an ad banner) open the submit modal directly,
   // e.g. https://mauimauricio83.github.io/MVG-Library/#submit -- doesn't
   // need state.rows loaded, so it's independent of applyDeepLinkFromHash().
@@ -1615,6 +1639,7 @@
     if (!els.submitModal.hidden) closeSubmitModal();
     if (!els.settingsModal.hidden) closeSettingsModal();
     if (!els.recentModal.hidden) closeRecentModal();
+    if (els.headerLinks.classList.contains("is-open")) closeHeaderMenu();
   });
 
   document.addEventListener("click", function (e) {
