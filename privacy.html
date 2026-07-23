@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
+<title>Privacy Policy | MVG Library</title>
+<meta name="robots" content="index, follow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="hub.css">
+</head>
+<body>
+<div class="hub-page">
+<a class="hub-back" href="index.html">&larr; MVG Library</a>
+<h1>Privacy Policy</h1>
+<p class="hub-intro">Last updated: July 2026</p>
+
+<p>MVG Library ("the app", "the site") is a reference database of music videos published by The Music Video Guy. This page explains what data the app collects and why.</p>
+
+<h2>What we collect</h2>
+<ul class="hub-video-list" style="display:block">
+  <li style="padding:10px 0;border:none"><strong>Usage analytics (Google Analytics).</strong> Standard, aggregated traffic data — pages viewed, approximate location, device type — used to understand how the library is used. No personal profile is built from this.</li>
+  <li style="padding:10px 0;border:none"><strong>Google Sign-In (optional).</strong> If you choose to sign in, we receive your name, email address, and profile picture from Google, used only to identify your account within the app.</li>
+  <li style="padding:10px 0;border:none"><strong>Favorites &amp; Recently Viewed.</strong> Saved locally on your device by default. If you're signed in, the same data is also stored in our database (Firebase/Firestore) tied to your account, so it can sync across your devices.</li>
+  <li style="padding:10px 0;border:none"><strong>Submission form.</strong> If you submit a music video for consideration, the details you enter (artist, song, credits, your email) are sent to a private spreadsheet for review before anything is published.</li>
+</ul>
+
+<h2>What we don't do</h2>
+<p>We don't sell your data. We don't share your sign-in information with third parties beyond Google (the sign-in provider itself) and Firebase (our database provider). We don't track you across other websites or apps.</p>
+
+<h2>Your choices</h2>
+<p>You can use the app fully without signing in — browsing, searching, and TV Mode all work signed-out. Favorites/Recently Viewed history saved on your device can be cleared anytime from the app's Settings menu. If you're signed in, contact us to request deletion of your account data.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy: <a href="mailto:maui@themusicvideoguy.com">maui@themusicvideoguy.com</a></p>
+</div>
+</body>
+</html>

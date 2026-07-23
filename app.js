@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.7.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -114,6 +114,7 @@
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
     clearRecentBtn: document.getElementById("clearRecentBtn"),
+    themeToggle: document.getElementById("themeToggle"),
     settingsStatus: document.getElementById("settingsStatus")
   };
 
@@ -1421,9 +1422,28 @@
   window.addEventListener("hashchange", applySubmitHash);
   applySubmitHash();
 
+  var THEME_KEY = "mvg-theme";
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    Array.prototype.forEach.call(els.themeToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-theme-choice") === theme);
+    });
+  }
+
+  els.themeToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    var theme = btn.getAttribute("data-theme-choice");
+    try { localStorage.setItem(THEME_KEY, theme); } catch (err) {}
+    applyTheme(theme);
+  });
+
   function openSettingsModal() {
     els.settingsSyncNote.hidden = !currentUser;
     els.settingsStatus.hidden = true;
+    var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+    applyTheme(currentTheme);
     els.settingsModal.hidden = false;
     document.body.style.overflow = "hidden";
   }

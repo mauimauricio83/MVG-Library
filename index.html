@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Applied before styles.css loads, so there's no flash of the wrong theme.
+  // Default is dark (not "follow the OS") -- Settings can override to light.
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-SG09BM7JHX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -202,6 +211,7 @@
   <nav class="hub-links" aria-label="Browse by director or artist">
     <a href="directors/">Browse by Director</a>
     <a href="artists/">Browse by Artist</a>
+    <a href="privacy.html">Privacy Policy</a>
   </nav>
   <footer class="app-footer" id="appFooter">Created by MnC · 2026</footer>
 </div>
@@ -220,6 +230,16 @@
     <button type="button" class="lightbox-close" id="settingsClose" aria-label="Close">&times;</button>
     <div class="settings-body">
       <h2 class="settings-title">Settings</h2>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Appearance</div>
+          <div class="settings-row-hint">Dark by default.</div>
+        </div>
+        <div class="settings-theme-toggle" id="themeToggle" role="group" aria-label="Theme">
+          <button type="button" class="settings-theme-btn" data-theme-choice="dark">Dark</button>
+          <button type="button" class="settings-theme-btn" data-theme-choice="light">Light</button>
+        </div>
+      </div>
       <div class="settings-row">
         <div>
           <div class="settings-row-label">Recently Viewed history</div>

@@ -183,6 +183,7 @@ function page(title, description, canonical, bodyHtml, jsonLd, depth) {
     '<html lang="en">\n<head>\n' +
     '<meta charset="UTF-8">\n' +
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+    '<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("mvg-theme")||"dark");}catch(e){document.documentElement.setAttribute("data-theme","dark");}</script>\n' +
     "<title>" + escapeHtml(title) + "</title>\n" +
     '<meta name="description" content="' + escapeHtml(description) + '">\n' +
     '<meta name="robots" content="index, follow">\n' +

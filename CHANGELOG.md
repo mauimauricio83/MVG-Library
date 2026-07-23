@@ -2,7 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.7.0 — current
+## v4.8.0 — current
+- Fixed: `html, body` used `background: transparent`, which relied on a parent page behind it to show anything other than white — broke in the installed Android app, which has no parent page. Now uses the themed `--bg` color directly
+- New Settings toggle for Dark/Light appearance, defaulting to Dark, applied before first paint (no flash of the wrong theme) and persisted across visits
+- Added `/.well-known/assetlinks.json` (Digital Asset Links) so the Android app opens as a real trusted app instead of a browser tab with a URL bar
+- Added a Privacy Policy page, linked from the footer — required for the Play Store listing
+- Android app: generated the TWA project, app icons, signing key, and a signed release bundle (`app-release.aab`) — ready for Play Console upload
+
+## v4.7.0
 - Added a web app manifest + generated icons (192, 512, and a padded maskable variant from the real MVG badge) — first step toward wrapping the site as an installable Android app via Trusted Web Activity
 
 ## v4.6.1
