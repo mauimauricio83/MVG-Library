@@ -622,10 +622,7 @@ html, body {
 }
 
 .category-filters-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  display: none; /* disabled for now -- getting cumbersome; other filters remain */
 }
 
 .category-filters {
@@ -1979,20 +1976,32 @@ html, body {
     display: none;
   }
 
-  /* Two mutually-exclusive mobile views: Home (browse -- Latest
-     Submissions, the ad banner, TV Mode, Featured) and Search (tabs,
-     search box, filters, jump nav, results). Home is the default;
-     switching to Search hides the Home-only sections instead of just
-     pushing them off-screen, so results aren't buried below the fold
-     (worse still with the on-screen keyboard open). */
+  /* Three mutually-exclusive mobile views: Home (browse -- Latest
+     Submissions, the ad banner, TV Mode, Featured), Search (tabs, search
+     box, filters, jump nav, results), and TV (TV Mode's own section plus
+     filters, since TV Mode shuffles through whatever the filters currently
+     match -- Featured doesn't apply there). Home is the default; switching
+     views hides the sections that don't belong instead of just pushing
+     them off-screen, so results/filters aren't buried below the fold
+     (worse still with the on-screen keyboard open).
+
+     The bottom jump nav (#jumpNavBottom) is dropped entirely on mobile,
+     not shown in any view -- the top one (#jumpNavTop) already covers it. */
   .controls,
   .filters-toggle-row,
-  .filters-row,
   #status,
   #jumpNavTop,
   .results-layout,
   #jumpNavBottom {
     display: none;
+  }
+
+  /* filters-row keeps its own [hidden] toggle (the Filters button) in
+     every view it's reachable from -- :not([hidden]) here means we only
+     ever force it open when the user hasn't manually collapsed it. */
+  body.mobile-view-search .filters-row:not([hidden]),
+  body.mobile-view-tv .filters-row:not([hidden]) {
+    display: flex;
   }
 
   body.mobile-view-search #latestStrip,
@@ -2010,20 +2019,25 @@ html, body {
     display: flex;
   }
 
-  body.mobile-view-search .filters-row {
-    display: flex;
-  }
-
   body.mobile-view-search #status {
     display: flex;
   }
 
-  body.mobile-view-search #jumpNavTop,
-  body.mobile-view-search #jumpNavBottom {
+  body.mobile-view-search #jumpNavTop {
     display: flex;
   }
 
   body.mobile-view-search .results-layout {
+    display: flex;
+  }
+
+  /* TV view: same Home-section baseline, but Featured is irrelevant here
+     and filters become reachable since TV Mode shuffles through them. */
+  body.mobile-view-tv #featuredStrip {
+    display: none;
+  }
+
+  body.mobile-view-tv .filters-toggle-row {
     display: flex;
   }
 }

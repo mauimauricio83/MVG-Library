@@ -2,7 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.15.0 — current
+## v4.15.1 — current
+- Disabled the category filter pills (Music Video, Dance, Short, etc.) for now -- getting cumbersome; the other filters (genre, year, country, MVG Reels only) are unaffected. Both desktop and mobile
+- Removed the bottom A-Z/0-9 jump nav on mobile (the top one already covers the same job); desktop keeps both
+- Added a third mobile view, TV, entered via the bottom nav's TV Mode button: hides Featured (irrelevant there) and reveals the Filters toggle (TV Mode shuffles through whatever the filters currently match, so being able to narrow them down first is useful)
+- Fixed a bug from the last commit: the Filters panel was being force-expanded whenever Search view was entered, ignoring whether the user had collapsed it via the Filters button
+
+## v4.15.0
 - Mobile now has two distinct views instead of one long page: Home (default -- Latest Submissions, ad banner, TV Mode, Featured) and Search (tabs, search box, filters, jump nav, results), switched via the bottom nav's Search/Home buttons. Supersedes the previous "hide Featured while typing" patch -- Featured now only ever appears in Home view, full stop
 - Favorites is now a vertical popup (matching Recently Viewed) instead of an inline horizontal strip on mobile; desktop keeps the inline strip
 - Bottom nav reordered to Home / Favorites / Search / TV Mode / Settings; Settings moved here from the mobile hamburger menu (desktop keeps it in the header)

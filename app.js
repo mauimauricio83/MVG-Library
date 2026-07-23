@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.15.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.15.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1588,13 +1588,15 @@
   // desktop, where both sets of sections are always shown regardless.
   var bottomNavViewButtons = [
     { btn: els.bottomNavHome, view: "home" },
-    { btn: els.bottomNavSearch, view: "search" }
+    { btn: els.bottomNavSearch, view: "search" },
+    { btn: els.bottomNavTV, view: "tv" }
   ];
 
   function setMobileView(view) {
     state.mobileView = view;
     document.body.classList.toggle("mobile-view-home", view === "home");
     document.body.classList.toggle("mobile-view-search", view === "search");
+    document.body.classList.toggle("mobile-view-tv", view === "tv");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -1616,7 +1618,7 @@
   els.bottomNavFavorites.addEventListener("click", openFavoritesModal);
 
   els.bottomNavTV.addEventListener("click", function () {
-    setMobileView("home");
+    setMobileView("tv");
     scrollBelowStickyHeader(els.videoEmbed);
   });
 
