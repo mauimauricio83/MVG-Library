@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.8.0 — current
+## v4.9.0 — current
+- Added a "Support! ❤️" link in the header (right before Settings), pointing to a new thank-you page with a Ko-fi link
+- Moved "Feedback" out of the header and into the footer, alongside Browse by Director/Artist and Privacy Policy
+
+## v4.8.0
 - Fixed: `html, body` used `background: transparent`, which relied on a parent page behind it to show anything other than white — broke in the installed Android app, which has no parent page. Now uses the themed `--bg` color directly
 - New Settings toggle for Dark/Light appearance, defaulting to Dark, applied before first paint (no flash of the wrong theme) and persisted across visits
 - Added `/.well-known/assetlinks.json` (Digital Asset Links) so the Android app opens as a real trusted app instead of a browser tab with a URL bar
