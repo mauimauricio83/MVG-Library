@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.15.1 — current
+## v4.15.2 — current
+- Fixed the lightbox's ad banner sometimes not appearing at all (video shown at the very top of the lightbox with no banner above it) -- most noticeable on a cold app launch, where the banner's own data fetch competes with the much larger main data fetch and can lose the race if a video gets opened quickly. The lightbox previously just read whatever was in the shared ad cache at that exact instant and gave up permanently if it was empty; it now waits for the data to actually arrive. Fixed a second bug introduced while fixing the first: the "did the lightbox close while we were waiting" bail-out check ran before the lightbox was actually marked open, so it incorrectly bailed out every time the data was already cached (the common case after the first ad loads in a session) -- reordered so the check happens after the lightbox is marked open
+
+## v4.15.1
 - Disabled the category filter pills (Music Video, Dance, Short, etc.) for now -- getting cumbersome; the other filters (genre, year, country, MVG Reels only) are unaffected. Both desktop and mobile
 - Removed the bottom A-Z/0-9 jump nav on mobile (the top one already covers the same job); desktop keeps both
 - Added a third mobile view, TV, entered via the bottom nav's TV Mode button: hides Featured (irrelevant there) and reveals the Filters toggle (TV Mode shuffles through whatever the filters currently match, so being able to narrow them down first is useful)

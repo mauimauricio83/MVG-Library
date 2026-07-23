@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.15.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.15.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1189,11 +1189,27 @@
     };
   }
 
-  var topAdsCache = [];
+  // null = the top-ad CSV hasn't finished loading yet; [] = loaded but empty.
+  // The lightbox mirrors this banner, but opens independently of when the
+  // fetch resolves -- on a cold app launch it competes with the (much
+  // larger) main data fetch for bandwidth, so a video can easily get
+  // tapped before this one lands. Rather than the lightbox just reading
+  // whatever's in the cache at that instant (and silently showing nothing
+  // if it's too early), callers wait via onTopAdsReady() so the banner
+  // still appears once the data does arrive.
+  var topAdsCache = null;
+  var topAdsWaiters = [];
+  function onTopAdsReady(cb) {
+    if (topAdsCache !== null) { cb(topAdsCache); return; }
+    topAdsWaiters.push(cb);
+  }
+
   var lightboxAdController = null;
   var fetchSidebarAds = createAdSlideshow(els.spotlightVerticalAd, AD_CSV_URL, AD_DEFAULT_SECONDS);
   var fetchTopAds = createAdSlideshow(els.adPlaceholder, TOP_AD_CSV_URL, TOP_AD_DEFAULT_SECONDS, function (ads) {
     topAdsCache = ads;
+    topAdsWaiters.forEach(function (cb) { cb(ads); });
+    topAdsWaiters = [];
   });
 
   function categoryTagClass(cat) {
@@ -1497,14 +1513,24 @@
       lightboxRelatedHtml(row.director, row.rowNum) +
       "</div>";
 
-    var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
-    if (lightboxAdEl) lightboxAdController = renderAdSlideshowInto(lightboxAdEl, topAdsCache, TOP_AD_DEFAULT_SECONDS);
-
     els.lightbox.hidden = false;
     els.lightboxPanel.scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
     applyLightboxSize();
+
+    var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
+    if (lightboxAdEl) {
+      var adRowNumAtOpen = row.rowNum;
+      onTopAdsReady(function (ads) {
+        // bail if the lightbox was closed or switched to another entry
+        // while waiting for the ad data to arrive -- checked after
+        // els.lightbox.hidden is set above so this also works correctly
+        // when the callback fires synchronously (cache already warm)
+        if (els.lightbox.hidden || state.lightboxRowNum !== adRowNumAtOpen) return;
+        lightboxAdController = renderAdSlideshowInto(lightboxAdEl, ads, TOP_AD_DEFAULT_SECONDS);
+      });
+    }
 
     if (id) {
       var rowNumAtOpen = row.rowNum;
