@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -134,7 +134,11 @@
   }
 
   function moveVideoPairHome() {
-    els.jumpTop.after(els.featuredStrip, els.favoritesStrip, els.adPlaceholder, els.videoEmbed);
+    // TV Mode's video player + the ad banner live right below Latest
+    // Submissions; Featured/Favorites stay anchored after the jump nav.
+    // Split into two calls since they're no longer adjacent in the DOM.
+    els.latestStrip.after(els.adPlaceholder, els.videoEmbed);
+    els.jumpTop.after(els.featuredStrip, els.favoritesStrip);
   }
 
   function findRowByNum(rowNum) {
@@ -1730,10 +1734,11 @@
   }
 
   function renderJumpNav(availableLetters) {
-    var html = JUMP_LETTERS.map(function (letter) {
-      var enabled = availableLetters.hasOwnProperty(letter);
+    var html = JUMP_LETTERS.filter(function (letter) {
+      return availableLetters.hasOwnProperty(letter);
+    }).map(function (letter) {
       var active = state.activeLetter === letter;
-      return '<button class="jump-btn' + (active ? " active" : "") + '" data-letter="' + letter + '"' + (enabled ? "" : " disabled") + ">" + letter + "</button>";
+      return '<button class="jump-btn' + (active ? " active" : "") + '" data-letter="' + letter + '">' + letter + "</button>";
     }).join("");
     els.jumpTop.innerHTML = html;
     els.jumpBottom.innerHTML = html;

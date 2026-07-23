@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.9.0 — current
+## v4.10.0 — current
+- Header cleanup: Sign in/account area moved to the far right, separated from the main link cluster; fixed a bug where "Sign in" stayed visible even while signed in (same `[hidden]`-vs-explicit-`display` class of bug as a few other elements this project has hit)
+- Jump-nav letter/number bar now omits letters with zero matches entirely, instead of showing them grayed out
+- TV Mode's video player and the ad banner now sit right below Latest Submissions instead of near the bottom of the filters area — verified TV Mode itself (start, skip, and staying stable through a search-triggered re-render) is unaffected by the reshuffle
+
+## v4.9.0
 - Added a "Support! ❤️" link in the header (right before Settings), pointing to a new thank-you page with a Ko-fi link
 - Moved "Feedback" out of the header and into the footer, alongside Browse by Director/Artist and Privacy Policy
 
