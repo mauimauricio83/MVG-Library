@@ -22,11 +22,14 @@ jobs:
       - name: Generate director/artist hub pages
         run: node scripts/generate-seo-pages.js
 
+      - name: Fetch latest blog posts
+        run: node scripts/fetch-blog-latest.js
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add directors artists videos sitemap.xml
+          git add directors artists videos sitemap.xml blog-latest.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else

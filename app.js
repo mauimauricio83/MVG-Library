@@ -15,6 +15,12 @@
   // download token is needed in the URL.
   var SNAPSHOT_URL = "https://firebasestorage.googleapis.com/v0/b/mvg-library.firebasestorage.app/o/catalog%2Fsnapshot.json?alt=media";
 
+  // Latest blog posts from themusicvideoguy.com/news -- written same-origin
+  // by scripts/fetch-blog-latest.js (daily GitHub Action, same one that
+  // regenerates the SEO hub pages) since Squarespace's own JSON feed has no
+  // CORS headers and can't be fetched directly from this domain.
+  var BLOG_LATEST_URL = "blog-latest.json";
+
   // Ad slideshow, sourced from a small published sheet -- columns: Seconds
   // (how long that ad shows before advancing), Image, Link.
   var TOP_AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
@@ -104,6 +110,8 @@
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
+    blogLatestSidebar: document.getElementById("blogLatestSidebar"),
+    blogLatestCards: document.getElementById("blogLatestCards"),
     appFooter: document.getElementById("appFooter"),
     signInBtn: document.getElementById("signInBtn"),
     topBarSignInBtn: document.getElementById("topBarSignInBtn"),
@@ -1217,6 +1225,39 @@
   function positionSpotlightSidebar() {
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
     els.spotlightSidebar.style.top = (headerHeight + 12) + "px";
+  }
+
+  // Latest blog posts (themusicvideoguy.com/news), fetched once at startup
+  // from a same-origin static file -- see BLOG_LATEST_URL. Independent of
+  // the video catalog, so this has its own small fetch rather than piggybacking
+  // on fetchData().
+  function renderBlogLatest(posts) {
+    if (!posts || !posts.length) {
+      els.blogLatestSidebar.hidden = true;
+      return;
+    }
+    els.blogLatestCards.innerHTML = posts.map(function (post) {
+      var thumb = post.image
+        ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
+        : "";
+      return (
+        '<a class="spotlight-card blog-latest-card" href="' + escapeHtml(post.url) + '" target="_blank" rel="noopener noreferrer">' +
+          '<div class="spotlight-card-thumb">' + thumb + "</div>" +
+          '<div class="spotlight-card-info">' +
+            '<div class="spotlight-card-song">' + escapeHtml(post.title) + "</div>" +
+            '<div class="blog-latest-excerpt">' + escapeHtml(post.excerpt || "") + "</div>" +
+          "</div>" +
+        "</a>"
+      );
+    }).join("");
+    els.blogLatestSidebar.hidden = false;
+  }
+
+  function fetchBlogLatest() {
+    fetch(BLOG_LATEST_URL)
+      .then(function (res) { return res.ok ? res.json() : []; })
+      .then(renderBlogLatest)
+      .catch(function (err) { console.error("Blog latest load error:", err); });
   }
 
   els.spotlightCards.addEventListener("click", function (e) {
@@ -3247,4 +3288,5 @@
 
   fetchData();
   fetchTopAds();
+  fetchBlogLatest();
 })();

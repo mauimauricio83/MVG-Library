@@ -736,6 +736,7 @@ html, body {
      visible by default, so hiding just the Home-only ones is enough. */
   body.desktop-view-search .about-strip,
   body.desktop-view-search #spotlightSidebar,
+  body.desktop-view-search #blogLatestSidebar,
   body.desktop-view-search #latestStrip,
   body.desktop-view-search .ad-placeholder,
   body.desktop-view-search #videoEmbed,
@@ -745,6 +746,7 @@ html, body {
 
   body.desktop-view-tv .about-strip,
   body.desktop-view-tv #spotlightSidebar,
+  body.desktop-view-tv #blogLatestSidebar,
   body.desktop-view-tv #latestStrip,
   body.desktop-view-tv #featuredStrip,
   body.desktop-view-tv .controls,
@@ -1316,6 +1318,41 @@ html, body {
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Shares .spotlight-card's box/thumb/title styling -- these fill in the
+   parts unique to a blog-post card (it's a link, and has an excerpt
+   instead of an artist line). */
+.blog-latest-sidebar {
+  margin-bottom: 28px;
+}
+
+.blog-latest-sidebar[hidden] {
+  display: none;
+}
+
+.blog-latest-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.blog-latest-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.blog-latest-excerpt {
+  margin-top: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  white-space: normal;
 }
 
 /* All slides share the same grid cell so the container's height tracks the
@@ -2570,7 +2607,8 @@ html, body {
 
   /* Spotlight becomes a single vertical column of full-width cards, like
      YouTube's mobile home feed, instead of the desktop's fixed 3-up grid. */
-  .spotlight-sidebar-cards {
+  .spotlight-sidebar-cards,
+  .blog-latest-cards {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -2625,6 +2663,7 @@ html, body {
   }
 
   body.mobile-view-search #spotlightSidebar,
+  body.mobile-view-search #blogLatestSidebar,
   body.mobile-view-search #latestStrip,
   body.mobile-view-search .ad-placeholder,
   body.mobile-view-search #videoEmbed,
@@ -2655,6 +2694,7 @@ html, body {
   /* TV view: same Home-section baseline, but Featured is irrelevant here
      and filters become reachable since TV Mode shuffles through them. */
   body.mobile-view-tv #spotlightSidebar,
+  body.mobile-view-tv #blogLatestSidebar,
   body.mobile-view-tv #featuredStrip,
   body.mobile-view-tv #latestStrip {
     display: none;
