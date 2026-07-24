@@ -1,16 +1,14 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.18.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.19.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
 
-  // Ad slideshows, each sourced from its own small published sheet —
-  // columns: Seconds (how long that ad shows before advancing), Image, Link.
-  var AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1370999706&single=true&output=csv";
-  var AD_DEFAULT_SECONDS = 6;
+  // Ad slideshow, sourced from a small published sheet -- columns: Seconds
+  // (how long that ad shows before advancing), Image, Link.
   var TOP_AD_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1259061390&single=true&output=csv";
   var TOP_AD_DEFAULT_SECONDS = 6;
 
@@ -98,15 +96,17 @@
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
-    spotlightVerticalAd: document.getElementById("spotlightVerticalAd"),
     appFooter: document.getElementById("appFooter"),
     signInBtn: document.getElementById("signInBtn"),
+    topBarSignInBtn: document.getElementById("topBarSignInBtn"),
     signOutBtn: document.getElementById("signOutBtn"),
     headerAccount: document.getElementById("headerAccount"),
     headerAvatar: document.getElementById("headerAvatar"),
     headerUserName: document.getElementById("headerUserName"),
     sidebarHomeBtn: document.getElementById("sidebarHomeBtn"),
+    topBarHomeLink: document.getElementById("topBarHomeLink"),
     sidebarTVBtn: document.getElementById("sidebarTVBtn"),
+    sidebarFavoritesBtn: document.getElementById("sidebarFavoritesBtn"),
     topBarSearchBtn: document.getElementById("topBarSearchBtn"),
     topBarSearchOverlay: document.getElementById("topBarSearchOverlay"),
     topBarSearchInput: document.getElementById("topBarSearchInput"),
@@ -132,6 +132,9 @@
     favoritesModalClose: document.getElementById("favoritesModalClose"),
     favoritesModalList: document.getElementById("favoritesModalList"),
     favoritesModalPlayAll: document.getElementById("favoritesModalPlayAll"),
+    openPodcastBtn: document.getElementById("openPodcastBtn"),
+    podcastModal: document.getElementById("podcastModal"),
+    podcastModalClose: document.getElementById("podcastModalClose"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -208,6 +211,7 @@
     closeSettingsModal();
     closeRecentModal();
     closeFavoritesModal();
+    closePodcastModal();
     closeHeaderMenu();
   }
 
@@ -1270,7 +1274,6 @@
   }
 
   var lightboxAdController = null;
-  var fetchSidebarAds = createAdSlideshow(els.spotlightVerticalAd, AD_CSV_URL, AD_DEFAULT_SECONDS);
   var fetchTopAds = createAdSlideshow(els.adPlaceholder, TOP_AD_CSV_URL, TOP_AD_DEFAULT_SECONDS, function (ads) {
     topAdsCache = ads;
     topAdsWaiters.forEach(function (cb) { cb(ads); });
@@ -1730,10 +1733,19 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  els.topBarHomeLink.addEventListener("click", function (e) {
+    e.preventDefault();
+    setDesktopView("home");
+    setMobileView("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
   els.sidebarTVBtn.addEventListener("click", function () {
     setDesktopView("tv");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+
+  els.sidebarFavoritesBtn.addEventListener("click", openFavoritesModal);
 
   els.topBarSearchBtn.addEventListener("click", function () {
     els.topBarSearchOverlay.hidden = false;
@@ -1910,6 +1922,27 @@
     startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
   });
 
+  function openPodcastModal() {
+    els.podcastModal.hidden = false;
+    els.podcastModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closePodcastModal() {
+    if (els.podcastModal.hidden) return;
+    els.podcastModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.openPodcastBtn.addEventListener("click", openPodcastModal);
+
+  els.podcastModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
+      dismissTopModal();
+    }
+  });
+
   function applyAutoplayToggle(on) {
     Array.prototype.forEach.call(els.autoplayToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
       btn.classList.toggle("is-active", (btn.getAttribute("data-autoplay-choice") === "on") === on);
@@ -2052,7 +2085,8 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     var anyOpen = !els.lightbox.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
-      !els.recentModal.hidden || !els.favoritesModal.hidden || els.headerLinks.classList.contains("is-open");
+      !els.recentModal.hidden || !els.favoritesModal.hidden || !els.podcastModal.hidden ||
+      els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
   });
 
@@ -2178,7 +2212,6 @@
     if (!state.query && !hasActiveFilters()) {
       els.results.innerHTML = '<div class="empty-state">' + escapeHtml(categoryBreakdownText(state.rows)) + "</div>";
       els.jumpBottom.hidden = true;
-      els.spotlightSidebar.hidden = true;
       return;
     }
 
@@ -2193,17 +2226,10 @@
         els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
       }
       els.jumpBottom.hidden = true;
-      els.spotlightSidebar.hidden = true;
       return;
     }
 
     els.jumpBottom.hidden = false;
-    if (hasSpotlightContent) {
-      els.spotlightSidebar.hidden = false;
-      positionSpotlightSidebar();
-    } else {
-      els.spotlightSidebar.hidden = true;
-    }
 
     var groupIdCounter = 0;
     var sections;
@@ -2341,6 +2367,12 @@
     });
   });
 
+  els.topBarSignInBtn.addEventListener("click", function () {
+    auth.signInWithPopup(googleProvider).catch(function (err) {
+      console.error("Sign-in failed:", err);
+    });
+  });
+
   els.signOutBtn.addEventListener("click", function () {
     auth.signOut();
   });
@@ -2348,6 +2380,7 @@
   auth.onAuthStateChanged(function (user) {
     currentUser = user;
     els.signInBtn.hidden = !!user;
+    els.topBarSignInBtn.hidden = !!user;
     els.headerAccount.hidden = !user;
     if (user) {
       els.headerAvatar.src = user.photoURL || "";
@@ -2357,6 +2390,5 @@
   });
 
   fetchData();
-  fetchSidebarAds();
   fetchTopAds();
 })();

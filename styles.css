@@ -52,7 +52,10 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 
-.top-bar-search-btn {
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
 }
 
@@ -104,6 +107,20 @@ html, body {
 .header-icon-btn svg {
   width: 20px;
   height: 20px;
+}
+
+/* Removed from the main body/search cluster -- desktop reaches Favorites
+   via a new sidebar link instead (mirrors mobile's bottom-nav modal). */
+#favoritesStrip {
+  display: none;
+}
+
+.top-bar-home-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .app-header-logo {
@@ -444,7 +461,7 @@ html, body {
      needed so this beats .header-links.is-open .submit-link's
      display:flex on specificity (2 classes) when the mobile menu is open. */
   #headerLinks .sidebar-page-link,
-  .top-bar-search-btn,
+  .top-bar-actions,
   .top-bar-search-overlay {
     display: none;
   }
@@ -648,7 +665,7 @@ html, body {
   #latestStrip .media-strip-track,
   #featuredStrip .media-strip-track {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 24px;
     overflow: visible;
   }
@@ -1300,15 +1317,6 @@ html, body {
   white-space: nowrap;
 }
 
-.spotlight-vertical-ad {
-  display: grid;
-  margin-top: 14px;
-}
-
-.spotlight-vertical-ad[hidden] {
-  display: none;
-}
-
 /* All slides share the same grid cell so the container's height tracks the
    tallest ad rather than jumping per-slide, and crossfading is just opacity. */
 .ad-slide {
@@ -1821,6 +1829,30 @@ html, body {
   max-width: 420px;
   padding: 24px;
   max-height: 80vh;
+}
+
+.podcast-panel {
+  max-width: 640px;
+  padding: 28px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.podcast-embed-wrap {
+  margin: 14px 0;
+}
+
+.podcast-embed-wrap iframe {
+  display: block;
+  width: 100%;
+  max-width: 624px;
+  height: 351px;
+}
+
+.podcast-caption {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .recent-header {

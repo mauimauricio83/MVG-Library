@@ -2,7 +2,18 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.18.1 — current
+## v4.19.0 — current
+- Spotlight is now always visible, independent of search/filter state (was previously hidden unless there were search results)
+- Removed the vertical Spotlight ad (and its CSV/ad-slideshow plumbing) -- the horizontal ad banner below Spotlight was already covering that slot
+- Logo and title in the top bar now link back to Home (desktop and mobile)
+- Removed the inline Favorites strip from the main content flow (both platforms); added a "Favorites" link to the desktop sidebar so desktop keeps a way to reach it (mobile already has it via the bottom nav)
+- Added the requested MVG art image to the Support page
+- Reduced Featured/Latest Submissions to one fewer column on desktop by bumping the grid's minimum card width
+- Removed the emoji prefixes from the Latest Submissions/Featured section titles
+- Added a Sign In button to the top bar (upper right, left of search; hides once signed in) and three social icon links -- Instagram, Instagram (PH), Facebook -- to its left, desktop only (mirrors how the top-bar search icon is already desktop-only)
+- Added a "Podcast" link to the left sidebar (below Discord, also in the mobile menu) that opens a modal with the show's Spotify embed, caption, and a "Listen on Spotify" link
+
+## v4.18.1
 - Moved Spotlight from a sticky sidebar next to results to a proper section right below the about strip, above Latest Submissions -- one row of up to 3 cards instead of a vertical stack. Also hides on the dedicated Search/TV pages, like the other Home-only sections
 - Moved the ad banner to right below the new Spotlight section (above Latest Submissions), instead of between Latest Submissions and TV Mode. Applies on both desktop and mobile since nothing in the request scoped it to desktop-only
 - Fixed a real bug hit while moving the banner: `moveVideoPairHome()`, a defensive layout function that re-anchors elements on every render, was moving the ad banner back to its old spot (after Latest Submissions) regardless of where the HTML placed it. Removed the banner from that function's scope -- it now has one fixed position and nothing moves it dynamically anymore
