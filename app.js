@@ -1625,6 +1625,9 @@
     var adminEditBtn = state.isAdmin
       ? '<button type="button" class="lightbox-admin-edit-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Edit entry (admin)" aria-label="Edit entry">✎ Edit</button>'
       : "";
+    var adminDeleteBtn = state.isAdmin
+      ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">🗑 Delete</button>'
+      : "";
 
     els.lightboxContent.innerHTML =
       '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
@@ -1634,6 +1637,7 @@
       '<h2 class="lightbox-title">' + escapeHtml(row.song || "(untitled)") + "</h2>" +
       '<div class="lightbox-title-actions">' +
       adminEditBtn +
+      adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
@@ -2138,6 +2142,58 @@
       els.adminFormStatus.className = "admin-status is-error";
       els.adminFormStatus.hidden = false;
       els.adminFormSaveBtn.disabled = false;
+    });
+  }
+
+  // Removes a row from state.rows and re-derives everything the public UI
+  // shows from it -- no network fetch, mirrors what a real reload would do
+  // but working off the locally-patched array. Skips applyDeepLinkFromHash()
+  // deliberately: the row that hash might reference no longer exists.
+  function removeRowAndRerender(rowNum) {
+    state.rows = state.rows.filter(function (r) { return r.rowNum !== rowNum; });
+    saveCache(state.rows);
+    buildCategoryChips(state.rows);
+    updateCategoryChipsActive();
+    buildYearOptions(state.rows);
+    els.yearFilter.value = state.year;
+    buildGenreOptions(state.rows);
+    els.genreFilter.value = state.genre;
+    buildCountryOptions(state.rows);
+    els.countryFilter.value = state.country;
+    updateFiltersToggleCount();
+    updateSubtitleStats(state.rows);
+    state.recentSet = computeRecentSet(state.rows);
+    renderLatestStrip(state.rows);
+    renderFeaturedStrip(state.rows);
+    renderRecentList(state.rows);
+    renderFavoritesStrip(state.rows);
+    renderSpotlightSidebar(state.rows);
+    render();
+  }
+
+  // Deletes straight from the lightbox (admin-only) -- single-doc delete,
+  // same cost profile as the lightbox Edit button. Removing it from
+  // state.rows makes it disappear from the current page immediately;
+  // clearing the URL hash stops a stale #row-N link from trying to reopen
+  // it. The public snapshot isn't updated until Publish, same as any other
+  // single admin change -- lands on the admin landing screen afterward with
+  // Publish one click away, rather than silently leaving it unpublished.
+  function deleteRowFromLightbox(rowNum, label) {
+    if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+    db.collection("videos").doc(rowNum).delete().then(function () {
+      closeLightbox();
+      removeRowAndRerender(rowNum);
+      removeAdminRowLocal(rowNum);
+      if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
+      state.adminReturnView = "landing";
+      showAdminLanding();
+      openAdminModalChrome();
+      els.adminLandingStatus.textContent = 'Deleted "' + label + '". Remember to Publish so the live site reflects it.';
+      els.adminLandingStatus.className = "admin-status";
+      els.adminLandingStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Lightbox admin delete failed:", err);
+      alert("Delete failed: " + err.message);
     });
   }
 
@@ -2849,6 +2905,11 @@
     var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");
     if (adminEditBtn) {
       openAdminEditForRow(adminEditBtn.getAttribute("data-rownum"));
+      return;
+    }
+    var adminDeleteBtn = e.target.closest(".lightbox-admin-delete-btn");
+    if (adminDeleteBtn) {
+      deleteRowFromLightbox(adminDeleteBtn.getAttribute("data-rownum"), adminDeleteBtn.getAttribute("data-label"));
       return;
     }
     var favBtn = e.target.closest(".lightbox-fav-btn");

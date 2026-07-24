@@ -1697,6 +1697,25 @@ html, body {
   color: #fff;
 }
 
+.lightbox-admin-delete-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #c4293f;
+  background: transparent;
+  color: #c4293f;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lightbox-admin-delete-btn:hover {
+  background: #c4293f;
+  color: #fff;
+}
+
 .lightbox-report-link {
   flex: 0 0 auto;
   color: #b3261e;
