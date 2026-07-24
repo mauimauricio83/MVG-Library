@@ -387,8 +387,21 @@
   <div class="lightbox-panel admin-panel" role="dialog" aria-modal="true" aria-label="Manage Entries">
     <button type="button" class="lightbox-close" id="adminClose" aria-label="Close">&times;</button>
     <div class="admin-body">
-      <div id="adminListView">
+      <div id="adminLandingView">
+        <h2 class="recent-title">Admin</h2>
+        <p class="admin-bulk-hint">Manage Entries loads and searches the full catalog. Add Entry and Bulk Import don't -- pick those directly if you're just adding new videos.</p>
+        <div class="admin-landing-actions">
+          <button type="button" class="submit-form-btn" id="adminGoManageBtn">Manage Entries</button>
+          <button type="button" class="admin-row-btn" id="adminGoAddBtn">+ Add Entry</button>
+          <button type="button" class="admin-row-btn" id="adminGoBulkBtn">Bulk Import</button>
+          <button type="button" class="admin-row-btn" id="adminGoPublishBtn">Publish</button>
+        </div>
+        <p class="admin-status" id="adminLandingStatus" hidden></p>
+      </div>
+
+      <div id="adminListView" hidden>
         <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminBackBtn">&larr; Back</button>
           <h2 class="recent-title">Manage Entries</h2>
           <div class="admin-toolbar-actions">
             <button type="button" class="admin-row-btn" id="adminPublishBtn">Publish</button>

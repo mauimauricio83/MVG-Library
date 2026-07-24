@@ -146,6 +146,13 @@
     openAdminBtn: document.getElementById("openAdminBtn"),
     adminModal: document.getElementById("adminModal"),
     adminClose: document.getElementById("adminClose"),
+    adminLandingView: document.getElementById("adminLandingView"),
+    adminGoManageBtn: document.getElementById("adminGoManageBtn"),
+    adminGoAddBtn: document.getElementById("adminGoAddBtn"),
+    adminGoBulkBtn: document.getElementById("adminGoBulkBtn"),
+    adminGoPublishBtn: document.getElementById("adminGoPublishBtn"),
+    adminLandingStatus: document.getElementById("adminLandingStatus"),
+    adminBackBtn: document.getElementById("adminBackBtn"),
     adminStatus: document.getElementById("adminStatus"),
     adminEntriesList: document.getElementById("adminEntriesList"),
     adminSearchInput: document.getElementById("adminSearchInput"),
@@ -319,7 +326,20 @@
     tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false },
     isAdmin: false,
     adminRows: [],
-    adminBulkParsed: []
+    adminBulkParsed: [],
+    // { feature, spotlight } of the row currently loaded into the admin
+    // edit form, or null when adding new -- captured at load time so the
+    // save handler's cap-eviction "did this flag just flip?" check doesn't
+    // depend on state.adminRows being populated (it isn't, when editing a
+    // single row straight from the lightbox -- see openAdminEditForRow()).
+    adminFormOriginal: null,
+    // Where the form/bulk-import subview was entered from -- "list" (full
+    // Manage Entries was already loaded), "landing" (skipped loading the
+    // list -- Add/Bulk Import shortcuts), or "lightbox" (single-doc edit
+    // from the lightbox's admin button). Controls where Cancel/Back and a
+    // successful save return to, and whether saving needs to patch/show a
+    // list that may never have been loaded.
+    adminReturnView: "landing"
   };
 
   var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
@@ -2058,40 +2078,130 @@
   // users present in the `admins` collection; state.isAdmin here only
   // controls UI visibility, it isn't itself a security boundary.
 
-  function openAdminModal() {
-    els.adminStatus.hidden = true;
-    els.adminSearchInput.value = "";
-    showAdminList();
+  function openAdminModalChrome() {
     els.adminModal.hidden = false;
     els.adminModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
+  }
+
+  // Opens the modal onto the landing chooser -- deliberately does NOT load
+  // anything. Manage Entries (full browse/search) is the only path that
+  // reads the whole `videos` collection; Add Entry and Bulk Import reserve
+  // fresh IDs via meta/counters instead of scanning for the max, so they
+  // don't need it loaded at all.
+  function openAdminModal() {
+    state.adminReturnView = "landing";
+    els.adminLandingStatus.hidden = true;
+    showAdminLanding();
+    openAdminModalChrome();
+  }
+
+  function showAdminLanding() {
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminLandingView.hidden = false;
+  }
+
+  function goAdminManageEntries() {
+    state.adminReturnView = "list";
+    els.adminStatus.hidden = true;
+    els.adminSearchInput.value = "";
+    showAdminList();
     return loadAdminEntries();
   }
 
   // Jumps straight to editing a specific entry (e.g. from the lightbox's
-  // admin Edit button) instead of landing on the list view. Waits for
-  // loadAdminEntries() so state.adminRows is fresh -- showAdminForm's
-  // cap-eviction "did this flag just flip?" comparison depends on it.
+  // admin Edit button) without reading the entire ~13k-doc `videos`
+  // collection just to populate one form -- fetches only that one document.
   function openAdminEditForRow(rowNum) {
+    state.adminReturnView = "lightbox";
     closeLightbox();
-    openAdminModal().then(function () {
-      var row = findAdminRowByNum(rowNum);
-      if (row) showAdminForm(row);
+    showAdminForm(null);
+    openAdminModalChrome();
+    els.adminFormTitle.textContent = "Loading…";
+    els.adminFormSaveBtn.disabled = true;
+    db.collection("videos").doc(rowNum).get().then(function (doc) {
+      if (!doc.exists) {
+        els.adminFormTitle.textContent = "Entry not found";
+        els.adminFormStatus.textContent = "No entry with rowNum " + rowNum + ".";
+        els.adminFormStatus.className = "admin-status is-error";
+        els.adminFormStatus.hidden = false;
+        return;
+      }
+      showAdminForm(doc.data());
+    }).catch(function (err) {
+      console.error("Admin single-entry load failed:", err);
+      els.adminFormTitle.textContent = "Couldn't load entry";
+      els.adminFormStatus.textContent = err.message;
+      els.adminFormStatus.className = "admin-status is-error";
+      els.adminFormStatus.hidden = false;
+      els.adminFormSaveBtn.disabled = false;
     });
   }
 
+  // Cancel/Back from the form or bulk-import subview -- returns to wherever
+  // it was entered from, without fabricating a partial list if Manage
+  // Entries was never loaded.
+  function returnFromAdminSubview() {
+    if (state.adminReturnView === "list") showAdminList();
+    else showAdminLanding();
+  }
+
   function showAdminList() {
+    els.adminLandingView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminListView.hidden = false;
+  }
+
+  // Reserves `count` sequential rowNums atomically via meta/counters, so
+  // Add Entry / Bulk Import can assign fresh IDs without ever scanning the
+  // `videos` collection for the current max.
+  function reserveRowNums(count) {
+    var counterRef = db.collection("meta").doc("counters");
+    return db.runTransaction(function (tx) {
+      return tx.get(counterRef).then(function (doc) {
+        var next = doc.exists && doc.data().nextRowNum ? doc.data().nextRowNum : 1;
+        var reserved = [];
+        for (var i = 0; i < count; i++) reserved.push(String(next + i));
+        tx.set(counterRef, { nextRowNum: next + count }, { merge: true });
+        return reserved;
+      });
+    });
   }
 
   function findAdminRowByNum(rowNum) {
     return state.adminRows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
   }
 
+  // Updates the already-loaded state.adminRows in place instead of re-reading
+  // the entire ~13k-doc collection after every single add/edit/delete --
+  // Manage Entries only needs display fields (not the Firestore-only
+  // featureAt/spotlightAt/createdAt/updatedAt bookkeeping), so a plain local
+  // merge keeps the list accurate without another network read.
+  function upsertAdminRowLocal(rowNum, fields) {
+    var plain = {
+      rowNum: rowNum, artist: fields.artist, song: fields.song, director: fields.director,
+      category: fields.category, youtube: fields.youtube, mvg: fields.mvg, year: fields.year,
+      releaseDate: fields.releaseDate, studio: fields.studio, producer: fields.producer,
+      dp: fields.dp, editor: fields.editor, choreographer: fields.choreographer, country: fields.country,
+      genres: fields.genres, description: fields.description, feature: fields.feature, spotlight: fields.spotlight
+    };
+    var idx = -1;
+    for (var i = 0; i < state.adminRows.length; i++) {
+      if (state.adminRows[i].rowNum === rowNum) { idx = i; break; }
+    }
+    if (idx === -1) state.adminRows.push(plain); else state.adminRows[idx] = plain;
+  }
+
+  function removeAdminRowLocal(rowNum) {
+    state.adminRows = state.adminRows.filter(function (r) { return r.rowNum !== rowNum; });
+  }
+
   function showAdminForm(row) {
+    els.adminLandingView.hidden = true;
     els.adminListView.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminForm.hidden = false;
@@ -2100,6 +2210,7 @@
     els.adminFormSaveBtn.disabled = false;
     els.adminFormTitle.textContent = row ? "Edit Entry" : "Add Entry";
     els.adminForm.reset();
+    state.adminFormOriginal = row ? { feature: !!row.feature, spotlight: !!row.spotlight } : null;
     var f = els.adminForm;
     f.elements.rowNum.value = row ? row.rowNum : "";
     if (row) {
@@ -2186,14 +2297,8 @@
 
   els.adminPublishBtn.addEventListener("click", function () {
     els.adminPublishBtn.disabled = true;
-    setAdminStatus("Publishing snapshot…");
-    publishSnapshot().then(function (result) {
+    runAdminPublish(els.adminStatus).then(function () {
       els.adminPublishBtn.disabled = false;
-      setAdminStatus("Published " + result.count + " entries to the live site.");
-    }).catch(function (err) {
-      console.error("Publish failed:", err);
-      els.adminPublishBtn.disabled = false;
-      setAdminStatus("Publish failed: " + err.message, true);
     });
   });
 
@@ -2269,6 +2374,7 @@
   }
 
   function showAdminBulk() {
+    els.adminLandingView.hidden = true;
     els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = false;
@@ -2283,55 +2389,87 @@
     return /^(true|yes|y|1|x)$/i.test(String(raw || "").trim());
   }
 
+  function buildBulkDoc(norm, rowNum, isNew, existing) {
+    var feature = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.feature));
+    var spotlight = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.spotlight));
+    var wasFeature = existing ? !!existing.feature : false;
+    var wasSpotlight = existing ? !!existing.spotlight : false;
+
+    var doc = {
+      rowNum: rowNum,
+      artist: pickAlias(norm, BULK_FIELD_ALIASES.artist),
+      song: pickAlias(norm, BULK_FIELD_ALIASES.song),
+      director: pickAlias(norm, BULK_FIELD_ALIASES.director),
+      category: pickAlias(norm, BULK_FIELD_ALIASES.category),
+      youtube: pickAlias(norm, BULK_FIELD_ALIASES.youtube),
+      mvg: pickAlias(norm, BULK_FIELD_ALIASES.mvg),
+      year: pickAlias(norm, BULK_FIELD_ALIASES.year),
+      releaseDate: fixReleaseDate(pickAlias(norm, BULK_FIELD_ALIASES.releaseDate)),
+      studio: pickAlias(norm, BULK_FIELD_ALIASES.studio),
+      producer: pickAlias(norm, BULK_FIELD_ALIASES.producer),
+      dp: pickAlias(norm, BULK_FIELD_ALIASES.dp),
+      editor: pickAlias(norm, BULK_FIELD_ALIASES.editor),
+      choreographer: pickAlias(norm, BULK_FIELD_ALIASES.choreographer),
+      country: pickAlias(norm, BULK_FIELD_ALIASES.country),
+      genres: readBulkGenres(norm),
+      description: pickAlias(norm, BULK_FIELD_ALIASES.description),
+      feature: feature,
+      spotlight: spotlight,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    return doc;
+  }
+
+  // Async: unlike the old version, this never scans the whole `videos`
+  // collection. Rows that specify an existing Row # are looked up
+  // individually (one read per such row, not per the whole catalog); rows
+  // with no Row # (the common case -- pasting brand-new submissions) get
+  // fresh IDs from a single reserveRowNums() transaction, so a pure bulk-add
+  // costs 1 read + 1 write total regardless of how many rows are pasted.
   function parseBulkImportText(text) {
     var parsed = Papa.parse(text.trim(), { header: true, delimiter: "\t", skipEmptyLines: true });
-    var nextRowNum = state.adminRows.reduce(function (max, r) {
-      var n = parseInt(r.rowNum, 10);
-      return isNaN(n) ? max : Math.max(max, n);
-    }, 0);
-
-    return parsed.data.map(function (raw) {
+    var entries = parsed.data.map(function (raw) {
       var norm = normalizeBulkRow(raw);
       var rowNum = pickAlias(norm, BULK_FIELD_ALIASES.rowNum);
-      var existing = rowNum ? findAdminRowByNum(rowNum) : null;
-      var isNew = !existing;
-      if (isNew) {
-        nextRowNum += 1;
-        rowNum = String(nextRowNum);
-      }
+      var artist = pickAlias(norm, BULK_FIELD_ALIASES.artist);
+      var song = pickAlias(norm, BULK_FIELD_ALIASES.song);
+      return { norm: norm, rowNum: rowNum, valid: artist !== "" || song !== "" };
+    });
 
-      var feature = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.feature));
-      var spotlight = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.spotlight));
-      var wasFeature = existing ? !!existing.feature : false;
-      var wasSpotlight = existing ? !!existing.spotlight : false;
+    var withRowNum = entries.filter(function (e) { return e.valid && e.rowNum; });
+    var withoutRowNum = entries.filter(function (e) { return e.valid && !e.rowNum; });
 
-      var doc = {
-        rowNum: rowNum,
-        artist: pickAlias(norm, BULK_FIELD_ALIASES.artist),
-        song: pickAlias(norm, BULK_FIELD_ALIASES.song),
-        director: pickAlias(norm, BULK_FIELD_ALIASES.director),
-        category: pickAlias(norm, BULK_FIELD_ALIASES.category),
-        youtube: pickAlias(norm, BULK_FIELD_ALIASES.youtube),
-        mvg: pickAlias(norm, BULK_FIELD_ALIASES.mvg),
-        year: pickAlias(norm, BULK_FIELD_ALIASES.year),
-        releaseDate: fixReleaseDate(pickAlias(norm, BULK_FIELD_ALIASES.releaseDate)),
-        studio: pickAlias(norm, BULK_FIELD_ALIASES.studio),
-        producer: pickAlias(norm, BULK_FIELD_ALIASES.producer),
-        dp: pickAlias(norm, BULK_FIELD_ALIASES.dp),
-        editor: pickAlias(norm, BULK_FIELD_ALIASES.editor),
-        choreographer: pickAlias(norm, BULK_FIELD_ALIASES.choreographer),
-        country: pickAlias(norm, BULK_FIELD_ALIASES.country),
-        genres: readBulkGenres(norm),
-        description: pickAlias(norm, BULK_FIELD_ALIASES.description),
-        feature: feature,
-        spotlight: spotlight,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
-      if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    var lookups = Promise.all(withRowNum.map(function (e) {
+      return db.collection("videos").doc(e.rowNum).get();
+    }));
+    var reservation = withoutRowNum.length ? reserveRowNums(withoutRowNum.length) : Promise.resolve([]);
 
-      return { rowNum: rowNum, isNew: isNew, doc: doc, valid: doc.artist !== "" || doc.song !== "" };
+    return Promise.all([lookups, reservation]).then(function (results) {
+      var lookupDocs = results[0];
+      var reservedIds = results[1];
+      var existingByRowNum = {};
+      withRowNum.forEach(function (e, i) {
+        existingByRowNum[e.rowNum] = lookupDocs[i].exists ? lookupDocs[i].data() : null;
+      });
+
+      var nextReserved = 0;
+      return entries.map(function (e) {
+        if (!e.valid) return { valid: false };
+        var rowNum, existing, isNew;
+        if (e.rowNum) {
+          rowNum = e.rowNum;
+          existing = existingByRowNum[rowNum];
+          isNew = !existing;
+        } else {
+          rowNum = reservedIds[nextReserved++];
+          existing = null;
+          isNew = true;
+        }
+        return { rowNum: rowNum, isNew: isNew, doc: buildBulkDoc(e.norm, rowNum, isNew, existing), valid: true };
+      });
     });
   }
 
@@ -2351,8 +2489,9 @@
     }).join("");
   }
 
-  els.adminBulkBtn.addEventListener("click", showAdminBulk);
-  els.adminBulkCancelBtn.addEventListener("click", showAdminList);
+  els.adminBulkBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminBulk(); });
+  els.adminGoBulkBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminBulk(); });
+  els.adminBulkCancelBtn.addEventListener("click", returnFromAdminSubview);
 
   els.adminBulkPreviewBtn.addEventListener("click", function () {
     var text = els.adminBulkTextarea.value;
@@ -2362,14 +2501,24 @@
       els.adminBulkStatus.hidden = false;
       return;
     }
-    var rows = parseBulkImportText(text);
-    state.adminBulkParsed = rows.filter(function (r) { return r.valid; });
-    renderBulkPreview(rows);
-    var validCount = state.adminBulkParsed.length;
-    els.adminBulkStatus.textContent = validCount + " of " + rows.length + " rows ready to import.";
+    els.adminBulkPreviewBtn.disabled = true;
+    els.adminBulkStatus.textContent = "Checking rows…";
     els.adminBulkStatus.className = "admin-status";
     els.adminBulkStatus.hidden = false;
-    els.adminBulkCommitRow.hidden = validCount === 0;
+    parseBulkImportText(text).then(function (rows) {
+      els.adminBulkPreviewBtn.disabled = false;
+      state.adminBulkParsed = rows.filter(function (r) { return r.valid; });
+      renderBulkPreview(rows);
+      var validCount = state.adminBulkParsed.length;
+      els.adminBulkStatus.textContent = validCount + " of " + rows.length + " rows ready to import.";
+      els.adminBulkStatus.className = "admin-status";
+      els.adminBulkCommitRow.hidden = validCount === 0;
+    }).catch(function (err) {
+      console.error("Bulk preview failed:", err);
+      els.adminBulkPreviewBtn.disabled = false;
+      els.adminBulkStatus.textContent = "Couldn't check rows: " + err.message;
+      els.adminBulkStatus.className = "admin-status is-error";
+    });
   });
 
   els.adminBulkCommitBtn.addEventListener("click", function () {
@@ -2410,8 +2559,20 @@
       return publishSnapshot();
     }).then(function () {
       els.adminBulkCommitBtn.disabled = false;
-      showAdminList();
-      loadAdminEntries(createdCount + " created, " + updatedCount + " updated, and published to the live site.");
+      var summary = createdCount + " created, " + updatedCount + " updated, and published to the live site.";
+      // Patch locally rather than re-reading -- cheap either way, and keeps
+      // state.adminRows accurate if Manage Entries gets opened next.
+      rows.forEach(function (r) { upsertAdminRowLocal(r.rowNum, r.doc); });
+      if (state.adminReturnView === "list") {
+        showAdminList();
+        renderAdminEntries();
+        setAdminStatus(summary);
+      } else {
+        showAdminLanding();
+        els.adminLandingStatus.textContent = summary;
+        els.adminLandingStatus.className = "admin-status";
+        els.adminLandingStatus.hidden = false;
+      }
     }).catch(function (err) {
       console.error("Bulk import failed:", err);
       els.adminBulkCommitBtn.disabled = false;
@@ -2497,7 +2658,9 @@
       var label = row ? row.artist + " — " + row.song : "entry #" + rowNum;
       if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
       db.collection("videos").doc(rowNum).delete().then(function () {
-        loadAdminEntries();
+        removeAdminRowLocal(rowNum);
+        renderAdminEntries();
+        setAdminStatus('Deleted "' + label + '".');
       }).catch(function (err) {
         console.error("Admin delete failed:", err);
         setAdminStatus("Delete failed: " + err.message, true);
@@ -2505,71 +2668,112 @@
     }
   });
 
-  els.adminAddBtn.addEventListener("click", function () { showAdminForm(null); });
-  els.adminFormCancelBtn.addEventListener("click", showAdminList);
+  els.adminGoManageBtn.addEventListener("click", goAdminManageEntries);
+  els.adminBackBtn.addEventListener("click", showAdminLanding);
+
+  els.adminGoAddBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminForm(null); });
+  els.adminAddBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminForm(null); });
+  els.adminFormCancelBtn.addEventListener("click", returnFromAdminSubview);
+
+  function runAdminPublish(statusEl) {
+    statusEl.textContent = "Publishing snapshot…";
+    statusEl.className = "admin-status";
+    statusEl.hidden = false;
+    return publishSnapshot().then(function (result) {
+      statusEl.textContent = "Published " + result.count + " entries to the live site.";
+    }).catch(function (err) {
+      console.error("Publish failed:", err);
+      statusEl.textContent = "Publish failed: " + err.message;
+      statusEl.className = "admin-status is-error";
+    });
+  }
+
+  els.adminGoPublishBtn.addEventListener("click", function () {
+    els.adminGoPublishBtn.disabled = true;
+    runAdminPublish(els.adminLandingStatus).then(function () {
+      els.adminGoPublishBtn.disabled = false;
+    });
+  });
 
   els.adminForm.addEventListener("submit", function (e) {
     e.preventDefault();
 
     var formData = new FormData(els.adminForm);
-    var rowNum = String(formData.get("rowNum") || "").trim();
-    var isNew = !rowNum;
-    if (isNew) {
-      var maxRowNum = state.adminRows.reduce(function (max, r) {
-        var n = parseInt(r.rowNum, 10);
-        return isNaN(n) ? max : Math.max(max, n);
-      }, 0);
-      rowNum = String(maxRowNum + 1);
-    }
-
-    var existing = findAdminRowByNum(rowNum);
-    var feature = formData.get("feature") === "on";
-    var spotlight = formData.get("spotlight") === "on";
-    var wasFeature = existing ? !!existing.feature : false;
-    var wasSpotlight = existing ? !!existing.spotlight : false;
-    var genres = String(formData.get("genres") || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-
-    function field(name) { return String(formData.get(name) || "").trim(); }
-
-    var doc = {
-      rowNum: rowNum,
-      artist: field("artist"),
-      song: field("song"),
-      director: field("director"),
-      category: field("category"),
-      youtube: field("youtube"),
-      mvg: field("mvg"),
-      year: field("year"),
-      releaseDate: field("releaseDate"),
-      studio: field("studio"),
-      producer: field("producer"),
-      dp: field("dp"),
-      editor: field("editor"),
-      choreographer: field("choreographer"),
-      country: field("country"),
-      genres: genres,
-      description: field("description"),
-      feature: feature,
-      spotlight: spotlight,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    // Only touch *At when a flag actually flips -- leave an already-true
-    // flag's original timestamp alone so cap-eviction ordering stays correct.
-    if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
-    if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    var existingRowNum = String(formData.get("rowNum") || "").trim();
+    var isNew = !existingRowNum;
 
     els.adminFormSaveBtn.disabled = true;
     els.adminFormStatus.hidden = true;
 
-    db.collection("videos").doc(rowNum).set(doc, { merge: true }).then(function () {
-      var evictions = [];
-      if (feature && !wasFeature) evictions.push(enforceCap("feature", "featureAt", 30));
-      if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
-      return Promise.all(evictions);
-    }).then(function () {
-      showAdminList();
-      loadAdminEntries();
+    // New entries reserve a fresh ID via meta/counters (1 read + 1 write,
+    // regardless of whether the full list was ever loaded) instead of
+    // scanning state.adminRows for the current max.
+    var rowNumPromise = isNew ? reserveRowNums(1).then(function (ids) { return ids[0]; }) : Promise.resolve(existingRowNum);
+
+    rowNumPromise.then(function (rowNum) {
+      var feature = formData.get("feature") === "on";
+      var spotlight = formData.get("spotlight") === "on";
+      var wasFeature = state.adminFormOriginal ? state.adminFormOriginal.feature : false;
+      var wasSpotlight = state.adminFormOriginal ? state.adminFormOriginal.spotlight : false;
+      var genres = String(formData.get("genres") || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+
+      function field(name) { return String(formData.get(name) || "").trim(); }
+
+      var doc = {
+        rowNum: rowNum,
+        artist: field("artist"),
+        song: field("song"),
+        director: field("director"),
+        category: field("category"),
+        youtube: field("youtube"),
+        mvg: field("mvg"),
+        year: field("year"),
+        releaseDate: field("releaseDate"),
+        studio: field("studio"),
+        producer: field("producer"),
+        dp: field("dp"),
+        editor: field("editor"),
+        choreographer: field("choreographer"),
+        country: field("country"),
+        genres: genres,
+        description: field("description"),
+        feature: feature,
+        spotlight: spotlight,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      // Only touch *At when a flag actually flips -- leave an already-true
+      // flag's original timestamp alone so cap-eviction ordering stays correct.
+      if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
+      if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+
+      return db.collection("videos").doc(rowNum).set(doc, { merge: true }).then(function () {
+        var evictions = [];
+        if (feature && !wasFeature) evictions.push(enforceCap("feature", "featureAt", 30));
+        if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
+        return Promise.all(evictions);
+      }).then(function () {
+        // A single edit opened straight from the lightbox never loaded the
+        // full list -- just close instead of paying for a ~13k-doc read only
+        // to show a list the admin didn't ask for. From the landing
+        // shortcut, there's no list to refresh either -- go back to landing
+        // with a confirmation. Only from Manage Entries itself is there a
+        // loaded list worth patching in place.
+        if (state.adminReturnView === "lightbox") {
+          dismissTopModal();
+        } else if (state.adminReturnView === "list") {
+          upsertAdminRowLocal(rowNum, doc);
+          showAdminList();
+          renderAdminEntries();
+          setAdminStatus((isNew ? "Added " : "Updated ") + doc.artist + " — " + doc.song + ".");
+        } else {
+          upsertAdminRowLocal(rowNum, doc);
+          showAdminLanding();
+          els.adminLandingStatus.textContent = (isNew ? "Added " : "Updated ") + doc.artist + " — " + doc.song + ".";
+          els.adminLandingStatus.className = "admin-status";
+          els.adminLandingStatus.hidden = false;
+        }
+      });
     }).catch(function (err) {
       console.error("Admin save failed:", err);
       els.adminFormStatus.textContent = "Save failed: " + err.message;

@@ -1984,6 +1984,17 @@ html, body {
   flex: 0 0 auto;
 }
 
+.admin-landing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-landing-actions .admin-row-btn {
+  padding: 12px 14px;
+}
+
 .admin-bulk-hint {
   margin: 10px 0 0;
   font-size: 0.8rem;
