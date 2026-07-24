@@ -1,0 +1,8 @@
+{
+  "name": "mvg-library-scripts",
+  "private": true,
+  "description": "One-off local tooling (migration, etc.) — kept separate from the site itself, which has zero npm dependencies by design.",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

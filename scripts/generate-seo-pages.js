@@ -12,7 +12,11 @@
 const fs = require("fs");
 const path = require("path");
 
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
+// Published catalog snapshot (see SNAPSHOT_URL in app.js) -- replaces the
+// old direct CSV fetch now that Firestore/the admin panel is the source of
+// truth. Rows arrive already in this script's target shape, so no more
+// header-column mapping is needed here.
+const SNAPSHOT_URL = "https://firebasestorage.googleapis.com/v0/b/mvg-library.firebasestorage.app/o/catalog%2Fsnapshot.json?alt=media";
 const SITE_URL = "https://mauimauricio83.github.io/MVG-Library";
 const ROOT = path.join(__dirname, "..");
 // Most directors/artists only have one entry in the sheet — a one-video hub
@@ -363,40 +367,16 @@ function indexPage(kind, groups, depth) {
 }
 
 async function main() {
-  console.log("Fetching CSV...");
-  const res = await fetch(CSV_URL, { redirect: "follow" });
-  if (!res.ok) throw new Error("CSV fetch failed: " + res.status);
-  const csvText = await res.text();
-  const rawRows = parseCsv(csvText);
+  console.log("Fetching catalog snapshot...");
+  const res = await fetch(SNAPSHOT_URL, { redirect: "follow" });
+  if (!res.ok) throw new Error("Snapshot fetch failed: " + res.status);
+  const snapshotRows = await res.json();
 
-  const rows = rawRows
-    .map((r) => {
-      // Prefer the split Genre 1/2/3 columns; fall back to a ";"-separated
-      // Genre column -- same logic as the app's readGenres().
-      let genres = ["Genre 1", "Genre 2", "Genre 3"].map((k) => get(r, k)).filter(Boolean);
-      if (!genres.length && get(r, "Genre")) {
-        genres = get(r, "Genre").split(";").map((s) => s.trim()).filter(Boolean);
-      }
-      genres = [...new Set(genres)];
-      return {
-        rowNum: get(r, "Row #"),
-        artist: get(r, "Artist"),
-        song: get(r, "Song Title"),
-        director: get(r, "Director"),
-        category: get(r, "Category"),
-        youtube: get(r, "YouTube Link"),
-        year: get(r, "Year"),
-        releaseDate: fixReleaseDate(get(r, "Release date")),
-        country: normalizeCountry(get(r, "Country")),
-        description: get(r, "Description"),
-        producer: get(r, "Producer"),
-        dp: get(r, "DP"),
-        editor: get(r, "Editor"),
-        choreographer: get(r, "Choreographer"),
-        studio: get(r, "Studio"),
-        genres
-      };
-    })
+  // Snapshot rows already carry rowNum/artist/song/director/etc. verbatim
+  // (see publishSnapshot() in app.js / scripts/publish-snapshot.js) -- only
+  // country needs the same display-normalization this script always did.
+  const rows = snapshotRows
+    .map((r) => Object.assign({}, r, { country: normalizeCountry(r.country) }))
     .filter((r) => r.rowNum && (r.artist || r.song || r.director));
 
   console.log("Parsed " + rows.length + " rows.");

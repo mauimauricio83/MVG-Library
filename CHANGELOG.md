@@ -2,7 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.19.0 — current
+## v5.0.0 — current
+- **Architecture change: the catalog now lives in Firestore, not the Google Sheet.** All ~13,239 entries were migrated to a `videos/{rowNum}` Firestore collection (rowNum preserved as the doc ID, so existing favorites/recently-viewed/deep-links keep working). The public site no longer reads the CSV export -- `fetchData()` now fetches a static JSON snapshot (`SNAPSHOT_URL`) from Cloud Storage instead, keeping per-visitor cost at one cheap cacheable GET regardless of admin write volume. `scripts/generate-seo-pages.js` (the daily hub-page generator) was cut over the same way.
+- Added an admin mode: signed-in users listed in a Firestore `admins/{uid}` collection get an "Admin" sidebar link opening a Manage Entries panel to add, edit, and delete catalog entries directly from the site, with Firestore security rules restricting `videos`/`admins` access to admins only.
+- Added a header-row-driven Bulk Import tool in the admin panel: paste a block of spreadsheet rows (any column order, header row matched by name with common alternate spellings recognized) to create/update entries in bulk -- built specifically to remove the manual cut-and-paste column realignment previously needed between the Submissions sheet and the master sheet's differing column layouts.
+- Ported the Feature/Spotlight cap-eviction logic (max 30 / max 3, oldest-by-checked-at evicted first) from the old Apps Script `onEdit` trigger into the admin panel, running on every single-entry edit and once per bulk import.
+- Added a "Publish" step (manual button for single edits, automatic after bulk imports) that regenerates the public snapshot from Firestore -- admin changes go live once published, not immediately on save.
+- Fixed a bug caught during this migration: the Apps Script Feature/Spotlight "checked at" timestamps had been silently lost for a long time due to a column collision (AA was double-booked as both the timestamp column and a VLOOKUP scratch column) -- Feature had drifted to 50 checked entries against a 30 cap. Reconciled back to 30 by evicting the oldest-by-checked-at (pre-dating the timestamp fix) entries.
+
+## v4.19.0
 - Spotlight is now always visible, independent of search/filter state (was previously hidden unless there were search results)
 - Removed the vertical Spotlight ad (and its CSV/ad-slideshow plumbing) -- the horizontal ad banner below Spotlight was already covering that slot
 - Logo and title in the top bar now link back to Home (desktop and mobile)

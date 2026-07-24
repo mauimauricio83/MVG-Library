@@ -1,11 +1,19 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.19.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.0.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
   var CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfeg4mWGWZgOc5ZC-84iBQP3XM4TBopECjBg8moFHmKj0pfOCID05iSC2Xfmf3Y4X8W5PP5r_GCY7a/pub?gid=1998671230&single=true&output=csv";
+
+  // Published catalog snapshot (Firestore `videos` collection, written by
+  // the admin panel's Publish button / scripts/publish-snapshot.js) -- the
+  // public site reads this instead of the CSV above, so per-visitor cost
+  // stays one cheap cacheable GET regardless of how much admin write
+  // traffic happens. Storage rules make this path publicly readable, so no
+  // download token is needed in the URL.
+  var SNAPSHOT_URL = "https://firebasestorage.googleapis.com/v0/b/mvg-library.firebasestorage.app/o/catalog%2Fsnapshot.json?alt=media";
 
   // Ad slideshow, sourced from a small published sheet -- columns: Seconds
   // (how long that ad shows before advancing), Image, Link.
@@ -135,6 +143,29 @@
     openPodcastBtn: document.getElementById("openPodcastBtn"),
     podcastModal: document.getElementById("podcastModal"),
     podcastModalClose: document.getElementById("podcastModalClose"),
+    openAdminBtn: document.getElementById("openAdminBtn"),
+    adminModal: document.getElementById("adminModal"),
+    adminClose: document.getElementById("adminClose"),
+    adminStatus: document.getElementById("adminStatus"),
+    adminEntriesList: document.getElementById("adminEntriesList"),
+    adminSearchInput: document.getElementById("adminSearchInput"),
+    adminListView: document.getElementById("adminListView"),
+    adminAddBtn: document.getElementById("adminAddBtn"),
+    adminForm: document.getElementById("adminForm"),
+    adminFormTitle: document.getElementById("adminFormTitle"),
+    adminFormCancelBtn: document.getElementById("adminFormCancelBtn"),
+    adminFormSaveBtn: document.getElementById("adminFormSaveBtn"),
+    adminFormStatus: document.getElementById("adminFormStatus"),
+    adminBulkBtn: document.getElementById("adminBulkBtn"),
+    adminBulkView: document.getElementById("adminBulkView"),
+    adminBulkTextarea: document.getElementById("adminBulkTextarea"),
+    adminBulkPreviewBtn: document.getElementById("adminBulkPreviewBtn"),
+    adminBulkCancelBtn: document.getElementById("adminBulkCancelBtn"),
+    adminBulkStatus: document.getElementById("adminBulkStatus"),
+    adminBulkPreview: document.getElementById("adminBulkPreview"),
+    adminBulkCommitRow: document.getElementById("adminBulkCommitRow"),
+    adminBulkCommitBtn: document.getElementById("adminBulkCommitBtn"),
+    adminPublishBtn: document.getElementById("adminPublishBtn"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -212,6 +243,7 @@
     closeRecentModal();
     closeFavoritesModal();
     closePodcastModal();
+    closeAdminModal();
     closeHeaderMenu();
   }
 
@@ -284,7 +316,10 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     recentSet: {},
-    tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false }
+    tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false },
+    isAdmin: false,
+    adminRows: [],
+    adminBulkParsed: []
   };
 
   var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
@@ -604,25 +639,27 @@
       setStatus("Loading database…", { spinner: true });
     }
 
-    Papa.parse(CSV_URL, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function (result) {
-        state.rows = cleanRows(result.data);
+    fetch(SNAPSHOT_URL)
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (rows) {
+        // Snapshot is already in cleanRows()'s exact shape (built by
+        // publishSnapshot()/scripts/publish-snapshot.js) -- no mapping needed.
+        state.rows = rows;
         saveCache(state.rows);
         setStatus(state.rows.length ? "" : "No entries found.");
         finishLoad();
-      },
-      error: function (err) {
-        console.error("CSV load error:", err);
+      })
+      .catch(function (err) {
+        console.error("Snapshot load error:", err);
         if (cached && cached.rows && cached.rows.length) {
-          setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest sheet.");
+          setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest snapshot.");
         } else {
           setStatus("Couldn't load the database. Please try again later.", { error: true });
         }
-      }
-    });
+      });
   }
 
   function finishLoad() {
@@ -2005,6 +2042,523 @@
     els.settingsStatus.hidden = false;
   });
 
+  // ---- Admin panel (Manage Entries) ----------------------------------
+  // Reads live from Firestore's `videos` collection (not the public
+  // snapshot -- see Phase 5) so admin edits are visible immediately.
+  // Firestore security rules restrict `videos` read/write to signed-in
+  // users present in the `admins` collection; state.isAdmin here only
+  // controls UI visibility, it isn't itself a security boundary.
+
+  function openAdminModal() {
+    els.adminStatus.hidden = true;
+    els.adminSearchInput.value = "";
+    showAdminList();
+    els.adminModal.hidden = false;
+    els.adminModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+    loadAdminEntries();
+  }
+
+  function showAdminList() {
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminListView.hidden = false;
+  }
+
+  function findAdminRowByNum(rowNum) {
+    return state.adminRows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
+  }
+
+  function showAdminForm(row) {
+    els.adminListView.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminForm.hidden = false;
+    els.adminForm.scrollTop = 0;
+    els.adminFormStatus.hidden = true;
+    els.adminFormSaveBtn.disabled = false;
+    els.adminFormTitle.textContent = row ? "Edit Entry" : "Add Entry";
+    els.adminForm.reset();
+    var f = els.adminForm;
+    f.elements.rowNum.value = row ? row.rowNum : "";
+    if (row) {
+      ["artist", "song", "director", "category", "youtube", "mvg", "year", "releaseDate",
+        "studio", "producer", "dp", "editor", "choreographer", "country", "description"].forEach(function (key) {
+        if (f.elements[key]) f.elements[key].value = row[key] || "";
+      });
+      f.elements.genres.value = (row.genres || []).join(", ");
+      f.elements.feature.checked = !!row.feature;
+      f.elements.spotlight.checked = !!row.spotlight;
+    }
+  }
+
+  // Ported from the Apps Script onEdit cap-eviction logic (see CHANGELOG) --
+  // same algorithm, retargeted at Firestore documents instead of Sheet
+  // ranges. Docs with no timestamp sort as oldest (see reconcile-caps.js).
+  function enforceCap(field, timestampField, cap) {
+    return db.collection("videos").where(field, "==", true).get().then(function (snap) {
+      if (snap.size <= cap) return;
+      var docs = snap.docs.slice().sort(function (a, b) {
+        var ta = a.data()[timestampField], tb = b.data()[timestampField];
+        var ma = ta ? ta.toMillis() : 0;
+        var mb = tb ? tb.toMillis() : 0;
+        if (ma !== mb) return ma - mb;
+        return parseInt(a.data().rowNum, 10) - parseInt(b.data().rowNum, 10);
+      });
+      var toEvict = docs.slice(0, docs.length - cap);
+      var batch = db.batch();
+      toEvict.forEach(function (d) {
+        var patch = {};
+        patch[field] = false;
+        patch[timestampField] = null;
+        patch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+        batch.update(d.ref, patch);
+      });
+      return batch.commit();
+    });
+  }
+
+  // ---- Publish snapshot ------------------------------------------------
+  // Reads the full `videos` collection and republishes catalog/snapshot.json
+  // in Cloud Storage -- the file the public site actually reads (see
+  // SNAPSHOT_URL/fetchData()). Admin-only per Storage rules.
+  function publishSnapshot() {
+    return db.collection("videos").get().then(function (snap) {
+      var rows = snap.docs.map(function (doc) {
+        var d = doc.data();
+        return {
+          rowNum: d.rowNum || "",
+          artist: d.artist || "",
+          song: d.song || "",
+          director: d.director || "",
+          category: d.category || "",
+          youtube: d.youtube || "",
+          mvg: d.mvg || "",
+          year: d.year || "",
+          releaseDate: d.releaseDate || "",
+          studio: d.studio || "",
+          producer: d.producer || "",
+          dp: d.dp || "",
+          editor: d.editor || "",
+          choreographer: d.choreographer || "",
+          country: d.country || "",
+          genres: d.genres || [],
+          description: d.description || "",
+          feature: !!d.feature,
+          spotlight: !!d.spotlight,
+          searchHaystack: [d.artist, d.song, d.director, d.producer, d.dp, d.editor, d.choreographer, d.studio].join(" ").toLowerCase()
+        };
+      });
+      // Firestore's collection get() doesn't guarantee row order -- sort by
+      // rowNum ascending (matching the original CSV's stable order) so
+      // downstream consumers that rely on a deterministic row order (e.g.
+      // generate-seo-pages.js's slug-collision numbering) don't have entries
+      // randomly swap URLs between publishes.
+      rows.sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); });
+      var blob = new Blob([JSON.stringify(rows)], { type: "application/json" });
+      var ref = firebase.storage().ref("catalog/snapshot.json");
+      return ref.put(blob, { cacheControl: "public, max-age=300", contentType: "application/json" }).then(function () {
+        return { count: rows.length };
+      });
+    });
+  }
+
+  els.adminPublishBtn.addEventListener("click", function () {
+    els.adminPublishBtn.disabled = true;
+    setAdminStatus("Publishing snapshot…");
+    publishSnapshot().then(function (result) {
+      els.adminPublishBtn.disabled = false;
+      setAdminStatus("Published " + result.count + " entries to the live site.");
+    }).catch(function (err) {
+      console.error("Publish failed:", err);
+      els.adminPublishBtn.disabled = false;
+      setAdminStatus("Publish failed: " + err.message, true);
+    });
+  });
+
+  // ---- Bulk import/upsert ---------------------------------------------
+  // Header-row-driven paste: columns are matched by name (via the same
+  // `get()`/`readGenres()`/`fixReleaseDate()` helpers cleanRows() uses for
+  // the CSV), not position, so pasting a spreadsheet range with columns in
+  // whatever order they happen to be in just works -- no more manual
+  // cut-and-paste-shifted-by-N-columns to realign fields.
+
+  var BULK_BATCH_SIZE = 500;
+
+  // Header matching is case-insensitive and alias-aware -- the master sheet
+  // and the "Submissions" intake sheet spell some columns differently
+  // ("YouTube Link" vs "Youtube Link", "Year" vs "Year of release", "DP" vs
+  // "Director of Photography"), which is exactly the kind of mismatch that
+  // used to force manual cut-and-paste column realignment. Any of these
+  // spellings works regardless of which sheet you're pasting from.
+  var BULK_FIELD_ALIASES = {
+    rowNum: ["row #", "row#", "row number"],
+    artist: ["artist"],
+    song: ["song title", "song"],
+    director: ["director"],
+    category: ["category"],
+    youtube: ["youtube link", "youtube"],
+    mvg: ["mvg link", "mvg"],
+    year: ["year", "year of release"],
+    releaseDate: ["release date", "release date (optional)"],
+    studio: ["studio"],
+    producer: ["producer"],
+    dp: ["dp", "director of photography"],
+    editor: ["editor"],
+    choreographer: ["choreographer"],
+    country: ["country"],
+    description: ["description"],
+    feature: ["feature"],
+    spotlight: ["spotlight"]
+  };
+  var BULK_GENRE_SPLIT_ALIASES = ["genre 1", "genre 2", "genre 3"];
+  var BULK_GENRE_LEGACY_ALIASES = ["genre"];
+
+  // Normalizes a PapaParse-parsed row's keys (trim + lowercase) once, so
+  // every alias lookup below is a simple case-insensitive map read instead
+  // of a repeated case-sensitive scan.
+  function normalizeBulkRow(raw) {
+    var norm = {};
+    Object.keys(raw).forEach(function (k) {
+      norm[k.trim().toLowerCase()] = raw[k];
+    });
+    return norm;
+  }
+
+  function pickAlias(normRow, aliases) {
+    for (var i = 0; i < aliases.length; i++) {
+      var v = normRow[aliases[i]];
+      if (v != null && String(v).trim() !== "") return String(v).trim();
+    }
+    return "";
+  }
+
+  function readBulkGenres(normRow) {
+    var out = [];
+    BULK_GENRE_SPLIT_ALIASES.forEach(function (alias) {
+      var v = normRow[alias];
+      if (v != null && String(v).trim() !== "") out.push(String(v).trim());
+    });
+    if (!out.length) {
+      var legacy = pickAlias(normRow, BULK_GENRE_LEGACY_ALIASES);
+      if (legacy) out = legacy.split(";").map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    var seen = {};
+    return out.filter(function (g) { if (seen[g]) return false; seen[g] = true; return true; });
+  }
+
+  function showAdminBulk() {
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = false;
+    els.adminBulkTextarea.value = "";
+    els.adminBulkStatus.hidden = true;
+    els.adminBulkPreview.innerHTML = "";
+    els.adminBulkCommitRow.hidden = true;
+    state.adminBulkParsed = [];
+  }
+
+  function isTruthyFlagText(raw) {
+    return /^(true|yes|y|1|x)$/i.test(String(raw || "").trim());
+  }
+
+  function parseBulkImportText(text) {
+    var parsed = Papa.parse(text.trim(), { header: true, delimiter: "\t", skipEmptyLines: true });
+    var nextRowNum = state.adminRows.reduce(function (max, r) {
+      var n = parseInt(r.rowNum, 10);
+      return isNaN(n) ? max : Math.max(max, n);
+    }, 0);
+
+    return parsed.data.map(function (raw) {
+      var norm = normalizeBulkRow(raw);
+      var rowNum = pickAlias(norm, BULK_FIELD_ALIASES.rowNum);
+      var existing = rowNum ? findAdminRowByNum(rowNum) : null;
+      var isNew = !existing;
+      if (isNew) {
+        nextRowNum += 1;
+        rowNum = String(nextRowNum);
+      }
+
+      var feature = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.feature));
+      var spotlight = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.spotlight));
+      var wasFeature = existing ? !!existing.feature : false;
+      var wasSpotlight = existing ? !!existing.spotlight : false;
+
+      var doc = {
+        rowNum: rowNum,
+        artist: pickAlias(norm, BULK_FIELD_ALIASES.artist),
+        song: pickAlias(norm, BULK_FIELD_ALIASES.song),
+        director: pickAlias(norm, BULK_FIELD_ALIASES.director),
+        category: pickAlias(norm, BULK_FIELD_ALIASES.category),
+        youtube: pickAlias(norm, BULK_FIELD_ALIASES.youtube),
+        mvg: pickAlias(norm, BULK_FIELD_ALIASES.mvg),
+        year: pickAlias(norm, BULK_FIELD_ALIASES.year),
+        releaseDate: fixReleaseDate(pickAlias(norm, BULK_FIELD_ALIASES.releaseDate)),
+        studio: pickAlias(norm, BULK_FIELD_ALIASES.studio),
+        producer: pickAlias(norm, BULK_FIELD_ALIASES.producer),
+        dp: pickAlias(norm, BULK_FIELD_ALIASES.dp),
+        editor: pickAlias(norm, BULK_FIELD_ALIASES.editor),
+        choreographer: pickAlias(norm, BULK_FIELD_ALIASES.choreographer),
+        country: pickAlias(norm, BULK_FIELD_ALIASES.country),
+        genres: readBulkGenres(norm),
+        description: pickAlias(norm, BULK_FIELD_ALIASES.description),
+        feature: feature,
+        spotlight: spotlight,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
+      if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+
+      return { rowNum: rowNum, isNew: isNew, doc: doc, valid: doc.artist !== "" || doc.song !== "" };
+    });
+  }
+
+  function renderBulkPreview(rows) {
+    if (!rows.length) {
+      els.adminBulkPreview.innerHTML = '<p class="admin-empty">Nothing to preview -- paste some rows first.</p>';
+      return;
+    }
+    els.adminBulkPreview.innerHTML = rows.map(function (r) {
+      if (!r.valid) {
+        return '<div class="admin-bulk-preview-row is-invalid"><span>(skipped -- no Artist or Song Title)</span><span class="admin-bulk-badge will-skip">Skip</span></div>';
+      }
+      var badge = r.isNew
+        ? '<span class="admin-bulk-badge will-create">Create #' + escapeHtml(r.rowNum) + '</span>'
+        : '<span class="admin-bulk-badge will-update">Update #' + escapeHtml(r.rowNum) + '</span>';
+      return '<div class="admin-bulk-preview-row"><span>' + escapeHtml(r.doc.artist) + ' — ' + escapeHtml(r.doc.song) + '</span>' + badge + '</div>';
+    }).join("");
+  }
+
+  els.adminBulkBtn.addEventListener("click", showAdminBulk);
+  els.adminBulkCancelBtn.addEventListener("click", showAdminList);
+
+  els.adminBulkPreviewBtn.addEventListener("click", function () {
+    var text = els.adminBulkTextarea.value;
+    if (!text.trim()) {
+      els.adminBulkStatus.textContent = "Paste some rows first.";
+      els.adminBulkStatus.className = "admin-status is-error";
+      els.adminBulkStatus.hidden = false;
+      return;
+    }
+    var rows = parseBulkImportText(text);
+    state.adminBulkParsed = rows.filter(function (r) { return r.valid; });
+    renderBulkPreview(rows);
+    var validCount = state.adminBulkParsed.length;
+    els.adminBulkStatus.textContent = validCount + " of " + rows.length + " rows ready to import.";
+    els.adminBulkStatus.className = "admin-status";
+    els.adminBulkStatus.hidden = false;
+    els.adminBulkCommitRow.hidden = validCount === 0;
+  });
+
+  els.adminBulkCommitBtn.addEventListener("click", function () {
+    var rows = state.adminBulkParsed;
+    if (!rows.length) return;
+
+    els.adminBulkCommitBtn.disabled = true;
+    els.adminBulkStatus.textContent = "Importing " + rows.length + " rows…";
+    els.adminBulkStatus.hidden = false;
+
+    var chunks = [];
+    for (var i = 0; i < rows.length; i += BULK_BATCH_SIZE) chunks.push(rows.slice(i, i + BULK_BATCH_SIZE));
+
+    var chain = Promise.resolve();
+    chunks.forEach(function (chunk) {
+      chain = chain.then(function () {
+        var batch = db.batch();
+        chunk.forEach(function (r) { batch.set(db.collection("videos").doc(r.rowNum), r.doc, { merge: true }); });
+        return batch.commit();
+      });
+    });
+
+    var createdCount = rows.filter(function (r) { return r.isNew; }).length;
+    var updatedCount = rows.length - createdCount;
+    var anyFeature = rows.some(function (r) { return r.doc.feature; });
+    var anySpotlight = rows.some(function (r) { return r.doc.spotlight; });
+
+    chain.then(function () {
+      var evictions = [];
+      if (anyFeature) evictions.push(enforceCap("feature", "featureAt", 30));
+      if (anySpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
+      return Promise.all(evictions);
+    }).then(function () {
+      // Bulk imports auto-publish so new entries go live without a separate
+      // manual step -- single add/edit/delete still requires the Publish
+      // button, since those are typically one-off and you may want to batch
+      // several before republishing.
+      return publishSnapshot();
+    }).then(function () {
+      els.adminBulkCommitBtn.disabled = false;
+      showAdminList();
+      loadAdminEntries(createdCount + " created, " + updatedCount + " updated, and published to the live site.");
+    }).catch(function (err) {
+      console.error("Bulk import failed:", err);
+      els.adminBulkCommitBtn.disabled = false;
+      els.adminBulkStatus.textContent = "Import failed: " + err.message;
+      els.adminBulkStatus.className = "admin-status is-error";
+    });
+  });
+
+  function closeAdminModal() {
+    if (els.adminModal.hidden) return;
+    els.adminModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  function setAdminStatus(text, isError) {
+    els.adminStatus.textContent = text;
+    els.adminStatus.className = "admin-status" + (isError ? " is-error" : "");
+    els.adminStatus.hidden = !text;
+  }
+
+  function loadAdminEntries(statusOverride) {
+    setAdminStatus("Loading entries…");
+    els.adminEntriesList.innerHTML = "";
+    return db.collection("videos").get().then(function (snap) {
+      state.adminRows = snap.docs.map(function (doc) { return doc.data(); });
+      setAdminStatus(statusOverride || (state.adminRows.length + " entries loaded."));
+      renderAdminEntries();
+    }).catch(function (err) {
+      console.error("Admin load failed:", err);
+      setAdminStatus("Couldn't load entries: " + err.message, true);
+    });
+  }
+
+  function renderAdminEntries() {
+    var query = els.adminSearchInput.value.trim().toLowerCase();
+    var rows = state.adminRows.filter(function (r) {
+      if (!query) return true;
+      return (r.artist + " " + r.song + " " + r.director).toLowerCase().indexOf(query) !== -1;
+    });
+    // Most recently added first, same convention as the Latest strip.
+    rows = rows.slice().sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); });
+
+    if (!rows.length) {
+      els.adminEntriesList.innerHTML = '<p class="admin-empty">No matching entries.</p>';
+      return;
+    }
+
+    els.adminEntriesList.innerHTML = rows.map(function (r) {
+      var badges = "";
+      if (r.feature) badges += '<span class="admin-badge">Feature</span>';
+      if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
+      return (
+        '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(r.artist) + ' — ' + escapeHtml(r.song) + '</div>' +
+            '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + '</div>' +
+          '</div>' +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-admin-action="edit" data-rownum="' + r.rowNum + '">Edit</button>' +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-admin-action="delete" data-rownum="' + r.rowNum + '">Delete</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  els.openAdminBtn.addEventListener("click", openAdminModal);
+
+  els.adminModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
+      dismissTopModal();
+      return;
+    }
+    var editBtn = e.target.closest('[data-admin-action="edit"]');
+    if (editBtn) {
+      showAdminForm(findAdminRowByNum(editBtn.getAttribute("data-rownum")));
+      return;
+    }
+    var deleteBtn = e.target.closest('[data-admin-action="delete"]');
+    if (deleteBtn) {
+      var rowNum = deleteBtn.getAttribute("data-rownum");
+      var row = findAdminRowByNum(rowNum);
+      var label = row ? row.artist + " — " + row.song : "entry #" + rowNum;
+      if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+      db.collection("videos").doc(rowNum).delete().then(function () {
+        loadAdminEntries();
+      }).catch(function (err) {
+        console.error("Admin delete failed:", err);
+        setAdminStatus("Delete failed: " + err.message, true);
+      });
+    }
+  });
+
+  els.adminAddBtn.addEventListener("click", function () { showAdminForm(null); });
+  els.adminFormCancelBtn.addEventListener("click", showAdminList);
+
+  els.adminForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var formData = new FormData(els.adminForm);
+    var rowNum = String(formData.get("rowNum") || "").trim();
+    var isNew = !rowNum;
+    if (isNew) {
+      var maxRowNum = state.adminRows.reduce(function (max, r) {
+        var n = parseInt(r.rowNum, 10);
+        return isNaN(n) ? max : Math.max(max, n);
+      }, 0);
+      rowNum = String(maxRowNum + 1);
+    }
+
+    var existing = findAdminRowByNum(rowNum);
+    var feature = formData.get("feature") === "on";
+    var spotlight = formData.get("spotlight") === "on";
+    var wasFeature = existing ? !!existing.feature : false;
+    var wasSpotlight = existing ? !!existing.spotlight : false;
+    var genres = String(formData.get("genres") || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+
+    function field(name) { return String(formData.get(name) || "").trim(); }
+
+    var doc = {
+      rowNum: rowNum,
+      artist: field("artist"),
+      song: field("song"),
+      director: field("director"),
+      category: field("category"),
+      youtube: field("youtube"),
+      mvg: field("mvg"),
+      year: field("year"),
+      releaseDate: field("releaseDate"),
+      studio: field("studio"),
+      producer: field("producer"),
+      dp: field("dp"),
+      editor: field("editor"),
+      choreographer: field("choreographer"),
+      country: field("country"),
+      genres: genres,
+      description: field("description"),
+      feature: feature,
+      spotlight: spotlight,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    // Only touch *At when a flag actually flips -- leave an already-true
+    // flag's original timestamp alone so cap-eviction ordering stays correct.
+    if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
+    if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
+
+    els.adminFormSaveBtn.disabled = true;
+    els.adminFormStatus.hidden = true;
+
+    db.collection("videos").doc(rowNum).set(doc, { merge: true }).then(function () {
+      var evictions = [];
+      if (feature && !wasFeature) evictions.push(enforceCap("feature", "featureAt", 30));
+      if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
+      return Promise.all(evictions);
+    }).then(function () {
+      showAdminList();
+      loadAdminEntries();
+    }).catch(function (err) {
+      console.error("Admin save failed:", err);
+      els.adminFormStatus.textContent = "Save failed: " + err.message;
+      els.adminFormStatus.hidden = false;
+      els.adminFormSaveBtn.disabled = false;
+    });
+  });
+
+  els.adminSearchInput.addEventListener("input", renderAdminEntries);
+
   els.submitModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
@@ -2086,7 +2640,7 @@
     if (e.key !== "Escape") return;
     var anyOpen = !els.lightbox.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
       !els.recentModal.hidden || !els.favoritesModal.hidden || !els.podcastModal.hidden ||
-      els.headerLinks.classList.contains("is-open");
+      !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
   });
 
@@ -2386,6 +2940,17 @@
       els.headerAvatar.src = user.photoURL || "";
       els.headerUserName.textContent = user.displayName || user.email || "";
       syncFromFirestore();
+      db.collection("admins").doc(user.uid).get().then(function (doc) {
+        state.isAdmin = doc.exists;
+        els.openAdminBtn.hidden = !state.isAdmin;
+      }).catch(function (err) {
+        console.error("Admin check failed:", err);
+        state.isAdmin = false;
+        els.openAdminBtn.hidden = true;
+      });
+    } else {
+      state.isAdmin = false;
+      els.openAdminBtn.hidden = true;
     }
   });
 

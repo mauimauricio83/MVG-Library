@@ -139,6 +139,11 @@
         <span class="header-links-label">Settings</span>
       </button>
       <span class="header-links-sep">·</span>
+      <button type="button" class="submit-link header-account-btn" id="openAdminBtn" hidden>
+        <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <span class="header-links-label">Admin</span>
+      </button>
+      <span class="header-links-sep">·</span>
       <button type="button" class="submit-link header-account-btn" id="signInBtn">
         <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg></span>
         <span class="header-links-label">Sign in</span>
@@ -377,6 +382,115 @@
   </div>
 </div>
 
+<div class="lightbox" id="adminModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel admin-panel" role="dialog" aria-modal="true" aria-label="Manage Entries">
+    <button type="button" class="lightbox-close" id="adminClose" aria-label="Close">&times;</button>
+    <div class="admin-body">
+      <div id="adminListView">
+        <div class="admin-toolbar">
+          <h2 class="recent-title">Manage Entries</h2>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn" id="adminPublishBtn">Publish</button>
+            <button type="button" class="admin-row-btn" id="adminBulkBtn">Bulk Import</button>
+            <button type="button" class="admin-row-btn" id="adminAddBtn">+ Add Entry</button>
+          </div>
+        </div>
+        <input type="search" id="adminSearchInput" class="admin-search" placeholder="Search artist, song, or director…">
+        <p class="admin-status" id="adminStatus" hidden></p>
+        <div class="admin-entries-list" id="adminEntriesList"></div>
+      </div>
+
+      <form class="admin-form submit-form" id="adminForm" hidden>
+        <h2 class="admin-form-title" id="adminFormTitle">Add Entry</h2>
+        <input type="hidden" name="rowNum" id="adminFormRowNum">
+
+        <label>Artist<span class="submit-required">*</span>
+          <input type="text" name="artist" required>
+        </label>
+        <label>Song Title<span class="submit-required">*</span>
+          <input type="text" name="song" required>
+        </label>
+        <label>Director
+          <input type="text" name="director" placeholder="Last name, first name">
+        </label>
+        <label>Category
+          <select name="category">
+            <option value="">Choose…</option>
+            <option>Music Video</option>
+            <option>Dance</option>
+            <option>Montage</option>
+            <option>DVD</option>
+            <option>Live</option>
+            <option>Installation</option>
+            <option>Short</option>
+            <option>Docu</option>
+          </select>
+        </label>
+        <label>YouTube Link
+          <input type="url" name="youtube" placeholder="https://youtube.com/watch?v=…">
+        </label>
+        <label>MVG Link <span class="submit-optional">(Instagram Reel)</span>
+          <input type="url" name="mvg">
+        </label>
+        <label>Year
+          <input type="text" name="year" inputmode="numeric" placeholder="2024">
+        </label>
+        <label>Release date
+          <input type="text" name="releaseDate" placeholder="e.g. April 12, 2024">
+        </label>
+        <label>Studio
+          <input type="text" name="studio">
+        </label>
+        <label>Producer
+          <input type="text" name="producer">
+        </label>
+        <label>Director of Photography
+          <input type="text" name="dp">
+        </label>
+        <label>Editor
+          <input type="text" name="editor">
+        </label>
+        <label>Choreographer
+          <input type="text" name="choreographer">
+        </label>
+        <label>Country
+          <input type="text" name="country">
+        </label>
+        <label>Genres <span class="submit-optional">(comma-separated)</span>
+          <input type="text" name="genres" placeholder="Pop, Synthpop">
+        </label>
+        <label>Description
+          <textarea name="description" rows="3"></textarea>
+        </label>
+        <label class="admin-form-checkbox"><input type="checkbox" name="feature"> Feature</label>
+        <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Spotlight</label>
+
+        <div class="admin-form-actions">
+          <button type="submit" class="submit-form-btn" id="adminFormSaveBtn">Save</button>
+          <button type="button" class="admin-row-btn" id="adminFormCancelBtn">Cancel</button>
+        </div>
+        <p class="admin-status" id="adminFormStatus" hidden></p>
+      </form>
+
+      <div id="adminBulkView" hidden>
+        <h2 class="admin-form-title">Bulk Import</h2>
+        <p class="admin-bulk-hint">Paste rows copied from a spreadsheet, including the header row. Recognized columns (any order, extras ignored, common alternate spellings OK -- e.g. "Youtube Link" or "Year of release"): Artist, Song Title, Director, Category, YouTube Link, MVG Link, Year, Release date, Studio, Producer, DP, Editor, Choreographer, Country, Genre 1, Genre 2, Genre 3 (or a single Genre column), Description, Feature, Spotlight, Row #. Include "Row #" to update an existing entry; leave it blank to create a new one.</p>
+        <textarea id="adminBulkTextarea" class="admin-bulk-textarea" rows="6" placeholder="Paste spreadsheet rows here, header row first…"></textarea>
+        <div class="admin-form-actions">
+          <button type="button" class="submit-form-btn" id="adminBulkPreviewBtn">Preview</button>
+          <button type="button" class="admin-row-btn" id="adminBulkCancelBtn">Cancel</button>
+        </div>
+        <p class="admin-status" id="adminBulkStatus" hidden></p>
+        <div class="admin-bulk-preview" id="adminBulkPreview"></div>
+        <div class="admin-form-actions" id="adminBulkCommitRow" hidden>
+          <button type="button" class="submit-form-btn" id="adminBulkCommitBtn">Commit Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="lightbox" id="settingsModal" hidden>
   <div class="lightbox-backdrop"></div>
   <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
@@ -501,6 +615,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
