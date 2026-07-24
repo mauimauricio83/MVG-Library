@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "4.18.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "4.18.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -237,9 +237,12 @@
   }
 
   function moveVideoPairHome() {
-    // TV Mode's video player + the ad banner + Favorites live right below
-    // Latest Submissions; Featured stays anchored after the jump nav.
-    els.latestStrip.after(els.adPlaceholder, els.videoEmbed, els.favoritesStrip);
+    // TV Mode's video player + Favorites live right below Latest
+    // Submissions; the ad banner now has its own fixed spot further up
+    // (right after Spotlight, before Latest Submissions) and is no longer
+    // part of this defensive re-anchoring. Featured stays anchored after
+    // the jump nav.
+    els.latestStrip.after(els.videoEmbed, els.favoritesStrip);
     els.jumpTop.after(els.featuredStrip);
   }
 

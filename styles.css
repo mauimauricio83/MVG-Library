@@ -717,6 +717,7 @@ html, body {
      want (search+filters+results; ad banner+TV Mode+filters) are already
      visible by default, so hiding just the Home-only ones is enough. */
   body.desktop-view-search .about-strip,
+  body.desktop-view-search #spotlightSidebar,
   body.desktop-view-search #latestStrip,
   body.desktop-view-search .ad-placeholder,
   body.desktop-view-search #videoEmbed,
@@ -725,6 +726,7 @@ html, body {
   }
 
   body.desktop-view-tv .about-strip,
+  body.desktop-view-tv #spotlightSidebar,
   body.desktop-view-tv #latestStrip,
   body.desktop-view-tv #featuredStrip,
   body.desktop-view-tv .controls,
@@ -1224,14 +1226,10 @@ html, body {
   min-width: 0;
 }
 
+/* A plain section (like Latest Submissions/Featured) now, not a sticky
+   sidebar -- lives above Latest Submissions, one row of up to 3 cards. */
 .spotlight-sidebar {
-  flex: 0 0 260px;
-  width: 260px;
-  position: sticky;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  padding: 14px;
+  margin-bottom: 28px;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
@@ -1241,28 +1239,29 @@ html, body {
 
 .spotlight-sidebar.is-hidden-for-lightbox {
   opacity: 0;
-  transform: translateX(16px);
+  transform: translateY(-8px);
   pointer-events: none;
 }
 
 .spotlight-sidebar-title {
-  margin-bottom: 10px;
-  font-size: 0.82rem;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
 }
 
+.spotlight-sidebar-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
 .spotlight-card {
   cursor: pointer;
-  margin-bottom: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg);
-}
-
-.spotlight-card:last-child {
-  margin-bottom: 0;
 }
 
 .spotlight-card-thumb {

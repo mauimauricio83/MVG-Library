@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v4.18.0 — current
+## v4.18.1 — current
+- Moved Spotlight from a sticky sidebar next to results to a proper section right below the about strip, above Latest Submissions -- one row of up to 3 cards instead of a vertical stack. Also hides on the dedicated Search/TV pages, like the other Home-only sections
+- Moved the ad banner to right below the new Spotlight section (above Latest Submissions), instead of between Latest Submissions and TV Mode. Applies on both desktop and mobile since nothing in the request scoped it to desktop-only
+- Fixed a real bug hit while moving the banner: `moveVideoPairHome()`, a defensive layout function that re-anchors elements on every render, was moving the ad banner back to its old spot (after Latest Submissions) regardless of where the HTML placed it. Removed the banner from that function's scope -- it now has one fixed position and nothing moves it dynamically anymore
+
+## v4.18.0
 - Fixed sidebar icon misalignment: `.header-account-btn`'s `padding: 0` was overriding `.submit-link`'s padding for `<button>` items (but not `<a>` items, which don't have that class), so button icons sat 8px left of link icons
 - Simplified the "about" strip: removed the blurb paragraph, kept the subtitle + stats line, centered
 - Featured and Latest Submissions are now capped to ~2 rows on desktop by default, with a "See more" toggle to expand -- previously required several scrolls just to get past them
