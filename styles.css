@@ -626,7 +626,7 @@ html, body {
 
 .media-strip-artist {
   overflow: hidden;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -692,7 +692,7 @@ html, body {
 
   #latestStrip .media-strip-artist,
   #featuredStrip .media-strip-artist {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
   }
 
   /* Capped to roughly two rows by default so the gallery doesn't push
@@ -2518,22 +2518,52 @@ html, body {
   }
 
   /* Bigger thumbnails, less border clutter -- the 140px/78px desktop-first
-     size reads small on a phone screen. */
+     size reads small on a phone screen. The prev/next arrows only matter for
+     mouse users; touch already scrolls the strip by swipe, so drop them and
+     let the freed-up width go to the cards themselves. */
+  .media-strip-arrow {
+    display: none;
+  }
+
+  .media-strip-body {
+    padding: 0 14px;
+  }
+
   .media-strip-card {
-    width: 168px;
+    width: 220px;
   }
 
   .media-strip-thumb {
-    width: 168px;
-    height: 94px;
+    width: 220px;
+    height: 124px;
   }
 
+  /* Spotlight becomes a single vertical column of full-width cards, like
+     YouTube's mobile home feed, instead of the desktop's fixed 3-up grid. */
   .spotlight-sidebar-cards {
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .spotlight-card {
     border: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .spotlight-card-info {
+    padding: 10px 2px;
+  }
+
+  .spotlight-card-song {
+    font-size: 0.92rem;
+    white-space: normal;
+  }
+
+  .spotlight-card-artist {
+    margin-top: 2px;
+    font-size: 0.8rem;
   }
 
   /* Three mutually-exclusive mobile views: Home (browse -- Latest

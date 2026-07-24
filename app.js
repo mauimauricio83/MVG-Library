@@ -1033,11 +1033,13 @@
           var thumb = id
             ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
             : "";
+          var artistLine = row.artist || "";
+          if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
           return (
             '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
               '<div class="media-strip-thumb">' + thumb + "</div>" +
               '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-              '<div class="media-strip-artist">' + escapeHtml(row.artist || "") + "</div>" +
+              '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
             "</div>"
           );
         }).join("");
@@ -1175,12 +1177,14 @@
       var thumb = id
         ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
         : "";
+      var artistLine = row.artist || "";
+      if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
       return (
         '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
           '<div class="spotlight-card-thumb">' + thumb + "</div>" +
           '<div class="spotlight-card-info">' +
             '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-            '<div class="spotlight-card-artist">' + escapeHtml(row.artist || "") + "</div>" +
+            '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
           "</div>" +
         "</div>"
       );
