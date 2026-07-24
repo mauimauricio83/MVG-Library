@@ -1598,6 +1598,10 @@
 
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
 
+    var adminEditBtn = state.isAdmin
+      ? '<button type="button" class="lightbox-admin-edit-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Edit entry (admin)" aria-label="Edit entry">✎ Edit</button>'
+      : "";
+
     els.lightboxContent.innerHTML =
       '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
       videoHtml +
@@ -1605,6 +1609,7 @@
       '<div class="lightbox-title-row">' +
       '<h2 class="lightbox-title">' + escapeHtml(row.song || "(untitled)") + "</h2>" +
       '<div class="lightbox-title-actions">' +
+      adminEditBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
@@ -2057,7 +2062,19 @@
     els.adminModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
-    loadAdminEntries();
+    return loadAdminEntries();
+  }
+
+  // Jumps straight to editing a specific entry (e.g. from the lightbox's
+  // admin Edit button) instead of landing on the list view. Waits for
+  // loadAdminEntries() so state.adminRows is fresh -- showAdminForm's
+  // cap-eviction "did this flag just flip?" comparison depends on it.
+  function openAdminEditForRow(rowNum) {
+    closeLightbox();
+    openAdminModal().then(function () {
+      var row = findAdminRowByNum(rowNum);
+      if (row) showAdminForm(row);
+    });
   }
 
   function showAdminList() {
@@ -2619,6 +2636,11 @@
       state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
       saveLightboxSizePref(state.lightboxSize);
       applyLightboxSize();
+      return;
+    }
+    var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");
+    if (adminEditBtn) {
+      openAdminEditForRow(adminEditBtn.getAttribute("data-rownum"));
       return;
     }
     var favBtn = e.target.closest(".lightbox-fav-btn");

@@ -270,7 +270,8 @@ html, body {
   border-top: 1px solid var(--border);
 }
 
-#signInBtn[hidden] {
+#signInBtn[hidden],
+#openAdminBtn[hidden] {
   display: none;
 }
 
@@ -1338,12 +1339,6 @@ html, body {
   border-radius: var(--radius);
 }
 
-@media (max-width: 640px) {
-  .spotlight-sidebar {
-    display: none;
-  }
-}
-
 .jumpnav {
   display: flex;
   flex-wrap: wrap;
@@ -1681,6 +1676,25 @@ html, body {
 .lightbox-widen-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.lightbox-admin-edit-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lightbox-admin-edit-btn:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .lightbox-report-link {
@@ -2503,6 +2517,25 @@ html, body {
     display: none;
   }
 
+  /* Bigger thumbnails, less border clutter -- the 140px/78px desktop-first
+     size reads small on a phone screen. */
+  .media-strip-card {
+    width: 168px;
+  }
+
+  .media-strip-thumb {
+    width: 168px;
+    height: 94px;
+  }
+
+  .spotlight-sidebar-cards {
+    gap: 10px;
+  }
+
+  .spotlight-card {
+    border: none;
+  }
+
   /* Three mutually-exclusive mobile views: Home (browse -- Latest
      Submissions, the ad banner, TV Mode, Featured), Search (tabs, search
      box, filters, jump nav, results), and TV (TV Mode's own section plus
@@ -2531,6 +2564,7 @@ html, body {
     display: flex;
   }
 
+  body.mobile-view-search #spotlightSidebar,
   body.mobile-view-search #latestStrip,
   body.mobile-view-search .ad-placeholder,
   body.mobile-view-search #videoEmbed,
@@ -2560,6 +2594,7 @@ html, body {
 
   /* TV view: same Home-section baseline, but Featured is irrelevant here
      and filters become reachable since TV Mode shuffles through them. */
+  body.mobile-view-tv #spotlightSidebar,
   body.mobile-view-tv #featuredStrip,
   body.mobile-view-tv #latestStrip {
     display: none;
