@@ -764,12 +764,16 @@
           spotlight: /^(true|yes|y|1|x)$/i.test(get(row, "Spotlight")),
           // Precomputed once so search doesn't re-lowercase/concatenate these
           // on every keystroke across 12,000+ rows. Covers the named-person/
-          // crew fields; Genre/Country/Description are left out since those
-          // already have their own filter dropdowns.
+          // crew fields plus the description writeup, so things like "blue,"
+          // "dancing," or a specific visual effect mentioned in a video's
+          // description are searchable too, not just who made it. Genre/
+          // Country are left out since those already have their own filter
+          // dropdowns.
           searchHaystack: [
             artist, song, director,
             get(row, "Producer"), get(row, "DP"), get(row, "Editor"),
-            get(row, "Choreographer"), get(row, "Studio")
+            get(row, "Choreographer"), get(row, "Studio"),
+            get(row, "Description")
           ].join(" ").toLowerCase()
         };
       })
@@ -2375,7 +2379,10 @@
           description: d.description || "",
           feature: !!d.feature,
           spotlight: !!d.spotlight,
-          searchHaystack: [d.artist, d.song, d.director, d.producer, d.dp, d.editor, d.choreographer, d.studio].join(" ").toLowerCase()
+          // youtubeSearchText (the uploader's own YouTube description/tags,
+          // backfilled via scripts/backfill-youtube-metadata.js) fills the
+          // search gap for entries with no curated description of our own.
+          searchHaystack: [d.artist, d.song, d.director, d.producer, d.dp, d.editor, d.choreographer, d.studio, d.description, d.youtubeSearchText].join(" ").toLowerCase()
         };
       });
       // Firestore's collection get() doesn't guarantee row order -- sort by

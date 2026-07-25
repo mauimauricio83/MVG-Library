@@ -18,7 +18,10 @@
 const admin = require("firebase-admin");
 
 function buildSearchHaystack(d) {
-  return [d.artist, d.song, d.director, d.producer, d.dp, d.editor, d.choreographer, d.studio]
+  // youtubeSearchText (uploader's own description/tags, backfilled via
+  // backfill-youtube-metadata.js) fills the search gap for entries with no
+  // curated description of our own.
+  return [d.artist, d.song, d.director, d.producer, d.dp, d.editor, d.choreographer, d.studio, d.description, d.youtubeSearchText]
     .join(" ")
     .toLowerCase();
 }
