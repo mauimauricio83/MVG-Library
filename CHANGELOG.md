@@ -2,7 +2,22 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.0.0 — current
+## v5.1.0 — current
+- Smarter search: diacritic/accent-insensitive matching with a bounded-Levenshtein fuzzy fallback (e.g. "ackerlund" now matches "Jonas Åkerlund"), and YouTube's own description/tags backfilled into the search index for entries with no curated description of our own
+- Fixed sidebar Settings/Admin/Sign-in visibility on 1080p screens (the sticky header/sidebar height math was off by the top bar's own height once scrolled)
+- Featured/Latest thumbnails are now true 16:9 (`aspect-ratio` instead of a fixed pixel height)
+- Header and search bar are now sticky on desktop
+- The Featured section now actually hides while an inline search query is active (the JS toggle existed already; the CSS rule to act on it didn't)
+- TV Mode is now a lightbox (matching the main video lightbox's sizing) instead of a separate page/view, reusing the existing ad-mirroring and filter-relocation patterns
+- Desktop search results render as a thumbnail grid grouped under each director/artist/song heading, matching Featured/Latest's card look
+- Submit form is now a full page (no collapsed "more details"), with Country/Category/Email/Director/Year of release required, bulk-submission instructions at the top, and a Gen-AI disclaimer at the bottom
+- Added a "News" section below Spotlight showing the latest 3 posts from the Squarespace blog (server-side fetch script + daily cron, since Squarespace's JSON feed has no CORS headers for client-side fetching) and a matching sidebar link
+- Added a message board: a hidden-by-default popout tab on the right edge, Firestore-backed, open to read for everyone, sign-in required to post. Admins get Delete/Mute/Ban controls on every message (except their own) -- banning also bulk-deletes that user's existing messages. Enforced both client-side (composer swapped for an explanation) and server-side (`firestore.rules`)
+- Sidebar icon polish: Podcast now uses a Spotify-like mark, Discord a distinct blob-with-eyes mark, Submit an upload icon; the message board tab is icon-only on a white/black surface that follows the theme. Desktop hamburger nudged to line up with the sidebar icon rail below it; mobile hamburger given a bigger tap target
+- Added a top-of-page loading bar for the initial snapshot download (a single ~22MB JSON file) -- tracks real bytes-received against `Content-Length` where available, falling back to an indeterminate sweep otherwise
+- Added an account-deletion page (`delete-account.html`) for the Google Play Store Data Safety requirement, ahead of the Android app's closed testing rollout
+
+## v5.0.0
 - **Architecture change: the catalog now lives in Firestore, not the Google Sheet.** All ~13,239 entries were migrated to a `videos/{rowNum}` Firestore collection (rowNum preserved as the doc ID, so existing favorites/recently-viewed/deep-links keep working). The public site no longer reads the CSV export -- `fetchData()` now fetches a static JSON snapshot (`SNAPSHOT_URL`) from Cloud Storage instead, keeping per-visitor cost at one cheap cacheable GET regardless of admin write volume. `scripts/generate-seo-pages.js` (the daily hub-page generator) was cut over the same way.
 - Added an admin mode: signed-in users listed in a Firestore `admins/{uid}` collection get an "Admin" sidebar link opening a Manage Entries panel to add, edit, and delete catalog entries directly from the site, with Firestore security rules restricting `videos`/`admins` access to admins only.
 - Added a header-row-driven Bulk Import tool in the admin panel: paste a block of spreadsheet rows (any column order, header row matched by name with common alternate spellings recognized) to create/update entries in bulk -- built specifically to remove the manual cut-and-paste column realignment previously needed between the Submissions sheet and the master sheet's differing column layouts.
