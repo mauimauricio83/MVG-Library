@@ -39,6 +39,47 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Slim progress bar pinned above everything (including the sticky top bar)
+   while the ~13k-row snapshot downloads -- tracks real bytes-received when
+   the browser exposes Content-Length (see fetchJsonWithProgress in app.js),
+   falling back to an indeterminate sweep otherwise. Mainly for slower
+   connections, where "Loading database…" text alone is easy to miss. */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 50;
+  background: transparent;
+  overflow: hidden;
+}
+
+.loading-bar[hidden] {
+  display: none;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.2s ease, opacity 0.3s ease;
+}
+
+.loading-bar.is-indeterminate .loading-bar-fill {
+  width: 40%;
+  animation: loading-bar-sweep 1.1s ease-in-out infinite;
+}
+
+.loading-bar.is-done .loading-bar-fill {
+  opacity: 0;
+}
+
+@keyframes loading-bar-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
 /* Top bar: hamburger, logo, title -- full width, not centered. Desktop
    shows it as a plain left-to-right row (hamburger leftmost); the mobile
    media query below re-centers the logo/title and pulls the hamburger out

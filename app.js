@@ -70,6 +70,8 @@
 
   var els = {
     status: document.getElementById("status"),
+    loadingBar: document.getElementById("loadingBar"),
+    loadingBarFill: document.getElementById("loadingBarFill"),
     results: document.getElementById("results"),
     search: document.getElementById("search"),
     tabs: Array.prototype.slice.call(document.querySelectorAll(".tab")),
@@ -671,6 +673,61 @@
       : escapeHtml(message);
   }
 
+  function showLoadingBar() {
+    els.loadingBar.classList.remove("is-indeterminate", "is-done");
+    els.loadingBarFill.style.width = "0%";
+    els.loadingBar.hidden = false;
+  }
+
+  function updateLoadingBar(fraction) {
+    els.loadingBarFill.style.width = Math.max(2, Math.min(100, Math.round(fraction * 100))) + "%";
+  }
+
+  function hideLoadingBar() {
+    els.loadingBarFill.style.width = "100%";
+    els.loadingBar.classList.add("is-done");
+    setTimeout(function () { els.loadingBar.hidden = true; }, 300);
+  }
+
+  // Same result as fetch(url).then(r => r.json()), but reports download
+  // progress along the way -- the ~13k-row snapshot is a single multi-hundred-KB
+  // JSON file with no natural progress events otherwise, which on a slow
+  // connection can otherwise leave visitors staring at a bare spinner for a
+  // while. Falls back to the indeterminate sweep (no onProgress calls) when
+  // the browser can't stream the body or the server didn't send a length.
+  function fetchJsonWithProgress(url, onProgress) {
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var total = parseInt(res.headers.get("Content-Length"), 10);
+      if (!res.body || !total) return res.json();
+
+      var reader = res.body.getReader();
+      var chunks = [];
+      var received = 0;
+
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) {
+            var text = new TextDecoder("utf-8").decode(
+              chunks.reduce(function (acc, chunk) {
+                var merged = new Uint8Array(acc.length + chunk.length);
+                merged.set(acc);
+                merged.set(chunk, acc.length);
+                return merged;
+              }, new Uint8Array(0))
+            );
+            return JSON.parse(text);
+          }
+          chunks.push(result.value);
+          received += result.value.length;
+          onProgress(received / total);
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
   function fetchData() {
     var cached = loadCache();
     if (cached && cached.rows && cached.rows.length) {
@@ -681,27 +738,38 @@
       setStatus("Loading database…", { spinner: true });
     }
 
-    fetch(SNAPSHOT_URL)
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
+    showLoadingBar();
+    var sawProgress = false;
+
+    fetchJsonWithProgress(SNAPSHOT_URL, function (fraction) {
+      sawProgress = true;
+      updateLoadingBar(fraction);
+    })
       .then(function (rows) {
         // Snapshot is already in cleanRows()'s exact shape (built by
         // publishSnapshot()/scripts/publish-snapshot.js) -- no mapping needed.
         state.rows = rows;
         saveCache(state.rows);
         setStatus(state.rows.length ? "" : "No entries found.");
+        hideLoadingBar();
         finishLoad();
       })
       .catch(function (err) {
         console.error("Snapshot load error:", err);
+        els.loadingBar.hidden = true;
         if (cached && cached.rows && cached.rows.length) {
           setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest snapshot.");
         } else {
           setStatus("Couldn't load the database. Please try again later.", { error: true });
         }
       });
+
+    // If bytes never came through (streaming unsupported, or no
+    // Content-Length to compute a fraction from), switch to the
+    // indeterminate sweep instead of leaving the bar frozen at 0%.
+    setTimeout(function () {
+      if (!sawProgress && !els.loadingBar.hidden) els.loadingBar.classList.add("is-indeterminate");
+    }, 150);
   }
 
   function finishLoad() {
