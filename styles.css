@@ -3028,6 +3028,14 @@ body.is-searching #featuredStrip {
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* The bottom nav (z-index:900) sits fixed on top of the message board
+     panel (z-index:41, bottom:0 by default) and was covering its composer
+     input -- pull the panel's bottom edge up by the same amount .app pads
+     for, so the composer clears the nav bar instead of hiding under it. */
+  .msgboard-panel {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
   .bottom-nav-item {
     flex: 1;
     display: flex;
