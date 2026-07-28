@@ -287,7 +287,7 @@
        instead of a blank page. -->
   <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title">❤ Favorites</span>
+      <span class="media-strip-title" id="favoritesTitle">❤ Favorites</span>
       <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
@@ -573,6 +573,13 @@
           <div class="settings-row-hint">Removes all your favorited videos on this device<span id="favoritesSyncNote" hidden> and your signed-in account</span>.</div>
         </div>
         <button type="button" class="settings-action-btn" id="clearFavoritesBtn">Clear favorites</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Share your favorites</div>
+          <div class="settings-row-hint">Get a public, read-only link to your favorites list. Requires signing in.</div>
+        </div>
+        <button type="button" class="settings-action-btn" id="shareFavoritesBtn">Get link</button>
       </div>
       <p class="settings-status" id="settingsStatus" hidden></p>
     </div>

@@ -105,6 +105,7 @@
     latestPlayAll: document.getElementById("latestPlayAll"),
     recentPlayAll: document.getElementById("recentPlayAll"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
+    favoritesTitle: document.getElementById("favoritesTitle"),
     favoritesSeeMoreBtn: document.getElementById("favoritesSeeMoreBtn"),
     openRecentBtn: document.getElementById("openRecentBtn"),
     recentModal: document.getElementById("recentModal"),
@@ -198,6 +199,7 @@
     clearRecentBtn: document.getElementById("clearRecentBtn"),
     favoritesSyncNote: document.getElementById("favoritesSyncNote"),
     clearFavoritesBtn: document.getElementById("clearFavoritesBtn"),
+    shareFavoritesBtn: document.getElementById("shareFavoritesBtn"),
     autoplayToggle: document.getElementById("autoplayToggle"),
     themeToggle: document.getElementById("themeToggle"),
     settingsStatus: document.getElementById("settingsStatus")
@@ -553,6 +555,7 @@
   var FAVORITES_KEY = "mvg-favorites";
   var RECENT_KEY = "mvg-recently-viewed";
   var RECENT_MAX = 12;
+  var SHARE_FAVORITES_KEY = "mvg-share-favorites";
 
   function loadFavorites() {
     try {
@@ -612,6 +615,41 @@
       recentlyViewed: loadRecentlyViewed()
     }, { merge: true }).catch(function (err) {
       console.error("Firestore sync (push) failed:", err);
+    });
+    if (isSharingFavorites()) pushPublicFavorites();
+  }
+
+  // Whether this browser has turned on the public favorites link (see
+  // shareFavoritesBtn) -- a local-only convenience flag, not a security
+  // boundary (that's firestore.rules' job on /publicFavorites/{uid}).
+  function isSharingFavorites() {
+    try {
+      return localStorage.getItem(SHARE_FAVORITES_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // /publicFavorites/{uid} is a separate, world-readable doc from the
+  // private /users/{uid} one -- keeps recentlyViewed out of anything a
+  // share link could expose. Called both when the user turns sharing on
+  // and (via pushToFirestore, whenever sharing is already on) on every
+  // favorite change after that, so the shared link stays current.
+  function pushPublicFavorites() {
+    if (!currentUser) return;
+    db.collection("publicFavorites").doc(currentUser.uid).set({
+      favorites: loadFavorites(),
+      displayName: currentUser.displayName || "",
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function (err) {
+      console.error("Publishing shared favorites failed:", err);
+    });
+  }
+
+  function deletePublicFavorites() {
+    if (!currentUser) return Promise.resolve();
+    return db.collection("publicFavorites").doc(currentUser.uid).delete().catch(function (err) {
+      console.error("Removing shared favorites failed:", err);
     });
   }
 
@@ -788,6 +826,7 @@
     renderSpotlightSidebar(state.rows);
     render();
     applyDeepLinkFromHash();
+    applyFavoritesShareFromHash();
   }
 
   window.addEventListener("resize", function () {
@@ -1339,14 +1378,45 @@
 
   // Most-recently-favorited first.
   var favoritesPool = [];
+  // Non-null while viewing someone else's shared favorites (via #favs-UID) --
+  // guards renderFavoritesStrip against clobbering that view, since it's
+  // still called from various local-favorite-changed spots regardless of
+  // which favorites view is currently on screen.
+  var sharedFavoritesUid = null;
+
   function renderFavoritesStrip(rows) {
+    if (sharedFavoritesUid) return;
     var favIds = loadFavorites();
     favoritesPool = favIds
       .slice()
       .reverse()
       .map(function (n) { return findRowByNum(n); })
       .filter(Boolean);
+    els.favoritesTitle.textContent = "❤ Favorites";
     favoritesStrip.render(favoritesPool);
+  }
+
+  // Read-only view of another signed-in user's public favorites
+  // (/publicFavorites/{uid}, world-readable -- see firestore.rules).
+  // Reuses the same #favoritesStrip page/UI as your own favorites, just
+  // pointed at their list and title instead.
+  function renderSharedFavorites(uid) {
+    db.collection("publicFavorites").doc(uid).get().then(function (doc) {
+      if (!doc.exists) {
+        alert("This favorites link isn't available -- it may have been turned off.");
+        return;
+      }
+      var data = doc.data();
+      var ids = Array.isArray(data.favorites) ? data.favorites : [];
+      sharedFavoritesUid = uid;
+      favoritesPool = ids.map(findRowByNum).filter(Boolean);
+      els.favoritesTitle.textContent = (data.displayName ? data.displayName + "’s" : "Shared") + " Favorites";
+      favoritesStrip.render(favoritesPool);
+      setDesktopView("favorites");
+      setMobileView("favorites");
+    }).catch(function (err) {
+      console.error("Loading shared favorites failed:", err);
+    });
   }
 
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
@@ -1772,20 +1842,35 @@
 
   // ---- Lightbox ----
 
-  function relatedEntries(director, excludeRowNum) {
-    if (!director) return [];
-    return state.rows.filter(function (r) {
-      return r.director === director && r.rowNum !== excludeRowNum && r.youtube;
-    }).slice(0, 3);
+  // Same director scores highest (an explicit creative-credit match), same
+  // artist next, then one point per overlapping genre -- ranked rather than
+  // filtered-and-truncated so a video with several weak genre overlaps
+  // doesn't crowd out a single strong director/artist match.
+  function relatedEntries(row) {
+    var genres = row.genres || [];
+    var scored = [];
+    state.rows.forEach(function (r) {
+      if (r.rowNum === row.rowNum || !r.youtube) return;
+      var score = 0;
+      if (row.director && r.director === row.director) score += 3;
+      if (row.artist && r.artist === row.artist) score += 2;
+      if (genres.length && r.genres) {
+        score += r.genres.filter(function (g) { return genres.indexOf(g) !== -1; }).length;
+      }
+      if (score > 0) scored.push({ row: r, score: score });
+    });
+    scored.sort(function (a, b) { return b.score - a.score; });
+    return scored.slice(0, 6).map(function (x) { return x.row; });
   }
 
-  function lightboxRelatedHtml(director, excludeRowNum) {
-    var related = relatedEntries(director, excludeRowNum);
+  function lightboxRelatedHtml(row) {
+    var related = relatedEntries(row);
     if (!related.length) return "";
     var items = related.map(function (r) {
-      return '<button type="button" class="related-btn" data-row="' + escapeHtml(r.rowNum) + '">' + escapeHtml(r.song || "(untitled)") + "</button>";
+      var label = escapeHtml(r.song || "(untitled)") + (r.artist ? " — " + escapeHtml(r.artist) : "");
+      return '<button type="button" class="related-btn" data-row="' + escapeHtml(r.rowNum) + '">' + label + "</button>";
     }).join("");
-    return '<div class="lightbox-related"><span class="lightbox-related-label">More by ' + escapeHtml(director) + ":</span>" + items + "</div>";
+    return '<div class="lightbox-related"><span class="lightbox-related-label">Related:</span>' + items + "</div>";
   }
 
   function creditsHtml(row) {
@@ -1886,7 +1971,7 @@
       creditsHtml(row) +
       descHtml +
       (links ? '<div class="lightbox-links">' + links + "</div>" : "") +
-      lightboxRelatedHtml(row.director, row.rowNum) +
+      lightboxRelatedHtml(row) +
       "</div>";
 
     els.lightbox.hidden = false;
@@ -2264,6 +2349,7 @@
   });
 
   els.bottomNavFavorites.addEventListener("click", function () {
+    sharedFavoritesUid = null;
     renderFavoritesStrip(state.rows);
     setMobileView("favorites");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2299,6 +2385,7 @@
   els.sidebarTVBtn.addEventListener("click", openTVModal);
 
   els.sidebarFavoritesBtn.addEventListener("click", function () {
+    sharedFavoritesUid = null;
     renderFavoritesStrip(state.rows);
     setDesktopView("favorites");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2551,6 +2638,43 @@
     renderFavoritesStrip(state.rows);
     els.settingsStatus.textContent = "Favorites cleared.";
     els.settingsStatus.hidden = false;
+  });
+
+  function updateShareFavoritesBtn() {
+    els.shareFavoritesBtn.textContent = isSharingFavorites() ? "Stop sharing" : "Get link";
+  }
+  updateShareFavoritesBtn();
+
+  els.shareFavoritesBtn.addEventListener("click", function () {
+    if (!currentUser) {
+      els.settingsStatus.textContent = "Sign in to share your favorites.";
+      els.settingsStatus.hidden = false;
+      return;
+    }
+
+    if (isSharingFavorites()) {
+      try { localStorage.setItem(SHARE_FAVORITES_KEY, "0"); } catch (e) {}
+      deletePublicFavorites();
+      updateShareFavoritesBtn();
+      els.settingsStatus.textContent = "Sharing turned off.";
+      els.settingsStatus.hidden = false;
+      return;
+    }
+
+    try { localStorage.setItem(SHARE_FAVORITES_KEY, "1"); } catch (e) {}
+    pushPublicFavorites();
+    updateShareFavoritesBtn();
+
+    var link = location.origin + location.pathname + "#favs-" + currentUser.uid;
+    var showLink = function (copied) {
+      els.settingsStatus.textContent = (copied ? "Link copied: " : "Your link: ") + link;
+      els.settingsStatus.hidden = false;
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(function () { showLink(true); }).catch(function () { showLink(false); });
+    } else {
+      showLink(false);
+    }
   });
 
   // ---- Admin panel (Manage Entries) ----------------------------------
@@ -3679,6 +3803,17 @@
   }
 
   window.addEventListener("hashchange", applyDeepLinkFromHash);
+
+  // #favs-<uid> (shareFavoritesBtn's link format) opens someone else's
+  // public favorites list read-only -- same convention as #row-N, just a
+  // different prefix so the two never collide.
+  function applyFavoritesShareFromHash() {
+    var m = location.hash.match(/^#favs-(.+)$/);
+    if (!m || !state.rows.length) return;
+    renderSharedFavorites(decodeURIComponent(m[1]));
+  }
+
+  window.addEventListener("hashchange", applyFavoritesShareFromHash);
 
   var searchTimer = null;
   els.search.addEventListener("input", function () {
