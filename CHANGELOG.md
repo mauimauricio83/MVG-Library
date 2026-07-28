@@ -2,7 +2,16 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.1.0 — current
+## v5.2.0 — current
+- Message board gained admin moderation: Delete/Mute/Ban controls on every message (except your own). Banning also bulk-deletes that user's existing messages. Enforced both client-side (composer swapped for an explanation) and server-side (`firestore.rules` checks `mutedUsers`/`bannedUsers` before allowing a post)
+- Sidebar icon polish: Podcast now uses a Spotify-like mark, Discord a distinct blob-with-eyes mark, Submit an upload icon; the message board tab restyled to an icon-only button on a white/black surface that follows the theme
+- Added a top-of-page loading bar tracking real download progress for the initial ~22MB snapshot fetch, for visitors on slower connections
+- Fixed desktop search getting stuck: closing the search overlay didn't reset the page state, and the browse tabs/filters/A-Z jump nav were permanently wedged between Latest Submissions and Featured on Home instead of only showing during search
+- Redesigned the desktop top bar: search is now an ever-present, centered bar (YouTube/Spotify-style) instead of an icon-triggered overlay -- focusing it reveals tabs/filters/results immediately (no need to type first), and an explicit clear button/Escape fully resets to Home
+- Swapped the top-right/bottom-left icon clusters: Instagram/Instagram (PH)/Facebook moved into the sidebar (also gaining mobile visibility they never had); Settings/Admin/Sign-in moved to the top bar exclusively on desktop (the sidebar keeps them for mobile's hamburger menu, which has no other path to Admin/Sign-in)
+- Fixed a recurring `[hidden]`-attribute bug hit twice this round: a few components' own unconditional `display` rules were silently beating the browser's default `[hidden]{display:none}` (author styles always win that fight over user-agent styles, regardless of specificity or source order) -- affected the message board panel and the top-bar Admin/Sign-in icons
+
+## v5.1.0
 - Smarter search: diacritic/accent-insensitive matching with a bounded-Levenshtein fuzzy fallback (e.g. "ackerlund" now matches "Jonas Åkerlund"), and YouTube's own description/tags backfilled into the search index for entries with no curated description of our own
 - Fixed sidebar Settings/Admin/Sign-in visibility on 1080p screens (the sticky header/sidebar height math was off by the top bar's own height once scrolled)
 - Featured/Latest thumbnails are now true 16:9 (`aspect-ratio` instead of a fixed pixel height)
