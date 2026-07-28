@@ -680,6 +680,19 @@ html, body {
   padding: 2px 4px;
 }
 
+.media-strip-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.media-strip-share-status {
+  margin: -4px 14px 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow-wrap: break-word;
+}
+
 .media-strip-play-all:hover {
   text-decoration: underline;
 }
@@ -877,12 +890,17 @@ body.is-searching #featuredStrip {
     grid-column: 1 / -1;
   }
 
-  /* Capped to roughly two rows by default so the gallery doesn't push
-     everything else several scrolls down -- "See more" lifts the cap. */
+  /* Capped to exactly two full rows by default so the gallery doesn't push
+     everything else several scrolls down -- "See more" lifts the cap.
+     --strip-row-h is a card's real measured height (see
+     updateStripRowHeightVar in app.js); a flat pixel guess here previously
+     cropped mid-caption on the second row because a card's actual height
+     depends on the grid's auto-fill column count, which changes with
+     viewport width. 24px matches this grid's own row gap. */
   #latestStrip .media-strip-track,
   #featuredStrip .media-strip-track,
   #favoritesStrip .media-strip-track {
-    max-height: 380px;
+    max-height: calc(2 * var(--strip-row-h, 251px) + 24px);
     overflow: hidden;
   }
 
@@ -3103,6 +3121,13 @@ body.is-searching #featuredStrip {
     border: none;
     display: flex;
     flex-direction: column;
+  }
+
+  /* The pool is 6 (see SPOTLIGHT_COUNT), but mobile's vertical stack only
+     shows the first 3 -- 6 full-width cards would be a long scroll before
+     reaching News/Latest below it. */
+  .spotlight-card:nth-child(n+4) {
+    display: none;
   }
 
   .spotlight-card-info {

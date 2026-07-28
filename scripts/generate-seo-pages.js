@@ -23,6 +23,10 @@ const ROOT = path.join(__dirname, "..");
 // page is exactly the thin-content problem hub pages were meant to avoid.
 // Only generate a page once there's enough there to make it worth a visit.
 const MIN_VIDEOS = 3;
+// How many of the most-recently-added videos rss.xml lists -- matches the
+// homepage's "Latest Submissions" definition (highest rowNum first), just a
+// shorter cap than that section's own LATEST_STRIP_COUNT (50 in app.js).
+const RSS_COUNT = 30;
 
 function parseCsv(text) {
   const rows = [];
@@ -453,9 +457,53 @@ async function main() {
     "\n</urlset>\n";
   fs.writeFileSync(path.join(ROOT, "sitemap.xml"), sitemap);
 
+  // "Latest Submissions" (both here and on the homepage, see LATEST_STRIP_COUNT
+  // in app.js) defines "recently added" as highest rowNum first -- there's no
+  // real added-at timestamp in the sheet to sort by instead. Same reasoning
+  // extends to pubDate below: each item gets this run's build time minus a
+  // few seconds per rank, purely so feed readers that sort by pubDate see
+  // the same order as everything else on the site, not a claim that these
+  // are the videos' real add times.
+  const latestRows = videoRows
+    .slice()
+    .sort((a, b) => parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10))
+    .slice(0, RSS_COUNT);
+  const buildTime = new Date();
+  const rssItems = latestRows.map((row, i) => {
+    const slug = videoSlugByRowNum.get(row.rowNum);
+    const link = SITE_URL + "/videos/" + slug + "/";
+    const title = (row.artist ? row.artist + " — " : "") + (row.song || "Untitled");
+    const pubDate = new Date(buildTime.getTime() - i * 1000).toUTCString();
+    const descParts = [];
+    if (row.director) descParts.push("Dir. " + row.director);
+    if (row.category) descParts.push(row.category);
+    return (
+      "  <item>\n" +
+      "    <title>" + escapeHtml(title) + "</title>\n" +
+      "    <link>" + link + "</link>\n" +
+      '    <guid isPermaLink="true">' + link + "</guid>\n" +
+      "    <pubDate>" + pubDate + "</pubDate>\n" +
+      (descParts.length ? "    <description>" + escapeHtml(descParts.join(" · ")) + "</description>\n" : "") +
+      "  </item>"
+    );
+  });
+  const rss =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<rss version="2.0">\n' +
+    "<channel>\n" +
+    "  <title>MVG Library — Latest Submissions</title>\n" +
+    "  <link>" + SITE_URL + "/</link>\n" +
+    "  <description>Newest music videos added to the MVG Library.</description>\n" +
+    "  <lastBuildDate>" + buildTime.toUTCString() + "</lastBuildDate>\n" +
+    rssItems.join("\n") + "\n" +
+    "</channel>\n" +
+    "</rss>\n";
+  fs.writeFileSync(path.join(ROOT, "rss.xml"), rss);
+
   console.log(
     "Generated " + directorGroups.size + " director pages, " + artistGroups.size + " artist pages, " +
-    videoRows.length + " video pages, and sitemap.xml with " + sitemapUrls.length + " URLs."
+    videoRows.length + " video pages, sitemap.xml with " + sitemapUrls.length + " URLs, " +
+    "and rss.xml with " + rssItems.length + " items."
   );
 }
 

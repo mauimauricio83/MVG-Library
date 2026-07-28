@@ -23,6 +23,7 @@
 <meta name="description" content="Browse 12,500+ music videos by director, artist, or song — full credits, YouTube links, and behind-the-scenes details from The Music Video Guy.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://mauimauricio83.github.io/MVG-Library/">
+<link rel="alternate" type="application/rss+xml" title="MVG Library — Latest Submissions" href="https://mauimauricio83.github.io/MVG-Library/rss.xml">
 <meta property="og:title" content="MVG Library — Music Video Database">
 <meta property="og:description" content="Browse 12,500+ music videos by director, artist, or song — full credits, YouTube links, and behind-the-scenes details from The Music Video Guy.">
 <meta property="og:type" content="website">
@@ -288,8 +289,12 @@
   <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
       <span class="media-strip-title" id="favoritesTitle">❤ Favorites</span>
-      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
+      <div class="media-strip-head-actions">
+        <button type="button" class="media-strip-play-all" id="favoritesShareBtn">Share Favorites</button>
+        <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
+      </div>
     </div>
+    <p class="media-strip-share-status" id="favoritesShareStatus" hidden></p>
     <div class="media-strip-body">
       <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
       <div class="media-strip-track" id="favoritesStripTrack"></div>

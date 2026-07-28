@@ -106,6 +106,8 @@
     recentPlayAll: document.getElementById("recentPlayAll"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
     favoritesTitle: document.getElementById("favoritesTitle"),
+    favoritesShareBtn: document.getElementById("favoritesShareBtn"),
+    favoritesShareStatus: document.getElementById("favoritesShareStatus"),
     favoritesSeeMoreBtn: document.getElementById("favoritesSeeMoreBtn"),
     openRecentBtn: document.getElementById("openRecentBtn"),
     recentModal: document.getElementById("recentModal"),
@@ -208,7 +210,7 @@
   els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
 
   var LATEST_STRIP_COUNT = 50;
-  var SPOTLIGHT_COUNT = 3;
+  var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
 
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
@@ -683,19 +685,51 @@
     });
   }
 
-  function saveCache(rows) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: rows, savedAt: Date.now() }));
-    } catch (e) {}
+  // localStorage caps out around 5-10MB per origin -- the ~22MB snapshot
+  // blew straight through that, so every single visit silently failed to
+  // cache (the try/catch swallowed the QuotaExceededError) and re-fetched
+  // the full file over the network every time. IndexedDB's quota is a
+  // fraction of free disk space, easily enough headroom, so this switches
+  // the cache there instead -- same one-key-holds-the-whole-blob shape,
+  // just async now.
+  var CACHE_DB_NAME = "mvg-cache";
+  var CACHE_STORE = "kv";
+
+  function openCacheDb() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error("IndexedDB unavailable")); return; }
+      var req = indexedDB.open(CACHE_DB_NAME, 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore(CACHE_STORE);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
   }
 
+  function saveCache(rows) {
+    openCacheDb().then(function (db) {
+      var tx = db.transaction(CACHE_STORE, "readwrite");
+      tx.objectStore(CACHE_STORE).put({ rows: rows, savedAt: Date.now() }, CACHE_KEY);
+    }).catch(function (err) {
+      console.error("Cache save failed:", err);
+    });
+  }
+
+  // Resolves to null on any failure (unsupported/blocked storage, empty
+  // cache, corrupt entry) rather than rejecting -- callers treat "no cache"
+  // and "cache read failed" the same way, so there's no need to distinguish.
   function loadCache() {
-    try {
-      var raw = localStorage.getItem(CACHE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
+    return openCacheDb().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(CACHE_STORE, "readonly");
+        var req = tx.objectStore(CACHE_STORE).get(CACHE_KEY);
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror = function () { resolve(null); };
+      });
+    }).catch(function () {
       return null;
-    }
+    });
   }
 
   function setStatus(message, opts) {
@@ -762,14 +796,24 @@
   }
 
   function fetchData() {
-    var cached = loadCache();
-    if (cached && cached.rows && cached.rows.length) {
-      state.rows = cached.rows;
-      setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — refreshing…", { spinner: true });
-      finishLoad();
-    } else {
-      setStatus("Loading database…", { spinner: true });
-    }
+    // Cache read (IndexedDB) and the network fetch both start immediately,
+    // in parallel -- the cache is only there to show something instantly
+    // while the network is still in flight, so it shouldn't add its own
+    // latency in front of the request that actually matters.
+    var cached = null;
+    var networkDone = false;
+
+    loadCache().then(function (c) {
+      cached = c;
+      if (networkDone) return; // network already won the race -- nothing to do
+      if (cached && cached.rows && cached.rows.length) {
+        state.rows = cached.rows;
+        setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — refreshing…", { spinner: true });
+        finishLoad();
+      } else {
+        setStatus("Loading database…", { spinner: true });
+      }
+    });
 
     showLoadingBar();
     var sawProgress = false;
@@ -781,6 +825,7 @@
       .then(function (rows) {
         // Snapshot is already in cleanRows()'s exact shape (built by
         // publishSnapshot()/scripts/publish-snapshot.js) -- no mapping needed.
+        networkDone = true;
         state.rows = rows;
         saveCache(state.rows);
         setStatus(state.rows.length ? "" : "No entries found.");
@@ -788,6 +833,7 @@
         finishLoad();
       })
       .catch(function (err) {
+        networkDone = true;
         console.error("Snapshot load error:", err);
         els.loadingBar.hidden = true;
         if (cached && cached.rows && cached.rows.length) {
@@ -827,11 +873,13 @@
     render();
     applyDeepLinkFromHash();
     applyFavoritesShareFromHash();
+    updateStripRowHeightVar();
   }
 
   window.addEventListener("resize", function () {
     if (!els.spotlightSidebar.hidden) positionSpotlightSidebar();
     updateTopBarHeightVar();
+    updateStripRowHeightVar();
   });
 
   // The top bar is sticky (see styles.css), so the left sidebar rail and the
@@ -845,6 +893,19 @@
     document.documentElement.style.setProperty("--topbar-h", topBar.getBoundingClientRect().height + "px");
   }
   updateTopBarHeightVar();
+
+  // Latest/Featured/Favorites' collapsed grid (desktop only, see
+  // styles.css) used to crop at a flat 380px guess, which cut the second
+  // row's caption text off partway through instead of showing two full
+  // rows -- a card's actual height depends on the thumb's rendered width
+  // (16:9, and the grid's auto-fill column count changes with viewport
+  // width), so it's measured the same way --topbar-h is instead of another
+  // fixed guess. Only meaningful on desktop, where that crop applies.
+  function updateStripRowHeightVar() {
+    var card = document.querySelector("#featuredStrip .media-strip-card, #latestStrip .media-strip-card");
+    if (!card) return;
+    document.documentElement.style.setProperty("--strip-row-h", card.getBoundingClientRect().height + "px");
+  }
 
   function get(row, key) {
     return (row[key] || "").trim();
@@ -1393,6 +1454,8 @@
       .map(function (n) { return findRowByNum(n); })
       .filter(Boolean);
     els.favoritesTitle.textContent = "❤ Favorites";
+    els.favoritesShareBtn.hidden = false;
+    els.favoritesShareStatus.hidden = true;
     favoritesStrip.render(favoritesPool);
   }
 
@@ -1411,6 +1474,8 @@
       sharedFavoritesUid = uid;
       favoritesPool = ids.map(findRowByNum).filter(Boolean);
       els.favoritesTitle.textContent = (data.displayName ? data.displayName + "’s" : "Shared") + " Favorites";
+      els.favoritesShareBtn.hidden = true;
+      els.favoritesShareStatus.hidden = true;
       favoritesStrip.render(favoritesPool);
       setDesktopView("favorites");
       setMobileView("favorites");
@@ -2478,6 +2543,15 @@
     }
   });
 
+  // Desktop's sidebar starts expanded (labels visible) rather than
+  // collapsed to an icon rail -- mobile must NOT get this (it would open
+  // the fullscreen overlay on every load), so it's set here in JS rather
+  // than just adding "is-open" in the HTML.
+  if (!isMobileHeaderMenu()) {
+    els.headerLinks.classList.add("is-open");
+    els.headerMenuBtn.setAttribute("aria-expanded", "true");
+  }
+
   // Closing on any link/button click inside the menu covers navigation,
   // opening a modal, or signing in/out -- all of which should collapse it
   // on mobile (a transient fullscreen overlay). The explicit close (X)
@@ -2640,41 +2714,58 @@
     els.settingsStatus.hidden = false;
   });
 
-  function updateShareFavoritesBtn() {
-    els.shareFavoritesBtn.textContent = isSharingFavorites() ? "Stop sharing" : "Get link";
+  // Shared by both share buttons -- Settings' original one, and the
+  // favoritesShareBtn beside Play All on the Favorites page itself, which
+  // is the more discoverable spot for it (see task: "should be visible as
+  // a button beside play all").
+  function updateShareButtons() {
+    var sharing = isSharingFavorites();
+    els.shareFavoritesBtn.textContent = sharing ? "Stop sharing" : "Get link";
+    els.favoritesShareBtn.textContent = sharing ? "Stop sharing" : "Share Favorites";
   }
-  updateShareFavoritesBtn();
+  updateShareButtons();
 
-  els.shareFavoritesBtn.addEventListener("click", function () {
+  function toggleShareFavorites(showStatus) {
     if (!currentUser) {
-      els.settingsStatus.textContent = "Sign in to share your favorites.";
-      els.settingsStatus.hidden = false;
+      showStatus("Sign in to share your favorites.");
       return;
     }
 
     if (isSharingFavorites()) {
       try { localStorage.setItem(SHARE_FAVORITES_KEY, "0"); } catch (e) {}
       deletePublicFavorites();
-      updateShareFavoritesBtn();
-      els.settingsStatus.textContent = "Sharing turned off.";
-      els.settingsStatus.hidden = false;
+      updateShareButtons();
+      showStatus("Sharing turned off.");
       return;
     }
 
     try { localStorage.setItem(SHARE_FAVORITES_KEY, "1"); } catch (e) {}
     pushPublicFavorites();
-    updateShareFavoritesBtn();
+    updateShareButtons();
 
     var link = location.origin + location.pathname + "#favs-" + currentUser.uid;
-    var showLink = function (copied) {
-      els.settingsStatus.textContent = (copied ? "Link copied: " : "Your link: ") + link;
-      els.settingsStatus.hidden = false;
+    var announce = function (copied) {
+      showStatus((copied ? "Link copied: " : "Your link: ") + link);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(link).then(function () { showLink(true); }).catch(function () { showLink(false); });
+      navigator.clipboard.writeText(link).then(function () { announce(true); }).catch(function () { announce(false); });
     } else {
-      showLink(false);
+      announce(false);
     }
+  }
+
+  els.shareFavoritesBtn.addEventListener("click", function () {
+    toggleShareFavorites(function (msg) {
+      els.settingsStatus.textContent = msg;
+      els.settingsStatus.hidden = false;
+    });
+  });
+
+  els.favoritesShareBtn.addEventListener("click", function () {
+    toggleShareFavorites(function (msg) {
+      els.favoritesShareStatus.textContent = msg;
+      els.favoritesShareStatus.hidden = false;
+    });
   });
 
   // ---- Admin panel (Manage Entries) ----------------------------------
