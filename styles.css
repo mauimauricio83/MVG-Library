@@ -2639,6 +2639,34 @@ body.is-searching #featuredStrip {
   cursor: pointer;
 }
 
+.msgboard-admin-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.msgboard-admin-controls button {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.msgboard-admin-delete:hover {
+  color: #c4293f;
+  border-color: #c4293f;
+}
+
+.msgboard-admin-mute.is-active,
+.msgboard-admin-ban.is-active {
+  color: #fff;
+  background: #c4293f;
+  border-color: #c4293f;
+}
+
 .msgboard-signin-note {
   margin: 0;
   padding: 12px 16px;

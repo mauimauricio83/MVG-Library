@@ -148,6 +148,7 @@
     msgBoardInput: document.getElementById("msgBoardInput"),
     msgBoardSigninNote: document.getElementById("msgBoardSigninNote"),
     msgBoardSignInBtn: document.getElementById("msgBoardSignInBtn"),
+    msgBoardBlockedNote: document.getElementById("msgBoardBlockedNote"),
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
     headerMenuClose: document.getElementById("headerMenuClose"),
@@ -1932,6 +1933,21 @@
   // Posting requires sign-in (enforced client-side by hiding the composer,
   // and server-side by the /messages Firestore rules).
   var msgBoardListenerStarted = false;
+  var msgBoardLastDocs = [];
+
+  // Admin moderation state -- only populated once an admin opens the board
+  // (startMsgBoardModListeners), so signed-out/non-admin visitors never pay
+  // for these two extra listeners.
+  var msgBoardModListenersStarted = false;
+  var msgBoardMutedSet = {};
+  var msgBoardBannedSet = {};
+
+  // The current user's own muted/banned status -- watched independently of
+  // admin status so the composer can be swapped for an explanation, and kept
+  // live so a mute/ban applied mid-session takes effect without a reload.
+  var msgBoardOwnStatusUnsub = null;
+  var msgBoardOwnMuted = false;
+  var msgBoardOwnBanned = false;
 
   function formatMsgBoardTime(date) {
     if (!date) return "";
@@ -1940,6 +1956,7 @@
   }
 
   function renderMsgBoardMessages(docs) {
+    msgBoardLastDocs = docs;
     if (!docs.length) {
       els.msgBoardMessages.innerHTML = '<p class="msgboard-empty">No messages yet -- say hi!</p>';
       return;
@@ -1951,12 +1968,25 @@
     els.msgBoardMessages.innerHTML = ordered.map(function (doc) {
       var d = doc.data();
       var when = d.createdAt && d.createdAt.toDate ? formatMsgBoardTime(d.createdAt.toDate()) : "";
+      var authorName = d.authorName || "Anonymous";
+      var admin = "";
+      if (state.isAdmin && d.authorUid && d.authorUid !== currentUser.uid) {
+        var isMuted = !!msgBoardMutedSet[d.authorUid];
+        var isBanned = !!msgBoardBannedSet[d.authorUid];
+        var nameAttr = escapeHtml(authorName);
+        admin = '<div class="msgboard-admin-controls">' +
+          '<button type="button" class="msgboard-admin-delete" data-msgid="' + doc.id + '">Delete</button>' +
+          '<button type="button" class="msgboard-admin-mute' + (isMuted ? " is-active" : "") + '" data-uid="' + d.authorUid + '" data-name="' + nameAttr + '">' + (isMuted ? "Unmute" : "Mute") + "</button>" +
+          '<button type="button" class="msgboard-admin-ban' + (isBanned ? " is-active" : "") + '" data-uid="' + d.authorUid + '" data-name="' + nameAttr + '">' + (isBanned ? "Unban" : "Ban") + "</button>" +
+        "</div>";
+      }
       return '<div class="msgboard-message">' +
         '<div class="msgboard-message-meta">' +
-          '<span class="msgboard-message-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
+          '<span class="msgboard-message-author">' + escapeHtml(authorName) + "</span>" +
           '<span class="msgboard-message-time">' + escapeHtml(when) + "</span>" +
         "</div>" +
         '<div class="msgboard-message-text">' + escapeHtml(d.text || "") + "</div>" +
+        admin +
       "</div>";
     }).join("");
     els.msgBoardMessages.scrollTop = els.msgBoardMessages.scrollHeight;
@@ -1973,15 +2003,62 @@
       });
   }
 
+  // Small collections (one doc per muted/banned user) -- loading them in
+  // full into local sets is simpler and cheaper than a per-message existence
+  // check, and lets Mute/Ban buttons show the correct Unmute/Unban label.
+  function startMsgBoardModListeners() {
+    if (msgBoardModListenersStarted) return;
+    msgBoardModListenersStarted = true;
+    db.collection("mutedUsers").onSnapshot(function (snap) {
+      msgBoardMutedSet = {};
+      snap.forEach(function (doc) { msgBoardMutedSet[doc.id] = true; });
+      renderMsgBoardMessages(msgBoardLastDocs);
+    }, function (err) {
+      console.error("Muted-users listener failed:", err);
+    });
+    db.collection("bannedUsers").onSnapshot(function (snap) {
+      msgBoardBannedSet = {};
+      snap.forEach(function (doc) { msgBoardBannedSet[doc.id] = true; });
+      renderMsgBoardMessages(msgBoardLastDocs);
+    }, function (err) {
+      console.error("Banned-users listener failed:", err);
+    });
+  }
+
+  function watchMsgBoardOwnStatus() {
+    if (msgBoardOwnStatusUnsub) { msgBoardOwnStatusUnsub(); msgBoardOwnStatusUnsub = null; }
+    msgBoardOwnMuted = false;
+    msgBoardOwnBanned = false;
+    if (!currentUser) { updateMsgBoardComposer(); return; }
+    var uid = currentUser.uid;
+    var unsubMuted = db.collection("mutedUsers").doc(uid).onSnapshot(function (doc) {
+      msgBoardOwnMuted = doc.exists;
+      updateMsgBoardComposer();
+    });
+    var unsubBanned = db.collection("bannedUsers").doc(uid).onSnapshot(function (doc) {
+      msgBoardOwnBanned = doc.exists;
+      updateMsgBoardComposer();
+    });
+    msgBoardOwnStatusUnsub = function () { unsubMuted(); unsubBanned(); };
+  }
+
   function updateMsgBoardComposer() {
-    els.msgBoardForm.hidden = !currentUser;
+    var blocked = msgBoardOwnBanned || msgBoardOwnMuted;
+    els.msgBoardForm.hidden = !currentUser || blocked;
     els.msgBoardSigninNote.hidden = !!currentUser;
+    els.msgBoardBlockedNote.hidden = !currentUser || !blocked;
+    if (currentUser && blocked) {
+      els.msgBoardBlockedNote.textContent = msgBoardOwnBanned
+        ? "You've been banned from posting to the message board."
+        : "You've been muted and can't post right now.";
+    }
   }
 
   function openMsgBoard() {
     els.msgBoardPanel.hidden = false;
     els.msgBoardTab.setAttribute("aria-expanded", "true");
     startMsgBoardListener();
+    if (state.isAdmin) startMsgBoardModListeners();
     updateMsgBoardComposer();
   }
 
@@ -2022,6 +2099,75 @@
     }).finally(function () {
       sendBtn.disabled = false;
     });
+  });
+
+  // Admin moderation actions, delegated since renderMsgBoardMessages()
+  // regenerates the message list's innerHTML on every update.
+  els.msgBoardMessages.addEventListener("click", function (e) {
+    if (!state.isAdmin) return;
+
+    var delBtn = e.target.closest(".msgboard-admin-delete");
+    if (delBtn) {
+      var msgId = delBtn.getAttribute("data-msgid");
+      db.collection("messages").doc(msgId).delete().catch(function (err) {
+        console.error("Delete message failed:", err);
+        alert("Delete failed: " + err.message);
+      });
+      return;
+    }
+
+    var muteBtn = e.target.closest(".msgboard-admin-mute");
+    if (muteBtn) {
+      var muteUid = muteBtn.getAttribute("data-uid");
+      var muteName = muteBtn.getAttribute("data-name") || "";
+      var muteRef = db.collection("mutedUsers").doc(muteUid);
+      if (msgBoardMutedSet[muteUid]) {
+        muteRef.delete().catch(function (err) {
+          console.error("Unmute failed:", err);
+          alert("Unmute failed: " + err.message);
+        });
+      } else {
+        muteRef.set({
+          mutedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          mutedBy: currentUser.uid,
+          name: muteName
+        }).catch(function (err) {
+          console.error("Mute failed:", err);
+          alert("Mute failed: " + err.message);
+        });
+      }
+      return;
+    }
+
+    var banBtn = e.target.closest(".msgboard-admin-ban");
+    if (banBtn) {
+      var banUid = banBtn.getAttribute("data-uid");
+      var banName = banBtn.getAttribute("data-name") || "";
+      var banRef = db.collection("bannedUsers").doc(banUid);
+      if (msgBoardBannedSet[banUid]) {
+        banRef.delete().catch(function (err) {
+          console.error("Unban failed:", err);
+          alert("Unban failed: " + err.message);
+        });
+        return;
+      }
+      if (!window.confirm("Ban " + banName + "? This also deletes all of their existing messages.")) return;
+      banRef.set({
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedBy: currentUser.uid,
+        name: banName
+      }).then(function () {
+        return db.collection("messages").where("authorUid", "==", banUid).get();
+      }).then(function (snap) {
+        if (snap.empty) return;
+        var batch = db.batch();
+        snap.forEach(function (doc) { batch.delete(doc.ref); });
+        return batch.commit();
+      }).catch(function (err) {
+        console.error("Ban failed:", err);
+        alert("Ban failed: " + err.message);
+      });
+    }
   });
 
   // Two mutually-exclusive mobile views (see styles.css): Home (browse --
@@ -3521,6 +3667,10 @@
       db.collection("admins").doc(user.uid).get().then(function (doc) {
         state.isAdmin = doc.exists;
         els.openAdminBtn.hidden = !state.isAdmin;
+        // Covers the case where the board was opened before this admin
+        // check resolved -- openMsgBoard() itself only starts the mod
+        // listeners when state.isAdmin is already true.
+        if (state.isAdmin && !els.msgBoardPanel.hidden) startMsgBoardModListeners();
       }).catch(function (err) {
         console.error("Admin check failed:", err);
         state.isAdmin = false;
@@ -3530,7 +3680,7 @@
       state.isAdmin = false;
       els.openAdminBtn.hidden = true;
     }
-    updateMsgBoardComposer();
+    watchMsgBoardOwnStatus();
   });
 
   fetchData();

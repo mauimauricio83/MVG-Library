@@ -33,16 +33,36 @@ service cloud.firestore {
     }
 
     // Message board: anyone (including signed-out visitors) can read, but
-    // posting requires sign-in. Messages are immutable once posted -- no
-    // client-side update/delete, so moderation is a manual Console action.
+    // posting requires sign-in and being neither muted nor banned. Messages
+    // are otherwise immutable -- no client-side edits, only admin delete
+    // (single-message moderation, or the bulk delete a ban triggers).
     match /messages/{messageId} {
       allow read: if true;
       allow create: if request.auth != null &&
         request.resource.data.authorUid == request.auth.uid &&
         request.resource.data.text is string &&
         request.resource.data.text.size() > 0 &&
-        request.resource.data.text.size() <= 500;
-      allow update, delete: if false;
+        request.resource.data.text.size() <= 500 &&
+        !exists(/databases/$(database)/documents/mutedUsers/$(request.auth.uid)) &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Moderation flags for the message board. Readable by anyone so a
+    // muted/banned visitor's own client can show why posting is blocked
+    // (enforcement itself happens server-side via the /messages rule above,
+    // not this read access) -- only admins can set/clear them.
+    match /mutedUsers/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    match /bannedUsers/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
   }
 }
