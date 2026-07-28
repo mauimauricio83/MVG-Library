@@ -369,6 +369,27 @@ html, body {
   border-top: 1px solid var(--border);
 }
 
+/* Settings/Admin/Sign in now live in the top bar on desktop (see
+   topBarSettingsBtn/topBarAdminBtn/topBarSignInBtn) -- this sidebar copy
+   is mobile-only, reached via the hamburger menu, which has no other path
+   to Admin or Sign in. .header-social-area takes over the bottom-of-rail
+   spot on desktop instead (same visual treatment, reusing margin-top:auto
+   so it's the one that ends up pinned to the bottom once this is hidden). */
+.header-social-area {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 641px) {
+  .header-account-area {
+    display: none;
+  }
+}
+
 #signInBtn[hidden],
 #openAdminBtn[hidden] {
   display: none;
@@ -540,7 +561,8 @@ html, body {
     opacity: 1;
   }
 
-  .header-account-area {
+  .header-account-area,
+  .header-social-area {
     margin-top: 0;
     flex-direction: column;
     align-items: stretch;
@@ -2633,7 +2655,7 @@ body.is-searching #featuredStrip {
    msgBoardSigninNote toggle in app.js and the Firestore rules on /messages). */
 .msgboard-tab {
   position: fixed;
-  top: 50%;
+  top: 75%;
   right: 0;
   transform: translateY(-50%);
   z-index: 40;
