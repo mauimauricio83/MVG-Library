@@ -129,10 +129,10 @@
     topBarHomeLink: document.getElementById("topBarHomeLink"),
     sidebarTVBtn: document.getElementById("sidebarTVBtn"),
     sidebarFavoritesBtn: document.getElementById("sidebarFavoritesBtn"),
-    topBarSearchBtn: document.getElementById("topBarSearchBtn"),
-    topBarSearchOverlay: document.getElementById("topBarSearchOverlay"),
     topBarSearchInput: document.getElementById("topBarSearchInput"),
-    topBarSearchClose: document.getElementById("topBarSearchClose"),
+    topBarSearchClear: document.getElementById("topBarSearchClear"),
+    topBarSettingsBtn: document.getElementById("topBarSettingsBtn"),
+    topBarAdminBtn: document.getElementById("topBarAdminBtn"),
     openSubmitBtn: document.getElementById("openSubmitBtn"),
     submitModal: document.getElementById("submitModal"),
     submitClose: document.getElementById("submitClose"),
@@ -2304,39 +2304,37 @@
 
   els.sidebarFavoritesBtn.addEventListener("click", openFavoritesModal);
 
-  els.topBarSearchBtn.addEventListener("click", function () {
-    els.topBarSearchOverlay.hidden = false;
-    els.topBarSearchInput.value = state.query;
-    els.topBarSearchInput.focus();
-    // Reveal tabs/filters/jump nav + results right away, not only once
-    // something's been typed -- browsing by tab/filter/letter shouldn't
-    // require a text query first.
-    setDesktopView("search");
-  });
-
-  // Closing the overlay (X button or Escape) means "I'm done searching,"
-  // not just "hide this input" -- also clears the query and drops back to
-  // desktop-view-search's Home state. Previously it only hid the overlay,
-  // leaving the page stuck in search view (Latest/Featured/etc still
-  // hidden) with no obvious way back short of the sidebar's Home link.
-  function closeTopBarSearch() {
-    els.topBarSearchOverlay.hidden = true;
+  // Ever-present search bar (YouTube/Spotify-style) replacing the old
+  // icon-triggered overlay -- desktop-view-search is now driven purely by
+  // "is there a query," so there's no separate open/close state to get
+  // stuck in. Focusing the (empty) box still reveals tabs/filters/jump nav
+  // immediately, matching the old icon-click behavior, so browsing by
+  // tab/letter doesn't require typing first -- and unlike a blur-triggered
+  // revert, it STAYS revealed while clicking around that cluster (tabs,
+  // filters, jump-nav letters all blur the input too, which would otherwise
+  // slam the view back to Home mid-click). The clear (x) button and Escape
+  // are the explicit ways back to Home.
+  function resetTopBarSearch() {
     els.topBarSearchInput.value = "";
     els.search.value = "";
     state.query = "";
+    els.topBarSearchClear.hidden = true;
     setDesktopView("home");
     render();
   }
 
-  els.topBarSearchClose.addEventListener("click", closeTopBarSearch);
+  els.topBarSearchInput.addEventListener("focus", function () {
+    setDesktopView("search");
+  });
 
   var topBarSearchTimer = null;
   els.topBarSearchInput.addEventListener("input", function () {
+    els.topBarSearchClear.hidden = !els.topBarSearchInput.value;
     clearTimeout(topBarSearchTimer);
     topBarSearchTimer = setTimeout(function () {
       state.query = els.topBarSearchInput.value.trim();
       if (state.query) state.activeLetter = null;
-      els.search.value = state.query; // keep the inline home-page search in sync
+      els.search.value = state.query; // keep the mobile search box in sync
       setDesktopView("search");
       render();
     }, 120);
@@ -2347,9 +2345,21 @@
       e.preventDefault();
       els.topBarSearchInput.blur();
     } else if (e.key === "Escape") {
-      closeTopBarSearch();
+      resetTopBarSearch();
+      els.topBarSearchInput.blur();
     }
   });
+
+  els.topBarSearchClear.addEventListener("click", function () {
+    // Order matters: focusing fires the focus listener above (which enters
+    // search view), so it has to happen BEFORE resetTopBarSearch's own
+    // setDesktopView("home") for Home to be the state that actually sticks.
+    els.topBarSearchInput.focus();
+    resetTopBarSearch();
+  });
+
+  els.topBarSettingsBtn.addEventListener("click", openSettingsModal);
+  els.topBarAdminBtn.addEventListener("click", openAdminModal);
 
   // On mobile the sidebar is a fullscreen modal (history-integrated,
   // scroll-locked, auto-closes on item click/outside click/Escape). On
@@ -3711,7 +3721,8 @@
     searchTimer = setTimeout(function () {
       state.query = els.search.value.trim();
       if (state.query) state.activeLetter = null;
-      els.topBarSearchInput.value = state.query; // keep the top-bar search overlay in sync
+      els.topBarSearchInput.value = state.query; // keep the desktop search bar in sync
+      els.topBarSearchClear.hidden = !state.query;
       render();
     }, 120);
   });
@@ -3751,6 +3762,7 @@
       db.collection("admins").doc(user.uid).get().then(function (doc) {
         state.isAdmin = doc.exists;
         els.openAdminBtn.hidden = !state.isAdmin;
+        els.topBarAdminBtn.hidden = !state.isAdmin;
         // Covers the case where the board was opened before this admin
         // check resolved -- openMsgBoard() itself only starts the mod
         // listeners when state.isAdmin is already true.
@@ -3759,10 +3771,12 @@
         console.error("Admin check failed:", err);
         state.isAdmin = false;
         els.openAdminBtn.hidden = true;
+        els.topBarAdminBtn.hidden = true;
       });
     } else {
       state.isAdmin = false;
       els.openAdminBtn.hidden = true;
+      els.topBarAdminBtn.hidden = true;
     }
     watchMsgBoardOwnStatus();
   });

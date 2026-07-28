@@ -100,39 +100,75 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
 }
 
-.top-bar-search-overlay {
-  position: absolute;
-  inset: 0;
+/* Ever-present, YouTube/Spotify-style search bar centered between the logo
+   and the account icons -- no more icon-triggered overlay to open/close (and
+   no more "closing it forgets to reset the page" bug that came with that).
+   flex:1 with max-width + auto margins centers it in the remaining space;
+   .top-bar-actions needs no margin-left of its own since this element's
+   right auto-margin already pushes it flush to the end. */
+.top-bar-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  background: var(--bg);
+  gap: 8px;
+  flex: 1 1 auto;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
 }
 
-.top-bar-search-overlay[hidden] {
-  display: none;
-}
-
-.top-bar-search-overlay-icon {
+.top-bar-search-icon {
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
   color: var(--text-muted);
 }
 
-.top-bar-search-overlay input {
+.top-bar-search input {
   flex: 1 1 auto;
   min-width: 0;
   border: none;
   background: none;
   outline: none;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text);
+}
+
+/* type="search" gets its own native clear-x in WebKit/Blink -- suppress it
+   so .top-bar-search-clear is the only one, not a duplicate pair like the
+   old overlay had (blue native + white custom). Firefox has no native one
+   to suppress. */
+.top-bar-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.top-bar-search-clear {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.top-bar-search-clear[hidden] {
+  display: none;
+}
+
+.top-bar-search-clear svg {
+  width: 14px;
+  height: 14px;
 }
 
 .header-icon-btn {
@@ -148,24 +184,18 @@ html, body {
   cursor: pointer;
 }
 
+/* Author styles always beat the browser's UA [hidden]{display:none} rule
+   regardless of source order (origin precedence, not specificity) -- this
+   class's own unconditional display:flex was silently winning that fight
+   for any .header-icon-btn toggled via the hidden attribute (topBarAdminBtn,
+   topBarSignInBtn) without this explicit override. */
+.header-icon-btn[hidden] {
+  display: none;
+}
+
 .header-icon-btn svg {
   width: 20px;
   height: 20px;
-}
-
-/* Search is the primary way into the catalog from the top bar (replacing
-   the old inline search box, see .search-wrap in the desktop media query
-   below) -- bigger than the social/sign-in icons beside it, with its own
-   gap so it doesn't read as just another item in that row. */
-.top-bar-search-btn {
-  width: 40px;
-  height: 40px;
-  margin-left: 10px;
-}
-
-.top-bar-search-btn svg {
-  width: 26px;
-  height: 26px;
 }
 
 /* .header-icon-btn's 32px hit-box centers a 20px icon, leaving 6px of
@@ -548,7 +578,7 @@ html, body {
      display:flex on specificity (2 classes) when the mobile menu is open. */
   #headerLinks .sidebar-page-link,
   .top-bar-actions,
-  .top-bar-search-overlay {
+  .top-bar-search {
     display: none;
   }
 }
