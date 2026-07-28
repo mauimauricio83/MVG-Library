@@ -174,6 +174,51 @@
       <p class="subtitle subtitle-stats" id="subtitleStats"></p>
     </section>
 
+  <!-- Desktop: hidden until the top-bar search icon is used (see
+       body.desktop-view-search in styles.css) -- browsing tabs/filters/jump
+       nav don't belong wedged into the Home page between Latest and
+       Featured. Mobile keeps its own separate reveal (body.mobile-view-search),
+       unaffected by this DOM position. -->
+  <div class="controls">
+    <div class="tabs" role="tablist" aria-label="Browse by">
+      <button class="tab active" data-view="director" role="tab" aria-selected="true">By Director</button>
+      <button class="tab" data-view="artist" role="tab" aria-selected="false">By Artist</button>
+      <button class="tab" data-view="song" role="tab" aria-selected="false">By Song Title</button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
+    </div>
+  </div>
+
+  <div id="filtersGroup">
+    <div class="filters-toggle-row">
+      <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
+        <span>Filters</span>
+        <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
+        <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
+      </button>
+      <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
+    </div>
+
+    <div class="filters-row" id="filtersPanel" hidden>
+      <div class="category-filters-group">
+        <div class="category-filters" id="categoryFilters"></div>
+        <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
+      </div>
+      <div class="filters-row-right">
+        <label class="mvg-only-toggle">
+          <input type="checkbox" id="mvgOnlyToggle">
+          MVG Reels only
+        </label>
+        <span class="info-tip" tabindex="0" data-tip="Only shows entries The Music Video Guy has posted as an Instagram Reel.">ⓘ</span>
+        <select id="genreFilter" class="filter-select" aria-label="Filter by genre"></select>
+        <span class="info-tip" tabindex="0" data-tip="Single-select — filters to one genre at a time, not a combination.">ⓘ</span>
+        <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
+        <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
+      </div>
+    </div>
+  </div>
+
   <aside class="spotlight-sidebar" id="spotlightSidebar" hidden>
     <div class="spotlight-sidebar-title">Spotlight</div>
     <div class="spotlight-sidebar-cards" id="spotlightCards"></div>
@@ -220,46 +265,6 @@
       <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
     </div>
   </section>
-
-  <div class="controls">
-    <div class="tabs" role="tablist" aria-label="Browse by">
-      <button class="tab active" data-view="director" role="tab" aria-selected="true">By Director</button>
-      <button class="tab" data-view="artist" role="tab" aria-selected="false">By Artist</button>
-      <button class="tab" data-view="song" role="tab" aria-selected="false">By Song Title</button>
-    </div>
-    <div class="search-wrap">
-      <input type="search" id="search" placeholder="Search artist, song, or director…" aria-label="Search">
-    </div>
-  </div>
-
-  <div id="filtersGroup">
-    <div class="filters-toggle-row">
-      <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
-        <span>Filters</span>
-        <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
-        <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
-      </button>
-      <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
-    </div>
-
-    <div class="filters-row" id="filtersPanel" hidden>
-      <div class="category-filters-group">
-        <div class="category-filters" id="categoryFilters"></div>
-        <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
-      </div>
-      <div class="filters-row-right">
-        <label class="mvg-only-toggle">
-          <input type="checkbox" id="mvgOnlyToggle">
-          MVG Reels only
-        </label>
-        <span class="info-tip" tabindex="0" data-tip="Only shows entries The Music Video Guy has posted as an Instagram Reel.">ⓘ</span>
-        <select id="genreFilter" class="filter-select" aria-label="Filter by genre"></select>
-        <span class="info-tip" tabindex="0" data-tip="Single-select — filters to one genre at a time, not a combination.">ⓘ</span>
-        <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
-        <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
-      </div>
-    </div>
-  </div>
 
   <div id="status" class="status"></div>
   <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>

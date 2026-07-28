@@ -2308,11 +2308,27 @@
     els.topBarSearchOverlay.hidden = false;
     els.topBarSearchInput.value = state.query;
     els.topBarSearchInput.focus();
+    // Reveal tabs/filters/jump nav + results right away, not only once
+    // something's been typed -- browsing by tab/filter/letter shouldn't
+    // require a text query first.
+    setDesktopView("search");
   });
 
-  els.topBarSearchClose.addEventListener("click", function () {
+  // Closing the overlay (X button or Escape) means "I'm done searching,"
+  // not just "hide this input" -- also clears the query and drops back to
+  // desktop-view-search's Home state. Previously it only hid the overlay,
+  // leaving the page stuck in search view (Latest/Featured/etc still
+  // hidden) with no obvious way back short of the sidebar's Home link.
+  function closeTopBarSearch() {
     els.topBarSearchOverlay.hidden = true;
-  });
+    els.topBarSearchInput.value = "";
+    els.search.value = "";
+    state.query = "";
+    setDesktopView("home");
+    render();
+  }
+
+  els.topBarSearchClose.addEventListener("click", closeTopBarSearch);
 
   var topBarSearchTimer = null;
   els.topBarSearchInput.addEventListener("input", function () {
@@ -2331,7 +2347,7 @@
       e.preventDefault();
       els.topBarSearchInput.blur();
     } else if (e.key === "Escape") {
-      els.topBarSearchOverlay.hidden = true;
+      closeTopBarSearch();
     }
   });
 

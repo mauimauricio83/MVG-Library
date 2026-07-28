@@ -153,6 +153,21 @@ html, body {
   height: 20px;
 }
 
+/* Search is the primary way into the catalog from the top bar (replacing
+   the old inline search box, see .search-wrap in the desktop media query
+   below) -- bigger than the social/sign-in icons beside it, with its own
+   gap so it doesn't read as just another item in that row. */
+.top-bar-search-btn {
+  width: 40px;
+  height: 40px;
+  margin-left: 10px;
+}
+
+.top-bar-search-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
 /* .header-icon-btn's 32px hit-box centers a 20px icon, leaving 6px of
    padding the sidebar icons below don't have (theirs is a straight 18px
    from .header-links' own padding) -- this pulls the menu icon left so the
@@ -802,15 +817,29 @@ body.is-searching #featuredStrip {
     color: var(--accent);
   }
 
-  /* Desktop "pages", switched via the sidebar's Home/TV Mode links or the
-     top-bar search icon. Home (default, no class) is today's full page,
-     completely unchanged -- Latest/TV Mode/Featured/about strip stay
-     exactly where they are, and search/filters/results stay reachable
-     inline between Latest and Featured just like before. Search and TV
-     are dedicated alternate views that hide the Home-only sections.
-     Nothing needs to be shown/moved for them -- the sections they DO
-     want (search+filters+results; ad banner+TV Mode+filters) are already
-     visible by default, so hiding just the Home-only ones is enough. */
+  /* Desktop "pages", switched via the sidebar's Home link or the top-bar
+     search icon. Home (default, no class) hides the browse tabs/filters/
+     jump nav entirely -- they don't belong wedged between Latest and
+     Featured just because they're always in the DOM (moved up in the HTML
+     to sit right after .about-strip, but still hidden until search mode
+     actually needs them). Search reveals that cluster (these are
+     :not(.desktop-view-search) rather than a plain default-hide + a
+     .desktop-view-search re-show, so they reliably beat .controls/.jumpnav's
+     own unconditional display:flex regardless of stylesheet order) and
+     hides the Home-only sections instead. */
+  body:not(.desktop-view-search) .controls,
+  body:not(.desktop-view-search) #filtersGroup,
+  body:not(.desktop-view-search) #jumpNavTop {
+    display: none;
+  }
+
+  /* The top-bar search icon/overlay is the only text-search entry point on
+     desktop now -- this inline box stays in the DOM (mobile still uses it,
+     see the max-width:640px block) but never renders here. */
+  .search-wrap {
+    display: none;
+  }
+
   body.desktop-view-search .about-strip,
   body.desktop-view-search #spotlightSidebar,
   body.desktop-view-search #blogLatestSidebar,
