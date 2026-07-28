@@ -31,5 +31,18 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Message board: anyone (including signed-out visitors) can read, but
+    // posting requires sign-in. Messages are immutable once posted -- no
+    // client-side update/delete, so moderation is a manual Console action.
+    match /messages/{messageId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.authorUid == request.auth.uid &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 500;
+      allow update, delete: if false;
+    }
   }
 }

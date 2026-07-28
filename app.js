@@ -87,6 +87,10 @@
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     filtersToggle: document.getElementById("filtersToggle"),
     filtersPanel: document.getElementById("filtersPanel"),
+    filtersGroup: document.getElementById("filtersGroup"),
+    tvModal: document.getElementById("tvModal"),
+    tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
+    tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     filtersToggleCount: document.getElementById("filtersToggleCount"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     lightbox: document.getElementById("lightbox"),
@@ -136,6 +140,14 @@
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitFormStatus: document.getElementById("submitFormStatus"),
+    msgBoardTab: document.getElementById("msgBoardTab"),
+    msgBoardPanel: document.getElementById("msgBoardPanel"),
+    msgBoardClose: document.getElementById("msgBoardClose"),
+    msgBoardMessages: document.getElementById("msgBoardMessages"),
+    msgBoardForm: document.getElementById("msgBoardForm"),
+    msgBoardInput: document.getElementById("msgBoardInput"),
+    msgBoardSigninNote: document.getElementById("msgBoardSigninNote"),
+    msgBoardSignInBtn: document.getElementById("msgBoardSignInBtn"),
     headerMenuBtn: document.getElementById("headerMenuBtn"),
     headerLinks: document.getElementById("headerLinks"),
     headerMenuClose: document.getElementById("headerMenuClose"),
@@ -253,6 +265,7 @@
 
   function closeAllModalsHard() {
     closeLightbox();
+    closeTVModal();
     closeSubmitModal();
     closeSettingsModal();
     closeRecentModal();
@@ -288,12 +301,12 @@
   }
 
   function moveVideoPairHome() {
-    // TV Mode's video player + Favorites live right below Latest
-    // Submissions; the ad banner now has its own fixed spot further up
-    // (right after Spotlight, before Latest Submissions) and is no longer
-    // part of this defensive re-anchoring. Featured stays anchored after
-    // the jump nav.
-    els.latestStrip.after(els.videoEmbed, els.favoritesStrip);
+    // TV Mode now lives permanently inside #tvModal (a lightbox), not the
+    // main content flow, so it's no longer part of this defensive
+    // re-anchoring -- only Favorites still needs it. The ad banner has its
+    // own fixed spot further up (right after Spotlight, before Latest
+    // Submissions). Featured stays anchored after the jump nav.
+    els.latestStrip.after(els.favoritesStrip);
     els.jumpTop.after(els.featuredStrip);
   }
 
@@ -691,6 +704,7 @@
   }
 
   function finishLoad() {
+    prepareRowsForSearch(state.rows);
     buildCategoryChips(state.rows);
     updateCategoryChipsActive();
     buildYearOptions(state.rows);
@@ -714,7 +728,20 @@
 
   window.addEventListener("resize", function () {
     if (!els.spotlightSidebar.hidden) positionSpotlightSidebar();
+    updateTopBarHeightVar();
   });
+
+  // The top bar is sticky (see styles.css), so the left sidebar rail and the
+  // sticky search/tabs row both need to sit exactly below it rather than
+  // overlapping -- measured instead of hardcoded since the top bar's height
+  // isn't fixed (wraps differently at narrow widths, social icons hide on
+  // mobile, etc.).
+  function updateTopBarHeightVar() {
+    var topBar = document.querySelector(".top-bar");
+    if (!topBar) return;
+    document.documentElement.style.setProperty("--topbar-h", topBar.getBoundingClientRect().height + "px");
+  }
+  updateTopBarHeightVar();
 
   function get(row, key) {
     return (row[key] || "").trim();
@@ -782,15 +809,95 @@
       });
   }
 
+  // Strips accents ("Åkerlund" -> "akerlund") so search doesn't require typing
+  // the exact diacritic -- NFD decomposition splits a letter from its
+  // combining accent mark, then the accent marks (U+0300-U+036f) are dropped.
+  function normalizeText(s) {
+    return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+
+  // Precomputed once per row when data loads (not per keystroke): an
+  // accent-stripped haystack for fast substring search, and a deduped list of
+  // individual words from just the name-ish fields (not the full haystack,
+  // which includes descriptions) for the fuzzy-typo fallback below -- keeping
+  // that list short keeps fuzzy matching cheap.
+  function prepareRowsForSearch(rows) {
+    rows.forEach(function (row) {
+      row.searchHaystackNorm = normalizeText(row.searchHaystack);
+      var nameText = [row.artist, row.song, row.director, row.producer, row.dp, row.editor, row.choreographer, row.studio].join(" ");
+      var seen = {};
+      row.nameWords = normalizeText(nameText).split(/\s+/).filter(function (w) {
+        if (w.length < 3 || seen[w]) return false;
+        seen[w] = true;
+        return true;
+      });
+    });
+  }
+
+  // Classic edit-distance DP, but bails out early once a row's minimum
+  // possible distance already exceeds maxDist -- across 13k rows x several
+  // words each, that pruning is what keeps this affordable.
+  function levenshteinWithinBound(a, b, maxDist) {
+    if (Math.abs(a.length - b.length) > maxDist) return false;
+    var la = a.length, lb = b.length;
+    var prev = new Array(lb + 1);
+    for (var j = 0; j <= lb; j++) prev[j] = j;
+    for (var i = 1; i <= la; i++) {
+      var curr = [i];
+      var rowMin = i;
+      for (var j2 = 1; j2 <= lb; j2++) {
+        var cost = a.charAt(i - 1) === b.charAt(j2 - 1) ? 0 : 1;
+        var val = Math.min(prev[j2] + 1, curr[j2 - 1] + 1, prev[j2 - 1] + cost);
+        curr[j2] = val;
+        if (val < rowMin) rowMin = val;
+      }
+      if (rowMin > maxDist) return false;
+      prev = curr;
+    }
+    return prev[lb] <= maxDist;
+  }
+
+  function fuzzyTokenMatch(token, words) {
+    var maxDist = token.length <= 6 ? 1 : 2;
+    for (var i = 0; i < words.length; i++) {
+      if (levenshteinWithinBound(token, words[i], maxDist)) return true;
+    }
+    return false;
+  }
+
+  // Per-query-string plan, cached until the query text changes: which tokens
+  // to look for, and which of those tokens get the (slower) fuzzy fallback --
+  // only tokens with *zero* exact matches anywhere in the catalog, so a
+  // normal query (real matches exist) never pays the fuzzy cost at all, and
+  // only a genuine typo/near-miss like "ackerlund" for "Åkerlund" does.
+  var queryPlanCache = { query: null, tokens: [], fuzzyEnabled: [] };
+  function getQueryPlan(q) {
+    if (queryPlanCache.query === q) return queryPlanCache;
+    var tokens = normalizeText(q).split(/\s+/).filter(Boolean);
+    var fuzzyEnabled = tokens.map(function (t) {
+      if (t.length < 4) return false; // too short to fuzz safely
+      for (var i = 0; i < state.rows.length; i++) {
+        if (state.rows[i].searchHaystackNorm.indexOf(t) !== -1) return false;
+      }
+      return true;
+    });
+    queryPlanCache = { query: q, tokens: tokens, fuzzyEnabled: fuzzyEnabled };
+    return queryPlanCache;
+  }
+
   // Tokenized, order-independent, cross-field search: every word in the query
   // must appear *somewhere* across artist/song/director combined — so
   // "romanek hurt" matches director "Mark Romanek" + song "Hurt", and
-  // "mark romanek" / "romanek mark" both match the same entries.
+  // "mark romanek" / "romanek mark" both match the same entries. Accent-
+  // insensitive, with a fuzzy fallback for near-miss spellings (see above).
   function matchesQuery(row, q) {
     if (!q) return true;
-    var tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!tokens.length) return true;
-    return tokens.every(function (t) { return row.searchHaystack.indexOf(t) !== -1; });
+    var plan = getQueryPlan(q);
+    if (!plan.tokens.length) return true;
+    return plan.tokens.every(function (t, idx) {
+      if (row.searchHaystackNorm.indexOf(t) !== -1) return true;
+      return plan.fuzzyEnabled[idx] && fuzzyTokenMatch(t, row.nameWords);
+    });
   }
 
   function viewFieldFor(row) {
@@ -1411,6 +1518,40 @@
     state.tv.shellBuilt = false;
   }
 
+  var tvAdController = null;
+
+  // TV Mode is a lightbox (matching the video lightbox's default size) that
+  // bundles the shared filters and the ad banner in with the player, rather
+  // than living inline on the page -- opening it borrows #filtersGroup from
+  // its normal spot on Home for the duration (harmless: Home isn't
+  // interactive behind an open modal anyway) and mirrors the same ad feed
+  // the main banner and video lightbox already show (see onTopAdsReady()).
+  function openTVModal() {
+    if (!els.tvModal.hidden) return;
+    closeLightbox();
+    els.tvFiltersSlot.appendChild(els.filtersGroup);
+    els.tvModal.hidden = false;
+    els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+    if (!tvAdController) {
+      onTopAdsReady(function (ads) {
+        if (els.tvModal.hidden) return;
+        tvAdController = renderAdSlideshowInto(els.tvAdPlaceholder, ads, TOP_AD_DEFAULT_SECONDS);
+      });
+    }
+  }
+
+  function closeTVModal() {
+    if (els.tvModal.hidden) return;
+    if (state.tv.active) teardownTV();
+    resetVideo();
+    els.controls.after(els.filtersGroup); // restore to its normal Home position
+    els.tvModal.hidden = true;
+    unlockBodyScroll();
+    if (tvAdController) { tvAdController.stop(); tvAdController = null; }
+  }
+
   function hintMarkup(message) {
     return '<div class="video-embed-hint"><p>' + (message || "Shuffle through a curated playlist of videos matching your current filters.") + "</p>" +
       '<button type="button" class="tv-mode-btn" id="tvStartBtn">📺 Start TV Mode</button> ' +
@@ -1523,26 +1664,17 @@
   }
 
   function startTVMode(customPool) {
-    closeLightbox();
+    openTVModal();
     var pool = customPool || state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
       els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
-      moveVideoPairHome();
       return;
     }
-    // Relocating a live <iframe> in the DOM forces the browser to reload it,
-    // silently discarding whatever loadVideoById() just did. Only re-home the
-    // elements when actually transitioning into TV mode — if it's already
-    // active (e.g. switching tracks via a Spotlight click), they're already
-    // in place and moving them again would kill the player mid-swap.
-    var wasActive = state.tv.active;
     state.tv.active = true;
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
-    if (!wasActive) moveVideoPairHome();
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
-    scrollBelowStickyHeader(els.videoEmbed);
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
@@ -1573,8 +1705,11 @@
     if (e.target.closest(".video-embed-close")) {
       if (state.tv.active) teardownTV();
       resetVideo();
-      moveVideoPairHome();
     }
+  });
+
+  els.tvModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
 
   // ---- Lightbox ----
@@ -1790,22 +1925,121 @@
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
 
+  // Message board: a docked popout panel (not a lightbox -- it doesn't block
+  // the rest of the page, so it isn't part of closeAllModalsHard()/history
+  // stacking). Anyone can open it and read; the Firestore listener is only
+  // attached the first time it's opened, so signed-out browsing costs nothing.
+  // Posting requires sign-in (enforced client-side by hiding the composer,
+  // and server-side by the /messages Firestore rules).
+  var msgBoardListenerStarted = false;
+
+  function formatMsgBoardTime(date) {
+    if (!date) return "";
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+      date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  function renderMsgBoardMessages(docs) {
+    if (!docs.length) {
+      els.msgBoardMessages.innerHTML = '<p class="msgboard-empty">No messages yet -- say hi!</p>';
+      return;
+    }
+    // Firestore query below orders newest-first (so `limit` keeps the most
+    // recent messages); reverse here to display oldest-to-newest, like a
+    // normal chat thread.
+    var ordered = docs.slice().reverse();
+    els.msgBoardMessages.innerHTML = ordered.map(function (doc) {
+      var d = doc.data();
+      var when = d.createdAt && d.createdAt.toDate ? formatMsgBoardTime(d.createdAt.toDate()) : "";
+      return '<div class="msgboard-message">' +
+        '<div class="msgboard-message-meta">' +
+          '<span class="msgboard-message-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
+          '<span class="msgboard-message-time">' + escapeHtml(when) + "</span>" +
+        "</div>" +
+        '<div class="msgboard-message-text">' + escapeHtml(d.text || "") + "</div>" +
+      "</div>";
+    }).join("");
+    els.msgBoardMessages.scrollTop = els.msgBoardMessages.scrollHeight;
+  }
+
+  function startMsgBoardListener() {
+    if (msgBoardListenerStarted) return;
+    msgBoardListenerStarted = true;
+    db.collection("messages").orderBy("createdAt", "desc").limit(50)
+      .onSnapshot(function (snap) {
+        renderMsgBoardMessages(snap.docs);
+      }, function (err) {
+        console.error("Message board listener failed:", err);
+      });
+  }
+
+  function updateMsgBoardComposer() {
+    els.msgBoardForm.hidden = !currentUser;
+    els.msgBoardSigninNote.hidden = !!currentUser;
+  }
+
+  function openMsgBoard() {
+    els.msgBoardPanel.hidden = false;
+    els.msgBoardTab.setAttribute("aria-expanded", "true");
+    startMsgBoardListener();
+    updateMsgBoardComposer();
+  }
+
+  function closeMsgBoard() {
+    if (els.msgBoardPanel.hidden) return;
+    els.msgBoardPanel.hidden = true;
+    els.msgBoardTab.setAttribute("aria-expanded", "false");
+  }
+
+  els.msgBoardTab.addEventListener("click", function () {
+    if (els.msgBoardPanel.hidden) openMsgBoard(); else closeMsgBoard();
+  });
+  els.msgBoardClose.addEventListener("click", closeMsgBoard);
+
+  els.msgBoardSignInBtn.addEventListener("click", function () {
+    auth.signInWithPopup(googleProvider).catch(function (err) {
+      console.error("Sign-in failed:", err);
+    });
+  });
+
+  els.msgBoardForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!currentUser) return;
+    var text = els.msgBoardInput.value.trim();
+    if (!text) return;
+
+    var sendBtn = els.msgBoardForm.querySelector("button");
+    sendBtn.disabled = true;
+    db.collection("messages").add({
+      text: text,
+      authorUid: currentUser.uid,
+      authorName: currentUser.displayName || currentUser.email || "Anonymous",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      els.msgBoardInput.value = "";
+    }).catch(function (err) {
+      console.error("Posting message failed:", err);
+    }).finally(function () {
+      sendBtn.disabled = false;
+    });
+  });
+
   // Two mutually-exclusive mobile views (see styles.css): Home (browse --
-  // Latest Submissions, ad banner, TV Mode, Featured) and Search (tabs,
-  // search box, filters, results). Home is the default landing state;
-  // Search is only entered via the bottom nav's Search button. No-op on
-  // desktop, where both sets of sections are always shown regardless.
+  // Latest Submissions, ad banner, Featured) and Search (tabs, search box,
+  // filters, results). Home is the default landing state; Search is only
+  // entered via the bottom nav's Search button. No-op on desktop, where
+  // both sets of sections are always shown regardless. TV Mode is a
+  // lightbox (see openTVModal()), not a view -- its bottom-nav button just
+  // opens the modal and was never part of this active-view tracking.
   var bottomNavViewButtons = [
     { btn: els.bottomNavHome, view: "home" },
-    { btn: els.bottomNavSearch, view: "search" },
-    { btn: els.bottomNavTV, view: "tv" }
+    { btn: els.bottomNavSearch, view: "search" }
   ];
 
   function setMobileView(view) {
     state.mobileView = view;
     document.body.classList.toggle("mobile-view-home", view === "home");
     document.body.classList.toggle("mobile-view-search", view === "search");
-    document.body.classList.toggle("mobile-view-tv", view === "tv");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -1826,10 +2060,7 @@
 
   els.bottomNavFavorites.addEventListener("click", openFavoritesModal);
 
-  els.bottomNavTV.addEventListener("click", function () {
-    setMobileView("tv");
-    scrollBelowStickyHeader(els.videoEmbed);
-  });
+  els.bottomNavTV.addEventListener("click", openTVModal);
 
   els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
@@ -1855,10 +2086,7 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  els.sidebarTVBtn.addEventListener("click", function () {
-    setDesktopView("tv");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  els.sidebarTVBtn.addEventListener("click", openTVModal);
 
   els.sidebarFavoritesBtn.addEventListener("click", openFavoritesModal);
 
@@ -2977,10 +3205,11 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
-    var anyOpen = !els.lightbox.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
+    var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
       !els.recentModal.hidden || !els.favoritesModal.hidden || !els.podcastModal.hidden ||
       !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
+    if (!els.msgBoardPanel.hidden) closeMsgBoard();
   });
 
   document.addEventListener("click", function (e) {
@@ -3004,9 +3233,19 @@
 
     var newBadge = state.recentSet[row.rowNum] ? '<span class="new-badge">New</span>' : "";
 
+    // Thumbnail is only shown on desktop (see styles.css) -- mobile keeps
+    // the compact text-row list unchanged. Always included in the markup
+    // either way so there's no separate desktop/mobile render path.
+    var id = extractYouTubeId(row.youtube);
+    var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+    var thumb = '<div class="entry-thumb">' +
+      (id ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">' : "") +
+      "</div>";
+
     return (
       '<li class="entry" data-row="' + escapeHtml(row.rowNum) + '">' +
       '<div class="entry-row" role="button" tabindex="0" aria-haspopup="dialog">' +
+      thumb +
       '<span class="entry-chevron" aria-hidden="true">&#9656;</span>' +
       '<span class="entry-main">' +
       '<span class="entry-title">' + escapeHtml(row.song || "(untitled)") + newBadge + "</span>" +
@@ -3291,6 +3530,7 @@
       state.isAdmin = false;
       els.openAdminBtn.hidden = true;
     }
+    updateMsgBoardComposer();
   });
 
   fetchData();
