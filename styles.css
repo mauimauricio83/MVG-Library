@@ -112,6 +112,15 @@ html, body {
   height: 20px;
 }
 
+/* .header-icon-btn's 32px hit-box centers a 20px icon, leaving 6px of
+   padding the sidebar icons below don't have (theirs is a straight 18px
+   from .header-links' own padding) -- this pulls the menu icon left so the
+   two rails line up instead of the hamburger looking indented. Mobile pulls
+   this button out to an absolute position instead, where it doesn't apply. */
+#headerMenuBtn {
+  margin-left: -8px;
+}
+
 /* Removed from the main body/search cluster -- desktop reaches Favorites
    via a new sidebar link instead (mirrors mobile's bottom-nav modal). */
 #favoritesStrip {
@@ -323,6 +332,22 @@ html, body {
   .header-icon-btn svg {
     width: 18px;
     height: 18px;
+  }
+
+  /* Bigger tap target for the hamburger specifically -- it's the primary
+     way to reach the sidebar on mobile, unlike the other .header-icon-btn
+     instances (which are hidden on mobile anyway, see .top-bar-actions
+     below). */
+  #headerMenuBtn {
+    width: 40px;
+    height: 40px;
+    top: 8px;
+    margin-left: 0;
+  }
+
+  #headerMenuBtn svg {
+    width: 24px;
+    height: 24px;
   }
 
   .app {
@@ -2512,19 +2537,26 @@ body.is-searching #featuredStrip {
   right: 0;
   transform: translateY(-50%);
   z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--border);
   border-right: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
   border-radius: 8px 0 0 8px;
   cursor: pointer;
 }
 
+.msgboard-tab svg {
+  width: 22px;
+  height: 22px;
+}
+
 .msgboard-tab:hover {
-  opacity: 0.9;
+  background: var(--accent-soft);
 }
 
 .msgboard-panel[hidden],
