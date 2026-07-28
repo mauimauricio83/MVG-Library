@@ -259,21 +259,6 @@
     <button type="button" class="media-strip-see-more" id="latestSeeMoreBtn">See more ▾</button>
   </section>
 
-  <section class="media-strip" id="favoritesStrip" hidden>
-    <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="favoritesCollapseBtn" aria-label="Expand or collapse">
-        <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">❤ Favorites</span>
-      </button>
-      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
-    </div>
-    <div class="media-strip-body">
-      <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
-      <div class="media-strip-track" id="favoritesStripTrack"></div>
-      <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
-    </div>
-  </section>
-
   <div id="status" class="status"></div>
   <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>
 
@@ -291,6 +276,26 @@
       <button type="button" class="media-strip-arrow" id="featuredStripNext" aria-label="Show next">›</button>
     </div>
     <button type="button" class="media-strip-see-more" id="featuredSeeMoreBtn">See more ▾</button>
+  </section>
+
+  <!-- Its own dedicated page (like Search/TV Mode), not an inline Home
+       section -- reached via the sidebar/bottom-nav Favorites button, which
+       now calls setDesktopView("favorites")/setMobileView("favorites")
+       instead of opening a modal. Hidden by default (see styles.css),
+       shown only in that view; always rendered (even empty) once data has
+       loaded, so landing here with zero favorites shows an explanation
+       instead of a blank page. -->
+  <section class="media-strip" id="favoritesStrip" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">❤ Favorites</span>
+      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
+    </div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="favoritesStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="favoritesStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
+    </div>
+    <button type="button" class="media-strip-see-more" id="favoritesSeeMoreBtn">See more ▾</button>
   </section>
 
   <div class="results-layout">
@@ -383,20 +388,6 @@
         <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
       </div>
       <div class="recent-list" id="recentList"></div>
-    </div>
-  </div>
-</div>
-
-<div class="lightbox" id="favoritesModal" hidden>
-  <div class="lightbox-backdrop"></div>
-  <div class="lightbox-panel recent-panel" role="dialog" aria-modal="true" aria-label="Favorites">
-    <button type="button" class="lightbox-close" id="favoritesModalClose" aria-label="Close">&times;</button>
-    <div class="recent-body">
-      <div class="recent-header">
-        <h2 class="recent-title">⭐ Favorites</h2>
-        <button type="button" class="media-strip-play-all" id="favoritesModalPlayAll">▶ Play All</button>
-      </div>
-      <div class="recent-list" id="favoritesModalList"></div>
     </div>
   </div>
 </div>

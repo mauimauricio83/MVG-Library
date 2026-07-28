@@ -207,8 +207,11 @@ html, body {
   margin-left: -8px;
 }
 
-/* Removed from the main body/search cluster -- desktop reaches Favorites
-   via a new sidebar link instead (mirrors mobile's bottom-nav modal). */
+/* Favorites is its own dedicated page (desktop-view-favorites/
+   mobile-view-favorites below), not an inline Home section -- hidden here
+   at every width by default, with each platform's view block giving it a
+   display:block override (higher specificity than this bare #id rule, so
+   it wins regardless of stylesheet order) only while that view is active. */
 #favoritesStrip {
   display: none;
 }
@@ -769,6 +772,28 @@ html, body {
   white-space: nowrap;
 }
 
+/* Favorites-only (createMediaStrip's opts.showDescription) -- a short
+   excerpt below the artist line, same clamp treatment as the News cards'
+   .blog-latest-excerpt. */
+.media-strip-desc {
+  margin-top: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  white-space: normal;
+}
+
+.media-strip-empty {
+  padding: 24px 4px;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 /* Featured and Latest Submissions are the dominant, gallery-style
    sections on desktop -- a real grid instead of the horizontal scroll
    strip Favorites/mobile still use, with bigger thumbnails. */
@@ -785,7 +810,8 @@ body.is-searching #featuredStrip {
 
 @media (min-width: 641px) {
   #latestStrip,
-  #featuredStrip {
+  #featuredStrip,
+  #favoritesStrip {
     border: none;
     background: none;
     padding: 0;
@@ -793,22 +819,26 @@ body.is-searching #featuredStrip {
   }
 
   #latestStrip .media-strip-title,
-  #featuredStrip .media-strip-title {
+  #featuredStrip .media-strip-title,
+  #favoritesStrip .media-strip-title {
     font-size: 1.05rem;
   }
 
   #latestStrip .media-strip-body,
-  #featuredStrip .media-strip-body {
+  #featuredStrip .media-strip-body,
+  #favoritesStrip .media-strip-body {
     padding: 0;
   }
 
   #latestStrip .media-strip-arrow,
-  #featuredStrip .media-strip-arrow {
+  #featuredStrip .media-strip-arrow,
+  #favoritesStrip .media-strip-arrow {
     display: none;
   }
 
   #latestStrip .media-strip-track,
-  #featuredStrip .media-strip-track {
+  #featuredStrip .media-strip-track,
+  #favoritesStrip .media-strip-track {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 24px;
@@ -816,39 +846,49 @@ body.is-searching #featuredStrip {
   }
 
   #latestStrip .media-strip-card,
-  #featuredStrip .media-strip-card {
+  #featuredStrip .media-strip-card,
+  #favoritesStrip .media-strip-card {
     width: auto;
   }
 
   #latestStrip .media-strip-thumb,
-  #featuredStrip .media-strip-thumb {
+  #featuredStrip .media-strip-thumb,
+  #favoritesStrip .media-strip-thumb {
     width: 100%;
     aspect-ratio: 16 / 9;
     border-radius: var(--radius);
   }
 
   #latestStrip .media-strip-song,
-  #featuredStrip .media-strip-song {
+  #featuredStrip .media-strip-song,
+  #favoritesStrip .media-strip-song {
     margin-top: 10px;
     font-size: 0.95rem;
     white-space: normal;
   }
 
   #latestStrip .media-strip-artist,
-  #featuredStrip .media-strip-artist {
+  #featuredStrip .media-strip-artist,
+  #favoritesStrip .media-strip-artist {
     font-size: 0.74rem;
+  }
+
+  .media-strip-empty {
+    grid-column: 1 / -1;
   }
 
   /* Capped to roughly two rows by default so the gallery doesn't push
      everything else several scrolls down -- "See more" lifts the cap. */
   #latestStrip .media-strip-track,
-  #featuredStrip .media-strip-track {
+  #featuredStrip .media-strip-track,
+  #favoritesStrip .media-strip-track {
     max-height: 380px;
     overflow: hidden;
   }
 
   #latestStrip.is-expanded .media-strip-track,
-  #featuredStrip.is-expanded .media-strip-track {
+  #featuredStrip.is-expanded .media-strip-track,
+  #favoritesStrip.is-expanded .media-strip-track {
     max-height: none;
   }
 
@@ -902,16 +942,26 @@ body.is-searching #featuredStrip {
     display: none;
   }
 
-  body.desktop-view-tv .about-strip,
-  body.desktop-view-tv #spotlightSidebar,
-  body.desktop-view-tv #blogLatestSidebar,
-  body.desktop-view-tv #latestStrip,
-  body.desktop-view-tv #featuredStrip,
-  body.desktop-view-tv .controls,
-  body.desktop-view-tv #status,
-  body.desktop-view-tv #jumpNavTop,
-  body.desktop-view-tv .results-layout,
-  body.desktop-view-tv #jumpNavBottom {
+  /* Favorites: reached via the sidebar's Favorites link, which now calls
+     setDesktopView("favorites") instead of opening a modal (see
+     #favoritesStrip's base display:none earlier in this file). */
+  body.desktop-view-favorites #favoritesStrip {
+    display: block;
+  }
+
+  body.desktop-view-favorites .about-strip,
+  body.desktop-view-favorites #spotlightSidebar,
+  body.desktop-view-favorites #blogLatestSidebar,
+  body.desktop-view-favorites .ad-placeholder,
+  body.desktop-view-favorites #latestStrip,
+  body.desktop-view-favorites #videoEmbed,
+  body.desktop-view-favorites #featuredStrip,
+  body.desktop-view-favorites .controls,
+  body.desktop-view-favorites #filtersGroup,
+  body.desktop-view-favorites #jumpNavTop,
+  body.desktop-view-favorites #status,
+  body.desktop-view-favorites .results-layout,
+  body.desktop-view-favorites #jumpNavBottom {
     display: none;
   }
 }
@@ -1501,7 +1551,8 @@ body.is-searching #featuredStrip {
   color: inherit;
 }
 
-.blog-latest-excerpt {
+.blog-latest-excerpt,
+.spotlight-card-excerpt {
   margin-top: 4px;
   overflow: hidden;
   display: -webkit-box;
@@ -3010,12 +3061,6 @@ body.is-searching #featuredStrip {
     font-weight: 600;
   }
 
-  /* Favorites is a popup on mobile (bottomNavFavorites), not an inline
-     strip -- desktop keeps the inline strip. */
-  #favoritesStrip {
-    display: none;
-  }
-
   /* Bigger thumbnails, less border clutter -- the 140px/78px desktop-first
      size reads small on a phone screen. The prev/next arrows only matter for
      mouse users; touch already scrolls the strip by swipe, so drop them and
@@ -3066,11 +3111,11 @@ body.is-searching #featuredStrip {
     font-size: 0.8rem;
   }
 
-  /* Three mutually-exclusive mobile views: Home (browse -- Latest
-     Submissions, the ad banner, TV Mode, Featured), Search (tabs, search
-     box, filters, jump nav, results), and TV (TV Mode's own section plus
-     filters, since TV Mode shuffles through whatever the filters currently
-     match -- Featured doesn't apply there). Home is the default; switching
+  /* Mutually-exclusive mobile views: Home (browse -- Latest Submissions,
+     the ad banner, Featured), Search (tabs, search box, filters, jump nav,
+     results), and Favorites (its own page, like Search but without the
+     browse tabs/filters). TV Mode is a lightbox, not a view -- its
+     bottom-nav button just opens the modal. Home is the default; switching
      views hides the sections that don't belong instead of just pushing
      them off-screen, so results/filters aren't buried below the fold
      (worse still with the on-screen keyboard open).
@@ -3089,8 +3134,7 @@ body.is-searching #featuredStrip {
   /* filters-row keeps its own [hidden] toggle (the Filters button) in
      every view it's reachable from -- :not([hidden]) here means we only
      ever force it open when the user hasn't manually collapsed it. */
-  body.mobile-view-search .filters-row:not([hidden]),
-  body.mobile-view-tv .filters-row:not([hidden]) {
+  body.mobile-view-search .filters-row:not([hidden]) {
     display: flex;
   }
 
@@ -3123,16 +3167,18 @@ body.is-searching #featuredStrip {
     display: flex;
   }
 
-  /* TV view: same Home-section baseline, but Featured is irrelevant here
-     and filters become reachable since TV Mode shuffles through them. */
-  body.mobile-view-tv #spotlightSidebar,
-  body.mobile-view-tv #blogLatestSidebar,
-  body.mobile-view-tv #featuredStrip,
-  body.mobile-view-tv #latestStrip {
+  /* Favorites view: its own page, reached via the bottom nav's Favorites
+     button (setMobileView("favorites")) instead of the old popup modal. */
+  body.mobile-view-favorites #spotlightSidebar,
+  body.mobile-view-favorites #blogLatestSidebar,
+  body.mobile-view-favorites #latestStrip,
+  body.mobile-view-favorites .ad-placeholder,
+  body.mobile-view-favorites #videoEmbed,
+  body.mobile-view-favorites #featuredStrip {
     display: none;
   }
 
-  body.mobile-view-tv .filters-toggle-row {
-    display: flex;
+  body.mobile-view-favorites #favoritesStrip {
+    display: block;
   }
 }

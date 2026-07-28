@@ -105,7 +105,7 @@
     latestPlayAll: document.getElementById("latestPlayAll"),
     recentPlayAll: document.getElementById("recentPlayAll"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
-    favoritesCollapseBtn: document.getElementById("favoritesCollapseBtn"),
+    favoritesSeeMoreBtn: document.getElementById("favoritesSeeMoreBtn"),
     openRecentBtn: document.getElementById("openRecentBtn"),
     recentModal: document.getElementById("recentModal"),
     recentModalClose: document.getElementById("recentModalClose"),
@@ -159,10 +159,6 @@
     bottomNavSearch: document.getElementById("bottomNavSearch"),
     bottomNavTV: document.getElementById("bottomNavTV"),
     bottomNavSettings: document.getElementById("bottomNavSettings"),
-    favoritesModal: document.getElementById("favoritesModal"),
-    favoritesModalClose: document.getElementById("favoritesModalClose"),
-    favoritesModalList: document.getElementById("favoritesModalList"),
-    favoritesModalPlayAll: document.getElementById("favoritesModalPlayAll"),
     openPodcastBtn: document.getElementById("openPodcastBtn"),
     podcastModal: document.getElementById("podcastModal"),
     podcastModalClose: document.getElementById("podcastModalClose"),
@@ -272,7 +268,6 @@
     closeSubmitModal();
     closeSettingsModal();
     closeRecentModal();
-    closeFavoritesModal();
     closePodcastModal();
     closeAdminModal();
     closeHeaderMenu();
@@ -1203,8 +1198,15 @@
     return set;
   }
 
-  // Shared factory for the arrow-paginated media strips (Latest Submissions, Featured).
-  function createMediaStrip(sectionEl) {
+  // Shared factory for the arrow-paginated media strips (Latest Submissions,
+  // Featured, Favorites). opts.emptyMessage keeps the section visible (with
+  // that message in place of cards) instead of hiding it when there's no
+  // data -- for Favorites, now its own dedicated page rather than a Home
+  // section that only shows up once you have favorites. opts.showDescription
+  // adds a clamped description line per card (Favorites only, at the user's
+  // request -- Latest/Featured stay as they were).
+  function createMediaStrip(sectionEl, opts) {
+    opts = opts || {};
     var track = sectionEl.querySelector(".media-strip-track");
     var prev = sectionEl.querySelector(".media-strip-arrow:first-child");
     var next = sectionEl.querySelector(".media-strip-arrow:last-child");
@@ -1231,26 +1233,32 @@
 
     return {
       render: function (rows) {
-        if (!rows.length) {
+        if (!rows.length && !opts.emptyMessage) {
           sectionEl.hidden = true;
           return;
         }
-        track.innerHTML = rows.map(function (row) {
-          var id = extractYouTubeId(row.youtube);
-          var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-          var thumb = id
-            ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
-            : "";
-          var artistLine = row.artist || "";
-          if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
-          return (
-            '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-              '<div class="media-strip-thumb">' + thumb + "</div>" +
-              '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-              '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
-            "</div>"
-          );
-        }).join("");
+        track.innerHTML = !rows.length
+          ? '<p class="media-strip-empty">' + escapeHtml(opts.emptyMessage) + "</p>"
+          : rows.map(function (row) {
+            var id = extractYouTubeId(row.youtube);
+            var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+            var thumb = id
+              ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
+              : "";
+            var artistLine = row.artist || "";
+            if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
+            var descLine = opts.showDescription && row.description
+              ? '<div class="media-strip-desc">' + escapeHtml(row.description) + "</div>"
+              : "";
+            return (
+              '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+                '<div class="media-strip-thumb">' + thumb + "</div>" +
+                '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+                '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
+                descLine +
+              "</div>"
+            );
+          }).join("");
         sectionEl.hidden = false;
         updateArrows();
       }
@@ -1259,11 +1267,13 @@
 
   var latestStrip = createMediaStrip(els.latestStrip);
   var featuredStrip = createMediaStrip(els.featuredStrip);
-  var favoritesStrip = createMediaStrip(els.favoritesStrip);
+  var favoritesStrip = createMediaStrip(els.favoritesStrip, {
+    emptyMessage: "Videos you favorite will show up here.",
+    showDescription: true
+  });
 
   setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
   setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
-  setupCollapsibleStrip(els.favoritesStrip, els.favoritesCollapseBtn, "mvg-favorites-collapsed", true);
 
   // Desktop-only: the gallery grid is capped to ~2 rows by default (see
   // styles.css) so it doesn't push everything else several scrolls down.
@@ -1277,6 +1287,7 @@
 
   setupSeeMore(els.latestStrip, els.latestSeeMoreBtn);
   setupSeeMore(els.featuredStrip, els.featuredSeeMoreBtn);
+  setupSeeMore(els.favoritesStrip, els.favoritesSeeMoreBtn);
 
   var latestPool = [];
   function renderLatestStrip(rows) {
@@ -1338,32 +1349,6 @@
     favoritesStrip.render(favoritesPool);
   }
 
-  // Favorites is a vertical popup on mobile (bottomNavFavorites), not a
-  // horizontal strip -- reuses favoritesPool from renderFavoritesStrip.
-  function renderFavoritesModalList() {
-    if (!favoritesPool.length) {
-      els.favoritesModalList.innerHTML = '<p class="recent-empty">Videos you favorite will show up here.</p>';
-      return;
-    }
-
-    els.favoritesModalList.innerHTML = favoritesPool.map(function (row) {
-      var id = extractYouTubeId(row.youtube);
-      var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-      var thumb = id
-        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
-        : "";
-      return (
-        '<button type="button" class="recent-item" data-row="' + escapeHtml(row.rowNum) + '">' +
-          '<div class="recent-item-thumb">' + thumb + "</div>" +
-          '<div class="recent-item-info">' +
-            '<div class="recent-item-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-            '<div class="recent-item-artist">' + escapeHtml(row.artist || "") + "</div>" +
-          "</div>" +
-        "</button>"
-      );
-    }).join("");
-  }
-
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
   // placement — kept in sheet row order rather than randomized.
   var hasSpotlightContent = false;
@@ -1387,12 +1372,16 @@
         : "";
       var artistLine = row.artist || "";
       if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
+      var descLine = row.description
+        ? '<div class="spotlight-card-excerpt">' + escapeHtml(row.description) + "</div>"
+        : "";
       return (
         '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
           '<div class="spotlight-card-thumb">' + thumb + "</div>" +
           '<div class="spotlight-card-info">' +
             '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
             '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
+            descLine +
           "</div>" +
         "</div>"
       );
@@ -2247,13 +2236,15 @@
   // opens the modal and was never part of this active-view tracking.
   var bottomNavViewButtons = [
     { btn: els.bottomNavHome, view: "home" },
-    { btn: els.bottomNavSearch, view: "search" }
+    { btn: els.bottomNavSearch, view: "search" },
+    { btn: els.bottomNavFavorites, view: "favorites" }
   ];
 
   function setMobileView(view) {
     state.mobileView = view;
     document.body.classList.toggle("mobile-view-home", view === "home");
     document.body.classList.toggle("mobile-view-search", view === "search");
+    document.body.classList.toggle("mobile-view-favorites", view === "favorites");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -2272,20 +2263,25 @@
     els.search.focus();
   });
 
-  els.bottomNavFavorites.addEventListener("click", openFavoritesModal);
+  els.bottomNavFavorites.addEventListener("click", function () {
+    renderFavoritesStrip(state.rows);
+    setMobileView("favorites");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
   els.bottomNavTV.addEventListener("click", openTVModal);
 
   els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
   // Desktop's equivalent of the mobile view switch above: Home (default,
-  // no class) is the full page exactly as it's always been -- Latest/TV
-  // Mode/Featured/search all stay right where they are. Search and TV are
+  // no class) is the full page exactly as it's always been -- Latest/
+  // Featured stay right where they are. Search, Favorites, and TV are
   // dedicated alternate views (see styles.css) reached via the sidebar's
-  // Home/TV Mode links or the top-bar search icon.
+  // Home/Favorites links, the top-bar search bar, or TV Mode's own button
+  // (TV Mode itself is a lightbox, not a view -- see openTVModal()).
   function setDesktopView(view) {
     document.body.classList.toggle("desktop-view-search", view === "search");
-    document.body.classList.toggle("desktop-view-tv", view === "tv");
+    document.body.classList.toggle("desktop-view-favorites", view === "favorites");
   }
 
   els.sidebarHomeBtn.addEventListener("click", function () {
@@ -2302,7 +2298,11 @@
 
   els.sidebarTVBtn.addEventListener("click", openTVModal);
 
-  els.sidebarFavoritesBtn.addEventListener("click", openFavoritesModal);
+  els.sidebarFavoritesBtn.addEventListener("click", function () {
+    renderFavoritesStrip(state.rows);
+    setDesktopView("favorites");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
   // Ever-present search bar (YouTube/Spotify-style) replacing the old
   // icon-triggered overlay -- desktop-view-search is now driven purely by
@@ -2471,40 +2471,6 @@
     }
   });
 
-  function openFavoritesModal() {
-    renderFavoritesStrip(state.rows);
-    renderFavoritesModalList();
-    els.favoritesModal.hidden = false;
-    els.favoritesModal.querySelector(".lightbox-panel").scrollTop = 0;
-    lockBodyScroll();
-    pushModalHistory();
-  }
-
-  function closeFavoritesModal() {
-    if (els.favoritesModal.hidden) return;
-    els.favoritesModal.hidden = true;
-    unlockBodyScroll();
-  }
-
-  els.favoritesModal.addEventListener("click", function (e) {
-    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
-      dismissTopModal();
-      return;
-    }
-    var item = e.target.closest(".recent-item");
-    if (item) {
-      var row = findRowByNum(item.getAttribute("data-row"));
-      if (row) {
-        closeFavoritesModal();
-        openLightbox(row);
-      }
-    }
-  });
-
-  els.favoritesModalPlayAll.addEventListener("click", function () {
-    startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
-  });
-
   function openPodcastModal() {
     els.podcastModal.hidden = false;
     els.podcastModal.querySelector(".lightbox-panel").scrollTop = 0;
@@ -2583,7 +2549,6 @@
     // cleared too rather than resurrecting the favorites on next sign-in.
     pushToFirestore();
     renderFavoritesStrip(state.rows);
-    renderFavoritesModalList();
     els.settingsStatus.textContent = "Favorites cleared.";
     els.settingsStatus.hidden = false;
   });
@@ -3446,7 +3411,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
-      !els.recentModal.hidden || !els.favoritesModal.hidden || !els.podcastModal.hidden ||
+      !els.recentModal.hidden || !els.podcastModal.hidden ||
       !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
     if (!els.msgBoardPanel.hidden) closeMsgBoard();
