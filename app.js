@@ -1535,11 +1535,13 @@
   // from a same-origin static file -- see BLOG_LATEST_URL. Independent of
   // the video catalog, so this has its own small fetch rather than piggybacking
   // on fetchData().
+  var NEWS_COUNT = 3; // matches COUNT in scripts/fetch-blog-latest.js -- capped here too as a safety net, not just trusted from the fetched JSON.
   function renderBlogLatest(posts) {
     if (!posts || !posts.length) {
       els.blogLatestSidebar.hidden = true;
       return;
     }
+    posts = posts.slice(0, NEWS_COUNT);
     els.blogLatestCards.innerHTML = posts.map(function (post) {
       var thumb = post.image
         ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
@@ -3301,7 +3303,7 @@
     chain.then(function () {
       var evictions = [];
       if (anyFeature) evictions.push(enforceCap("feature", "featureAt", 30));
-      if (anySpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
+      if (anySpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", SPOTLIGHT_COUNT));
       return Promise.all(evictions);
     }).then(function () {
       // Bulk imports auto-publish so new entries go live without a separate
@@ -3502,7 +3504,7 @@
       return db.collection("videos").doc(rowNum).set(doc, { merge: true }).then(function () {
         var evictions = [];
         if (feature && !wasFeature) evictions.push(enforceCap("feature", "featureAt", 30));
-        if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", 3));
+        if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", SPOTLIGHT_COUNT));
         return Promise.all(evictions);
       }).then(function () {
         // A single edit opened straight from the lightbox never loaded the
