@@ -16,7 +16,7 @@ const path = require("path");
 const BLOG_JSON_URL = "https://themusicvideoguy.com/news?format=json-pretty";
 const BLOG_BASE_URL = "https://themusicvideoguy.com";
 const OUTPUT_PATH = path.join(__dirname, "..", "blog-latest.json");
-const COUNT = 3;
+const COUNT = 6; // homepage shows the first 3 as cards, the next 3 (once the blog has that many) as a plain text list -- see NEWS_COUNT/NEWS_CARD_COUNT in app.js
 
 function stripHtml(html) {
   return String(html || "")

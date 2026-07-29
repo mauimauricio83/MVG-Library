@@ -121,6 +121,7 @@
     spotlightCards: document.getElementById("spotlightCards"),
     blogLatestSidebar: document.getElementById("blogLatestSidebar"),
     blogLatestCards: document.getElementById("blogLatestCards"),
+    blogLatestExtra: document.getElementById("blogLatestExtra"),
     appFooter: document.getElementById("appFooter"),
     signInBtn: document.getElementById("signInBtn"),
     topBarSignInBtn: document.getElementById("topBarSignInBtn"),
@@ -1535,14 +1536,26 @@
   // from a same-origin static file -- see BLOG_LATEST_URL. Independent of
   // the video catalog, so this has its own small fetch rather than piggybacking
   // on fetchData().
-  var NEWS_COUNT = 3; // matches COUNT in scripts/fetch-blog-latest.js -- capped here too as a safety net, not just trusted from the fetched JSON.
+  // Matches COUNT in scripts/fetch-blog-latest.js -- capped here too as a
+  // safety net, not just trusted from the fetched JSON. First 2 get the
+  // full big-thumbnail card treatment; the next 4 (once the blog actually
+  // has that many recent posts -- right now it only has 3) render as a
+  // compact list below with a small thumbnail beside the text instead of
+  // a full card, so the section can grow past 2 without repeating that
+  // much visual weight.
+  var NEWS_COUNT = 6;
+  var NEWS_CARD_COUNT = 2;
+
   function renderBlogLatest(posts) {
     if (!posts || !posts.length) {
       els.blogLatestSidebar.hidden = true;
       return;
     }
     posts = posts.slice(0, NEWS_COUNT);
-    els.blogLatestCards.innerHTML = posts.map(function (post) {
+    var cardPosts = posts.slice(0, NEWS_CARD_COUNT);
+    var extraPosts = posts.slice(NEWS_CARD_COUNT);
+
+    els.blogLatestCards.innerHTML = cardPosts.map(function (post) {
       var thumb = post.image
         ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
         : "";
@@ -1556,6 +1569,27 @@
         "</a>"
       );
     }).join("");
+
+    if (extraPosts.length) {
+      els.blogLatestExtra.innerHTML = extraPosts.map(function (post) {
+        var thumb = post.image
+          ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
+          : "";
+        return (
+          '<a class="blog-latest-extra-item" href="' + escapeHtml(post.url) + '" target="_blank" rel="noopener noreferrer">' +
+            '<div class="blog-latest-extra-thumb">' + thumb + "</div>" +
+            '<div class="blog-latest-extra-info">' +
+              '<div class="blog-latest-extra-title">' + escapeHtml(post.title) + "</div>" +
+              '<div class="blog-latest-excerpt">' + escapeHtml(post.excerpt || "") + "</div>" +
+            "</div>" +
+          "</a>"
+        );
+      }).join("");
+      els.blogLatestExtra.hidden = false;
+    } else {
+      els.blogLatestExtra.hidden = true;
+    }
+
     els.blogLatestSidebar.hidden = false;
   }
 
