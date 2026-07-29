@@ -146,7 +146,7 @@
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitFormStatus: document.getElementById("submitFormStatus"),
-    submitThanks: document.getElementById("submitThanks"),
+    submitThanksModal: document.getElementById("submitThanksModal"),
     submitThanksBack: document.getElementById("submitThanksBack"),
     submitThanksAgain: document.getElementById("submitThanksAgain"),
     msgBoardTab: document.getElementById("msgBoardTab"),
@@ -274,6 +274,7 @@
     closeLightbox();
     closeTVModal();
     closeSubmitModal();
+    closeSubmitThanksModal();
     closeSettingsModal();
     closeRecentModal();
     closePodcastModal();
@@ -2159,11 +2160,6 @@
 
   function openSubmitModal() {
     els.submitModal.hidden = false;
-    // Always land on the form, even if a previous visit left the
-    // thank-you panel showing (e.g. closed via "Go back" without hitting
-    // "Submit again" first).
-    els.submitForm.hidden = false;
-    els.submitThanks.hidden = true;
     els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
@@ -2176,6 +2172,29 @@
   }
 
   els.openSubmitBtn.addEventListener("click", openSubmitModal);
+
+  // Its own popup (not a swapped-in section of #submitModal) so it reads
+  // unmistakably as "something just happened" after hitting Submit,
+  // rather than a content change the submitter might not notice on a
+  // long form they've scrolled down. closeSubmitModal()/openSubmitThanksModal()
+  // is an internal transition (like the lightbox<->recent-modal pattern
+  // elsewhere) -- one popup replacing another, not a real dismiss.
+  function openSubmitThanksModal() {
+    els.submitThanksModal.hidden = false;
+    els.submitThanksModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeSubmitThanksModal() {
+    if (els.submitThanksModal.hidden) return;
+    els.submitThanksModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.submitThanksModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
 
   // Message board: a docked popout panel (not a lightbox -- it doesn't block
   // the rest of the page, so it isn't part of closeAllModalsHard()/history
@@ -3603,14 +3622,14 @@
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         els.submitForm.reset();
-        // A dedicated thank-you panel (with the Ko-fi ask from the Support
-        // page, plus Go back/Submit again) replaces the old inline status
-        // message + auto-close -- gives the submitter something to read
-        // and an explicit next action, instead of the modal just vanishing
-        // on them after ~2 seconds.
-        els.submitForm.hidden = true;
-        els.submitThanks.hidden = false;
-        els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
+        els.submitFormStatus.hidden = true;
+        // A dedicated popup (with the Ko-fi ask from the Support page,
+        // plus Go back/Submit again) replaces the old inline status
+        // message + 2.2s auto-close -- reads unmistakably as "something
+        // just happened" instead of a content change that's easy to miss
+        // on a long form, and gives an explicit next action.
+        closeSubmitModal();
+        openSubmitThanksModal();
       })
       .catch(function (err) {
         console.error("Submission failed:", err);
@@ -3626,10 +3645,8 @@
   els.submitThanksBack.addEventListener("click", dismissTopModal);
 
   els.submitThanksAgain.addEventListener("click", function () {
-    els.submitThanks.hidden = true;
-    els.submitForm.hidden = false;
-    els.submitFormStatus.hidden = true;
-    els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
+    closeSubmitThanksModal();
+    openSubmitModal();
   });
 
   // The widen button lives inside the per-entry HTML openLightbox() regenerates,
@@ -3682,7 +3699,8 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
-    var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.settingsModal.hidden ||
+    var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.submitThanksModal.hidden ||
+      !els.settingsModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
       !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
