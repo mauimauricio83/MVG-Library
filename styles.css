@@ -2778,6 +2778,52 @@ body.is-searching #featuredStrip {
   }
 }
 
+/* Post-submission panel (swaps places with .submit-form -- see
+   submitThanksAgain/submitThanksBack in app.js), reusing the Support
+   page's own Ko-fi wording/button so it doesn't need to be duplicated
+   with a different pitch here. */
+.submit-thanks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.submit-thanks-support {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.submit-thanks-kofi {
+  display: inline-block;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.submit-thanks-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.submit-thanks-back {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.submit-thanks-back:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Message board: a hidden-by-default popout tab docked to the right edge.
    Anyone can open it and read; posting requires sign-in (see msgBoardForm/
    msgBoardSigninNote toggle in app.js and the Firestore rules on /messages). */

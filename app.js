@@ -146,6 +146,9 @@
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitFormStatus: document.getElementById("submitFormStatus"),
+    submitThanks: document.getElementById("submitThanks"),
+    submitThanksBack: document.getElementById("submitThanksBack"),
+    submitThanksAgain: document.getElementById("submitThanksAgain"),
     msgBoardTab: document.getElementById("msgBoardTab"),
     msgBoardPanel: document.getElementById("msgBoardPanel"),
     msgBoardClose: document.getElementById("msgBoardClose"),
@@ -2156,6 +2159,11 @@
 
   function openSubmitModal() {
     els.submitModal.hidden = false;
+    // Always land on the form, even if a previous visit left the
+    // thank-you panel showing (e.g. closed via "Go back" without hitting
+    // "Submit again" first).
+    els.submitForm.hidden = false;
+    els.submitThanks.hidden = true;
     els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
@@ -3594,11 +3602,15 @@
     fetch(SUBMIT_WEBAPP_URL, { method: "POST", body: formData })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
-        els.submitFormStatus.textContent = "Thanks! We'll review it and add it to the library.";
-        els.submitFormStatus.className = "submit-form-status is-success";
-        els.submitFormStatus.hidden = false;
         els.submitForm.reset();
-        setTimeout(closeSubmitModal, 2200);
+        // A dedicated thank-you panel (with the Ko-fi ask from the Support
+        // page, plus Go back/Submit again) replaces the old inline status
+        // message + auto-close -- gives the submitter something to read
+        // and an explicit next action, instead of the modal just vanishing
+        // on them after ~2 seconds.
+        els.submitForm.hidden = true;
+        els.submitThanks.hidden = false;
+        els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
       })
       .catch(function (err) {
         console.error("Submission failed:", err);
@@ -3609,6 +3621,15 @@
       .finally(function () {
         els.submitFormBtn.disabled = false;
       });
+  });
+
+  els.submitThanksBack.addEventListener("click", dismissTopModal);
+
+  els.submitThanksAgain.addEventListener("click", function () {
+    els.submitThanks.hidden = true;
+    els.submitForm.hidden = false;
+    els.submitFormStatus.hidden = true;
+    els.submitModal.querySelector(".lightbox-panel").scrollTop = 0;
   });
 
   // The widen button lives inside the per-entry HTML openLightbox() regenerates,
