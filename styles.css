@@ -1252,6 +1252,17 @@ body.is-searching #featuredStrip {
   display: block;
 }
 
+/* enterTVFilterMode() hides these via the [hidden] attribute (see
+   app.js) -- but .mvg-only-toggle/.info-tip both set their own
+   unconditional display, which beats the browser's default
+   [hidden]{display:none} regardless of specificity/order otherwise. id
+   selectors here reliably win. */
+#mvgOnlyLabel[hidden],
+#mvgOnlyTip[hidden],
+#genreTip[hidden] {
+  display: none;
+}
+
 /* Colorful tappable tiles standing in for the Genre dropdown while in TV
    Mode (see renderTVGenreGrid() in app.js) -- a "browse by vibe" pick fits
    channel-surfing better than a precise <select>. :not([hidden]) guards
@@ -1269,9 +1280,10 @@ body.is-searching #featuredStrip {
 .tv-genre-tile {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
   border: 1px solid var(--border);
   border-left: 4px solid var(--tile-color, var(--accent));
   border-radius: 8px;
@@ -1279,9 +1291,16 @@ body.is-searching #featuredStrip {
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 700;
-  padding: 10px 12px;
+  padding: 8px 10px;
   cursor: pointer;
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tv-genre-tile-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tv-genre-tile:hover {
@@ -1297,6 +1316,7 @@ body.is-searching #featuredStrip {
 .tv-genre-tile-all {
   grid-column: 1 / -1;
   border-left-color: var(--accent);
+  justify-content: center;
   align-items: center;
   text-align: center;
 }
@@ -1307,6 +1327,7 @@ body.is-searching #featuredStrip {
 }
 
 .tv-genre-tile-count {
+  flex: 0 0 auto;
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-muted);

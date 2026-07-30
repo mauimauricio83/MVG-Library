@@ -95,6 +95,9 @@
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
     tvGenreGrid: document.getElementById("tvGenreGrid"),
+    mvgOnlyLabel: document.getElementById("mvgOnlyLabel"),
+    mvgOnlyTip: document.getElementById("mvgOnlyTip"),
+    genreTip: document.getElementById("genreTip"),
     countryFilter: document.getElementById("countryFilter"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     filtersToggle: document.getElementById("filtersToggle"),
@@ -267,7 +270,7 @@
     { key: "hiphop", label: "Hip-Hop/Rap", color: "#ff8c42" },
     { key: "rnb", label: "R&B/Soul/Funk", color: "#e0568c" },
     { key: "electronic", label: "Electronic/Dance", color: "#33c9dc" },
-    { key: "country", label: "Country/Folk/Americana", color: "#b5834d" },
+    { key: "country", label: "Country/Folk", color: "#b5834d" },
     { key: "world", label: "Latin/World/Reggae", color: "#4caf6e" },
     { key: "jazz", label: "Jazz/Blues/Classical", color: "#6f93ea" },
     { key: "other", label: "Other", color: "#9aa0a6" }
@@ -506,6 +509,7 @@
     tvFilterMode: false,
     homeYearBeforeTV: "",
     homeGenreBeforeTV: "",
+    homeMvgOnlyBeforeTV: false,
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -1964,8 +1968,8 @@
     TV_GENRE_GROUPS.forEach(function (g) {
       var active = state.genre === g.key ? " is-active" : "";
       html += '<button type="button" class="tv-genre-tile' + active + '" data-genre="' + g.key +
-        '" style="--tile-color:' + g.color + '">' + escapeHtml(g.label) +
-        '<span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
+        '" style="--tile-color:' + g.color + '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
+        '</span><span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
     });
     els.tvGenreGrid.innerHTML = html;
   }
@@ -1989,13 +1993,22 @@
     if (state.tvFilterMode) return;
     state.homeYearBeforeTV = state.year;
     state.homeGenreBeforeTV = state.genre;
+    state.homeMvgOnlyBeforeTV = state.mvgOnly;
     state.tvFilterMode = true;
     state.year = state.homeYearBeforeTV ? tvYearBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
     state.genre = state.homeGenreBeforeTV ? (TV_GENRE_MAP[state.homeGenreBeforeTV] || "other") : "";
+    // MVG Reels/tooltips are hidden in TV Mode (see below) to keep the panel
+    // short -- reset the toggle rather than silently applying a filter the
+    // viewer has no way to see or turn off while it's active.
+    state.mvgOnly = false;
+    els.mvgOnlyToggle.checked = false;
     buildTVYearOptions(state.rows);
     els.yearFilter.value = state.year;
     els.genreFilter.hidden = true;
     els.tvGenreGrid.hidden = false;
+    els.mvgOnlyLabel.hidden = true;
+    els.mvgOnlyTip.hidden = true;
+    els.genreTip.hidden = true;
     renderTVGenreGrid(state.rows);
     updateFiltersToggleCount();
   }
@@ -2005,8 +2018,13 @@
     state.tvFilterMode = false;
     state.year = state.homeYearBeforeTV;
     state.genre = state.homeGenreBeforeTV;
+    state.mvgOnly = state.homeMvgOnlyBeforeTV;
+    els.mvgOnlyToggle.checked = state.mvgOnly;
     els.genreFilter.hidden = false;
     els.tvGenreGrid.hidden = true;
+    els.mvgOnlyLabel.hidden = false;
+    els.mvgOnlyTip.hidden = false;
+    els.genreTip.hidden = false;
     buildYearOptions(state.rows);
     buildGenreOptions(state.rows);
     els.yearFilter.value = state.year;
