@@ -211,7 +211,8 @@
     settingsStatus: document.getElementById("settingsStatus")
   };
 
-  els.appFooter.textContent = "v" + APP_VERSION + " · Created by MnC · 2026";
+  els.appFooter.innerHTML = "v" + APP_VERSION + " · Created by MnC · 2026" +
+    ' <a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>';
 
   var LATEST_STRIP_COUNT = 50;
   var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
