@@ -1965,7 +1965,7 @@
     var radius = 42; // percent of the ring's own box
     var ticksHtml = "";
     TV_YEAR_BUCKETS.forEach(function (b, i) {
-      var angleDeg = (360 / n) * i - 90; // start at 12 o'clock, go clockwise
+      var angleDeg = -90 - (360 / n) * i; // start at 12 o'clock, go counter-clockwise (reversed, like a clock run backwards)
       var angleRad = angleDeg * Math.PI / 180;
       var x = 50 + radius * Math.cos(angleRad);
       var y = 50 + radius * Math.sin(angleRad);
