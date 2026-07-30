@@ -1241,6 +1241,25 @@ body.is-searching #featuredStrip {
   display: none;
 }
 
+/* TV Mode borrows #filtersGroup into #tvFiltersSlot for the duration (see
+   openTVModal() in app.js) -- but the Home/Search/Favorites view rules above
+   (and their mobile equivalents) hide #filtersGroup/.filters-toggle-row by
+   default outside of Search, since normally that's the right call. Inside
+   the TV modal it should always be visible regardless of whatever view the
+   page was in before the modal opened. Two-id selectors so this reliably
+   beats those single-id/single-class hide rules on both desktop and mobile. */
+#tvFiltersSlot #filtersGroup {
+  display: block;
+}
+
+#tvFiltersSlot .filters-toggle-row {
+  display: flex;
+}
+
+#tvFiltersSlot .filters-row:not([hidden]) {
+  display: flex;
+}
+
 .category-filters-group {
   display: none; /* disabled for now -- getting cumbersome; other filters remain */
 }
