@@ -1263,6 +1263,88 @@ body.is-searching #featuredStrip {
   display: none;
 }
 
+/* A ring of 15 short tick buttons around a center hub, standing in for the
+   Year dropdown while in TV Mode (see renderTVYearDial() in app.js) --
+   picking a decade is more "spin the dial" than "look up an exact value."
+   Same :not([hidden]) guard and flex:1 0 100% reasoning as the genre grid
+   below. Tick positions are computed in JS as percent left/top and don't
+   need any CSS beyond centering the button on that point. */
+.tv-year-dial:not([hidden]) {
+  display: flex;
+  justify-content: center;
+  flex: 1 0 100%;
+  margin: 6px 0 2px;
+}
+
+.tv-year-dial-ring {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+  aspect-ratio: 1;
+}
+
+.tv-year-tick {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.tv-year-tick:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-year-tick.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.tv-year-dial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.tv-year-dial-center-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.tv-year-dial-center-count {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
 /* Colorful tappable tiles standing in for the Genre dropdown while in TV
    Mode (see renderTVGenreGrid() in app.js) -- a "browse by vibe" pick fits
    channel-surfing better than a precise <select>. :not([hidden]) guards

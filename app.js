@@ -95,6 +95,7 @@
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
     tvGenreGrid: document.getElementById("tvGenreGrid"),
+    tvYearDial: document.getElementById("tvYearDial"),
     mvgOnlyLabel: document.getElementById("mvgOnlyLabel"),
     mvgOnlyTip: document.getElementById("mvgOnlyTip"),
     genreTip: document.getElementById("genreTip"),
@@ -243,21 +244,21 @@
   // year listed) folds into one "Pre-Music Video" bucket rather than adding
   // more near-empty decades.
   var TV_YEAR_BUCKETS = [
-    { key: "2020s", label: "2020s", min: 2020, max: 2029 },
-    { key: "2010s", label: "2010s", min: 2010, max: 2019 },
-    { key: "2000s-late", label: "Late-2000s", min: 2007, max: 2009 },
-    { key: "2000s-mid", label: "Mid-2000s", min: 2004, max: 2006 },
-    { key: "2000s-early", label: "Early-2000s", min: 2000, max: 2003 },
-    { key: "1990s-late", label: "Late-90s", min: 1997, max: 1999 },
-    { key: "1990s-mid", label: "Mid-90s", min: 1994, max: 1996 },
-    { key: "1990s-early", label: "Early-90s", min: 1990, max: 1993 },
-    { key: "1980s-late", label: "Late-80s", min: 1987, max: 1989 },
-    { key: "1980s-mid", label: "Mid-80s", min: 1984, max: 1986 },
-    { key: "1980s-early", label: "Early-80s", min: 1980, max: 1983 },
-    { key: "1970s-late", label: "Late-70s", min: 1977, max: 1979 },
-    { key: "1970s-mid", label: "Mid-70s", min: 1974, max: 1976 },
-    { key: "1970s-early", label: "Early-70s", min: 1970, max: 1973 },
-    { key: "pre-mv", label: "Pre-Music Video", min: -Infinity, max: 1969 }
+    { key: "2020s", label: "2020s", shortLabel: "20s", min: 2020, max: 2029 },
+    { key: "2010s", label: "2010s", shortLabel: "10s", min: 2010, max: 2019 },
+    { key: "2000s-late", label: "Late-2000s", shortLabel: "L00s", min: 2007, max: 2009 },
+    { key: "2000s-mid", label: "Mid-2000s", shortLabel: "M00s", min: 2004, max: 2006 },
+    { key: "2000s-early", label: "Early-2000s", shortLabel: "E00s", min: 2000, max: 2003 },
+    { key: "1990s-late", label: "Late-90s", shortLabel: "L90s", min: 1997, max: 1999 },
+    { key: "1990s-mid", label: "Mid-90s", shortLabel: "M90s", min: 1994, max: 1996 },
+    { key: "1990s-early", label: "Early-90s", shortLabel: "E90s", min: 1990, max: 1993 },
+    { key: "1980s-late", label: "Late-80s", shortLabel: "L80s", min: 1987, max: 1989 },
+    { key: "1980s-mid", label: "Mid-80s", shortLabel: "M80s", min: 1984, max: 1986 },
+    { key: "1980s-early", label: "Early-80s", shortLabel: "E80s", min: 1980, max: 1983 },
+    { key: "1970s-late", label: "Late-70s", shortLabel: "L70s", min: 1977, max: 1979 },
+    { key: "1970s-mid", label: "Mid-70s", shortLabel: "M70s", min: 1974, max: 1976 },
+    { key: "1970s-early", label: "Early-70s", shortLabel: "E70s", min: 1970, max: 1973 },
+    { key: "pre-mv", label: "Pre-Music Video", shortLabel: "Pre-MV", min: -Infinity, max: 1969 }
   ];
 
   // 10 broad groups covering the catalog's ~190 distinct genre tags. Exact
@@ -1940,17 +1941,61 @@
 
   var tvAdController = null;
 
-  function buildTVYearOptions(rows) {
+  // A ring of 15 short tick buttons around a center hub, instead of a
+  // dropdown -- picking a decade is more "spin the dial" than "look up an
+  // exact value," so it gets the same playful treatment as the genre tiles.
+  // Positions are computed here (percent left/top around the ring) rather
+  // than with CSS trig, matching the word-cloud sphere's approach elsewhere
+  // in this codebase. The center hub shows the full label + count for
+  // whatever's selected (or the totals when nothing is) and doubles as the
+  // reset-to-All control.
+  function renderTVYearDial(rows) {
     var counts = {};
     TV_YEAR_BUCKETS.forEach(function (b) { counts[b.key] = 0; });
     rows.forEach(function (r) { counts[tvYearBucketForRow(r)]++; });
-    var html = '<option value="">All Years</option>';
-    TV_YEAR_BUCKETS.forEach(function (b) {
-      if (!counts[b.key]) return;
-      html += '<option value="' + b.key + '">' + escapeHtml(b.label) + " (" + counts[b.key] + ")</option>";
+
+    var n = TV_YEAR_BUCKETS.length;
+    var radius = 42; // percent of the ring's own box
+    var ticksHtml = "";
+    TV_YEAR_BUCKETS.forEach(function (b, i) {
+      var angleDeg = (360 / n) * i - 90; // start at 12 o'clock, go clockwise
+      var angleRad = angleDeg * Math.PI / 180;
+      var x = 50 + radius * Math.cos(angleRad);
+      var y = 50 + radius * Math.sin(angleRad);
+      var active = state.year === b.key ? " is-active" : "";
+      ticksHtml += '<button type="button" class="tv-year-tick' + active + '" data-year="' + b.key +
+        '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;" aria-label="' +
+        escapeHtml(b.label) + " (" + counts[b.key] + ')">' + escapeHtml(b.shortLabel) + "</button>";
     });
-    els.yearFilter.innerHTML = html;
+
+    var selected = null;
+    TV_YEAR_BUCKETS.forEach(function (b) { if (b.key === state.year) selected = b; });
+    var centerLabel = selected ? selected.label : "All Years";
+    var centerCount = (selected ? counts[selected.key] : rows.length) + " videos";
+
+    els.tvYearDial.innerHTML =
+      '<div class="tv-year-dial-ring">' + ticksHtml +
+        '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
+          '<span class="tv-year-dial-center-label">' + escapeHtml(centerLabel) + "</span>" +
+          '<span class="tv-year-dial-center-count">' + centerCount + "</span>" +
+        "</button>" +
+      "</div>";
   }
+
+  els.tvYearDial.addEventListener("click", function (e) {
+    var tick = e.target.closest(".tv-year-tick");
+    var center = e.target.closest("#tvYearDialCenter");
+    if (!tick && !center) return;
+    if (tick) {
+      var key = tick.getAttribute("data-year");
+      state.year = state.year === key ? "" : key; // tapping the active tick again clears it
+    } else {
+      state.year = ""; // center hub doubles as the reset-to-All control
+    }
+    renderTVYearDial(state.rows);
+    updateFiltersToggleCount();
+    render();
+  });
 
   // Colorful tappable tiles instead of a dropdown -- genre is a "browse by
   // vibe" pick in TV Mode, not a precise lookup, so it gets the more playful
@@ -2002,13 +2047,14 @@
     // viewer has no way to see or turn off while it's active.
     state.mvgOnly = false;
     els.mvgOnlyToggle.checked = false;
-    buildTVYearOptions(state.rows);
-    els.yearFilter.value = state.year;
+    els.yearFilter.hidden = true;
+    els.tvYearDial.hidden = false;
     els.genreFilter.hidden = true;
     els.tvGenreGrid.hidden = false;
     els.mvgOnlyLabel.hidden = true;
     els.mvgOnlyTip.hidden = true;
     els.genreTip.hidden = true;
+    renderTVYearDial(state.rows);
     renderTVGenreGrid(state.rows);
     updateFiltersToggleCount();
   }
@@ -2020,6 +2066,8 @@
     state.genre = state.homeGenreBeforeTV;
     state.mvgOnly = state.homeMvgOnlyBeforeTV;
     els.mvgOnlyToggle.checked = state.mvgOnly;
+    els.yearFilter.hidden = false;
+    els.tvYearDial.hidden = true;
     els.genreFilter.hidden = false;
     els.tvGenreGrid.hidden = true;
     els.mvgOnlyLabel.hidden = false;
