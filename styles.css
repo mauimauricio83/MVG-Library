@@ -2312,6 +2312,23 @@ body.is-searching #featuredStrip {
   border-top: 1px solid var(--border);
 }
 
+/* Pins the ad to the very bottom of the modal instead of sitting right
+   below the filters -- mostly matters on mobile, where .lightbox-panel is
+   forced to full viewport height and would otherwise leave a dead gap
+   between the ad and the bottom of the screen. min-height:100% only
+   resolves to something on an ancestor with an actual height (mobile's
+   height:100% panel); on desktop, where the panel just hugs its content,
+   this is a no-op and the ad stays exactly where it already was. */
+#tvModal .lightbox-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+#tvModal #tvAdPlaceholder {
+  margin-top: auto;
+}
+
 .lightbox-video-frame {
   position: relative;
   width: 100%;
