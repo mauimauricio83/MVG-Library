@@ -230,6 +230,137 @@
   var GENRE_NONE = "__no-genre__";
   var COUNTRY_NONE = "__no-country__";
 
+  // TV Mode swaps the shared Year/Genre filters for coarser, browsing-
+  // friendlier buckets (see enterTVFilterMode/exitTVFilterMode) -- exact
+  // year/genre picking makes sense when you're hunting for something
+  // specific on Search, but is too fussy for "surprise me" channel surfing.
+  // 2000s/90s/80s/70s each split into three; everything older (or with no
+  // year listed) folds into one "Pre-Music Video" bucket rather than adding
+  // more near-empty decades.
+  var TV_YEAR_BUCKETS = [
+    { key: "2020s", label: "2020s", min: 2020, max: 2029 },
+    { key: "2010s", label: "2010s", min: 2010, max: 2019 },
+    { key: "2000s-late", label: "Late-2000s", min: 2007, max: 2009 },
+    { key: "2000s-mid", label: "Mid-2000s", min: 2004, max: 2006 },
+    { key: "2000s-early", label: "Early-2000s", min: 2000, max: 2003 },
+    { key: "1990s-late", label: "Late-90s", min: 1997, max: 1999 },
+    { key: "1990s-mid", label: "Mid-90s", min: 1994, max: 1996 },
+    { key: "1990s-early", label: "Early-90s", min: 1990, max: 1993 },
+    { key: "1980s-late", label: "Late-80s", min: 1987, max: 1989 },
+    { key: "1980s-mid", label: "Mid-80s", min: 1984, max: 1986 },
+    { key: "1980s-early", label: "Early-80s", min: 1980, max: 1983 },
+    { key: "1970s-late", label: "Late-70s", min: 1977, max: 1979 },
+    { key: "1970s-mid", label: "Mid-70s", min: 1974, max: 1976 },
+    { key: "1970s-early", label: "Early-70s", min: 1970, max: 1973 },
+    { key: "pre-mv", label: "Pre-Music Video", min: -Infinity, max: 1969 }
+  ];
+
+  // 10 broad groups covering the catalog's ~190 distinct genre tags. Exact
+  // tags not listed here (new/rare ones) fall back to "other" rather than
+  // breaking the grouping.
+  var TV_GENRE_GROUPS = [
+    { key: "pop", label: "Pop" },
+    { key: "rock", label: "Rock" },
+    { key: "metal-punk", label: "Metal & Punk" },
+    { key: "hiphop", label: "Hip-Hop/Rap" },
+    { key: "rnb", label: "R&B/Soul/Funk" },
+    { key: "electronic", label: "Electronic/Dance" },
+    { key: "country", label: "Country/Folk/Americana" },
+    { key: "world", label: "Latin/World/Reggae" },
+    { key: "jazz", label: "Jazz/Blues/Classical" },
+    { key: "other", label: "Other" }
+  ];
+
+  var TV_GENRE_MAP = {
+    "Pop": "pop", "Pop Rock": "pop", "Pop/Rock": "pop", "Teen Pop": "pop", "Euro Pop": "pop",
+    "French Pop": "pop", "K-Pop": "pop", "J-Pop": "pop", "Indie Pop": "pop", "P-Pop": "pop",
+    "Mandopop": "pop", "Punjabi Pop": "pop", "Indian Pop": "pop", "Korean Pop": "pop",
+    "Vocal Pop": "pop", "Traditional Vocal Pop": "pop", "Britpop": "pop", "Christmas: Pop": "pop",
+    "Arabic Pop": "pop",
+
+    "Rock": "rock", "Alternative": "rock", "Alternative Rock": "rock", "Indie Rock": "rock",
+    "Classic Rock": "rock", "Hard Rock": "rock", "New Wave & Post-Punk": "rock", "New Wave": "rock",
+    "Southern Rock": "rock", "Arena Rock": "rock", "Prog-Rock/Art Rock": "rock", "Progressive": "rock",
+    "Psychedelic Rock": "rock", "Psychedelic": "rock", "Folk-Rock": "rock", "Soft Rock": "rock",
+    "Goth Rock": "rock", "Goth & Industrial": "rock", "Japanese Rock": "rock", "Chinese Rock": "rock",
+    "American Alternative": "rock", "British Alternative": "rock", "Album-Oriented Rock (AOR)": "rock",
+    "Indie & Lo-Fi": "rock", "Rock & Roll": "rock",
+
+    "Metal": "metal-punk", "Heavy Metal": "metal-punk", "Hard Rock & Metal": "metal-punk",
+    "Thrash & Speed Metal": "metal-punk", "Death Metal": "metal-punk", "Death Metal/Black Metal": "metal-punk",
+    "Pop Metal": "metal-punk", "Hair Metal": "metal-punk", "Punk": "metal-punk",
+    "Hardcore & Punk": "metal-punk", "Pop Punk": "metal-punk", "Industrial": "metal-punk",
+
+    "Rap/Hip Hop": "hiphop", "Gangsta & Hardcore": "hiphop", "Gangsta Rap": "hiphop",
+    "Old School Rap": "hiphop", "West Coast Rap": "hiphop", "East Coast Rap": "hiphop",
+    "Southern Rap": "hiphop", "Pop Rap": "hiphop", "Alternative Rap": "hiphop",
+    "Experimental Rap": "hiphop", "Hardcore Rap": "hiphop", "Dirty South": "hiphop",
+    "Freestyle": "hiphop", "East Coast": "hiphop", "West Coast": "hiphop",
+
+    "R&B/Soul": "rnb", "R&B": "rnb", "Contemporary R&B": "rnb", "Neo-Soul": "rnb",
+    "Soul": "rnb", "Classic R&B": "rnb", "Funk": "rnb",
+
+    "Electronic": "electronic", "Dance": "electronic", "Dance & Electronic": "electronic",
+    "Electronica": "electronic", "House": "electronic", "Techno": "electronic", "Trance": "electronic",
+    "Dubstep": "electronic", "Drum & Bass": "electronic", "Breakbeat": "electronic",
+    "Downtempo": "electronic", "IDM/Experimental": "electronic", "Big Beat": "electronic",
+    "Ambient": "electronic", "Jungle/Drum'n'bass": "electronic", "Afro House": "electronic",
+    "World Dance": "electronic", "Alternative Dance": "electronic", "Bass": "electronic",
+
+    "Country": "country", "Contemporary Country": "country", "Traditional Country": "country",
+    "Alt-Country & Americana": "country", "Country & Bluegrass": "country", "Bluegrass": "country",
+    "Americana": "country", "Honky-Tonk": "country", "Folk": "country", "Contemporary Folk": "country",
+    "Alternative Folk": "country", "Traditional Folk": "country", "Singer/Songwriter": "country",
+    "Singer Songwriter": "country", "Contemporary Singer/Songwriter": "country", "Roots Rock": "country",
+    "Country Gospel": "country",
+
+    "Latin Music": "world", "Raices": "world", "International": "world", "World": "world",
+    "Worldwide": "world", "Caribbean & Cuba": "world", "Reggae": "world", "Dancehall": "world",
+    "Modern Dancehall": "world", "Afrobeats": "world", "Afro-Beat": "world", "Africa": "world",
+    "North African": "world", "Middle East": "world", "Far East & Asia": "world", "Bollywood": "world",
+    "Regional Indian": "world", "Tamil": "world", "Europe": "world", "Ska": "world",
+
+    "Jazz": "jazz", "Vocal Jazz": "jazz", "Bebop": "jazz", "Avant Garde & Free Jazz": "jazz",
+    "Traditional Jazz & Ragtime": "jazz", "Jazz Fusion": "jazz", "Classical": "jazz",
+    "Classical Crossover": "jazz", "Blues": "jazz", "Chicago Blues": "jazz", "Delta Blues": "jazz",
+    "Acoustic Blues": "jazz", "Electric Blues Guitar": "jazz", "Modern Blues": "jazz",
+    "Contemporary Blues": "jazz", "Standards": "jazz", "Big Band": "jazz", "Easy Listening": "jazz",
+    "Lounge": "jazz", "New Age": "jazz",
+
+    "Soundtrack": "other", "Soundtracks": "other", "Original Score": "other", "Musicals": "other",
+    "Broadway & Vocalists": "other", "Christian": "other", "Christian & Gospel": "other",
+    "Christian Contemporary Music": "other", "CCM": "other", "Gospel": "other", "Holiday": "other",
+    "Christmas": "other", "Christmas: R&B": "other", "Children's Music": "other", "Lullabies": "other",
+    "Sing-A-Longs": "other", "Comedy": "other", "Standup Comedy": "other",
+    "Poetry, Spoken Word & Interviews": "other", "Spoken Word": "other", "Karaoke": "other",
+    "Educational": "other", "Environmental": "other", "Meditation": "other",
+    "Fitness & Workout": "other", "Vocal": "other", "Instrumental": "other", "Miscellaneous": "other",
+    "Oldies & Retro": "other", "Oldies": "other", "Old School": "other", "Tribute": "other",
+    "Styles": "other", "Music": "other"
+  };
+
+  function tvYearBucketFor(yearValue) {
+    var y = parseInt(yearValue, 10);
+    if (isNaN(y)) return "pre-mv";
+    for (var i = 0; i < TV_YEAR_BUCKETS.length; i++) {
+      var b = TV_YEAR_BUCKETS[i];
+      if (y >= b.min && y <= b.max) return b.key;
+    }
+    return "pre-mv";
+  }
+
+  function tvYearBucketForRow(row) {
+    return tvYearBucketFor(row.year);
+  }
+
+  function tvGenreGroupsForRow(row) {
+    var genres = row.genres || [];
+    if (!genres.length) return ["other"];
+    var groups = {};
+    genres.forEach(function (g) { groups[TV_GENRE_MAP[g] || "other"] = true; });
+    return Object.keys(groups);
+  }
+
   // This app is often embedded in a Squarespace page via an auto-height
   // iframe (no independent scrolling inside the iframe -- the OUTER page
   // scrolls a tall iframe instead). `position: fixed` is relative to the
@@ -365,6 +496,14 @@
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
     tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false },
+    // Whether the shared Year/Genre filters are currently showing TV Mode's
+    // coarse buckets instead of the exact Search values -- see
+    // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
+    // Search-page selection while TV Mode has it swapped out, so closing the
+    // modal restores exactly what was selected before.
+    tvFilterMode: false,
+    homeYearBeforeTV: "",
+    homeGenreBeforeTV: "",
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -1114,12 +1253,14 @@
 
   function matchesYear(row) {
     if (!state.year) return true;
+    if (state.tvFilterMode) return tvYearBucketForRow(row) === state.year;
     if (state.year === YEAR_NONE) return !row.year;
     return row.year === state.year;
   }
 
   function matchesGenre(row) {
     if (!state.genre) return true;
+    if (state.tvFilterMode) return tvGenreGroupsForRow(row).indexOf(state.genre) !== -1;
     var genres = row.genres || [];
     if (state.genre === GENRE_NONE) return !genres.length;
     return genres.indexOf(state.genre) !== -1;
@@ -1792,6 +1933,61 @@
 
   var tvAdController = null;
 
+  function buildTVYearOptions(rows) {
+    var counts = {};
+    TV_YEAR_BUCKETS.forEach(function (b) { counts[b.key] = 0; });
+    rows.forEach(function (r) { counts[tvYearBucketForRow(r)]++; });
+    var html = '<option value="">All Years</option>';
+    TV_YEAR_BUCKETS.forEach(function (b) {
+      if (!counts[b.key]) return;
+      html += '<option value="' + b.key + '">' + escapeHtml(b.label) + " (" + counts[b.key] + ")</option>";
+    });
+    els.yearFilter.innerHTML = html;
+  }
+
+  function buildTVGenreOptions(rows) {
+    var counts = {};
+    TV_GENRE_GROUPS.forEach(function (g) { counts[g.key] = 0; });
+    rows.forEach(function (r) {
+      tvGenreGroupsForRow(r).forEach(function (key) { counts[key]++; });
+    });
+    var html = '<option value="">All Genres</option>';
+    TV_GENRE_GROUPS.forEach(function (g) {
+      html += '<option value="' + g.key + '">' + escapeHtml(g.label) + " (" + counts[g.key] + ")</option>";
+    });
+    els.genreFilter.innerHTML = html;
+  }
+
+  // Swaps the shared Year/Genre <select>s to TV Mode's coarse buckets,
+  // translating whatever exact Search selection was active into its closest
+  // bucket equivalent (so switching into TV Mode doesn't just discard it).
+  // exitTVFilterMode() restores the exact Search options and selection.
+  function enterTVFilterMode() {
+    if (state.tvFilterMode) return;
+    state.homeYearBeforeTV = state.year;
+    state.homeGenreBeforeTV = state.genre;
+    state.tvFilterMode = true;
+    state.year = state.homeYearBeforeTV ? tvYearBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
+    state.genre = state.homeGenreBeforeTV ? (TV_GENRE_MAP[state.homeGenreBeforeTV] || "other") : "";
+    buildTVYearOptions(state.rows);
+    buildTVGenreOptions(state.rows);
+    els.yearFilter.value = state.year;
+    els.genreFilter.value = state.genre;
+    updateFiltersToggleCount();
+  }
+
+  function exitTVFilterMode() {
+    if (!state.tvFilterMode) return;
+    state.tvFilterMode = false;
+    state.year = state.homeYearBeforeTV;
+    state.genre = state.homeGenreBeforeTV;
+    buildYearOptions(state.rows);
+    buildGenreOptions(state.rows);
+    els.yearFilter.value = state.year;
+    els.genreFilter.value = state.genre;
+    updateFiltersToggleCount();
+  }
+
   // TV Mode is a lightbox (matching the video lightbox's default size) that
   // bundles the shared filters and the ad banner in with the player, rather
   // than living inline on the page -- opening it borrows #filtersGroup from
@@ -1802,6 +1998,7 @@
     if (!els.tvModal.hidden) return;
     closeLightbox();
     els.tvFiltersSlot.appendChild(els.filtersGroup);
+    enterTVFilterMode();
     els.tvModal.hidden = false;
     els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
@@ -1829,6 +2026,7 @@
     if (els.tvModal.hidden) return;
     if (state.tv.active) teardownTV();
     els.videoBox.innerHTML = "";
+    exitTVFilterMode();
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
     unlockBodyScroll();
