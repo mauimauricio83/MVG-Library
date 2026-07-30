@@ -1898,7 +1898,12 @@
     if (state.tv.active && e.data === YT.PlayerState.ENDED) advanceTV();
   }
 
-  function loadTVTrack(row) {
+  // startPaused: when set, the new track loads cued (first frame, not
+  // playing) instead of autoplaying -- used when filters change mid-track
+  // to preserve whatever play/pause state the viewer was already in (see
+  // refreshTVPoolIfActive). Skipping/advancing/starting fresh always play,
+  // as before.
+  function loadTVTrack(row, startPaused) {
     var id = extractYouTubeId(row.youtube);
     if (!id) {
       advanceTV();
@@ -1909,13 +1914,17 @@
     var reportLink = document.getElementById("tvReportLink");
     if (reportLink) reportLink.href = reportFormUrl(row);
     if (state.tv.player && state.tv.player.loadVideoById) {
-      state.tv.player.loadVideoById(id);
+      if (startPaused && state.tv.player.cueVideoById) {
+        state.tv.player.cueVideoById(id);
+      } else {
+        state.tv.player.loadVideoById(id);
+      }
     } else {
       loadYouTubeAPI(function () {
         if (!state.tv.active) return;
         state.tv.player = new YT.Player("tvPlayerTarget", {
           videoId: id,
-          playerVars: { autoplay: 1, rel: 0 },
+          playerVars: { autoplay: startPaused ? 0 : 1, rel: 0 },
           events: { onStateChange: onTVStateChange }
         });
       });
@@ -1929,6 +1938,29 @@
       state.tv.index = 0;
     }
     loadTVTrack(state.tv.queue[state.tv.index]);
+  }
+
+  // Keeps TV Mode "live" while it's open -- without this, changing a filter
+  // only affected the pool a fresh Start TV Mode / Skip would draw from,
+  // leaving whatever was already playing stuck until the viewer manually
+  // closed and reopened the modal. Preserves play/pause state across the
+  // swap (paused stays paused on the new pick, playing keeps playing) to
+  // feel like actually changing the channel rather than restarting a video.
+  function refreshTVPoolIfActive() {
+    if (!state.tv.active) return;
+    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    if (!pool.length) {
+      teardownTV();
+      els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
+      return;
+    }
+    var wasPaused = false;
+    if (state.tv.player && state.tv.player.getPlayerState) {
+      try { wasPaused = state.tv.player.getPlayerState() !== YT.PlayerState.PLAYING; } catch (e) {}
+    }
+    state.tv.queue = shuffle(pool);
+    state.tv.index = 0;
+    loadTVTrack(state.tv.queue[0], wasPaused);
   }
 
   function startTVMode(customPool) {
@@ -3874,6 +3906,7 @@
   function render(sync) {
     moveVideoPairHome();
     updateFiltersToggleCount();
+    refreshTVPoolIfActive();
     // On mobile, Featured sits between the search box and the results list,
     // so while actively typing (results often obscured further by the
     // on-screen keyboard) it just pushes the results the user is looking
