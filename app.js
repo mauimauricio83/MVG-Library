@@ -110,6 +110,9 @@
     filtersToggleCount: document.getElementById("filtersToggleCount"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     tvSkipBtn: document.getElementById("tvSkipBtn"),
+    tvReportLink: document.getElementById("tvReportLink"),
+    tvExitBtn: document.getElementById("tvExitBtn"),
+    tvFilterTabs: document.getElementById("tvFilterTabs"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
@@ -511,6 +514,8 @@
     homeYearBeforeTV: "",
     homeGenreBeforeTV: "",
     homeMvgOnlyBeforeTV: false,
+    homeFiltersExpandedBeforeTV: false,
+    tvActiveTab: "genre",
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -1937,6 +1942,8 @@
     state.tv.player = null;
     state.tv.shellBuilt = false;
     els.tvSkipBtn.hidden = true;
+    els.tvReportLink.hidden = true;
+    els.tvExitBtn.hidden = true;
   }
 
   var tvAdController = null;
@@ -2034,11 +2041,30 @@
   // selection was active into its closest bucket equivalent (so switching
   // into TV Mode doesn't just discard it). exitTVFilterMode() restores the
   // exact Search options/selection and the dropdown.
+  // Genre and Year each get their own "page" (tv-genre-grid / tv-year-dial)
+  // switched via tvFilterTabs instead of both being stacked and visible at
+  // once -- halves how much the filters panel has to scroll through.
+  function updateTVFilterTabUI() {
+    Array.prototype.forEach.call(els.tvFilterTabs.querySelectorAll(".tv-filter-tab"), function (btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-tab") === state.tvActiveTab);
+    });
+    els.tvGenreGrid.hidden = state.tvActiveTab !== "genre";
+    els.tvYearDial.hidden = state.tvActiveTab !== "era";
+  }
+
+  els.tvFilterTabs.addEventListener("click", function (e) {
+    var tab = e.target.closest(".tv-filter-tab");
+    if (!tab) return;
+    state.tvActiveTab = tab.getAttribute("data-tab");
+    updateTVFilterTabUI();
+  });
+
   function enterTVFilterMode() {
     if (state.tvFilterMode) return;
     state.homeYearBeforeTV = state.year;
     state.homeGenreBeforeTV = state.genre;
     state.homeMvgOnlyBeforeTV = state.mvgOnly;
+    state.homeFiltersExpandedBeforeTV = els.filtersPanel.hidden ? false : true;
     state.tvFilterMode = true;
     state.year = state.homeYearBeforeTV ? tvYearBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
     state.genre = state.homeGenreBeforeTV ? (TV_GENRE_MAP[state.homeGenreBeforeTV] || "other") : "";
@@ -2048,12 +2074,17 @@
     state.mvgOnly = false;
     els.mvgOnlyToggle.checked = false;
     els.yearFilter.hidden = true;
-    els.tvYearDial.hidden = false;
     els.genreFilter.hidden = true;
-    els.tvGenreGrid.hidden = false;
     els.mvgOnlyLabel.hidden = true;
     els.mvgOnlyTip.hidden = true;
     els.genreTip.hidden = true;
+    // No reason to collapse/expand filters in TV Mode -- they're the whole
+    // point of the panel there, not an optional extra like on Search.
+    els.filtersToggle.hidden = true;
+    applyFiltersExpanded(true);
+    els.tvFilterTabs.hidden = false;
+    state.tvActiveTab = "genre";
+    updateTVFilterTabUI();
     renderTVYearDial(state.rows);
     renderTVGenreGrid(state.rows);
     updateFiltersToggleCount();
@@ -2073,6 +2104,9 @@
     els.mvgOnlyLabel.hidden = false;
     els.mvgOnlyTip.hidden = false;
     els.genreTip.hidden = false;
+    els.filtersToggle.hidden = false;
+    els.tvFilterTabs.hidden = true;
+    applyFiltersExpanded(!!state.homeFiltersExpandedBeforeTV);
     buildYearOptions(state.rows);
     buildGenreOptions(state.rows);
     els.yearFilter.value = state.year;
@@ -2185,23 +2219,13 @@
     }
   });
 
-  function tvLabelFor(row) {
-    var parts = [row.song || "(untitled)"];
-    if (row.artist) parts.push(row.artist);
-    var label = parts.join(" — ");
-    if (row.director) label += " · Dir. " + row.director;
-    return label;
-  }
-
+  // No title bar -- the YouTube player itself already shows the video's
+  // title, so a duplicate label above it was redundant. Skip/Report
+  // issue/Exit now live in .filters-toggle-row instead (see
+  // playArmedTV()/startTVMode()/teardownTV() for their show/hide).
   function ensureTVShell() {
     if (state.tv.shellBuilt) return;
-    els.videoBox.innerHTML =
-      '<div class="video-embed-bar"><span class="video-embed-label" id="tvLabel">📺 Loading…</span>' +
-      '<span class="tv-controls">' +
-      '<a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer">Report issue</a>' +
-      '<button type="button" class="video-embed-close" aria-label="Exit TV mode">&times;</button>' +
-      "</span></div>" +
-      '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
+    els.videoBox.innerHTML = '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
     state.tv.shellBuilt = true;
   }
 
@@ -2220,10 +2244,7 @@
       advanceTV();
       return;
     }
-    var labelEl = document.getElementById("tvLabel");
-    if (labelEl) labelEl.textContent = "📺 " + tvLabelFor(row);
-    var reportLink = document.getElementById("tvReportLink");
-    if (reportLink) reportLink.href = reportFormUrl(row);
+    els.tvReportLink.href = reportFormUrl(row);
     if (state.tv.player && state.tv.player.loadVideoById) {
       if (startPaused && state.tv.player.cueVideoById) {
         state.tv.player.cueVideoById(id);
@@ -2302,6 +2323,8 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[state.tv.index]);
     els.tvSkipBtn.hidden = false;
+    els.tvReportLink.hidden = false;
+    els.tvExitBtn.hidden = false;
   }
 
   // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
@@ -2322,6 +2345,8 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     els.tvSkipBtn.hidden = false;
+    els.tvReportLink.hidden = false;
+    els.tvExitBtn.hidden = false;
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
@@ -2341,21 +2366,21 @@
   });
 
   els.videoBox.addEventListener("click", function (e) {
-    if (e.target.closest("#tvArmedPlayBtn")) {
-      playArmedTV();
-      return;
-    }
-    if (e.target.closest(".video-embed-close")) {
-      armTV();
-    }
+    if (e.target.closest("#tvArmedPlayBtn")) playArmedTV();
   });
 
-  // Lives beside Clear filters (in .filters-toggle-row) rather than in the
-  // player's own overlay bar -- easier to reach on mobile without your
-  // thumb covering the video. Only relevant once actually playing (see
-  // playArmedTV()/teardownTV() for the show/hide), same as the old button.
+  // Skip/Report issue/Exit live beside Clear filters (in
+  // .filters-toggle-row) rather than in a player overlay bar -- easier to
+  // reach on mobile without a thumb covering the video, and there's no bar
+  // left to put them in now that the redundant title is gone. All three
+  // only matter once actually playing (see playArmedTV()/startTVMode() for
+  // the show, teardownTV() for the hide).
   els.tvSkipBtn.addEventListener("click", function () {
     advanceTV();
+  });
+
+  els.tvExitBtn.addEventListener("click", function () {
+    armTV();
   });
 
   els.tvModal.addEventListener("click", function (e) {

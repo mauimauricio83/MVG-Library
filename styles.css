@@ -1253,13 +1253,14 @@ body.is-searching #featuredStrip {
 }
 
 /* enterTVFilterMode() hides these via the [hidden] attribute (see
-   app.js) -- but .mvg-only-toggle/.info-tip both set their own
-   unconditional display, which beats the browser's default
+   app.js) -- but .mvg-only-toggle/.info-tip/.filters-toggle all set their
+   own unconditional display, which beats the browser's default
    [hidden]{display:none} regardless of specificity/order otherwise. id
    selectors here reliably win. */
 #mvgOnlyLabel[hidden],
 #mvgOnlyTip[hidden],
-#genreTip[hidden] {
+#genreTip[hidden],
+#filtersToggle[hidden] {
   display: none;
 }
 
@@ -1417,6 +1418,40 @@ body.is-searching #featuredStrip {
 
 .tv-genre-tile.is-active .tv-genre-tile-count {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Sits at the bottom of the filters panel, right above the ad banner --
+   switches which of tv-genre-grid/tv-year-dial is showing (see
+   updateTVFilterTabUI() in app.js) instead of stacking both and forcing
+   extra scrolling to reach the ad/player below. */
+.tv-filter-tabs:not([hidden]) {
+  display: flex;
+  gap: 8px;
+  flex: 1 0 100%;
+  margin-top: 10px;
+}
+
+.tv-filter-tab {
+  flex: 1 1 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tv-filter-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-filter-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 #tvFiltersSlot .filters-toggle-row {
@@ -1654,13 +1689,6 @@ body.is-searching #featuredStrip {
   opacity: 1;
 }
 
-.tv-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
 .tv-report-link {
   flex: 0 0 auto;
   color: #b3261e;
@@ -1674,38 +1702,21 @@ body.is-searching #featuredStrip {
   text-decoration: underline;
 }
 
-.video-embed-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.video-embed-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.video-embed-close {
-  flex: 0 0 auto;
-  border: none;
-  background: none;
+.tv-exit-btn {
+  margin-top: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--text-muted);
-  font-size: 1.1rem;
-  line-height: 1;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
   cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 6px;
 }
 
-.video-embed-close:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
+.tv-exit-btn:hover {
+  border-color: #b3261e;
+  color: #b3261e;
 }
 
 .video-embed-frame {
