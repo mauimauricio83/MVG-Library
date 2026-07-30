@@ -1177,6 +1177,7 @@ body.is-searching #featuredStrip {
 
 .filters-toggle-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
@@ -1717,6 +1718,102 @@ body.is-searching #featuredStrip {
 .tv-exit-btn:hover {
   border-color: #b3261e;
   color: #b3261e;
+}
+
+/* Fav/info/admin edit-delete -- pushed to the end of .filters-toggle-row's
+   flex-wrap layout, wrapping onto their own line on narrow screens rather
+   than fighting Skip/Report issue/Exit for space. */
+.tv-toggle-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.tv-fav-btn,
+.tv-info-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tv-fav-btn:hover {
+  border-color: #e0245e;
+  color: #e0245e;
+}
+
+.tv-fav-btn.is-active {
+  border-color: #e0245e;
+  background: #e0245e;
+  color: #fff;
+}
+
+.tv-info-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-admin-edit-btn,
+.tv-admin-delete-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+}
+
+.tv-admin-edit-btn {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.tv-admin-edit-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tv-admin-delete-btn {
+  border: 1px solid #c4293f;
+  color: #c4293f;
+}
+
+.tv-admin-delete-btn:hover {
+  background: #c4293f;
+  color: #fff;
+}
+
+/* Standing in for the real entry lightbox (which would tear down TV
+   playback if opened) -- reuses .lightbox-tag-row/.lightbox-credits/
+   .lightbox-desc for a consistent look. Sits between .filters-toggle-row
+   and .filters-row, revealed by #tvInfoBtn. */
+.tv-info-panel:not([hidden]) {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.tv-info-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.tv-info-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .video-embed-frame {

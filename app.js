@@ -112,6 +112,11 @@
     tvSkipBtn: document.getElementById("tvSkipBtn"),
     tvReportLink: document.getElementById("tvReportLink"),
     tvExitBtn: document.getElementById("tvExitBtn"),
+    tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
+    tvAdminDeleteBtn: document.getElementById("tvAdminDeleteBtn"),
+    tvFavBtn: document.getElementById("tvFavBtn"),
+    tvInfoBtn: document.getElementById("tvInfoBtn"),
+    tvInfoPanel: document.getElementById("tvInfoPanel"),
     tvFilterTabs: document.getElementById("tvFilterTabs"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
@@ -1944,6 +1949,11 @@
     els.tvSkipBtn.hidden = true;
     els.tvReportLink.hidden = true;
     els.tvExitBtn.hidden = true;
+    els.tvFavBtn.hidden = true;
+    els.tvInfoBtn.hidden = true;
+    els.tvAdminEditBtn.hidden = true;
+    els.tvAdminDeleteBtn.hidden = true;
+    els.tvInfoPanel.hidden = true;
   }
 
   var tvAdController = null;
@@ -2250,13 +2260,48 @@
   // to preserve whatever play/pause state the viewer was already in (see
   // refreshTVPoolIfActive). Skipping/advancing/starting fresh always play,
   // as before.
+  // Reuses the lightbox's own tag-row/credits/description markup and
+  // classes (creditsHtml(), categoryTagClass()) so the info panel looks
+  // consistent with the full entry view, without actually opening a second
+  // lightbox on top of TV Mode (which would tear down playback -- see
+  // openLightbox()).
+  function tvInfoMarkup(row) {
+    var sub = row.artist ? '<p class="tv-info-subtitle">' + escapeHtml(row.artist) + "</p>" : "";
+    var tagHtml = row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "";
+    var genreTags = (row.genres || []).map(function (g) {
+      return '<span class="tag tag-default">' + escapeHtml(g) + "</span>";
+    }).join("");
+    var descHtml = row.description
+      ? '<p class="lightbox-desc">' + escapeHtml(row.description) + "</p>"
+      : '<p class="lightbox-desc placeholder">No writeup yet.</p>';
+    return '<h3 class="tv-info-title">' + escapeHtml(row.song || "(untitled)") + "</h3>" +
+      sub +
+      '<div class="lightbox-tag-row">' + tagHtml + genreTags + "</div>" +
+      creditsHtml(row) +
+      descHtml;
+  }
+
+  // Keeps the report link, favorite state, admin edit/delete visibility,
+  // and info panel content in sync with whatever's actually loaded --
+  // called every time the track changes (loadTVTrack is the one place all
+  // of armTV/playArmedTV/advanceTV/refreshTVPoolIfActive funnel through).
+  function updateTVTrackDetails(row) {
+    els.tvReportLink.href = reportFormUrl(row);
+    var fav = isFavorite(row.rowNum);
+    els.tvFavBtn.classList.toggle("is-active", fav);
+    els.tvFavBtn.textContent = fav ? "♥" : "♡";
+    els.tvAdminEditBtn.hidden = !state.isAdmin;
+    els.tvAdminDeleteBtn.hidden = !state.isAdmin;
+    els.tvInfoPanel.innerHTML = tvInfoMarkup(row);
+  }
+
   function loadTVTrack(row, startPaused) {
     var id = extractYouTubeId(row.youtube);
     if (!id) {
       advanceTV();
       return;
     }
-    els.tvReportLink.href = reportFormUrl(row);
+    updateTVTrackDetails(row);
     if (state.tv.player && state.tv.player.loadVideoById) {
       if (startPaused && state.tv.player.cueVideoById) {
         state.tv.player.cueVideoById(id);
@@ -2337,6 +2382,8 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvExitBtn.hidden = false;
+    els.tvFavBtn.hidden = false;
+    els.tvInfoBtn.hidden = false;
   }
 
   // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
@@ -2359,6 +2406,8 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvExitBtn.hidden = false;
+    els.tvFavBtn.hidden = false;
+    els.tvInfoBtn.hidden = false;
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
@@ -2393,6 +2442,37 @@
 
   els.tvExitBtn.addEventListener("click", function () {
     armTV();
+  });
+
+  els.tvFavBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (!row) return;
+    var nowFavorite = toggleFavorite(row.rowNum);
+    els.tvFavBtn.classList.toggle("is-active", nowFavorite);
+    els.tvFavBtn.textContent = nowFavorite ? "♥" : "♡";
+    renderFavoritesStrip(state.rows);
+  });
+
+  // Toggles a lightweight info panel in place (title/tags/credits/
+  // description, reusing the lightbox's own markup -- see tvInfoMarkup())
+  // rather than opening the real entry lightbox, which would tear down TV
+  // playback (see openLightbox()).
+  els.tvInfoBtn.addEventListener("click", function () {
+    els.tvInfoPanel.hidden = !els.tvInfoPanel.hidden;
+  });
+
+  els.tvAdminEditBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (!row) return;
+    closeTVModal();
+    openAdminEditForRow(row.rowNum);
+  });
+
+  els.tvAdminDeleteBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (!row) return;
+    var label = (row.artist ? row.artist + " — " : "") + (row.song || "(untitled)");
+    deleteRowByAdmin(row.rowNum, label, closeTVModal);
   });
 
   els.tvModal.addEventListener("click", function (e) {
@@ -3381,17 +3461,20 @@
     render();
   }
 
-  // Deletes straight from the lightbox (admin-only) -- single-doc delete,
-  // same cost profile as the lightbox Edit button. Removing it from
-  // state.rows makes it disappear from the current page immediately;
-  // clearing the URL hash stops a stale #row-N link from trying to reopen
-  // it. The public snapshot isn't updated until Publish, same as any other
-  // single admin change -- lands on the admin landing screen afterward with
-  // Publish one click away, rather than silently leaving it unpublished.
-  function deleteRowFromLightbox(rowNum, label) {
+  // Deletes straight from wherever a single entry is being viewed
+  // (admin-only) -- single-doc delete, same cost profile as the Edit
+  // button. Removing it from state.rows makes it disappear from the
+  // current page immediately; clearing the URL hash stops a stale #row-N
+  // link from trying to reopen it. The public snapshot isn't updated until
+  // Publish, same as any other single admin change -- lands on the admin
+  // landing screen afterward with Publish one click away, rather than
+  // silently leaving it unpublished. closeModalFn closes whatever view the
+  // delete was triggered from (the lightbox, or TV Mode) before showing
+  // the admin landing confirmation.
+  function deleteRowByAdmin(rowNum, label, closeModalFn) {
     if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
     db.collection("videos").doc(rowNum).delete().then(function () {
-      closeLightbox();
+      closeModalFn();
       removeRowAndRerender(rowNum);
       removeAdminRowLocal(rowNum);
       if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
@@ -3402,9 +3485,13 @@
       els.adminLandingStatus.className = "admin-status";
       els.adminLandingStatus.hidden = false;
     }).catch(function (err) {
-      console.error("Lightbox admin delete failed:", err);
+      console.error("Admin delete failed:", err);
       alert("Delete failed: " + err.message);
     });
+  }
+
+  function deleteRowFromLightbox(rowNum, label) {
+    deleteRowByAdmin(rowNum, label, closeLightbox);
   }
 
   // Cancel/Back from the form or bulk-import subview -- returns to wherever
