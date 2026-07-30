@@ -361,7 +361,10 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     recentSet: {},
-    tv: { active: false, queue: [], index: 0, player: null, shellBuilt: false },
+    // active: a track pool has been picked (armed or actually playing).
+    // started: the viewer has pressed play -- a real YT player exists.
+    // Armed-but-not-started is the "channel ready" static screen.
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false },
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -1779,6 +1782,7 @@
 
   function teardownTV() {
     state.tv.active = false;
+    state.tv.started = false;
     if (state.tv.player && state.tv.player.destroy) {
       try { state.tv.player.destroy(); } catch (e) {}
     }
@@ -1810,25 +1814,43 @@
     }
   }
 
+  // Opens the modal and immediately arms it with a random pick from the
+  // current filters -- used by the plain "TV Mode" entry points (sidebar,
+  // bottom nav), which don't already have a specific video in mind the way
+  // a "Play All" button does. Guarded so re-clicking the entry point while
+  // already open doesn't interrupt whatever's already armed/playing.
+  function openTVModalFresh() {
+    if (!els.tvModal.hidden) return;
+    openTVModal();
+    armTV();
+  }
+
   function closeTVModal() {
     if (els.tvModal.hidden) return;
     if (state.tv.active) teardownTV();
-    resetVideo();
+    els.videoBox.innerHTML = "";
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
     unlockBodyScroll();
     if (tvAdController) { tvAdController.stop(); tvAdController = null; }
   }
 
-  function hintMarkup(message) {
-    return '<div class="video-embed-hint"><p>' + (message || "Shuffle through a curated playlist of videos matching your current filters.") + "</p>" +
-      '<button type="button" class="tv-mode-btn" id="tvStartBtn">📺 Start TV Mode</button> ' +
-      '<span class="info-tip" tabindex="0" data-tip="TV Mode shuffles through whatever your current search and filters show. Narrow things down first for a more focused mix.">ⓘ</span>' +
-      "</div>";
+  function emptyTVMarkup() {
+    return '<div class="video-embed-hint"><p>No videos match the current filters. Adjust the filters below to find something to play.</p></div>';
   }
 
-  function resetVideo() {
-    els.videoBox.innerHTML = hintMarkup();
+  // The "channel ready" screen shown once a track is armed but before the
+  // viewer presses play -- static/noise standing in for the picked video's
+  // thumbnail, title and artist deliberately withheld until they commit to
+  // watching, TV-channel-surfing style rather than announcing what's next.
+  function tvStaticMarkup() {
+    return '<div class="tv-static-wrap">' +
+      '<div class="tv-static-noise"></div>' +
+      '<button type="button" class="tv-static-play" id="tvArmedPlayBtn" aria-label="Play">' +
+        '<span class="tv-static-play-icon">▶</span>' +
+      "</button>" +
+      '<p class="tv-static-hint">Tap to play</p>' +
+    "</div>";
   }
 
   function shuffle(arr) {
@@ -1946,12 +1968,17 @@
   // closed and reopened the modal. Preserves play/pause state across the
   // swap (paused stays paused on the new pick, playing keeps playing) to
   // feel like actually changing the channel rather than restarting a video.
+  // Before the viewer has pressed play there's no play/pause state to
+  // preserve, so it just re-arms (re-rolls the hidden pick) instead.
   function refreshTVPoolIfActive() {
-    if (!state.tv.active) return;
+    if (els.tvModal.hidden) return;
+    if (!state.tv.started) {
+      armTV();
+      return;
+    }
     var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
-      teardownTV();
-      els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
+      armTV(); // tears the player down and shows the no-matches message
       return;
     }
     var wasPaused = false;
@@ -1963,14 +1990,43 @@
     loadTVTrack(state.tv.queue[0], wasPaused);
   }
 
+  // Picks a random track from the current filters and shows the static
+  // "channel ready" screen instead of playing it immediately -- see
+  // tvStaticMarkup(). Also used to re-roll while armed (filter changes) and
+  // to return to the armed screen after exiting an actively playing track.
+  function armTV() {
+    teardownTV();
+    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    if (!pool.length) {
+      els.videoBox.innerHTML = emptyTVMarkup();
+      return;
+    }
+    state.tv.active = true;
+    state.tv.queue = shuffle(pool);
+    state.tv.index = 0;
+    els.videoBox.innerHTML = tvStaticMarkup();
+  }
+
+  function playArmedTV() {
+    if (!state.tv.active || !state.tv.queue.length) return;
+    state.tv.started = true;
+    ensureTVShell();
+    loadTVTrack(state.tv.queue[state.tv.index]);
+  }
+
+  // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
+  // already has a specific curated list in mind -- so it skips the armed/
+  // hidden-identity screen and just plays index 0 immediately, unlike the
+  // plain TV Mode entry points (see openTVModalFresh/armTV).
   function startTVMode(customPool) {
     openTVModal();
     var pool = customPool || state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
-      els.videoBox.innerHTML = hintMarkup("No videos to play with the current filters.");
+      els.videoBox.innerHTML = emptyTVMarkup();
       return;
     }
     state.tv.active = true;
+    state.tv.started = true;
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
     ensureTVShell();
@@ -1994,8 +2050,8 @@
   });
 
   els.videoBox.addEventListener("click", function (e) {
-    if (e.target.closest("#tvStartBtn")) {
-      startTVMode();
+    if (e.target.closest("#tvArmedPlayBtn")) {
+      playArmedTV();
       return;
     }
     if (e.target.closest(".tv-skip")) {
@@ -2003,8 +2059,7 @@
       return;
     }
     if (e.target.closest(".video-embed-close")) {
-      if (state.tv.active) teardownTV();
-      resetVideo();
+      armTV();
     }
   });
 
@@ -2085,7 +2140,7 @@
   }
 
   function openLightbox(row) {
-    if (state.tv.active) { teardownTV(); resetVideo(); moveVideoPairHome(); }
+    if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
     destroyLightboxPlayer();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
@@ -2550,7 +2605,7 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  els.bottomNavTV.addEventListener("click", openTVModal);
+  els.bottomNavTV.addEventListener("click", openTVModalFresh);
 
   els.bottomNavSettings.addEventListener("click", openSettingsModal);
 
@@ -2577,7 +2632,7 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  els.sidebarTVBtn.addEventListener("click", openTVModal);
+  els.sidebarTVBtn.addEventListener("click", openTVModalFresh);
 
   els.sidebarFavoritesBtn.addEventListener("click", function () {
     sharedFavoritesUid = null;
