@@ -2,7 +2,19 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.2.0 — current
+## v5.3.0 — current
+- Added a "Sponsored" flag (Spotlight/Featured slots) for monetization: mirrors the existing Feature/Spotlight admin pattern (form checkbox, bulk import, single edit, publish) but with no cap-eviction — manually admin-controlled, no capacity limit. Shows a gold "Sponsored" badge on public Spotlight/media-strip cards and in the admin Manage Entries list
+- Added Google AdSense (Auto ads) site-wide, plus `ads.txt` on the `mauimauricio83.github.io` root-page repo (required since the project-site repo can't host a file at the actual domain root)
+- Post-submission flow now pops up a real "Thank you for your submission!" modal (replacing the submit modal outright, not an in-panel swap) with a Ko-fi support prompt, Go back, and Submit again
+- News section redesigned: 2 thumbnail cards + up to 4 compact text entries (each with a small thumbnail), fixed link color showing through as default blue/underlined on visited links
+- Split the blog-fetch step out of the daily SEO-hub-page cron into its own lightweight hourly workflow, so new blog posts show up within the hour instead of up to a day late
+- Fixed a real bug: `enforceCap("spotlight", ...)` was still hardcoded to a cap of 3 in two places even after Spotlight slots were bumped to 6, silently evicting new Spotlight entries back down every time one was added
+- Added an RSS feed (`rss.xml`, latest 30 submissions) with a visible footer link and `<link rel="alternate">` tag
+- Six-item UX/performance batch: left sidebar now open by default on desktop, a "Share Favorites" button next to Play All on the Favorites page, Spotlight slots increased to 6 (desktop; mobile still caps visible cards at 3), Featured/Latest "See more" no longer crops the second row mid-caption (dynamic row-height measurement instead of a flat guess), and the browser cache for the ~22MB snapshot moved from localStorage (silently failing past its quota) to IndexedDB
+- Added related videos (broadened matching) on the video lightbox and public favorites-list sharing
+- Fixed the mobile message board composer being hidden behind the bottom nav bar
+
+## v5.2.0
 - Message board gained admin moderation: Delete/Mute/Ban controls on every message (except your own). Banning also bulk-deletes that user's existing messages. Enforced both client-side (composer swapped for an explanation) and server-side (`firestore.rules` checks `mutedUsers`/`bannedUsers` before allowing a post)
 - Sidebar icon polish: Podcast now uses a Spotify-like mark, Discord a distinct blob-with-eyes mark, Submit an upload icon; the message board tab restyled to an icon-only button on a white/black surface that follows the theme
 - Added a top-of-page loading bar tracking real download progress for the initial ~22MB snapshot fetch, for visitors on slower connections
