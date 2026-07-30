@@ -94,6 +94,7 @@
     adPlaceholder: document.querySelector(".ad-placeholder"),
     yearFilter: document.getElementById("yearFilter"),
     genreFilter: document.getElementById("genreFilter"),
+    tvGenreGrid: document.getElementById("tvGenreGrid"),
     countryFilter: document.getElementById("countryFilter"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     filtersToggle: document.getElementById("filtersToggle"),
@@ -259,16 +260,16 @@
   // tags not listed here (new/rare ones) fall back to "other" rather than
   // breaking the grouping.
   var TV_GENRE_GROUPS = [
-    { key: "pop", label: "Pop" },
-    { key: "rock", label: "Rock" },
-    { key: "metal-punk", label: "Metal & Punk" },
-    { key: "hiphop", label: "Hip-Hop/Rap" },
-    { key: "rnb", label: "R&B/Soul/Funk" },
-    { key: "electronic", label: "Electronic/Dance" },
-    { key: "country", label: "Country/Folk/Americana" },
-    { key: "world", label: "Latin/World/Reggae" },
-    { key: "jazz", label: "Jazz/Blues/Classical" },
-    { key: "other", label: "Other" }
+    { key: "pop", label: "Pop", color: "#ef5b5b" },
+    { key: "rock", label: "Rock", color: "#f4b942" },
+    { key: "metal-punk", label: "Metal & Punk", color: "#8a5cf6" },
+    { key: "hiphop", label: "Hip-Hop/Rap", color: "#ff8c42" },
+    { key: "rnb", label: "R&B/Soul/Funk", color: "#e0568c" },
+    { key: "electronic", label: "Electronic/Dance", color: "#33c9dc" },
+    { key: "country", label: "Country/Folk/Americana", color: "#b5834d" },
+    { key: "world", label: "Latin/World/Reggae", color: "#4caf6e" },
+    { key: "jazz", label: "Jazz/Blues/Classical", color: "#6f93ea" },
+    { key: "other", label: "Other", color: "#9aa0a6" }
   ];
 
   var TV_GENRE_MAP = {
@@ -1945,23 +1946,43 @@
     els.yearFilter.innerHTML = html;
   }
 
-  function buildTVGenreOptions(rows) {
+  // Colorful tappable tiles instead of a dropdown -- genre is a "browse by
+  // vibe" pick in TV Mode, not a precise lookup, so it gets the more playful
+  // treatment. Counts (over the full catalog, not the currently-armed pool)
+  // help set expectations before tapping. Re-rendered on every tap so the
+  // active tile's highlight stays in sync.
+  function renderTVGenreGrid(rows) {
     var counts = {};
     TV_GENRE_GROUPS.forEach(function (g) { counts[g.key] = 0; });
     rows.forEach(function (r) {
       tvGenreGroupsForRow(r).forEach(function (key) { counts[key]++; });
     });
-    var html = '<option value="">All Genres</option>';
+    var html = '<button type="button" class="tv-genre-tile tv-genre-tile-all' +
+      (state.genre === "" ? " is-active" : "") + '" data-genre="">All Genres</button>';
     TV_GENRE_GROUPS.forEach(function (g) {
-      html += '<option value="' + g.key + '">' + escapeHtml(g.label) + " (" + counts[g.key] + ")</option>";
+      var active = state.genre === g.key ? " is-active" : "";
+      html += '<button type="button" class="tv-genre-tile' + active + '" data-genre="' + g.key +
+        '" style="--tile-color:' + g.color + '">' + escapeHtml(g.label) +
+        '<span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
     });
-    els.genreFilter.innerHTML = html;
+    els.tvGenreGrid.innerHTML = html;
   }
 
-  // Swaps the shared Year/Genre <select>s to TV Mode's coarse buckets,
-  // translating whatever exact Search selection was active into its closest
-  // bucket equivalent (so switching into TV Mode doesn't just discard it).
-  // exitTVFilterMode() restores the exact Search options and selection.
+  els.tvGenreGrid.addEventListener("click", function (e) {
+    var tile = e.target.closest(".tv-genre-tile");
+    if (!tile) return;
+    var key = tile.getAttribute("data-genre");
+    state.genre = state.genre === key ? "" : key; // tapping the active tile again clears it
+    renderTVGenreGrid(state.rows);
+    updateFiltersToggleCount();
+    render();
+  });
+
+  // Swaps the shared Year filter (and the Genre dropdown, for a tile grid)
+  // to TV Mode's coarse buckets, translating whatever exact Search
+  // selection was active into its closest bucket equivalent (so switching
+  // into TV Mode doesn't just discard it). exitTVFilterMode() restores the
+  // exact Search options/selection and the dropdown.
   function enterTVFilterMode() {
     if (state.tvFilterMode) return;
     state.homeYearBeforeTV = state.year;
@@ -1970,9 +1991,10 @@
     state.year = state.homeYearBeforeTV ? tvYearBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
     state.genre = state.homeGenreBeforeTV ? (TV_GENRE_MAP[state.homeGenreBeforeTV] || "other") : "";
     buildTVYearOptions(state.rows);
-    buildTVGenreOptions(state.rows);
     els.yearFilter.value = state.year;
-    els.genreFilter.value = state.genre;
+    els.genreFilter.hidden = true;
+    els.tvGenreGrid.hidden = false;
+    renderTVGenreGrid(state.rows);
     updateFiltersToggleCount();
   }
 
@@ -1981,6 +2003,8 @@
     state.tvFilterMode = false;
     state.year = state.homeYearBeforeTV;
     state.genre = state.homeGenreBeforeTV;
+    els.genreFilter.hidden = false;
+    els.tvGenreGrid.hidden = true;
     buildYearOptions(state.rows);
     buildGenreOptions(state.rows);
     els.yearFilter.value = state.year;
