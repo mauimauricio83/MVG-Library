@@ -2233,6 +2233,18 @@
     if (state.tv.active && e.data === YT.PlayerState.ENDED) advanceTV();
   }
 
+  // Without this, a video that's gone private/deleted (100) or has
+  // embedding disabled by the owner (101/150 -- the same codes the
+  // video-detail lightbox's player checks) just sits there stalled instead
+  // of playing anything, since the iframe never reaches PLAYING/ENDED.
+  // Skipping straight to the next track keeps the "channel" running instead
+  // of silently stopping.
+  function onTVError(e) {
+    if (state.tv.active && (e.data === 100 || e.data === 101 || e.data === 150)) {
+      advanceTV();
+    }
+  }
+
   // startPaused: when set, the new track loads cued (first frame, not
   // playing) instead of autoplaying -- used when filters change mid-track
   // to preserve whatever play/pause state the viewer was already in (see
@@ -2257,7 +2269,7 @@
         state.tv.player = new YT.Player("tvPlayerTarget", {
           videoId: id,
           playerVars: { autoplay: startPaused ? 0 : 1, rel: 0 },
-          events: { onStateChange: onTVStateChange }
+          events: { onStateChange: onTVStateChange, onError: onTVError }
         });
       });
     }
