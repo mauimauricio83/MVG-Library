@@ -2254,6 +2254,15 @@ body.is-searching #featuredStrip {
   border-bottom: 1px solid var(--border);
 }
 
+/* TV Mode's ad sits last (player, then filters, then ad -- see the
+   #tvModal markup) so the video is the first thing visible, rather than
+   first (like the video-detail lightbox's ad, which keeps the rule above) --
+   a border below a trailing element would separate it from nothing. */
+#tvAdPlaceholder {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+
 .lightbox-video-frame {
   position: relative;
   width: 100%;
