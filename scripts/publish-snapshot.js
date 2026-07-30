@@ -16,6 +16,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const zlib = require("zlib");
 
 function buildSearchHaystack(d) {
   // youtubeSearchText (uploader's own description/tags, backfilled via
@@ -77,9 +78,13 @@ async function main() {
 
   console.log("Uploading snapshot of " + rows.length + " entries...");
   const file = bucket.file("catalog/snapshot.json");
-  await file.save(Buffer.from(JSON.stringify(rows)), {
+  // Gzip before upload -- matches the client-side publishSnapshot() in
+  // app.js. Browsers decompress Content-Encoding: gzip transparently, so
+  // this needs no changes on the read side, just a much smaller transfer.
+  const gzipped = zlib.gzipSync(Buffer.from(JSON.stringify(rows)));
+  await file.save(gzipped, {
     contentType: "application/json",
-    metadata: { cacheControl: "public, max-age=300" }
+    metadata: { cacheControl: "public, max-age=300", contentEncoding: "gzip" }
   });
 
   const encodedPath = encodeURIComponent("catalog/snapshot.json");

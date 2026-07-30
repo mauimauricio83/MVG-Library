@@ -15,6 +15,12 @@
   // download token is needed in the URL.
   var SNAPSHOT_URL = "https://firebasestorage.googleapis.com/v0/b/mvg-library.firebasestorage.app/o/catalog%2Fsnapshot.json?alt=media";
 
+  // Rough decompressed size of the snapshot, used only to drive the loading
+  // bar's percentage (see fetchJsonWithProgress) -- doesn't need to be exact,
+  // just close enough that the bar reaches ~100% around when the fetch
+  // actually finishes. Bump occasionally as the catalog grows.
+  var SNAPSHOT_APPROX_BYTES = 24000000;
+
   // Latest blog posts from themusicvideoguy.com/news -- written same-origin
   // by scripts/fetch-blog-latest.js (daily GitHub Action, same one that
   // regenerates the SEO hub pages) since Squarespace's own JSON feed has no
@@ -72,6 +78,9 @@
     status: document.getElementById("status"),
     loadingBar: document.getElementById("loadingBar"),
     loadingBarFill: document.getElementById("loadingBarFill"),
+    loadingBanner: document.getElementById("loadingBanner"),
+    loadingBannerText: document.getElementById("loadingBannerText"),
+    loadingBannerPercent: document.getElementById("loadingBannerPercent"),
     results: document.getElementById("results"),
     search: document.getElementById("search"),
     tabs: Array.prototype.slice.call(document.querySelectorAll(".tab")),
@@ -750,16 +759,29 @@
     els.loadingBar.classList.remove("is-indeterminate", "is-done");
     els.loadingBarFill.style.width = "0%";
     els.loadingBar.hidden = false;
+    // The thin top bar is easy to miss, especially on phones -- the banner
+    // below the header is a bigger, harder-to-miss version of the same
+    // progress, shown/hidden on the same schedule. CSS keeps it mobile-only.
+    els.loadingBanner.classList.remove("is-done");
+    els.loadingBannerPercent.textContent = "0%";
+    els.loadingBanner.hidden = false;
   }
 
   function updateLoadingBar(fraction) {
-    els.loadingBarFill.style.width = Math.max(2, Math.min(100, Math.round(fraction * 100))) + "%";
+    var pct = Math.max(2, Math.min(100, Math.round(fraction * 100)));
+    els.loadingBarFill.style.width = pct + "%";
+    els.loadingBannerPercent.textContent = pct + "%";
   }
 
   function hideLoadingBar() {
     els.loadingBarFill.style.width = "100%";
     els.loadingBar.classList.add("is-done");
-    setTimeout(function () { els.loadingBar.hidden = true; }, 300);
+    els.loadingBannerPercent.textContent = "100%";
+    els.loadingBanner.classList.add("is-done");
+    setTimeout(function () {
+      els.loadingBar.hidden = true;
+      els.loadingBanner.hidden = true;
+    }, 300);
   }
 
   // Same result as fetch(url).then(r => r.json()), but reports download
@@ -767,12 +789,16 @@
   // JSON file with no natural progress events otherwise, which on a slow
   // connection can otherwise leave visitors staring at a bare spinner for a
   // while. Falls back to the indeterminate sweep (no onProgress calls) when
-  // the browser can't stream the body or the server didn't send a length.
-  function fetchJsonWithProgress(url, onProgress) {
+  // the browser can't stream the body. Progress is measured against
+  // approxTotalBytes (the *decompressed* size) rather than the Content-Length
+  // header -- now that the snapshot is served gzip-encoded, Content-Length
+  // reflects the compressed transfer size while the bytes read off the stream
+  // are the decompressed ones the browser hands back, so the two no longer
+  // agree.
+  function fetchJsonWithProgress(url, approxTotalBytes, onProgress) {
     return fetch(url).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
-      var total = parseInt(res.headers.get("Content-Length"), 10);
-      if (!res.body || !total) return res.json();
+      if (!res.body) return res.json();
 
       var reader = res.body.getReader();
       var chunks = [];
@@ -793,7 +819,7 @@
           }
           chunks.push(result.value);
           received += result.value.length;
-          onProgress(received / total);
+          onProgress(Math.min(1, received / approxTotalBytes));
           return pump();
         });
       }
@@ -824,7 +850,7 @@
     showLoadingBar();
     var sawProgress = false;
 
-    fetchJsonWithProgress(SNAPSHOT_URL, function (fraction) {
+    fetchJsonWithProgress(SNAPSHOT_URL, SNAPSHOT_APPROX_BYTES, function (fraction) {
       sawProgress = true;
       updateLoadingBar(fraction);
     })
@@ -842,6 +868,7 @@
         networkDone = true;
         console.error("Snapshot load error:", err);
         els.loadingBar.hidden = true;
+        els.loadingBanner.hidden = true;
         if (cached && cached.rows && cached.rows.length) {
           setStatus("Showing cached data from " + new Date(cached.savedAt).toLocaleString() + " — couldn't reach the latest snapshot.");
         } else {
@@ -3113,9 +3140,21 @@
       // generate-seo-pages.js's slug-collision numbering) don't have entries
       // randomly swap URLs between publishes.
       rows.sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); });
-      var blob = new Blob([JSON.stringify(rows)], { type: "application/json" });
+      var jsonBlob = new Blob([JSON.stringify(rows)], { type: "application/json" });
       var ref = firebase.storage().ref("catalog/snapshot.json");
-      return ref.put(blob, { cacheControl: "public, max-age=300", contentType: "application/json" }).then(function () {
+      // Gzip before upload -- the JSON is highly repetitive (same field names
+      // on every row) and compresses to roughly a quarter of its raw size,
+      // which matters a lot for visitors on slow/mobile connections. Browsers
+      // decompress Content-Encoding: gzip transparently, so fetchData() needs
+      // no changes on the read side. Falls back to an uncompressed upload on
+      // browsers without CompressionStream (Safari < 16.4) rather than
+      // failing the publish outright.
+      var uploadPromise = window.CompressionStream
+        ? new Response(jsonBlob.stream().pipeThrough(new CompressionStream("gzip"))).blob().then(function (gzBlob) {
+            return ref.put(gzBlob, { cacheControl: "public, max-age=300", contentType: "application/json", contentEncoding: "gzip" });
+          })
+        : ref.put(jsonBlob, { cacheControl: "public, max-age=300", contentType: "application/json" });
+      return uploadPromise.then(function () {
         return { count: rows.length };
       });
     });

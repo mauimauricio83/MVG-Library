@@ -80,6 +80,69 @@ html, body {
   100% { transform: translateX(250%); }
 }
 
+/* Bigger, harder-to-miss loading indicator for phones -- the thin top bar
+   above is easy to miss on a small screen while everything else on the page
+   still looks blank. Desktop keeps just the thin bar (this stays hidden
+   there); shown/hidden on the exact same schedule as .loading-bar. */
+.loading-banner {
+  display: none;
+}
+
+.loading-banner[hidden] {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .loading-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 18px;
+    padding: 20px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-align: center;
+    transition: opacity 0.3s ease;
+  }
+
+  .loading-banner[hidden] {
+    display: none;
+  }
+
+  .loading-banner.is-done {
+    opacity: 0;
+  }
+
+  .loading-banner-spinner {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .loading-banner-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .loading-banner-percent {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .loading-banner-hint {
+    font-size: 0.78rem;
+    color: var(--text-faint);
+  }
+}
+
 /* Top bar: hamburger, logo, title -- full width, not centered. Desktop
    shows it as a plain left-to-right row (hamburger leftmost); the mobile
    media query below re-centers the logo/title and pulls the hamburger out
