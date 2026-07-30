@@ -1558,23 +1558,6 @@ body.is-searching #featuredStrip {
   flex: 0 0 auto;
 }
 
-.tv-skip {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.tv-skip:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
 .tv-report-link {
   flex: 0 0 auto;
   color: #b3261e;
@@ -2194,6 +2177,29 @@ body.is-searching #featuredStrip {
   margin-top: 0;
   padding: 5px 14px;
   font-size: 0.76rem;
+}
+
+/* Lives beside Clear filters instead of on the player's own overlay bar --
+   easier to reach on mobile without a thumb covering the video. Only shown
+   once TV Mode is actually playing (see playArmedTV()/teardownTV() in
+   app.js); outline style (vs. Clear filters' solid fill) since it's a
+   secondary/repeatable action, not a reset. */
+.tv-skip-btn {
+  margin-top: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tv-skip-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .lightbox {

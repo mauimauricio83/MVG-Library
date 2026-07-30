@@ -105,6 +105,7 @@
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     filtersToggleCount: document.getElementById("filtersToggleCount"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
+    tvSkipBtn: document.getElementById("tvSkipBtn"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
@@ -1930,6 +1931,7 @@
     }
     state.tv.player = null;
     state.tv.shellBuilt = false;
+    els.tvSkipBtn.hidden = true;
   }
 
   var tvAdController = null;
@@ -2130,7 +2132,6 @@
     els.videoBox.innerHTML =
       '<div class="video-embed-bar"><span class="video-embed-label" id="tvLabel">📺 Loading…</span>' +
       '<span class="tv-controls">' +
-      '<button type="button" class="tv-skip">Skip ▶</button>' +
       '<a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       '<button type="button" class="video-embed-close" aria-label="Exit TV mode">&times;</button>' +
       "</span></div>" +
@@ -2234,6 +2235,7 @@
     state.tv.started = true;
     ensureTVShell();
     loadTVTrack(state.tv.queue[state.tv.index]);
+    els.tvSkipBtn.hidden = false;
   }
 
   // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
@@ -2253,6 +2255,7 @@
     state.tv.index = 0;
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
+    els.tvSkipBtn.hidden = false;
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
@@ -2276,13 +2279,17 @@
       playArmedTV();
       return;
     }
-    if (e.target.closest(".tv-skip")) {
-      advanceTV();
-      return;
-    }
     if (e.target.closest(".video-embed-close")) {
       armTV();
     }
+  });
+
+  // Lives beside Clear filters (in .filters-toggle-row) rather than in the
+  // player's own overlay bar -- easier to reach on mobile without your
+  // thumb covering the video. Only relevant once actually playing (see
+  // playArmedTV()/teardownTV() for the show/hide), same as the old button.
+  els.tvSkipBtn.addEventListener("click", function () {
+    advanceTV();
   });
 
   els.tvModal.addEventListener("click", function (e) {
