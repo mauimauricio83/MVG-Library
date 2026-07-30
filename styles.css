@@ -3470,6 +3470,7 @@ body.is-searching #featuredStrip {
      not shown in any view -- the top one (#jumpNavTop) already covers it. */
   .controls,
   .filters-toggle-row,
+  .filters-row,
   #status,
   #jumpNavTop,
   .results-layout,
