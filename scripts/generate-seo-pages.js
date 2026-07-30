@@ -202,6 +202,7 @@ function page(title, description, canonical, bodyHtml, jsonLd, depth) {
     '<meta property="og:url" content="' + canonical + '">\n' +
     '<link rel="stylesheet" href="' + rootPrefix + 'styles.css">\n' +
     '<link rel="stylesheet" href="' + rootPrefix + 'hub.css">\n' +
+    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>\n' +
     (jsonLd ? '<script type="application/ld+json">\n' + JSON.stringify(jsonLd, null, 2) + "\n</script>\n" : "") +
     "</head>\n<body>\n" +
     '<div class="hub-page">\n' +
