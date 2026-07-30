@@ -958,6 +958,7 @@
           description: get(row, "Description"),
           feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature")),
           spotlight: /^(true|yes|y|1|x)$/i.test(get(row, "Spotlight")),
+          sponsored: /^(true|yes|y|1|x)$/i.test(get(row, "Sponsored")),
           // Precomputed once so search doesn't re-lowercase/concatenate these
           // on every keystroke across 12,000+ rows. Covers the named-person/
           // crew fields plus the description writeup, so things like "blue,"
@@ -1355,9 +1356,12 @@
             var descLine = opts.showDescription && row.description
               ? '<div class="media-strip-desc">' + escapeHtml(row.description) + "</div>"
               : "";
+            var sponsoredBadge = row.sponsored
+              ? '<span class="sponsored-badge">Sponsored</span>'
+              : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
                 descLine +
@@ -1515,9 +1519,12 @@
       var descLine = row.description
         ? '<div class="spotlight-card-excerpt">' + escapeHtml(row.description) + "</div>"
         : "";
+      var sponsoredBadge = row.sponsored
+        ? '<span class="sponsored-badge">Sponsored</span>'
+        : "";
       return (
         '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-          '<div class="spotlight-card-thumb">' + thumb + "</div>" +
+          '<div class="spotlight-card-thumb">' + thumb + sponsoredBadge + "</div>" +
           '<div class="spotlight-card-info">' +
             '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
             '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
@@ -2999,7 +3006,8 @@
       category: fields.category, youtube: fields.youtube, mvg: fields.mvg, year: fields.year,
       releaseDate: fields.releaseDate, studio: fields.studio, producer: fields.producer,
       dp: fields.dp, editor: fields.editor, choreographer: fields.choreographer, country: fields.country,
-      genres: fields.genres, description: fields.description, feature: fields.feature, spotlight: fields.spotlight
+      genres: fields.genres, description: fields.description, feature: fields.feature, spotlight: fields.spotlight,
+      sponsored: fields.sponsored
     };
     var idx = -1;
     for (var i = 0; i < state.adminRows.length; i++) {
@@ -3022,7 +3030,7 @@
     els.adminFormSaveBtn.disabled = false;
     els.adminFormTitle.textContent = row ? "Edit Entry" : "Add Entry";
     els.adminForm.reset();
-    state.adminFormOriginal = row ? { feature: !!row.feature, spotlight: !!row.spotlight } : null;
+    state.adminFormOriginal = row ? { feature: !!row.feature, spotlight: !!row.spotlight, sponsored: !!row.sponsored } : null;
     var f = els.adminForm;
     f.elements.rowNum.value = row ? row.rowNum : "";
     if (row) {
@@ -3033,6 +3041,7 @@
       f.elements.genres.value = (row.genres || []).join(", ");
       f.elements.feature.checked = !!row.feature;
       f.elements.spotlight.checked = !!row.spotlight;
+      f.elements.sponsored.checked = !!row.sponsored;
     }
   }
 
@@ -3090,6 +3099,7 @@
           description: d.description || "",
           feature: !!d.feature,
           spotlight: !!d.spotlight,
+          sponsored: !!d.sponsored,
           // youtubeSearchText (the uploader's own YouTube description/tags,
           // backfilled via scripts/backfill-youtube-metadata.js) fills the
           // search gap for entries with no curated description of our own.
@@ -3150,7 +3160,8 @@
     country: ["country"],
     description: ["description"],
     feature: ["feature"],
-    spotlight: ["spotlight"]
+    spotlight: ["spotlight"],
+    sponsored: ["sponsored"]
   };
   var BULK_GENRE_SPLIT_ALIASES = ["genre 1", "genre 2", "genre 3"];
   var BULK_GENRE_LEGACY_ALIASES = ["genre"];
@@ -3207,6 +3218,7 @@
   function buildBulkDoc(norm, rowNum, isNew, existing) {
     var feature = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.feature));
     var spotlight = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.spotlight));
+    var sponsored = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.sponsored));
     var wasFeature = existing ? !!existing.feature : false;
     var wasSpotlight = existing ? !!existing.spotlight : false;
 
@@ -3230,6 +3242,7 @@
       description: pickAlias(norm, BULK_FIELD_ALIASES.description),
       feature: feature,
       spotlight: spotlight,
+      sponsored: sponsored,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -3439,6 +3452,7 @@
       var badges = "";
       if (r.feature) badges += '<span class="admin-badge">Feature</span>';
       if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
+      if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
       return (
         '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
           '<div class="admin-row-main">' +
@@ -3528,6 +3542,7 @@
     rowNumPromise.then(function (rowNum) {
       var feature = formData.get("feature") === "on";
       var spotlight = formData.get("spotlight") === "on";
+      var sponsored = formData.get("sponsored") === "on";
       var wasFeature = state.adminFormOriginal ? state.adminFormOriginal.feature : false;
       var wasSpotlight = state.adminFormOriginal ? state.adminFormOriginal.spotlight : false;
       var genres = String(formData.get("genres") || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
@@ -3554,6 +3569,7 @@
         description: field("description"),
         feature: feature,
         spotlight: spotlight,
+        sponsored: sponsored,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();

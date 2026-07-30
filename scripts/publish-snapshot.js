@@ -65,6 +65,7 @@ async function main() {
       description: d.description || "",
       feature: !!d.feature,
       spotlight: !!d.spotlight,
+      sponsored: !!d.sponsored,
       searchHaystack: buildSearchHaystack(d)
     };
   });

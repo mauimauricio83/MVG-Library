@@ -516,6 +516,7 @@
         </label>
         <label class="admin-form-checkbox"><input type="checkbox" name="feature"> Feature</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Spotlight</label>
+        <label class="admin-form-checkbox"><input type="checkbox" name="sponsored"> Sponsored</label>
 
         <div class="admin-form-actions">
           <button type="submit" class="submit-form-btn" id="adminFormSaveBtn">Save</button>
@@ -526,7 +527,7 @@
 
       <div id="adminBulkView" hidden>
         <h2 class="admin-form-title">Bulk Import</h2>
-        <p class="admin-bulk-hint">Paste rows copied from a spreadsheet, including the header row. Recognized columns (any order, extras ignored, common alternate spellings OK -- e.g. "Youtube Link" or "Year of release"): Artist, Song Title, Director, Category, YouTube Link, MVG Link, Year, Release date, Studio, Producer, DP, Editor, Choreographer, Country, Genre 1, Genre 2, Genre 3 (or a single Genre column), Description, Feature, Spotlight, Row #. Include "Row #" to update an existing entry; leave it blank to create a new one.</p>
+        <p class="admin-bulk-hint">Paste rows copied from a spreadsheet, including the header row. Recognized columns (any order, extras ignored, common alternate spellings OK -- e.g. "Youtube Link" or "Year of release"): Artist, Song Title, Director, Category, YouTube Link, MVG Link, Year, Release date, Studio, Producer, DP, Editor, Choreographer, Country, Genre 1, Genre 2, Genre 3 (or a single Genre column), Description, Feature, Spotlight, Sponsored, Row #. Include "Row #" to update an existing entry; leave it blank to create a new one.</p>
         <textarea id="adminBulkTextarea" class="admin-bulk-textarea" rows="6" placeholder="Paste spreadsheet rows here, header row first…"></textarea>
         <div class="admin-form-actions">
           <button type="button" class="submit-form-btn" id="adminBulkPreviewBtn">Preview</button>
