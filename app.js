@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -163,6 +163,7 @@
     sidebarPlaylistsBtn: document.getElementById("sidebarPlaylistsBtn"),
     savePlaylistBtn: document.getElementById("savePlaylistBtn"),
     tvPlaylistBtn: document.getElementById("tvPlaylistBtn"),
+    tvCropBtn: document.getElementById("tvCropBtn"),
     playlistsPage: document.getElementById("playlistsPage"),
     playlistsChipRow: document.getElementById("playlistsChipRow"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
@@ -581,11 +582,12 @@
     lightboxRowNum: null,
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
+    lightboxCrop: loadLightboxCropPref(),
     recentSet: {},
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref() },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -626,6 +628,8 @@
 
   var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
+  var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
+  var TV_CROP_KEY = "mvg-tv-crop";
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
@@ -740,6 +744,34 @@
   function saveLightboxSizePref(size) {
     try {
       localStorage.setItem(LIGHTBOX_SIZE_KEY, size);
+    } catch (e) {}
+  }
+
+  function loadLightboxCropPref() {
+    try {
+      return localStorage.getItem(LIGHTBOX_CROP_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveLightboxCropPref(isCropped) {
+    try {
+      localStorage.setItem(LIGHTBOX_CROP_KEY, isCropped ? "1" : "0");
+    } catch (e) {}
+  }
+
+  function loadTVCropPref() {
+    try {
+      return localStorage.getItem(TV_CROP_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveTVCropPref(isCropped) {
+    try {
+      localStorage.setItem(TV_CROP_KEY, isCropped ? "1" : "0");
     } catch (e) {}
   }
 
@@ -2366,6 +2398,7 @@
     els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
     els.tvPlaylistBtn.hidden = true;
+    els.tvCropBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
@@ -2816,6 +2849,19 @@
     if (state.tv.shellBuilt) return;
     els.videoBox.innerHTML = '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
     state.tv.shellBuilt = true;
+    applyTVCrop();
+  }
+
+  // Same visual-only crop as the lightbox player's applyLightboxCrop() --
+  // see that function's comment. Persisted separately (TV_CROP_KEY) since
+  // TV Mode and the video-detail lightbox are used differently enough that
+  // forcing one preference onto the other would surprise people.
+  function applyTVCrop() {
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    var isCropped = !!state.tv.crop;
+    if (frame) frame.classList.toggle("is-crop-4-3", isCropped);
+    els.tvCropBtn.classList.toggle("is-active", isCropped);
+    els.tvCropBtn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
   }
 
   function onTVStateChange(e) {
@@ -2979,6 +3025,7 @@
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
+    els.tvCropBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -3005,6 +3052,7 @@
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
+    els.tvCropBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -3059,6 +3107,12 @@
     els.tvFavBtn.classList.toggle("is-active", nowFavorite);
     els.tvFavBtn.textContent = nowFavorite ? "♥" : "♡";
     renderFavoritesStrip(state.rows);
+  });
+
+  els.tvCropBtn.addEventListener("click", function () {
+    state.tv.crop = !state.tv.crop;
+    saveTVCropPref(state.tv.crop);
+    applyTVCrop();
   });
 
   // Toggles a lightweight info panel in place (title/tags/credits/
@@ -3211,6 +3265,7 @@
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
+      '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       "</div>" +
       "</div>" +
@@ -3227,6 +3282,7 @@
     lockBodyScroll();
     pushModalHistory();
     applyLightboxSize();
+    applyLightboxCrop();
 
     var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
     if (lightboxAdEl) {
@@ -4837,6 +4893,20 @@
     btn.title = isLarge ? "Shrink player" : "Widen player";
   }
 
+  // Visual-only crop -- YouTube embeds are still fed the real 16:9 video,
+  // this just scales the iframe up and clips the left/right edges via the
+  // frame's overflow:hidden (see .lightbox-video-frame.is-crop-4-3 in
+  // styles.css), so nothing actually changes about the source video.
+  function applyLightboxCrop() {
+    var frame = document.getElementById("lightboxVideoFrame");
+    var btn = els.lightboxContent.querySelector(".lightbox-crop-btn");
+    if (!btn) return;
+    var isCropped = !!state.lightboxCrop;
+    if (frame) frame.classList.toggle("is-crop-4-3", isCropped);
+    btn.classList.toggle("is-active", isCropped);
+    btn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
+  }
+
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
       dismissTopModal();
@@ -4846,6 +4916,12 @@
       state.lightboxSize = state.lightboxSize === "large" ? "small" : "large";
       saveLightboxSizePref(state.lightboxSize);
       applyLightboxSize();
+      return;
+    }
+    if (e.target.closest(".lightbox-crop-btn")) {
+      state.lightboxCrop = !state.lightboxCrop;
+      saveLightboxCropPref(state.lightboxCrop);
+      applyLightboxCrop();
       return;
     }
     var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");

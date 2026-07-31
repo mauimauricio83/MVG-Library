@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.5.0 — current
+## v5.6.0 — current
+- Added a 4:3 crop toggle to both video players (video-detail lightbox and TV Mode): scales the embed up and clips the left/right edges rather than re-encoding anything, so the source video is untouched and the toggle is instant (no reload). Preference persists per-player across sessions.
+
+## v5.5.0
 - Added Playlists: named, user-curated video lists, syncing across devices via Firestore for signed-in users (same localStorage-first pattern as Favorites).
   - Two ways to build one: a reusable "+" button (lightbox and TV Mode) adds/removes the current video from any playlist via a floating popover, or "Save as Playlist" on the Search page snapshots the current filtered results into a new playlist.
   - Playlists get their own page off the sidebar/hamburger menu — a chip row to switch between them, with rename/delete and a "Play All" that hands the playlist straight to TV Mode.

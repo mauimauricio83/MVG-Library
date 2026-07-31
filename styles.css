@@ -2109,6 +2109,31 @@ body.is-searching #featuredStrip {
   color: var(--accent);
 }
 
+.tv-crop-btn {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tv-crop-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-crop-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .tv-admin-edit-btn,
 .tv-admin-delete-btn {
   flex: 0 0 auto;
@@ -2169,6 +2194,7 @@ body.is-searching #featuredStrip {
   position: relative;
   width: 100%;
   padding-top: 56.25%;
+  overflow: hidden;
 }
 
 .video-embed-frame iframe {
@@ -2177,6 +2203,19 @@ body.is-searching #featuredStrip {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* Same visual-only crop as .lightbox-video-frame.is-crop-4-3 -- see that
+   rule's comment for the 133.34% derivation. */
+.video-embed-frame.is-crop-4-3 {
+  padding-top: 75%;
+}
+
+.video-embed-frame.is-crop-4-3 iframe {
+  left: 50%;
+  right: auto;
+  width: 133.34%;
+  transform: translateX(-50%);
 }
 
 .related-btn {
@@ -2893,6 +2932,31 @@ body.is-searching #featuredStrip {
   color: var(--accent);
 }
 
+.lightbox-crop-btn {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-crop-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lightbox-crop-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .lightbox-playlist-btn {
   flex: 0 0 auto;
   width: 26px;
@@ -3136,6 +3200,7 @@ body.is-searching #featuredStrip {
   width: 100%;
   padding-top: 56.25%;
   background: #000;
+  overflow: hidden;
 }
 
 .lightbox-video-frame iframe {
@@ -3144,6 +3209,21 @@ body.is-searching #featuredStrip {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* Visual-only crop toggle (applyLightboxCrop() in app.js) -- the source
+   video is still the real 16:9 YouTube embed, just scaled up and clipped
+   by this frame's overflow:hidden. 133.34% is the iframe width needed so
+   its full (unchanged) height maps to a 4:3 box: (16/9) / (4/3) = 4/3. */
+.lightbox-video-frame.is-crop-4-3 {
+  padding-top: 75%;
+}
+
+.lightbox-video-frame.is-crop-4-3 iframe {
+  left: 50%;
+  right: auto;
+  width: 133.34%;
+  transform: translateX(-50%);
 }
 
 .lightbox-video-empty {
