@@ -120,6 +120,7 @@
     tvFilterTabs: document.getElementById("tvFilterTabs"),
     tvYearDialRing: document.getElementById("tvYearDialRing"),
     tvYearLever: document.getElementById("tvYearLever"),
+    tvYearDragLabel: document.getElementById("tvYearDragLabel"),
     tvCustomPane: document.getElementById("tvCustomPane"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
@@ -2011,7 +2012,13 @@
 
   var tvAdController = null;
 
-  // A ring of 15 short tick buttons around a center hub, instead of a
+  // Buckets/counts from the last full renderTVYearDial(), reused by
+  // applyTVYearSelection() so dragging the dial only has to reposition the
+  // hand and flip a couple of classes/text nodes per pointermove instead of
+  // rebuilding all ~80 tick elements every frame.
+  var tvYearDialCache = { buckets: [], counts: {}, totalRows: 0 };
+
+  // A ring of short tick buttons around a center hub, instead of a
   // dropdown -- picking a decade is more "spin the dial" than "look up an
   // exact value," so it gets the same playful treatment as the genre tiles.
   // Positions are computed here (percent left/top around the ring) rather
@@ -2027,6 +2034,9 @@
       var k = tvYearBucketForRow(r);
       if (k != null && counts.hasOwnProperty(k)) counts[k]++;
     });
+    tvYearDialCache.buckets = buckets;
+    tvYearDialCache.counts = counts;
+    tvYearDialCache.totalRows = rows.length;
 
     // "Years" mode can have 80+ ticks -- too many for a per-tick label to
     // stay readable, so those render as a big clock face instead of the
@@ -2041,7 +2051,6 @@
     var n = buckets.length;
     var radius = fine ? 46 : 42; // percent of the ring's own box -- fine ticks sit closer to the drawn circle's edge
     var ticksHtml = "";
-    var handCssRotate = 0; // resting at 12 o'clock when nothing's selected
     buckets.forEach(function (b, i) {
       var angleDeg = n ? -90 - (360 / n) * i : -90; // start at 12 o'clock, go counter-clockwise
       var cssRotate = angleDeg + 90; // convert to a CSS rotate() where 0deg = up, clockwise-positive
@@ -2049,7 +2058,6 @@
       var x = 50 + radius * Math.cos(angleRad);
       var y = 50 + radius * Math.sin(angleRad);
       var active = state.year === b.key ? " is-active" : "";
-      if (state.year === b.key) handCssRotate = cssRotate;
       var label = " (" + counts[b.key] + ")";
       if (fine) {
         ticksHtml += '<button type="button" class="tv-year-tick tv-year-tick-fine' + active + '" data-year="' + escapeHtml(b.key) +
@@ -2062,24 +2070,58 @@
       }
     });
 
-    var selected = null;
-    buckets.forEach(function (b) { if (b.key === state.year) selected = b; });
-    var centerLabel = selected ? selected.label : (fine ? "All Years" : "All " + (state.tvYearGranularity === "decades" ? "Decades" : "Eras"));
-    var centerCount = (selected ? counts[selected.key] : rows.length) + " videos";
-
     // Hand comes before the center hub in the DOM (and neither has an
     // explicit z-index) so the opaque hub -- painted later -- covers the
     // hand's base instead of the hand poking out from underneath it.
     els.tvYearDialRing.innerHTML = ticksHtml +
-      '<div class="tv-year-dial-hand" style="transform:translateX(-50%) rotate(' + handCssRotate.toFixed(1) + 'deg);"></div>' +
+      '<div class="tv-year-dial-hand"></div>' +
       '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
-        '<span class="tv-year-dial-center-label">' + escapeHtml(centerLabel) + "</span>" +
-        '<span class="tv-year-dial-center-count">' + centerCount + "</span>" +
+        '<span class="tv-year-dial-center-label"></span>' +
+        '<span class="tv-year-dial-center-count"></span>' +
       "</button>";
 
     Array.prototype.forEach.call(els.tvYearLever.querySelectorAll(".tv-year-lever-opt"), function (btn) {
       btn.classList.toggle("is-active", btn.getAttribute("data-granularity") === state.tvYearGranularity);
     });
+
+    applyTVYearSelection(state.year);
+  }
+
+  // Cheap visual-only update (active tick, hand angle, center hub text) --
+  // used both by the click/tap path and on every pointermove while dragging
+  // the dial, where rebuilding all ~80 tick elements per frame would be too
+  // slow. Does NOT touch state.mvgOnly/render()/the actual filtered pool --
+  // callers decide when to commit that (immediately for a tap, only at
+  // drag-end for a drag, so whipping the dial around doesn't reload the
+  // player 30 times a second).
+  function applyTVYearSelection(key) {
+    state.year = key;
+    var buckets = tvYearDialCache.buckets;
+    var counts = tvYearDialCache.counts;
+    var n = buckets.length;
+    var selected = null;
+    var selectedIndex = -1;
+    buckets.forEach(function (b, i) {
+      if (b.key === key) { selected = b; selectedIndex = i; }
+    });
+
+    Array.prototype.forEach.call(els.tvYearDialRing.querySelectorAll(".tv-year-tick"), function (el) {
+      el.classList.toggle("is-active", el.getAttribute("data-year") === key);
+    });
+
+    var hand = els.tvYearDialRing.querySelector(".tv-year-dial-hand");
+    if (hand) {
+      var angleDeg = selectedIndex >= 0 && n ? -90 - (360 / n) * selectedIndex : -90;
+      hand.style.transform = "translateX(-50%) rotate(" + (angleDeg + 90).toFixed(1) + "deg)";
+    }
+
+    var fine = state.tvYearGranularity === "years";
+    var centerLabel = selected ? selected.label : (fine ? "All Years" : "All " + (state.tvYearGranularity === "decades" ? "Decades" : "Eras"));
+    var centerCount = (selected ? counts[selected.key] : tvYearDialCache.totalRows) + " videos";
+    var labelEl = els.tvYearDialRing.querySelector(".tv-year-dial-center-label");
+    var countEl = els.tvYearDialRing.querySelector(".tv-year-dial-center-count");
+    if (labelEl) labelEl.textContent = centerLabel;
+    if (countEl) countEl.textContent = centerCount;
   }
 
   els.tvYearLever.addEventListener("click", function (e) {
@@ -2094,19 +2136,85 @@
     render();
   });
 
-  els.tvYearDial.addEventListener("click", function (e) {
-    var tick = e.target.closest(".tv-year-tick");
-    var center = e.target.closest("#tvYearDialCenter");
-    if (!tick && !center) return;
-    if (tick) {
-      var key = tick.getAttribute("data-year");
-      state.year = state.year === key ? "" : key; // tapping the active tick again clears it
-    } else {
-      state.year = ""; // center hub doubles as the reset-to-All control
-    }
-    renderTVYearDial(state.rows);
+  // Drag-to-tune: press anywhere on the ring (or the initial tick you land
+  // on) and drag around it like a real dial -- the nearest bucket is
+  // computed from the pointer's angle relative to the ring's center, not
+  // from which element is under the cursor, so it tracks smoothly between
+  // ticks instead of only reacting when the pointer happens to cross one.
+  // A label follows the pointer showing what you'd land on; the actual
+  // filter (render()) only commits on release, so spinning through many
+  // buckets doesn't reload the player dozens of times.
+  var tvYearDragActive = false;
+  var tvYearDragMoved = false;
+
+  function tvYearBucketForClientPoint(clientX, clientY) {
+    var buckets = tvYearDialCache.buckets;
+    var n = buckets.length;
+    if (!n) return null;
+    var rect = els.tvYearDialRing.getBoundingClientRect();
+    var dx = clientX - (rect.left + rect.width / 2);
+    var dy = clientY - (rect.top + rect.height / 2);
+    var angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+    var step = 360 / n;
+    // Inverse of the placement formula in renderTVYearDial()
+    // (angleDeg(tick_i) = -90 - step*i), solved for the nearest i.
+    var idx = Math.round((((-90 - angleDeg) % 360) + 360) % 360 / step) % n;
+    return buckets[idx];
+  }
+
+  function tvYearDragTo(clientX, clientY) {
+    var bucket = tvYearBucketForClientPoint(clientX, clientY);
+    if (!bucket) return;
+    if (state.year !== bucket.key) applyTVYearSelection(bucket.key);
+    els.tvYearDragLabel.textContent = bucket.label;
+    els.tvYearDragLabel.style.left = clientX + "px";
+    els.tvYearDragLabel.style.top = clientY + "px";
+    els.tvYearDragLabel.hidden = false;
+  }
+
+  els.tvYearDialRing.addEventListener("pointerdown", function (e) {
+    if (e.target.closest("#tvYearDialCenter")) return; // hub keeps its own tap-to-reset
+    tvYearDragActive = true;
+    tvYearDragMoved = false;
+    try { els.tvYearDialRing.setPointerCapture(e.pointerId); } catch (err) {}
+    tvYearDragTo(e.clientX, e.clientY);
+  });
+
+  els.tvYearDialRing.addEventListener("pointermove", function (e) {
+    if (!tvYearDragActive) return;
+    tvYearDragMoved = true;
+    tvYearDragTo(e.clientX, e.clientY);
+  });
+
+  function tvYearDragEnd() {
+    if (!tvYearDragActive) return;
+    tvYearDragActive = false;
+    els.tvYearDragLabel.hidden = true;
     updateFiltersToggleCount();
     render();
+  }
+  els.tvYearDialRing.addEventListener("pointerup", tvYearDragEnd);
+  els.tvYearDialRing.addEventListener("pointercancel", tvYearDragEnd);
+
+  // Keyboard/no-pointer-movement fallback (Tab to a tick, press Enter/
+  // Space; or a plain click) -- suppressed after an actual drag gesture so
+  // the click a pointerup naturally fires afterward doesn't re-trigger a
+  // second, possibly different, selection.
+  els.tvYearDialRing.addEventListener("click", function (e) {
+    if (tvYearDragMoved) { tvYearDragMoved = false; return; }
+    var center = e.target.closest("#tvYearDialCenter");
+    if (center) {
+      applyTVYearSelection("");
+      updateFiltersToggleCount();
+      render();
+      return;
+    }
+    var tick = e.target.closest(".tv-year-tick");
+    if (tick) {
+      applyTVYearSelection(tick.getAttribute("data-year"));
+      updateFiltersToggleCount();
+      render();
+    }
   });
 
   // Colorful tappable tiles instead of a dropdown -- genre is a "browse by

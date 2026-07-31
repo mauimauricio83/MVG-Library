@@ -1322,6 +1322,34 @@ body.is-searching #featuredStrip {
   max-width: 210px;
   aspect-ratio: 1;
   flex: 0 1 auto;
+  /* Without this, touch-dragging the dial also scrolls/pans the page
+     underneath it on mobile instead of just rotating the selection (see
+     the pointerdown/pointermove handlers in app.js). */
+  touch-action: none;
+  cursor: grab;
+}
+
+.tv-year-dial-ring:active {
+  cursor: grabbing;
+}
+
+/* Follows the pointer while dragging the dial, showing what you'd land on
+   -- see tvYearDragTo() in app.js. Fixed positioning (not tied to the
+   ring) so it stays right above the finger/cursor even if the drag goes
+   outside the ring's own bounds. */
+.tv-year-drag-label {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 14px));
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1100;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .tv-year-tick {
