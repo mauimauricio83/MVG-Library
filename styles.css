@@ -1354,37 +1354,64 @@ body.is-searching #featuredStrip {
   color: #fff;
 }
 
+/* Big drawn circle (like a clock face) that "Years" granularity's notch
+   ring sits on -- see .tv-year-dial-ring.is-fine, toggled in
+   renderTVYearDial(). Not shown for Eras/Decades, whose circular tick
+   buttons already read as a ring on their own. */
+.tv-year-dial-ring.is-fine::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
 /* "Years" granularity can have 80+ ticks -- too many for the 34px circular
    buttons above to stay legible or tappable that close together, so these
    render as small radial minute-notch marks instead, like a clock face
-   (each one pre-rotated in app.js to point outward from the center). Fairly
-   generous padding keeps the actual tap target bigger than the visible
-   mark; background-clip keeps that padding invisible. var(--text-muted)
-   instead of var(--border) for the resting color -- --border is too close
-   to the dark-theme background to read as a mark at all. */
+   (each one pre-rotated in app.js to point outward from the center). The
+   button itself is just an invisible, generously-sized tap target; the
+   actual visible mark is the child .tv-year-tick-mark span, sized/colored
+   independently of it (avoids relying on background-clip, which wasn't
+   rendering the mark visibly). var(--text-muted) instead of var(--border)
+   for the resting color -- --border is too close to the dark-theme
+   background to read as a mark at all. */
 .tv-year-tick-fine {
-  width: 2px;
-  height: 11px;
-  padding: 9px 12px;
-  background: var(--text-muted);
-  background-clip: content-box;
+  width: 26px;
+  height: 30px;
+  padding: 0;
+  background: none;
   border: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.tv-year-tick-mark {
+  display: block;
+  width: 2px;
+  height: 10px;
+  background: var(--text-muted);
   border-radius: 1px;
 }
 
-.tv-year-tick-fine:hover {
+.tv-year-tick-fine:hover .tv-year-tick-mark {
   background: var(--accent);
 }
 
-.tv-year-tick-fine.is-active {
+.tv-year-tick-fine.is-active .tv-year-tick-mark {
   background: var(--accent);
-  height: 14px;
+  height: 13px;
 }
 
 /* Points at whichever tick is selected (resting at 12 o'clock/"All" when
    nothing is) -- clearer than trying to make one of 80 close-together
    notches visibly stand out on its own. Rotation is set inline in
-   renderTVYearDial() per the selected tick's angle. */
+   renderTVYearDial() per the selected tick's angle. No explicit z-index:
+   it comes right before the center hub in the DOM (see renderTVYearDial())
+   so the opaque hub -- painted later at the same stacking level -- covers
+   the hand's base instead of the hand poking out from underneath it. */
 .tv-year-dial-hand {
   position: absolute;
   left: 50%;
@@ -1396,7 +1423,6 @@ body.is-searching #featuredStrip {
   border-radius: 2px 2px 0 0;
   pointer-events: none;
   transition: transform 0.25s ease;
-  z-index: 1;
 }
 
 .tv-year-dial-center {

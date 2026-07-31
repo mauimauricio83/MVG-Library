@@ -2029,14 +2029,17 @@
     });
 
     // "Years" mode can have 80+ ticks -- too many for a per-tick label to
-    // stay readable, so those render as small radial minute-notch marks
-    // (like a clock face) instead of the Eras/Decades circular buttons; the
-    // center hub is what shows the label once one's tapped, and a hand
-    // points at whichever's selected since 80 near-identical notches are
-    // hard to tell apart otherwise.
+    // stay readable, so those render as a big clock face instead of the
+    // Eras/Decades circular buttons: a ring of small minute-notch marks
+    // (always visible, not just on hover/active -- see .tv-year-tick-mark)
+    // sitting near the outer edge of a drawn circle, with a hand pointing
+    // at whichever's selected since 80 near-identical notches are hard to
+    // tell apart otherwise. The center hub shows the label once one's
+    // tapped.
     var fine = state.tvYearGranularity === "years";
+    els.tvYearDialRing.classList.toggle("is-fine", fine);
     var n = buckets.length;
-    var radius = 42; // percent of the ring's own box
+    var radius = fine ? 46 : 42; // percent of the ring's own box -- fine ticks sit closer to the drawn circle's edge
     var ticksHtml = "";
     var handCssRotate = 0; // resting at 12 o'clock when nothing's selected
     buckets.forEach(function (b, i) {
@@ -2047,11 +2050,16 @@
       var y = 50 + radius * Math.sin(angleRad);
       var active = state.year === b.key ? " is-active" : "";
       if (state.year === b.key) handCssRotate = cssRotate;
-      var cls = fine ? "tv-year-tick tv-year-tick-fine" : "tv-year-tick";
-      var transform = "translate(-50%, -50%)" + (fine ? " rotate(" + cssRotate.toFixed(1) + "deg)" : "");
-      ticksHtml += '<button type="button" class="' + cls + active + '" data-year="' + escapeHtml(b.key) +
-        '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;transform:' + transform + ';" aria-label="' +
-        escapeHtml(b.label) + " (" + counts[b.key] + ')">' + (fine ? "" : escapeHtml(b.shortLabel)) + "</button>";
+      var label = " (" + counts[b.key] + ")";
+      if (fine) {
+        ticksHtml += '<button type="button" class="tv-year-tick tv-year-tick-fine' + active + '" data-year="' + escapeHtml(b.key) +
+          '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;transform:translate(-50%, -50%) rotate(' + cssRotate.toFixed(1) + 'deg);" aria-label="' +
+          escapeHtml(b.label) + label + '"><span class="tv-year-tick-mark"></span></button>';
+      } else {
+        ticksHtml += '<button type="button" class="tv-year-tick' + active + '" data-year="' + escapeHtml(b.key) +
+          '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;" aria-label="' +
+          escapeHtml(b.label) + label + '">' + escapeHtml(b.shortLabel) + "</button>";
+      }
     });
 
     var selected = null;
@@ -2059,6 +2067,9 @@
     var centerLabel = selected ? selected.label : (fine ? "All Years" : "All " + (state.tvYearGranularity === "decades" ? "Decades" : "Eras"));
     var centerCount = (selected ? counts[selected.key] : rows.length) + " videos";
 
+    // Hand comes before the center hub in the DOM (and neither has an
+    // explicit z-index) so the opaque hub -- painted later -- covers the
+    // hand's base instead of the hand poking out from underneath it.
     els.tvYearDialRing.innerHTML = ticksHtml +
       '<div class="tv-year-dial-hand" style="transform:translateX(-50%) rotate(' + handCssRotate.toFixed(1) + 'deg);"></div>' +
       '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
