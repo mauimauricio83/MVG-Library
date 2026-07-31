@@ -2,7 +2,22 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.3.0 — current
+## v5.4.0 — current
+- **TV Mode rebuilt end-to-end**, aimed at feeling more like actually surfing channels than picking from a form:
+  - Opening TV Mode now immediately arms a random pick from the current filters and shows it as a "channel ready" static/noise screen with a play button — title and artist stay hidden until you actually press play. No more "Start TV Mode" button.
+  - Changing a filter while TV Mode is open live-updates the pool instead of only affecting future picks — preserves play/pause state across the swap (paused stays paused, playing keeps playing) so it feels like changing the channel, not restarting a video.
+  - Year and Genre got dedicated, more playful pickers in place of plain dropdowns: Genre is a grid of 10 colorful tappable tiles (Pop, Rock, Metal & Punk, Hip-Hop/Rap, R&B/Soul/Funk, Electronic/Dance, Country/Folk, Latin/World/Reggae, Jazz/Blues/Classical, Other) grouped from the ~190 raw genre tags; Year is a 15-bucket decade dial (2020s, 2010s, then 2000s/90s/80s/70s each split into Early/Mid/Late thirds, plus a single "Pre-Music Video" bucket) arranged as a spinnable-feeling ring with a center hub showing the count. Both live on separate Genre/Era tabs (instead of being stacked) right above the ad banner, so the panel fits without much scrolling. Both remember/translate whatever exact Search-page selection was active and restore it exactly when TV Mode closes.
+  - MVG Reels only, both info tooltips, and the Filters collapse/expand toggle are hidden in TV Mode (no use there) — the filters panel is just always open instead.
+  - Removed the redundant title bar over the player (YouTube already shows the title) — Skip, Report issue, and Exit now live in one row beside Clear filters, easier to reach on mobile than a bar overlaying the video.
+  - Added an (i) info button (shows title/tags/credits/description in place, without opening a real lightbox that would've killed playback), a favorite heart button, and admin-only Edit/Delete buttons, all in that same row.
+  - A video that's gone private/deleted or has embedding disabled now auto-skips to the next track instead of silently stalling.
+  - Player, filters, and ad banner reordered so the video is the first thing visible instead of being scrolled below the ad; the ad is now pinned to the very bottom of the screen on mobile instead of sitting right below the filters.
+- Fixed filters staying visible on mobile Home if the panel had ever been expanded (a real bug, not just a TV Mode side effect — Home has no query/result set to filter against).
+- Sped up mobile loading: the snapshot is now gzip-compressed on publish (~4x smaller transfer), and phones get a bigger, harder-to-miss loading indicator with a live percentage instead of just a thin top bar.
+- Added a 3D revolving word cloud (artist/song/director names from the latest submissions) at `cloud.html`, linked from a small rainbow "cloud" icon in the footer.
+- Added `CLAUDE.md`, a project operating manual covering backend architecture and housekeeping rules (this version/changelog bump included).
+
+## v5.3.0
 - Added a "Sponsored" flag (Spotlight/Featured slots) for monetization: mirrors the existing Feature/Spotlight admin pattern (form checkbox, bulk import, single edit, publish) but with no cap-eviction — manually admin-controlled, no capacity limit. Shows a gold "Sponsored" badge on public Spotlight/media-strip cards and in the admin Manage Entries list
 - Added Google AdSense (Auto ads) site-wide, plus `ads.txt` on the `mauimauricio83.github.io` root-page repo (required since the project-site repo can't host a file at the actual domain root)
 - Post-submission flow now pops up a real "Thank you for your submission!" modal (replacing the submit modal outright, not an in-panel swap) with a Ko-fi support prompt, Go back, and Submit again
