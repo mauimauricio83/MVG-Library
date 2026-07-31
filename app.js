@@ -371,9 +371,14 @@
     "Styles": "other", "Music": "other"
   };
 
+  // Returns null (not the Pre-Music Video bucket) for a blank/unparseable
+  // year -- "Pre-Music Video" means "older than the format existed," not
+  // "we don't know when this was released." Undated rows just don't
+  // belong to any year bucket and stay unreachable via the year dial,
+  // same as they already are via the Genre tiles' "no genre" case.
   function tvEraBucketFor(yearValue) {
     var y = parseInt(yearValue, 10);
-    if (isNaN(y)) return "pre-mv";
+    if (isNaN(y)) return null;
     for (var i = 0; i < TV_ERA_BUCKETS.length; i++) {
       var b = TV_ERA_BUCKETS[i];
       if (y >= b.min && y <= b.max) return b.key;
@@ -383,7 +388,7 @@
 
   function tvDecadeBucketFor(yearValue) {
     var y = parseInt(yearValue, 10);
-    if (isNaN(y)) return "d-pre-mv";
+    if (isNaN(y)) return null;
     for (var i = 0; i < TV_DECADE_BUCKETS.length; i++) {
       var b = TV_DECADE_BUCKETS[i];
       if (y >= b.min && y <= b.max) return b.key;
