@@ -279,6 +279,95 @@ html, body {
   display: none;
 }
 
+/* Same dedicated-page pattern as #favoritesStrip above, for the Playlists
+   page (desktop-view-playlists/mobile-view-playlists below). */
+#playlistsPage {
+  display: none;
+}
+
+/* Chip row lists every playlist by name -- tap to switch which one's
+   detail view (below) is showing. Mirrors .tv-filter-tab's pill look. */
+.playlists-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+
+.playlists-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.playlists-chip:hover {
+  border-color: var(--accent);
+}
+
+.playlists-chip.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.playlists-chip-count {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.playlists-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 32px 12px;
+  font-size: 0.88rem;
+}
+
+.playlist-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.playlist-detail-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.playlist-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Secondary outline pill -- also reused as-is for the TV Custom pane's
+   Rename button, so keep it generic rather than Playlists-specific. */
+.tv-exit-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tv-exit-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .top-bar-home-link {
   display: flex;
   align-items: center;
@@ -903,7 +992,8 @@ body.is-searching #featuredStrip {
 @media (min-width: 641px) {
   #latestStrip,
   #featuredStrip,
-  #favoritesStrip {
+  #favoritesStrip,
+  #playlistsPage {
     border: none;
     background: none;
     padding: 0;
@@ -1059,6 +1149,28 @@ body.is-searching #featuredStrip {
   body.desktop-view-favorites #status,
   body.desktop-view-favorites .results-layout,
   body.desktop-view-favorites #jumpNavBottom {
+    display: none;
+  }
+
+  /* Playlists: reached via the sidebar's Playlists link, which calls
+     setDesktopView("playlists") -- same pattern as Favorites just above. */
+  body.desktop-view-playlists #playlistsPage {
+    display: block;
+  }
+
+  body.desktop-view-playlists .about-strip,
+  body.desktop-view-playlists #spotlightSidebar,
+  body.desktop-view-playlists #blogLatestSidebar,
+  body.desktop-view-playlists .ad-placeholder,
+  body.desktop-view-playlists #latestStrip,
+  body.desktop-view-playlists #videoEmbed,
+  body.desktop-view-playlists #featuredStrip,
+  body.desktop-view-playlists .controls,
+  body.desktop-view-playlists #filtersGroup,
+  body.desktop-view-playlists #jumpNavTop,
+  body.desktop-view-playlists #status,
+  body.desktop-view-playlists .results-layout,
+  body.desktop-view-playlists #jumpNavBottom {
     display: none;
   }
 }
@@ -1603,6 +1715,63 @@ body.is-searching #featuredStrip {
   font-size: 0.85rem;
 }
 
+.tv-custom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 2px;
+}
+
+.tv-custom-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.tv-custom-item:hover {
+  border-color: var(--accent);
+}
+
+.tv-custom-item.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.tv-custom-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-custom-item-count {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.tv-custom-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 0 100%;
+  min-height: 120px;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 0 16px;
+}
+
 #tvFiltersSlot .filters-toggle-row {
   display: flex;
 }
@@ -1905,7 +2074,8 @@ body.is-searching #featuredStrip {
 }
 
 .tv-fav-btn,
-.tv-info-btn {
+.tv-info-btn,
+.tv-playlist-btn {
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
@@ -1930,6 +2100,11 @@ body.is-searching #featuredStrip {
 }
 
 .tv-info-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-playlist-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -2564,6 +2739,23 @@ body.is-searching #featuredStrip {
   font-size: 0.76rem;
 }
 
+.save-playlist-btn {
+  margin-top: 0;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.save-playlist-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* Lives beside Clear filters instead of on the player's own overlay bar --
    easier to reach on mobile without a thumb covering the video. Only shown
    once TV Mode is actually playing (see playArmedTV()/teardownTV() in
@@ -2699,6 +2891,150 @@ body.is-searching #featuredStrip {
 .lightbox-widen-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.lightbox-playlist-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-playlist-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* One shared floating popover, positioned via getBoundingClientRect() in
+   openAddToPlaylistPopover() (app.js) each time it's opened for a given
+   video -- above the lightbox/TV modal (z-index 1000) since it can be
+   triggered from either. */
+.add-playlist-popover {
+  position: fixed;
+  z-index: 1100;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+}
+
+.add-playlist-popover[hidden] {
+  display: none;
+}
+
+.add-playlist-popover-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  padding-right: 20px;
+  margin-bottom: 8px;
+}
+
+.add-playlist-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.add-playlist-close:hover {
+  color: var(--text);
+}
+
+.add-playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.add-playlist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.add-playlist-item:hover {
+  background: var(--accent-soft);
+}
+
+.add-playlist-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-playlist-item-check {
+  flex: 0 0 auto;
+  width: 16px;
+  color: var(--accent);
+  visibility: hidden;
+}
+
+.add-playlist-item.is-in .add-playlist-item-check {
+  visibility: visible;
+}
+
+.add-playlist-new {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.add-playlist-new input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.add-playlist-new button {
+  flex: 0 0 auto;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.add-playlist-new button:hover {
+  opacity: 0.9;
 }
 
 .lightbox-admin-edit-btn {
@@ -3992,6 +4328,22 @@ body.is-searching #featuredStrip {
   }
 
   body.mobile-view-favorites #favoritesStrip {
+    display: block;
+  }
+
+  /* Playlists view: no bottom-nav slot of its own (reached via the
+     hamburger menu's Playlists link instead) -- still a real
+     setMobileView("playlists") state, same pattern as Favorites above. */
+  body.mobile-view-playlists #spotlightSidebar,
+  body.mobile-view-playlists #blogLatestSidebar,
+  body.mobile-view-playlists #latestStrip,
+  body.mobile-view-playlists .ad-placeholder,
+  body.mobile-view-playlists #videoEmbed,
+  body.mobile-view-playlists #featuredStrip {
+    display: none;
+  }
+
+  body.mobile-view-playlists #playlistsPage {
     display: block;
   }
 }

@@ -103,6 +103,10 @@
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9Z"/></svg></span>
       <span class="header-links-label">Favorites</span>
     </button>
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarPlaylistsBtn">
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+      <span class="header-links-label">Playlists</span>
+    </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
@@ -215,6 +219,7 @@
         <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
       </button>
       <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
+      <button type="button" class="save-playlist-btn" id="savePlaylistBtn">Save as Playlist</button>
       <button type="button" class="tv-skip-btn" id="tvSkipBtn" hidden>Skip ▶</button>
       <a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Report issue</a>
       <button type="button" class="tv-power-switch" id="tvPowerSwitch" hidden aria-label="Play/Stop" aria-pressed="false">
@@ -224,6 +229,7 @@
         <button type="button" class="tv-admin-edit-btn" id="tvAdminEditBtn" hidden aria-label="Edit entry (admin)" title="Edit entry (admin)">✎</button>
         <button type="button" class="tv-admin-delete-btn" id="tvAdminDeleteBtn" hidden aria-label="Delete entry (admin)" title="Delete entry (admin)">🗑</button>
         <button type="button" class="tv-fav-btn" id="tvFavBtn" hidden aria-label="Toggle favorite" title="Favorite">♡</button>
+        <button type="button" class="tv-playlist-btn" id="tvPlaylistBtn" hidden aria-label="Add to playlist" title="Add to playlist">+</button>
         <button type="button" class="tv-info-btn" id="tvInfoBtn" hidden aria-label="Video details" title="Video details">ⓘ</button>
       </div>
     </div>
@@ -257,7 +263,7 @@
       <div class="tv-year-drag-label" id="tvYearDragLabel" hidden></div>
       <div class="tv-genre-grid" id="tvGenreGrid" hidden></div>
       <div class="tv-custom-pane" id="tvCustomPane" hidden>
-        <p>Coming soon.</p>
+        <div class="tv-custom-list" id="tvCustomList"></div>
       </div>
       <div class="tv-filter-tabs" id="tvFilterTabs" hidden>
         <button type="button" class="tv-filter-tab" data-tab="genre">Genre</button>
@@ -341,6 +347,37 @@
       <button type="button" class="media-strip-arrow" id="favoritesStripNext" aria-label="Show next">›</button>
     </div>
     <button type="button" class="media-strip-see-more" id="favoritesSeeMoreBtn">See more ▾</button>
+  </section>
+
+  <!-- Same dedicated-page pattern as #favoritesStrip above -- reached via
+       the sidebar/hamburger Playlists button. Two levels: a chip row
+       listing every playlist (tap to switch), and a detail view below it
+       for whichever one's selected (state.selectedPlaylistId), reusing
+       createMediaStrip() the same way Favorites' own strip does. -->
+  <section class="media-strip" id="playlistsPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">🎵 Playlists</span>
+      <div class="media-strip-head-actions">
+        <button type="button" class="media-strip-play-all" id="playlistsNewBtn">+ New Playlist</button>
+      </div>
+    </div>
+    <div class="playlists-chip-row" id="playlistsChipRow"></div>
+    <p class="playlists-empty" id="playlistsEmptyMsg" hidden>No playlists yet — create one above, add videos via the + button on any video, or save a search as a playlist from the Search page.</p>
+    <div class="playlist-detail" id="playlistDetail" hidden>
+      <div class="playlist-detail-head">
+        <span class="playlist-detail-name" id="playlistDetailName"></span>
+        <div class="playlist-detail-actions">
+          <button type="button" class="media-strip-play-all" id="playlistPlayAllBtn">▶ Play All</button>
+          <button type="button" class="tv-exit-btn" id="playlistRenameBtn">Rename</button>
+          <button type="button" class="tv-admin-delete-btn" id="playlistDeleteBtn" aria-label="Delete playlist" title="Delete playlist">🗑</button>
+        </div>
+      </div>
+      <div class="media-strip-body">
+        <button type="button" class="media-strip-arrow" id="playlistDetailPrev" aria-label="Show previous">‹</button>
+        <div class="media-strip-track" id="playlistDetailTrack"></div>
+        <button type="button" class="media-strip-arrow" id="playlistDetailNext" aria-label="Show next">›</button>
+      </div>
+    </div>
   </section>
 
   <div class="results-layout">
@@ -737,6 +774,20 @@
   </p>
   <p class="msgboard-signin-note" id="msgBoardBlockedNote" hidden></p>
 </aside>
+
+<!-- Reusable popover for adding a single video to a playlist -- one shared
+     instance repositioned/repurposed per trigger (the lightbox's + button,
+     TV Mode's + button) rather than building a new one per video. See
+     openAddToPlaylistPopover() in app.js. -->
+<div class="add-playlist-popover" id="addPlaylistPopover" hidden>
+  <div class="add-playlist-popover-title">Add to Playlist</div>
+  <button type="button" class="add-playlist-close" id="addPlaylistClose" aria-label="Close">&times;</button>
+  <div class="add-playlist-list" id="addPlaylistList"></div>
+  <div class="add-playlist-new">
+    <input type="text" id="addPlaylistNewName" placeholder="New playlist name" maxlength="60">
+    <button type="button" id="addPlaylistCreateBtn">Create</button>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

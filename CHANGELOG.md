@@ -2,7 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.4.0 — current
+## v5.5.0 — current
+- Added Playlists: named, user-curated video lists, syncing across devices via Firestore for signed-in users (same localStorage-first pattern as Favorites).
+  - Two ways to build one: a reusable "+" button (lightbox and TV Mode) adds/removes the current video from any playlist via a floating popover, or "Save as Playlist" on the Search page snapshots the current filtered results into a new playlist.
+  - Playlists get their own page off the sidebar/hamburger menu — a chip row to switch between them, with rename/delete and a "Play All" that hands the playlist straight to TV Mode.
+  - TV Mode's Custom tab now lists every playlist; picking one arms TV Mode with just that playlist's videos (picking a Genre tile or Era/Decade value switches back to the normal filtered pool).
+
+## v5.4.0
 - **TV Mode rebuilt end-to-end**, aimed at feeling more like actually surfing channels than picking from a form:
   - Opening TV Mode now immediately arms a random pick from the current filters and shows it as a "channel ready" static/noise screen with a play button — title and artist stay hidden until you actually press play. No more "Start TV Mode" button.
   - Changing a filter while TV Mode is open live-updates the pool instead of only affecting future picks — preserves play/pause state across the swap (paused stays paused, playing keeps playing) so it feels like changing the channel, not restarting a video.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.4.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -160,6 +160,24 @@
     topBarHomeLink: document.getElementById("topBarHomeLink"),
     sidebarTVBtn: document.getElementById("sidebarTVBtn"),
     sidebarFavoritesBtn: document.getElementById("sidebarFavoritesBtn"),
+    sidebarPlaylistsBtn: document.getElementById("sidebarPlaylistsBtn"),
+    savePlaylistBtn: document.getElementById("savePlaylistBtn"),
+    tvPlaylistBtn: document.getElementById("tvPlaylistBtn"),
+    playlistsPage: document.getElementById("playlistsPage"),
+    playlistsChipRow: document.getElementById("playlistsChipRow"),
+    playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
+    playlistsNewBtn: document.getElementById("playlistsNewBtn"),
+    playlistDetail: document.getElementById("playlistDetail"),
+    playlistDetailName: document.getElementById("playlistDetailName"),
+    playlistPlayAllBtn: document.getElementById("playlistPlayAllBtn"),
+    playlistRenameBtn: document.getElementById("playlistRenameBtn"),
+    playlistDeleteBtn: document.getElementById("playlistDeleteBtn"),
+    tvCustomList: document.getElementById("tvCustomList"),
+    addPlaylistPopover: document.getElementById("addPlaylistPopover"),
+    addPlaylistList: document.getElementById("addPlaylistList"),
+    addPlaylistClose: document.getElementById("addPlaylistClose"),
+    addPlaylistNewName: document.getElementById("addPlaylistNewName"),
+    addPlaylistCreateBtn: document.getElementById("addPlaylistCreateBtn"),
     topBarSearchInput: document.getElementById("topBarSearchInput"),
     topBarSearchClear: document.getElementById("topBarSearchClear"),
     topBarSettingsBtn: document.getElementById("topBarSettingsBtn"),
@@ -580,6 +598,14 @@
     homeFiltersExpandedBeforeTV: false,
     tvActiveTab: "genre",
     tvYearGranularity: "eras",
+    // Set when a playlist is picked on TV Mode's Custom tab -- while set,
+    // armTV()/refreshTVPoolIfActive() draw from this instead of
+    // matchesFilters(), same as "Play All"'s customPool. Cleared by
+    // picking a Genre/Era value or closing TV Mode.
+    tvCustomPool: null,
+    tvCustomPlaylistId: null,
+    // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
+    selectedPlaylistId: null,
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -822,6 +848,90 @@
     return nowFavorite;
   }
 
+  // Playlists: named lists of rowNums, same localStorage-first-then-
+  // Firestore-sync shape as favorites (see pushToFirestore/
+  // syncFromFirestore below) but multiple/named, so they need their own
+  // key and array-of-objects shape rather than favorites' flat array.
+  var PLAYLISTS_KEY = "mvg-playlists";
+
+  function loadPlaylists() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function savePlaylists(list) {
+    try {
+      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  function findPlaylist(id) {
+    var list = loadPlaylists();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) return list[i];
+    }
+    return null;
+  }
+
+  function generatePlaylistId() {
+    return "pl-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function createPlaylist(name, rowNums) {
+    var list = loadPlaylists();
+    var playlist = {
+      id: generatePlaylistId(),
+      name: (name || "").trim() || "Untitled Playlist",
+      rowNums: rowNums ? rowNums.slice() : [],
+      updatedAt: Date.now()
+    };
+    list.push(playlist);
+    savePlaylists(list);
+    pushToFirestore();
+    return playlist;
+  }
+
+  function renamePlaylist(id, name) {
+    var list = loadPlaylists();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        list[i].name = (name || "").trim() || list[i].name;
+        list[i].updatedAt = Date.now();
+        break;
+      }
+    }
+    savePlaylists(list);
+    pushToFirestore();
+  }
+
+  function deletePlaylist(id) {
+    var list = loadPlaylists().filter(function (p) { return p.id !== id; });
+    savePlaylists(list);
+    pushToFirestore();
+  }
+
+  // Returns the new "is in this playlist" state, mirroring toggleFavorite().
+  function togglePlaylistEntry(id, rowNum) {
+    var list = loadPlaylists();
+    var nowIn = false;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        var idx = list[i].rowNums.indexOf(rowNum);
+        if (idx === -1) { list[i].rowNums.push(rowNum); nowIn = true; }
+        else { list[i].rowNums.splice(idx, 1); nowIn = false; }
+        list[i].updatedAt = Date.now();
+        break;
+      }
+    }
+    savePlaylists(list);
+    pushToFirestore();
+    return nowIn;
+  }
+
   function loadRecentlyViewed() {
     try {
       var raw = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
@@ -847,7 +957,8 @@
     if (!currentUser) return;
     db.collection("users").doc(currentUser.uid).set({
       favorites: loadFavorites(),
-      recentlyViewed: loadRecentlyViewed()
+      recentlyViewed: loadRecentlyViewed(),
+      playlists: loadPlaylists()
     }, { merge: true }).catch(function (err) {
       console.error("Firestore sync (push) failed:", err);
     });
@@ -897,22 +1008,34 @@
       var remote = doc.exists ? doc.data() : {};
       var remoteFavorites = Array.isArray(remote.favorites) ? remote.favorites : [];
       var remoteRecent = Array.isArray(remote.recentlyViewed) ? remote.recentlyViewed : [];
+      var remotePlaylists = Array.isArray(remote.playlists) ? remote.playlists : [];
       var localFavorites = loadFavorites();
       var localRecent = loadRecentlyViewed();
+      var localPlaylists = loadPlaylists();
 
       var mergedFavorites = remoteFavorites.concat(
         localFavorites.filter(function (id) { return remoteFavorites.indexOf(id) === -1; })
       );
       var mergedRecent = remoteRecent.length ? remoteRecent : localRecent;
+      // Remote wins for a playlist that exists on both (by id); local-only
+      // playlists (created signed-out, or on a device that hasn't synced
+      // yet) get appended rather than dropped.
+      var remotePlaylistIds = remotePlaylists.map(function (p) { return p.id; });
+      var mergedPlaylists = remotePlaylists.concat(
+        localPlaylists.filter(function (p) { return remotePlaylistIds.indexOf(p.id) === -1; })
+      );
 
       saveFavorites(mergedFavorites);
       try {
         localStorage.setItem(RECENT_KEY, JSON.stringify(mergedRecent.slice(0, RECENT_MAX)));
       } catch (e) {}
+      savePlaylists(mergedPlaylists);
 
       pushToFirestore();
       renderFavoritesStrip(state.rows);
       renderRecentList(state.rows);
+      renderPlaylistsPage();
+      renderTVCustomPane();
     }).catch(function (err) {
       console.error("Firestore sync (pull) failed:", err);
     });
@@ -1716,6 +1839,239 @@
     favoritesStrip.render(favoritesPool);
   }
 
+  // ---- Playlists ---------------------------------------------------
+  // Named lists of rowNums (see loadPlaylists()/createPlaylist() etc. near
+  // the favorites data functions). The page has two levels: a chip row
+  // listing every playlist, and a detail strip (reusing createMediaStrip(),
+  // same as Favorites) for whichever one's selected.
+  var playlistDetailStrip = createMediaStrip(els.playlistDetail, {
+    emptyMessage: "This playlist is empty. Add videos via the + button on any video's page.",
+    showDescription: true
+  });
+
+  function renderPlaylistsPage() {
+    var list = loadPlaylists();
+    els.playlistsEmptyMsg.hidden = !!list.length;
+    els.playlistsChipRow.innerHTML = list.map(function (p) {
+      var active = p.id === state.selectedPlaylistId ? " is-active" : "";
+      return '<button type="button" class="playlists-chip' + active + '" data-id="' + escapeHtml(p.id) + '">' +
+        escapeHtml(p.name) + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
+    }).join("");
+
+    if (!list.length) {
+      state.selectedPlaylistId = null;
+      els.playlistDetail.hidden = true;
+      return;
+    }
+    var stillExists = list.some(function (p) { return p.id === state.selectedPlaylistId; });
+    if (!stillExists) state.selectedPlaylistId = list[0].id;
+    renderPlaylistDetail();
+  }
+
+  function renderPlaylistDetail() {
+    var playlist = findPlaylist(state.selectedPlaylistId);
+    if (!playlist) {
+      els.playlistDetail.hidden = true;
+      return;
+    }
+    els.playlistDetailName.textContent = playlist.name;
+    var rows = playlist.rowNums.map(findRowByNum).filter(Boolean);
+    playlistDetailStrip.render(rows);
+    Array.prototype.forEach.call(els.playlistsChipRow.querySelectorAll(".playlists-chip"), function (chip) {
+      chip.classList.toggle("is-active", chip.getAttribute("data-id") === state.selectedPlaylistId);
+    });
+  }
+
+  els.sidebarPlaylistsBtn.addEventListener("click", function () {
+    sharedFavoritesUid = null;
+    renderPlaylistsPage();
+    setDesktopView("playlists");
+    setMobileView("playlists");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.playlistsChipRow.addEventListener("click", function (e) {
+    var chip = e.target.closest(".playlists-chip");
+    if (!chip) return;
+    state.selectedPlaylistId = chip.getAttribute("data-id");
+    renderPlaylistDetail();
+  });
+
+  els.playlistsNewBtn.addEventListener("click", function () {
+    var name = window.prompt("Playlist name:");
+    if (name === null) return;
+    var playlist = createPlaylist(name, []);
+    state.selectedPlaylistId = playlist.id;
+    renderPlaylistsPage();
+  });
+
+  els.playlistPlayAllBtn.addEventListener("click", function () {
+    var playlist = findPlaylist(state.selectedPlaylistId);
+    if (!playlist) return;
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && !!r.youtube; });
+    startTVMode(rows);
+  });
+
+  els.playlistRenameBtn.addEventListener("click", function () {
+    var playlist = findPlaylist(state.selectedPlaylistId);
+    if (!playlist) return;
+    var name = window.prompt("Rename playlist:", playlist.name);
+    if (name === null) return;
+    renamePlaylist(playlist.id, name);
+    renderPlaylistsPage();
+  });
+
+  els.playlistDeleteBtn.addEventListener("click", function () {
+    var playlist = findPlaylist(state.selectedPlaylistId);
+    if (!playlist) return;
+    if (!window.confirm('Delete "' + playlist.name + '"? This can\'t be undone.')) return;
+    deletePlaylist(playlist.id);
+    state.selectedPlaylistId = null;
+    renderPlaylistsPage();
+  });
+
+  // "Save as Playlist" on Search -- snapshots the currently-matching rows
+  // into a new playlist at save time (a fixed list, not a live/re-run
+  // search) so it behaves consistently with the "add a single video"
+  // method elsewhere: a playlist is always just a plain list of rowNums.
+  els.savePlaylistBtn.addEventListener("click", function () {
+    var matches = state.rows.filter(matchesFilters);
+    if (!matches.length) {
+      alert("No results to save -- adjust your search or filters first.");
+      return;
+    }
+    var name = window.prompt("Save these " + matches.length + " results as a playlist named:");
+    if (name === null) return;
+    var playlist = createPlaylist(name, matches.map(function (r) { return r.rowNum; }));
+    state.selectedPlaylistId = playlist.id;
+    renderPlaylistsPage();
+  });
+
+  // ---- Add-to-playlist popover ---------------------------------------
+  // One shared instance, repositioned/repurposed per trigger (the
+  // lightbox's + button, TV Mode's + button) rather than building a new
+  // popover per video.
+  var addPlaylistRowNum = null;
+
+  function renderAddPlaylistList() {
+    var list = loadPlaylists();
+    if (!list.length) {
+      els.addPlaylistList.innerHTML = '<p class="add-playlist-empty">No playlists yet -- create one below.</p>';
+      return;
+    }
+    els.addPlaylistList.innerHTML = list.map(function (p) {
+      var inIt = p.rowNums.indexOf(addPlaylistRowNum) !== -1;
+      return '<button type="button" class="add-playlist-item' + (inIt ? " is-in" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="add-playlist-item-check">' + (inIt ? "✓" : "") + '</span>' +
+        '<span class="add-playlist-item-name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="add-playlist-item-count">' + p.rowNums.length + "</span>" +
+        "</button>";
+    }).join("");
+  }
+
+  function openAddToPlaylistPopover(rowNum, anchorEl) {
+    addPlaylistRowNum = rowNum;
+    renderAddPlaylistList();
+    els.addPlaylistNewName.value = "";
+    els.addPlaylistPopover.hidden = false;
+    var rect = anchorEl.getBoundingClientRect();
+    var popW = 260;
+    var left = Math.min(rect.left, window.innerWidth - popW - 8);
+    els.addPlaylistPopover.style.top = (rect.bottom + 8) + "px";
+    els.addPlaylistPopover.style.left = Math.max(8, left) + "px";
+  }
+
+  function closeAddToPlaylistPopover() {
+    els.addPlaylistPopover.hidden = true;
+    addPlaylistRowNum = null;
+  }
+
+  // Re-renders whichever playlist-driven UI is currently visible after an
+  // add/remove/create so counts stay in sync without needing to close the
+  // popover first.
+  function refreshPlaylistUIAfterChange() {
+    renderPlaylistsPage();
+    renderTVCustomPane();
+  }
+
+  els.addPlaylistList.addEventListener("click", function (e) {
+    var item = e.target.closest(".add-playlist-item");
+    if (!item || !addPlaylistRowNum) return;
+    togglePlaylistEntry(item.getAttribute("data-id"), addPlaylistRowNum);
+    renderAddPlaylistList();
+    refreshPlaylistUIAfterChange();
+  });
+
+  els.addPlaylistCreateBtn.addEventListener("click", function () {
+    var name = els.addPlaylistNewName.value.trim();
+    if (!name || !addPlaylistRowNum) return;
+    createPlaylist(name, [addPlaylistRowNum]);
+    els.addPlaylistNewName.value = "";
+    renderAddPlaylistList();
+    refreshPlaylistUIAfterChange();
+  });
+
+  els.addPlaylistClose.addEventListener("click", closeAddToPlaylistPopover);
+
+  document.addEventListener("click", function (e) {
+    if (els.addPlaylistPopover.hidden) return;
+    // Use composedPath() (fixed at dispatch time) rather than e.target.closest()
+    // -- the list's own click handler re-renders .add-playlist-item nodes
+    // (toggle -> renderAddPlaylistList()) before this bubbles to document,
+    // which would detach e.target and make closest() miss the popover.
+    var path = e.composedPath ? e.composedPath() : [e.target];
+    var insideTrigger = path.some(function (node) {
+      return node.nodeType === 1 && (
+        node.id === "addPlaylistPopover" ||
+        node.classList.contains("lightbox-playlist-btn") ||
+        node.id === "tvPlaylistBtn"
+      );
+    });
+    if (insideTrigger) return;
+    closeAddToPlaylistPopover();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !els.addPlaylistPopover.hidden) closeAddToPlaylistPopover();
+  });
+
+  els.tvPlaylistBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (row) openAddToPlaylistPopover(row.rowNum, els.tvPlaylistBtn);
+  });
+
+  // ---- TV Mode's Custom tab: pick a playlist as the channel's source ---
+  function renderTVCustomPane() {
+    var list = loadPlaylists();
+    if (!list.length) {
+      els.tvCustomList.innerHTML = '<p class="tv-custom-empty">No playlists yet. Add videos to one via the + button on a video, or save a search as a playlist from the Search page.</p>';
+      return;
+    }
+    els.tvCustomList.innerHTML = list.map(function (p) {
+      var active = state.tvCustomPlaylistId === p.id ? " is-active" : "";
+      return '<button type="button" class="tv-custom-item' + active + '" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="tv-custom-item-name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="tv-custom-item-count">' + p.rowNums.length + "</span>" +
+        "</button>";
+    }).join("");
+  }
+
+  els.tvCustomList.addEventListener("click", function (e) {
+    var item = e.target.closest(".tv-custom-item");
+    if (!item) return;
+    var playlist = findPlaylist(item.getAttribute("data-id"));
+    if (!playlist) return;
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && !!r.youtube; });
+    if (!rows.length) {
+      alert("This playlist has no playable videos yet.");
+      return;
+    }
+    state.tvCustomPool = rows;
+    state.tvCustomPlaylistId = playlist.id;
+    renderTVCustomPane();
+    armTV();
+  });
+
   // Read-only view of another signed-in user's public favorites
   // (/publicFavorites/{uid}, world-readable -- see firestore.rules).
   // Reuses the same #favoritesStrip page/UI as your own favorites, just
@@ -2009,6 +2365,7 @@
     els.tvReportLink.hidden = true;
     els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
+    els.tvPlaylistBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
@@ -2101,6 +2458,10 @@
   // player 30 times a second).
   function applyTVYearSelection(key) {
     state.year = key;
+    // Picking (or even just browsing) an Era/Decade/Year value means the
+    // viewer wants catalog-wide filtering again, not a fixed playlist.
+    state.tvCustomPool = null;
+    state.tvCustomPlaylistId = null;
     var buckets = tvYearDialCache.buckets;
     var counts = tvYearDialCache.counts;
     var n = buckets.length;
@@ -2249,6 +2610,9 @@
     if (!tile) return;
     var key = tile.getAttribute("data-genre");
     state.genre = state.genre === key ? "" : key; // tapping the active tile again clears it
+    // Picking a genre means catalog-wide filtering again, not a fixed playlist.
+    state.tvCustomPool = null;
+    state.tvCustomPlaylistId = null;
     renderTVGenreGrid(state.rows);
     updateFiltersToggleCount();
     render();
@@ -2298,6 +2662,7 @@
     els.mvgOnlyLabel.hidden = true;
     els.mvgOnlyTip.hidden = true;
     els.genreTip.hidden = true;
+    els.savePlaylistBtn.hidden = true; // Search-only -- nothing to "save as playlist" in TV Mode
     // No reason to collapse/expand filters in TV Mode -- they're the whole
     // point of the panel there, not an optional extra like on Search.
     els.filtersToggle.hidden = true;
@@ -2307,6 +2672,7 @@
     updateTVFilterTabUI();
     renderTVYearDial(state.rows);
     renderTVGenreGrid(state.rows);
+    renderTVCustomPane();
     updateFiltersToggleCount();
   }
 
@@ -2324,6 +2690,7 @@
     els.mvgOnlyLabel.hidden = false;
     els.mvgOnlyTip.hidden = false;
     els.genreTip.hidden = false;
+    els.savePlaylistBtn.hidden = false;
     els.filtersToggle.hidden = false;
     els.tvFilterTabs.hidden = true;
     applyFiltersExpanded(!!state.homeFiltersExpandedBeforeTV);
@@ -2372,6 +2739,8 @@
     if (els.tvModal.hidden) return;
     if (state.tv.active) teardownTV();
     els.videoBox.innerHTML = "";
+    state.tvCustomPool = null;
+    state.tvCustomPlaylistId = null;
     exitTVFilterMode();
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
@@ -2549,6 +2918,10 @@
   // preserve, so it just re-arms (re-rolls the hidden pick) instead.
   function refreshTVPoolIfActive() {
     if (els.tvModal.hidden) return;
+    // A playlist-driven custom pool ignores Country/etc entirely (it's an
+    // explicit, fixed list) -- once playing, there's nothing for a filter
+    // change to do; while still armed, armTV() below already draws from it.
+    if (state.tvCustomPool && state.tv.started) return;
     if (!state.tv.started) {
       armTV();
       return;
@@ -2582,7 +2955,9 @@
   // (toggling the power switch off).
   function armTV() {
     teardownTV();
-    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    var pool = state.tvCustomPool
+      ? state.tvCustomPool.filter(function (r) { return !!r.youtube; })
+      : state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
     if (!pool.length) {
       els.videoBox.innerHTML = emptyTVMarkup();
       return;
@@ -2603,6 +2978,7 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
+    els.tvPlaylistBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -2628,6 +3004,7 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
+    els.tvPlaylistBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -2832,6 +3209,7 @@
       adminEditBtn +
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
+      '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       "</div>" +
@@ -3223,6 +3601,10 @@
     document.body.classList.toggle("mobile-view-home", view === "home");
     document.body.classList.toggle("mobile-view-search", view === "search");
     document.body.classList.toggle("mobile-view-favorites", view === "favorites");
+    // No bottom-nav slot for Playlists (reached via the hamburger menu
+    // instead) -- still a real view, just without its own nav button to
+    // highlight.
+    document.body.classList.toggle("mobile-view-playlists", view === "playlists");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -3261,6 +3643,7 @@
   function setDesktopView(view) {
     document.body.classList.toggle("desktop-view-search", view === "search");
     document.body.classList.toggle("desktop-view-favorites", view === "favorites");
+    document.body.classList.toggle("desktop-view-playlists", view === "playlists");
   }
 
   els.sidebarHomeBtn.addEventListener("click", function () {
@@ -4481,6 +4864,11 @@
       favBtn.classList.toggle("is-active", nowFavorite);
       favBtn.textContent = nowFavorite ? "♥" : "♡";
       renderFavoritesStrip(state.rows);
+      return;
+    }
+    var playlistBtn = e.target.closest(".lightbox-playlist-btn");
+    if (playlistBtn) {
+      openAddToPlaylistPopover(playlistBtn.getAttribute("data-rownum"), playlistBtn);
       return;
     }
     var relBtn = e.target.closest(".related-btn");
