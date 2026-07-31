@@ -1273,16 +1273,55 @@ body.is-searching #featuredStrip {
    need any CSS beyond centering the button on that point. */
 .tv-year-dial:not([hidden]) {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
   flex: 1 0 100%;
   margin: 6px 0 2px;
+}
+
+/* Switches which bucket list the ring shows (see activeYearBuckets() in
+   app.js) -- three stacked options read as a vertical lever/switch rather
+   than a horizontal tab row, distinct from the Genre/Era tabs below. */
+.tv-year-lever {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 54px;
+  align-self: stretch;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tv-year-lever-opt {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+
+.tv-year-lever-opt:last-child {
+  border-bottom: none;
+}
+
+.tv-year-lever-opt.is-active {
+  background: var(--accent);
+  color: #fff;
 }
 
 .tv-year-dial-ring {
   position: relative;
   width: 100%;
-  max-width: 250px;
+  max-width: 210px;
   aspect-ratio: 1;
+  flex: 0 1 auto;
 }
 
 .tv-year-tick {
@@ -1313,6 +1352,31 @@ body.is-searching #featuredStrip {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+/* "Years" granularity can have 80+ ticks -- too many for the 34px circular
+   buttons above to stay legible or tappable that close together, so these
+   render as small unlabeled notches instead (the center hub shows the
+   label once one's tapped). Padding keeps the actual tap target bigger
+   than the visible mark. */
+.tv-year-tick-fine {
+  width: 14px;
+  height: 14px;
+  padding: 8px;
+  background: var(--border);
+  background-clip: content-box;
+  border: none;
+  border-radius: 2px;
+}
+
+.tv-year-tick-fine:hover {
+  background: var(--accent);
+}
+
+.tv-year-tick-fine.is-active {
+  background: var(--accent);
+  width: 16px;
+  height: 16px;
 }
 
 .tv-year-dial-center {
@@ -1453,6 +1517,16 @@ body.is-searching #featuredStrip {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.tv-custom-pane:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 0 100%;
+  min-height: 120px;
+  color: var(--text-faint);
+  font-size: 0.85rem;
 }
 
 #tvFiltersSlot .filters-toggle-row {
@@ -1703,21 +1777,47 @@ body.is-searching #featuredStrip {
   text-decoration: underline;
 }
 
-.tv-exit-btn {
-  margin-top: 0;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 5px 14px;
-  border-radius: 999px;
+/* Ever-present play/stop toggle, replacing the old text "Exit" button --
+   visible the whole time TV Mode is open (armed or playing), not just
+   while playing, so there's always a visible way to tell/change whether
+   it's running. .is-on (set in updateTVPowerSwitch()) slides the knob and
+   switches the track color. */
+.tv-power-switch {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 0;
   cursor: pointer;
 }
 
-.tv-exit-btn:hover {
-  border-color: #b3261e;
-  color: #b3261e;
+.tv-power-switch-track {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s ease;
+}
+
+.tv-power-switch.is-on .tv-power-switch-track {
+  background: #2e9e5b;
+}
+
+.tv-power-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.tv-power-switch.is-on .tv-power-switch-knob {
+  transform: translateX(18px);
 }
 
 /* Fav/info/admin edit-delete -- pushed to the end of .filters-toggle-row's

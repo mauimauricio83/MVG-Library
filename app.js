@@ -111,13 +111,16 @@
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     tvSkipBtn: document.getElementById("tvSkipBtn"),
     tvReportLink: document.getElementById("tvReportLink"),
-    tvExitBtn: document.getElementById("tvExitBtn"),
+    tvPowerSwitch: document.getElementById("tvPowerSwitch"),
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
     tvAdminDeleteBtn: document.getElementById("tvAdminDeleteBtn"),
     tvFavBtn: document.getElementById("tvFavBtn"),
     tvInfoBtn: document.getElementById("tvInfoBtn"),
     tvInfoPanel: document.getElementById("tvInfoPanel"),
     tvFilterTabs: document.getElementById("tvFilterTabs"),
+    tvYearDialRing: document.getElementById("tvYearDialRing"),
+    tvYearLever: document.getElementById("tvYearLever"),
+    tvCustomPane: document.getElementById("tvCustomPane"),
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
@@ -248,10 +251,12 @@
   // friendlier buckets (see enterTVFilterMode/exitTVFilterMode) -- exact
   // year/genre picking makes sense when you're hunting for something
   // specific on Search, but is too fussy for "surprise me" channel surfing.
-  // 2000s/90s/80s/70s each split into three; everything older (or with no
-  // year listed) folds into one "Pre-Music Video" bucket rather than adding
-  // more near-empty decades.
-  var TV_YEAR_BUCKETS = [
+  // Year has three granularities, switched via the dial's lever (see
+  // tvYearBucketForRow/state.tvYearGranularity): Eras (this list -- 2000s/
+  // 90s/80s/70s each split into three, "Years" for the dial-lever value,
+  // not to be confused with TV_YEAR_* below), Decades (coarser, no splits),
+  // and Years (exact, computed from the data -- see activeYearBuckets()).
+  var TV_ERA_BUCKETS = [
     { key: "2020s", label: "2020s", shortLabel: "20s", min: 2020, max: 2029 },
     { key: "2010s", label: "2010s", shortLabel: "10s", min: 2010, max: 2019 },
     { key: "2000s-late", label: "Late-2000s", shortLabel: "L00s", min: 2007, max: 2009 },
@@ -267,6 +272,18 @@
     { key: "1970s-mid", label: "Mid-70s", shortLabel: "M70s", min: 1974, max: 1976 },
     { key: "1970s-early", label: "Early-70s", shortLabel: "E70s", min: 1970, max: 1973 },
     { key: "pre-mv", label: "Pre-Music Video", shortLabel: "Pre-MV", min: -Infinity, max: 1969 }
+  ];
+
+  // Coarser than TV_ERA_BUCKETS -- no Early/Mid/Late split, just the plain
+  // decade.
+  var TV_DECADE_BUCKETS = [
+    { key: "d-2020s", label: "2020s", shortLabel: "20s", min: 2020, max: 2029 },
+    { key: "d-2010s", label: "2010s", shortLabel: "10s", min: 2010, max: 2019 },
+    { key: "d-2000s", label: "2000s", shortLabel: "00s", min: 2000, max: 2009 },
+    { key: "d-1990s", label: "90s", shortLabel: "90s", min: 1990, max: 1999 },
+    { key: "d-1980s", label: "80s", shortLabel: "80s", min: 1980, max: 1989 },
+    { key: "d-1970s", label: "70s", shortLabel: "70s", min: 1970, max: 1979 },
+    { key: "d-pre-mv", label: "Pre-Music Video", shortLabel: "Pre", min: -Infinity, max: 1969 }
   ];
 
   // 10 broad groups covering the catalog's ~190 distinct genre tags. Exact
@@ -353,18 +370,52 @@
     "Styles": "other", "Music": "other"
   };
 
-  function tvYearBucketFor(yearValue) {
+  function tvEraBucketFor(yearValue) {
     var y = parseInt(yearValue, 10);
     if (isNaN(y)) return "pre-mv";
-    for (var i = 0; i < TV_YEAR_BUCKETS.length; i++) {
-      var b = TV_YEAR_BUCKETS[i];
+    for (var i = 0; i < TV_ERA_BUCKETS.length; i++) {
+      var b = TV_ERA_BUCKETS[i];
       if (y >= b.min && y <= b.max) return b.key;
     }
     return "pre-mv";
   }
 
+  function tvDecadeBucketFor(yearValue) {
+    var y = parseInt(yearValue, 10);
+    if (isNaN(y)) return "d-pre-mv";
+    for (var i = 0; i < TV_DECADE_BUCKETS.length; i++) {
+      var b = TV_DECADE_BUCKETS[i];
+      if (y >= b.min && y <= b.max) return b.key;
+    }
+    return "d-pre-mv";
+  }
+
+  // Dispatches on state.tvYearGranularity (set by the dial's lever -- see
+  // #tvYearLever) so matchesYear() and renderTVYearDial() share one
+  // definition of "which bucket does this row fall into." "years" mode has
+  // no fixed bucket list -- the bucket key IS the row's own year string, so
+  // it just needs an exact match (see activeYearBuckets() for how those
+  // options get built).
   function tvYearBucketForRow(row) {
-    return tvYearBucketFor(row.year);
+    if (state.tvYearGranularity === "decades") return tvDecadeBucketFor(row.year);
+    if (state.tvYearGranularity === "years") return row.year ? String(row.year) : null;
+    return tvEraBucketFor(row.year);
+  }
+
+  // Builds the option list for whichever granularity is active. Eras/
+  // Decades are fixed lists; Years is computed from the data -- one bucket
+  // per distinct year actually present (ascending), no shortLabel since
+  // there can be 80+ of them and a per-tick label would be unreadable (see
+  // the fine-tick styling in renderTVYearDial()).
+  function activeYearBuckets(rows) {
+    if (state.tvYearGranularity === "decades") return TV_DECADE_BUCKETS;
+    if (state.tvYearGranularity === "years") {
+      var years = {};
+      rows.forEach(function (r) { if (r.year) years[r.year] = true; });
+      return Object.keys(years).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); })
+        .map(function (y) { return { key: y, label: y, shortLabel: "" }; });
+    }
+    return TV_ERA_BUCKETS;
   }
 
   function tvGenreGroupsForRow(row) {
@@ -521,6 +572,7 @@
     homeMvgOnlyBeforeTV: false,
     homeFiltersExpandedBeforeTV: false,
     tvActiveTab: "genre",
+    tvYearGranularity: "eras",
     isAdmin: false,
     adminRows: [],
     adminBulkParsed: [],
@@ -1948,7 +2000,7 @@
     state.tv.shellBuilt = false;
     els.tvSkipBtn.hidden = true;
     els.tvReportLink.hidden = true;
-    els.tvExitBtn.hidden = true;
+    els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
@@ -1967,37 +2019,61 @@
   // whatever's selected (or the totals when nothing is) and doubles as the
   // reset-to-All control.
   function renderTVYearDial(rows) {
+    var buckets = activeYearBuckets(rows);
     var counts = {};
-    TV_YEAR_BUCKETS.forEach(function (b) { counts[b.key] = 0; });
-    rows.forEach(function (r) { counts[tvYearBucketForRow(r)]++; });
+    buckets.forEach(function (b) { counts[b.key] = 0; });
+    rows.forEach(function (r) {
+      var k = tvYearBucketForRow(r);
+      if (k != null && counts.hasOwnProperty(k)) counts[k]++;
+    });
 
-    var n = TV_YEAR_BUCKETS.length;
+    // "Years" mode can have 80+ ticks -- too many for a per-tick label to
+    // stay readable, so those render as small unlabeled notches instead of
+    // the Eras/Decades circular buttons (the center hub is what shows the
+    // label once one's tapped).
+    var fine = state.tvYearGranularity === "years";
+    var n = buckets.length;
     var radius = 42; // percent of the ring's own box
     var ticksHtml = "";
-    TV_YEAR_BUCKETS.forEach(function (b, i) {
-      var angleDeg = -90 - (360 / n) * i; // start at 12 o'clock, go counter-clockwise (reversed, like a clock run backwards)
+    buckets.forEach(function (b, i) {
+      var angleDeg = n ? -90 - (360 / n) * i : -90; // start at 12 o'clock, go counter-clockwise
       var angleRad = angleDeg * Math.PI / 180;
       var x = 50 + radius * Math.cos(angleRad);
       var y = 50 + radius * Math.sin(angleRad);
       var active = state.year === b.key ? " is-active" : "";
-      ticksHtml += '<button type="button" class="tv-year-tick' + active + '" data-year="' + b.key +
+      var cls = fine ? "tv-year-tick tv-year-tick-fine" : "tv-year-tick";
+      ticksHtml += '<button type="button" class="' + cls + active + '" data-year="' + escapeHtml(b.key) +
         '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;" aria-label="' +
-        escapeHtml(b.label) + " (" + counts[b.key] + ')">' + escapeHtml(b.shortLabel) + "</button>";
+        escapeHtml(b.label) + " (" + counts[b.key] + ')">' + (fine ? "" : escapeHtml(b.shortLabel)) + "</button>";
     });
 
     var selected = null;
-    TV_YEAR_BUCKETS.forEach(function (b) { if (b.key === state.year) selected = b; });
-    var centerLabel = selected ? selected.label : "All Years";
+    buckets.forEach(function (b) { if (b.key === state.year) selected = b; });
+    var centerLabel = selected ? selected.label : (fine ? "All Years" : "All " + (state.tvYearGranularity === "decades" ? "Decades" : "Eras"));
     var centerCount = (selected ? counts[selected.key] : rows.length) + " videos";
 
-    els.tvYearDial.innerHTML =
-      '<div class="tv-year-dial-ring">' + ticksHtml +
-        '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
-          '<span class="tv-year-dial-center-label">' + escapeHtml(centerLabel) + "</span>" +
-          '<span class="tv-year-dial-center-count">' + centerCount + "</span>" +
-        "</button>" +
-      "</div>";
+    els.tvYearDialRing.innerHTML = ticksHtml +
+      '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
+        '<span class="tv-year-dial-center-label">' + escapeHtml(centerLabel) + "</span>" +
+        '<span class="tv-year-dial-center-count">' + centerCount + "</span>" +
+      "</button>";
+
+    Array.prototype.forEach.call(els.tvYearLever.querySelectorAll(".tv-year-lever-opt"), function (btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-granularity") === state.tvYearGranularity);
+    });
   }
+
+  els.tvYearLever.addEventListener("click", function (e) {
+    var opt = e.target.closest(".tv-year-lever-opt");
+    if (!opt) return;
+    var granularity = opt.getAttribute("data-granularity");
+    if (granularity === state.tvYearGranularity) return;
+    state.tvYearGranularity = granularity;
+    state.year = ""; // bucket keys aren't comparable across granularities
+    renderTVYearDial(state.rows);
+    updateFiltersToggleCount();
+    render();
+  });
 
   els.tvYearDial.addEventListener("click", function (e) {
     var tick = e.target.closest(".tv-year-tick");
@@ -2060,6 +2136,7 @@
     });
     els.tvGenreGrid.hidden = state.tvActiveTab !== "genre";
     els.tvYearDial.hidden = state.tvActiveTab !== "era";
+    els.tvCustomPane.hidden = state.tvActiveTab !== "custom";
   }
 
   els.tvFilterTabs.addEventListener("click", function (e) {
@@ -2076,7 +2153,8 @@
     state.homeMvgOnlyBeforeTV = state.mvgOnly;
     state.homeFiltersExpandedBeforeTV = els.filtersPanel.hidden ? false : true;
     state.tvFilterMode = true;
-    state.year = state.homeYearBeforeTV ? tvYearBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
+    state.tvYearGranularity = "eras";
+    state.year = state.homeYearBeforeTV ? tvEraBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
     state.genre = state.homeGenreBeforeTV ? (TV_GENRE_MAP[state.homeGenreBeforeTV] || "other") : "";
     // MVG Reels/tooltips are hidden in TV Mode (see below) to keep the panel
     // short -- reset the toggle rather than silently applying a filter the
@@ -2357,10 +2435,19 @@
     loadTVTrack(state.tv.queue[0], wasPaused);
   }
 
+  // Reflects play/pause state on the ever-present power switch (replaces
+  // the old "Exit" button -- see #tvPowerSwitch) rather than only showing a
+  // control while actually playing.
+  function updateTVPowerSwitch(isOn) {
+    els.tvPowerSwitch.classList.toggle("is-on", isOn);
+    els.tvPowerSwitch.setAttribute("aria-pressed", isOn ? "true" : "false");
+  }
+
   // Picks a random track from the current filters and shows the static
   // "channel ready" screen instead of playing it immediately -- see
   // tvStaticMarkup(). Also used to re-roll while armed (filter changes) and
-  // to return to the armed screen after exiting an actively playing track.
+  // to return to the armed screen after exiting an actively playing track
+  // (toggling the power switch off).
   function armTV() {
     teardownTV();
     var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
@@ -2372,6 +2459,8 @@
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
     els.videoBox.innerHTML = tvStaticMarkup();
+    els.tvPowerSwitch.hidden = false;
+    updateTVPowerSwitch(false);
   }
 
   function playArmedTV() {
@@ -2381,9 +2470,10 @@
     loadTVTrack(state.tv.queue[state.tv.index]);
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
-    els.tvExitBtn.hidden = false;
     els.tvFavBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
+    els.tvPowerSwitch.hidden = false;
+    updateTVPowerSwitch(true);
   }
 
   // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
@@ -2405,9 +2495,10 @@
     loadTVTrack(state.tv.queue[0]);
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
-    els.tvExitBtn.hidden = false;
     els.tvFavBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
+    els.tvPowerSwitch.hidden = false;
+    updateTVPowerSwitch(true);
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
@@ -2433,15 +2524,23 @@
   // Skip/Report issue/Exit live beside Clear filters (in
   // .filters-toggle-row) rather than in a player overlay bar -- easier to
   // reach on mobile without a thumb covering the video, and there's no bar
-  // left to put them in now that the redundant title is gone. All three
-  // only matter once actually playing (see playArmedTV()/startTVMode() for
-  // the show, teardownTV() for the hide).
+  // left to put them in now that the redundant title is gone. Skip only
+  // matters once actually playing (see playArmedTV()/startTVMode() for the
+  // show, teardownTV() for the hide).
   els.tvSkipBtn.addEventListener("click", function () {
     advanceTV();
   });
 
-  els.tvExitBtn.addEventListener("click", function () {
-    armTV();
+  // Ever-present power switch (replaces the old "Exit" button) -- visible
+  // the whole time TV Mode is open, armed or playing, not just while
+  // playing. Off -> on presses play on whatever's armed; on -> off goes
+  // back to the armed/static screen (same as the old Exit).
+  els.tvPowerSwitch.addEventListener("click", function () {
+    if (state.tv.started) {
+      armTV();
+    } else {
+      playArmedTV();
+    }
   });
 
   els.tvFavBtn.addEventListener("click", function () {
