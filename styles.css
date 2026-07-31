@@ -1356,17 +1356,20 @@ body.is-searching #featuredStrip {
 
 /* "Years" granularity can have 80+ ticks -- too many for the 34px circular
    buttons above to stay legible or tappable that close together, so these
-   render as small unlabeled notches instead (the center hub shows the
-   label once one's tapped). Padding keeps the actual tap target bigger
-   than the visible mark. */
+   render as small radial minute-notch marks instead, like a clock face
+   (each one pre-rotated in app.js to point outward from the center). Fairly
+   generous padding keeps the actual tap target bigger than the visible
+   mark; background-clip keeps that padding invisible. var(--text-muted)
+   instead of var(--border) for the resting color -- --border is too close
+   to the dark-theme background to read as a mark at all. */
 .tv-year-tick-fine {
-  width: 14px;
-  height: 14px;
-  padding: 8px;
-  background: var(--border);
+  width: 2px;
+  height: 11px;
+  padding: 9px 12px;
+  background: var(--text-muted);
   background-clip: content-box;
   border: none;
-  border-radius: 2px;
+  border-radius: 1px;
 }
 
 .tv-year-tick-fine:hover {
@@ -1375,8 +1378,25 @@ body.is-searching #featuredStrip {
 
 .tv-year-tick-fine.is-active {
   background: var(--accent);
-  width: 16px;
-  height: 16px;
+  height: 14px;
+}
+
+/* Points at whichever tick is selected (resting at 12 o'clock/"All" when
+   nothing is) -- clearer than trying to make one of 80 close-together
+   notches visibly stand out on its own. Rotation is set inline in
+   renderTVYearDial() per the selected tick's angle. */
+.tv-year-dial-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 3px;
+  height: 34%;
+  background: var(--accent);
+  transform-origin: 50% 100%;
+  border-radius: 2px 2px 0 0;
+  pointer-events: none;
+  transition: transform 0.25s ease;
+  z-index: 1;
 }
 
 .tv-year-dial-center {
@@ -2704,6 +2724,17 @@ body.is-searching #featuredStrip {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  /* Breathing room between the video/buttons and the modal's own edge --
+     everything used to sit flush against it. Kept as a fixed size rather
+     than shrinking any of the buttons/tiles to make space; see the
+     min-width bump on desktop below to make up the difference. */
+  padding: 14px;
+}
+
+@media (min-width: 641px) {
+  #tvModal .lightbox-panel {
+    max-width: 780px;
+  }
 }
 
 #tvModal #tvAdPlaceholder {

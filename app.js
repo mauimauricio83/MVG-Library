@@ -403,16 +403,17 @@
   }
 
   // Builds the option list for whichever granularity is active. Eras/
-  // Decades are fixed lists; Years is computed from the data -- one bucket
-  // per distinct year actually present (ascending), no shortLabel since
-  // there can be 80+ of them and a per-tick label would be unreadable (see
-  // the fine-tick styling in renderTVYearDial()).
+  // Decades are fixed lists (newest first); Years is computed from the data
+  // -- one bucket per distinct year actually present, also newest first to
+  // match, no shortLabel since there can be 80+ of them and a per-tick
+  // label would be unreadable (see the fine-tick styling in
+  // renderTVYearDial()).
   function activeYearBuckets(rows) {
     if (state.tvYearGranularity === "decades") return TV_DECADE_BUCKETS;
     if (state.tvYearGranularity === "years") {
       var years = {};
       rows.forEach(function (r) { if (r.year) years[r.year] = true; });
-      return Object.keys(years).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); })
+      return Object.keys(years).sort(function (a, b) { return parseInt(b, 10) - parseInt(a, 10); })
         .map(function (y) { return { key: y, label: y, shortLabel: "" }; });
     }
     return TV_ERA_BUCKETS;
@@ -2028,22 +2029,28 @@
     });
 
     // "Years" mode can have 80+ ticks -- too many for a per-tick label to
-    // stay readable, so those render as small unlabeled notches instead of
-    // the Eras/Decades circular buttons (the center hub is what shows the
-    // label once one's tapped).
+    // stay readable, so those render as small radial minute-notch marks
+    // (like a clock face) instead of the Eras/Decades circular buttons; the
+    // center hub is what shows the label once one's tapped, and a hand
+    // points at whichever's selected since 80 near-identical notches are
+    // hard to tell apart otherwise.
     var fine = state.tvYearGranularity === "years";
     var n = buckets.length;
     var radius = 42; // percent of the ring's own box
     var ticksHtml = "";
+    var handCssRotate = 0; // resting at 12 o'clock when nothing's selected
     buckets.forEach(function (b, i) {
       var angleDeg = n ? -90 - (360 / n) * i : -90; // start at 12 o'clock, go counter-clockwise
+      var cssRotate = angleDeg + 90; // convert to a CSS rotate() where 0deg = up, clockwise-positive
       var angleRad = angleDeg * Math.PI / 180;
       var x = 50 + radius * Math.cos(angleRad);
       var y = 50 + radius * Math.sin(angleRad);
       var active = state.year === b.key ? " is-active" : "";
+      if (state.year === b.key) handCssRotate = cssRotate;
       var cls = fine ? "tv-year-tick tv-year-tick-fine" : "tv-year-tick";
+      var transform = "translate(-50%, -50%)" + (fine ? " rotate(" + cssRotate.toFixed(1) + "deg)" : "");
       ticksHtml += '<button type="button" class="' + cls + active + '" data-year="' + escapeHtml(b.key) +
-        '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;" aria-label="' +
+        '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;transform:' + transform + ';" aria-label="' +
         escapeHtml(b.label) + " (" + counts[b.key] + ')">' + (fine ? "" : escapeHtml(b.shortLabel)) + "</button>";
     });
 
@@ -2053,6 +2060,7 @@
     var centerCount = (selected ? counts[selected.key] : rows.length) + " videos";
 
     els.tvYearDialRing.innerHTML = ticksHtml +
+      '<div class="tv-year-dial-hand" style="transform:translateX(-50%) rotate(' + handCssRotate.toFixed(1) + 'deg);"></div>' +
       '<button type="button" class="tv-year-dial-center" id="tvYearDialCenter">' +
         '<span class="tv-year-dial-center-label">' + escapeHtml(centerLabel) + "</span>" +
         '<span class="tv-year-dial-center-count">' + centerCount + "</span>" +
