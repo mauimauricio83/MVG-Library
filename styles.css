@@ -576,12 +576,12 @@ html, body {
 }
 
 @media (max-width: 640px) {
-  /* Top bar: logo/title centered, hamburger pulled out to the top-right
+  /* Top bar: logo/title centered, hamburger pulled out to the top-left
      corner instead of sitting in normal flow beside them. */
   .top-bar {
     position: relative;
     justify-content: center;
-    padding: 16px 54px 12px 20px;
+    padding: 16px 20px 12px 54px;
     border-bottom: none;
   }
 
@@ -604,6 +604,8 @@ html, body {
     width: 40px;
     height: 40px;
     top: 8px;
+    left: 16px;
+    right: auto;
     margin-left: 0;
   }
 
@@ -650,12 +652,9 @@ html, body {
     align-items: stretch;
     justify-content: flex-start;
     gap: 0;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: fixed;
+    inset: 0;
     width: auto;
-    min-height: 100vh;
     z-index: 1000;
     margin: 0;
     padding: 72px 28px 28px;
@@ -663,13 +662,15 @@ html, body {
     border-radius: 0;
     background: var(--bg);
     text-align: left;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .header-links.is-open .header-menu-close {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
+    position: fixed;
     top: 16px;
     right: 16px;
     width: 42px;
@@ -2036,10 +2037,10 @@ body.is-searching #featuredStrip {
 .tv-power-switch-track {
   position: relative;
   display: block;
-  width: 42px;
-  height: 24px;
+  width: 58px;
+  height: 26px;
   border-radius: 999px;
-  background: var(--border);
+  background: #c4293f;
   transition: background 0.15s ease;
 }
 
@@ -2047,12 +2048,42 @@ body.is-searching #featuredStrip {
   background: #2e9e5b;
 }
 
+.tv-power-switch-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.tv-power-switch-label-on {
+  left: 8px;
+}
+
+.tv-power-switch-label-off {
+  right: 7px;
+  opacity: 1;
+}
+
+.tv-power-switch.is-on .tv-power-switch-label-on {
+  opacity: 1;
+}
+
+.tv-power-switch.is-on .tv-power-switch-label-off {
+  opacity: 0;
+}
+
 .tv-power-switch-knob {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -2060,7 +2091,7 @@ body.is-searching #featuredStrip {
 }
 
 .tv-power-switch.is-on .tv-power-switch-knob {
-  transform: translateX(18px);
+  transform: translateX(32px);
 }
 
 /* Fav/info/admin edit-delete -- pushed to the end of .filters-toggle-row's

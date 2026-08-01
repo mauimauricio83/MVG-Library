@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.6.0 — current
+## v5.6.1 — current
+- TV Mode's play/stop switch moved next to Clear filters (leftmost of the TV controls) and grown to fit an ON/OFF label inside the track, red when off / green when on.
+- Mobile hamburger menu moved from top-right to top-left.
+- Fixed the mobile sidebar menu being uninteractable past whatever the viewport could fit (body scroll is locked while it's open, and the menu itself had no scroll of its own) -- it's now a fixed, independently-scrollable panel with its own close button pinned in place.
+
+## v5.6.0
 - Added a 4:3 crop toggle to both video players (video-detail lightbox and TV Mode): scales the embed up and clips the left/right edges rather than re-encoding anything, so the source video is untouched and the toggle is instant (no reload). Preference persists per-player across sessions.
 
 ## v5.5.0
