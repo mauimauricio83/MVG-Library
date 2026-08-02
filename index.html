@@ -107,6 +107,10 @@
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
       <span class="header-links-label">Playlists</span>
     </button>
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarProfilesBtn">
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 5.9"/><path d="M18.5 14a5.5 5.5 0 0 1 3.5 5.9"/></svg></span>
+      <span class="header-links-label">Profiles</span>
+    </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
@@ -383,6 +387,61 @@
         <button type="button" class="media-strip-arrow" id="playlistDetailNext" aria-label="Show next">›</button>
       </div>
     </div>
+  </section>
+
+  <!-- Public directory of musician/director/production profiles -- reached
+       via the sidebar/hamburger Profiles button. A browse grid by default,
+       swapping to an edit form (signed-in users only) via profilesEditBtn.
+       Clicking a card opens the real entry lightbox (openProfileLightbox())
+       with the embedded YouTube reel, reusing that same modal shell rather
+       than building a second one. -->
+  <section class="media-strip" id="profilesPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">🎬 Profiles</span>
+      <div class="media-strip-head-actions">
+        <button type="button" class="media-strip-play-all" id="profilesEditBtn">Edit my profile</button>
+      </div>
+    </div>
+
+    <div class="profiles-browse" id="profilesBrowse">
+      <p class="profiles-signin-note" id="profilesSigninNote">Sign in to create your own profile and appear here.</p>
+      <div class="profiles-grid" id="profilesGrid"></div>
+      <p class="profiles-empty" id="profilesEmptyMsg" hidden>No profiles yet — be the first to create one.</p>
+    </div>
+
+    <form class="profile-editor" id="profileEditor" hidden>
+      <button type="button" class="tv-exit-btn" id="profileEditorBackBtn">‹ Back to Profiles</button>
+      <label class="profile-field">
+        <span>Display name</span>
+        <input type="text" id="profileNameInput" maxlength="60" required>
+      </label>
+      <label class="profile-field">
+        <span>Role</span>
+        <select id="profileRoleInput">
+          <option value="musician">Musician / artist</option>
+          <option value="director">Director</option>
+          <option value="production">Production / studio</option>
+        </select>
+      </label>
+      <label class="profile-field">
+        <span>Bio</span>
+        <textarea id="profileBioInput" maxlength="500" rows="4" placeholder="A short bio -- what you do, what you're looking for."></textarea>
+      </label>
+      <label class="profile-field">
+        <span>YouTube reel URL</span>
+        <input type="url" id="profileReelInput" placeholder="https://youtube.com/watch?v=...">
+      </label>
+      <label class="profile-field">
+        <span>Photo</span>
+        <input type="file" id="profilePhotoInput" accept="image/*">
+      </label>
+      <img class="profile-photo-preview" id="profilePhotoPreview" alt="" hidden>
+      <div class="profile-editor-actions">
+        <button type="submit" class="media-strip-play-all" id="profileSaveBtn">Save profile</button>
+        <button type="button" class="tv-admin-delete-btn" id="profileDeleteBtn" hidden aria-label="Delete profile" title="Delete profile">🗑 Delete</button>
+      </div>
+      <p class="profile-editor-status" id="profileEditorStatus" hidden></p>
+    </form>
   </section>
 
   <div class="results-layout">

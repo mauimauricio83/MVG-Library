@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.6.1 — current
+## v5.7.0 — current
+- Added Profiles: a first-pass public directory for musicians/directors/productions to be discoverable, reached via the sidebar/hamburger. Signed-in users can create one profile (name, role, short bio, one embedded YouTube reel, an optional photo -- resized client-side before upload). Everyone else can browse the grid and open a profile to watch its reel in the existing entry-lightbox player. New `profiles/{uid}` Firestore collection (public read, owner write, field-validated, banned-user gated) and `profile-photos/{uid}` Storage path -- deliberately scoped to browse-only for now, no matching or messaging yet.
+
+## v5.6.1
 - TV Mode's play/stop switch moved next to Clear filters (leftmost of the TV controls) and grown to fit an ON/OFF label inside the track, red when off / green when on.
 - Mobile hamburger menu moved from top-right to top-left.
 - Fixed the mobile sidebar menu being uninteractable past whatever the viewport could fit (body scroll is locked while it's open, and the menu itself had no scroll of its own) -- it's now a fixed, independently-scrollable panel with its own close button pinned in place.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.6.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.7.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -179,6 +179,24 @@
     addPlaylistClose: document.getElementById("addPlaylistClose"),
     addPlaylistNewName: document.getElementById("addPlaylistNewName"),
     addPlaylistCreateBtn: document.getElementById("addPlaylistCreateBtn"),
+    sidebarProfilesBtn: document.getElementById("sidebarProfilesBtn"),
+    profilesPage: document.getElementById("profilesPage"),
+    profilesEditBtn: document.getElementById("profilesEditBtn"),
+    profilesBrowse: document.getElementById("profilesBrowse"),
+    profilesSigninNote: document.getElementById("profilesSigninNote"),
+    profilesGrid: document.getElementById("profilesGrid"),
+    profilesEmptyMsg: document.getElementById("profilesEmptyMsg"),
+    profileEditor: document.getElementById("profileEditor"),
+    profileEditorBackBtn: document.getElementById("profileEditorBackBtn"),
+    profileNameInput: document.getElementById("profileNameInput"),
+    profileRoleInput: document.getElementById("profileRoleInput"),
+    profileBioInput: document.getElementById("profileBioInput"),
+    profileReelInput: document.getElementById("profileReelInput"),
+    profilePhotoInput: document.getElementById("profilePhotoInput"),
+    profilePhotoPreview: document.getElementById("profilePhotoPreview"),
+    profileSaveBtn: document.getElementById("profileSaveBtn"),
+    profileDeleteBtn: document.getElementById("profileDeleteBtn"),
+    profileEditorStatus: document.getElementById("profileEditorStatus"),
     topBarSearchInput: document.getElementById("topBarSearchInput"),
     topBarSearchClear: document.getElementById("topBarSearchClear"),
     topBarSettingsBtn: document.getElementById("topBarSettingsBtn"),
@@ -580,6 +598,7 @@
     mvgOnly: false,
     activeLetter: null,
     lightboxRowNum: null,
+    lightboxProfileUid: null,
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     lightboxCrop: loadLightboxCropPref(),
@@ -2072,6 +2091,279 @@
     if (row) openAddToPlaylistPopover(row.rowNum, els.tvPlaylistBtn);
   });
 
+  // ---- Profiles: public musician/director/production directory ---------
+  // A draft/first-pass feature: a public directory (profiles/{uid} in
+  // Firestore, public-read/owner-write -- see firestore.rules) of short
+  // profiles with one embedded YouTube reel each, so musicians and
+  // productions can find each other's work. Deliberately minimal for now --
+  // no matching/messaging, just browse + a "request to collaborate" style
+  // link is left for a later pass.
+  var PROFILE_ROLE_LABELS = { musician: "Musician / artist", director: "Director", production: "Production / studio" };
+  var profilesCache = [];
+  var pendingPhotoBlob = null;
+  var pendingPhotoPreviewUrl = null;
+
+  function renderProfileCard(profile) {
+    var roleLabel = PROFILE_ROLE_LABELS[profile.role] || profile.role || "";
+    var initial = (profile.displayName || "?").trim().slice(0, 1).toUpperCase();
+    var photoHtml = profile.photoURL
+      ? '<img src="' + escapeHtml(profile.photoURL) + '" alt="" loading="lazy">'
+      : escapeHtml(initial);
+    return '<button type="button" class="profile-card" data-uid="' + escapeHtml(profile.uid) + '">' +
+      '<div class="profile-card-photo">' + photoHtml + "</div>" +
+      '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + "</div>" +
+      '<div class="profile-card-role">' + escapeHtml(roleLabel) + "</div>" +
+      (profile.bio ? '<p class="profile-card-bio">' + escapeHtml(profile.bio) + "</p>" : "") +
+      "</button>";
+  }
+
+  function renderProfilesGrid(profiles) {
+    els.profilesGrid.innerHTML = profiles.map(renderProfileCard).join("");
+    els.profilesEmptyMsg.hidden = !!profiles.length;
+  }
+
+  function loadAllProfiles() {
+    return db.collection("profiles").get().then(function (snap) {
+      var profiles = snap.docs.map(function (doc) {
+        var d = doc.data();
+        d.uid = doc.id;
+        return d;
+      });
+      profiles.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+      profilesCache = profiles;
+      renderProfilesGrid(profiles);
+    }).catch(function (err) {
+      console.error("Loading profiles failed:", err);
+      els.profilesGrid.innerHTML = "";
+      els.profilesEmptyMsg.hidden = false;
+    });
+  }
+
+  function updateProfilesAuthUI() {
+    els.profilesEditBtn.hidden = !currentUser;
+    els.profilesSigninNote.hidden = !!currentUser;
+  }
+
+  function showProfilesBrowse() {
+    els.profilesBrowse.hidden = false;
+    els.profileEditor.hidden = true;
+  }
+
+  function showProfileEditorView() {
+    els.profilesBrowse.hidden = true;
+    els.profileEditor.hidden = false;
+  }
+
+  function resetProfilePhotoPick() {
+    if (pendingPhotoPreviewUrl) URL.revokeObjectURL(pendingPhotoPreviewUrl);
+    pendingPhotoBlob = null;
+    pendingPhotoPreviewUrl = null;
+    els.profilePhotoInput.value = "";
+  }
+
+  // Downscales to at most 400px on the long edge before upload -- keeps
+  // storage/bandwidth cheap without needing a server-side image pipeline
+  // (matches the "keep it cheap" approach the snapshot gzip already takes).
+  function resizeImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var maxSide = 400;
+        var scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        var w = Math.round(img.width * scale);
+        var h = Math.round(img.height * scale);
+        var canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob); else reject(new Error("Image encode failed"));
+        }, "image/jpeg", 0.85);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image load failed"));
+      };
+      img.src = url;
+    });
+  }
+
+  function openProfileEditorForm() {
+    if (!currentUser) return;
+    resetProfilePhotoPick();
+    els.profilePhotoPreview.hidden = true;
+    els.profileEditorStatus.hidden = true;
+    els.profileNameInput.value = "";
+    els.profileRoleInput.value = "musician";
+    els.profileBioInput.value = "";
+    els.profileReelInput.value = "";
+    els.profileDeleteBtn.hidden = true;
+    db.collection("profiles").doc(currentUser.uid).get().then(function (doc) {
+      if (!doc.exists) return;
+      var d = doc.data();
+      els.profileNameInput.value = d.displayName || "";
+      els.profileRoleInput.value = d.role || "musician";
+      els.profileBioInput.value = d.bio || "";
+      els.profileReelInput.value = d.youtubeUrl || "";
+      if (d.photoURL) {
+        els.profilePhotoPreview.src = d.photoURL;
+        els.profilePhotoPreview.hidden = false;
+      }
+      els.profileDeleteBtn.hidden = false;
+    });
+    showProfileEditorView();
+  }
+
+  els.sidebarProfilesBtn.addEventListener("click", function () {
+    sharedFavoritesUid = null;
+    showProfilesBrowse();
+    updateProfilesAuthUI();
+    loadAllProfiles();
+    setDesktopView("profiles");
+    setMobileView("profiles");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.profilesEditBtn.addEventListener("click", openProfileEditorForm);
+  els.profileEditorBackBtn.addEventListener("click", showProfilesBrowse);
+
+  els.profilesGrid.addEventListener("click", function (e) {
+    var card = e.target.closest(".profile-card");
+    if (!card) return;
+    var uid = card.getAttribute("data-uid");
+    var profile = profilesCache.filter(function (p) { return p.uid === uid; })[0];
+    if (profile) openProfileLightbox(profile);
+  });
+
+  els.profilePhotoInput.addEventListener("change", function () {
+    var file = els.profilePhotoInput.files[0];
+    if (!file) return;
+    resizeImageFile(file).then(function (blob) {
+      pendingPhotoBlob = blob;
+      if (pendingPhotoPreviewUrl) URL.revokeObjectURL(pendingPhotoPreviewUrl);
+      pendingPhotoPreviewUrl = URL.createObjectURL(blob);
+      els.profilePhotoPreview.src = pendingPhotoPreviewUrl;
+      els.profilePhotoPreview.hidden = false;
+    }).catch(function (err) {
+      console.error("Photo resize failed:", err);
+      els.profileEditorStatus.textContent = "Couldn't read that image -- try a different file.";
+      els.profileEditorStatus.className = "profile-editor-status is-error";
+      els.profileEditorStatus.hidden = false;
+    });
+  });
+
+  els.profileEditor.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!currentUser) return;
+    var name = els.profileNameInput.value.trim();
+    if (!name) return;
+    els.profileSaveBtn.disabled = true;
+    els.profileEditorStatus.hidden = true;
+
+    var uploadPromise = pendingPhotoBlob
+      ? firebase.storage().ref("profile-photos/" + currentUser.uid).put(pendingPhotoBlob, { contentType: "image/jpeg" })
+          .then(function (snap) { return snap.ref.getDownloadURL(); })
+      : Promise.resolve(els.profilePhotoPreview.hidden ? "" : els.profilePhotoPreview.src);
+
+    uploadPromise.then(function (photoURL) {
+      return db.collection("profiles").doc(currentUser.uid).set({
+        displayName: name,
+        role: els.profileRoleInput.value,
+        bio: els.profileBioInput.value.trim(),
+        youtubeUrl: els.profileReelInput.value.trim(),
+        photoURL: photoURL || "",
+        updatedAt: Date.now()
+      });
+    }).then(function () {
+      resetProfilePhotoPick();
+      showProfilesBrowse();
+      loadAllProfiles();
+    }).catch(function (err) {
+      console.error("Saving profile failed:", err);
+      els.profileEditorStatus.textContent = "Something went wrong -- please try again.";
+      els.profileEditorStatus.className = "profile-editor-status is-error";
+      els.profileEditorStatus.hidden = false;
+    }).finally(function () {
+      els.profileSaveBtn.disabled = false;
+    });
+  });
+
+  els.profileDeleteBtn.addEventListener("click", function () {
+    if (!currentUser) return;
+    if (!window.confirm("Delete your profile? This can't be undone.")) return;
+    db.collection("profiles").doc(currentUser.uid).delete().then(function () {
+      resetProfilePhotoPick();
+      showProfilesBrowse();
+      loadAllProfiles();
+    }).catch(function (err) {
+      console.error("Deleting profile failed:", err);
+    });
+  });
+
+  // Reuses the entry-lightbox shell (els.lightbox/els.lightboxContent) rather
+  // than building a second modal -- see CLAUDE.md's modal pattern note. Only
+  // renders Widen/Crop (no fav/playlist/admin buttons, which are row-only
+  // concepts a profile doesn't have).
+  function openProfileLightbox(profile) {
+    if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
+    destroyLightboxPlayer();
+    els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
+    state.lightboxRowNum = null;
+    state.lightboxProfileUid = profile.uid;
+    document.title = (profile.displayName || "Profile") + " | MVG Library";
+
+    var id = extractYouTubeId(profile.youtubeUrl);
+    var videoHtml = id
+      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
+      : '<div class="lightbox-video-empty">No reel uploaded yet.</div>';
+
+    var roleLabel = PROFILE_ROLE_LABELS[profile.role] || profile.role || "";
+    var photoHtml = profile.photoURL
+      ? '<img class="profile-lightbox-photo" src="' + escapeHtml(profile.photoURL) + '" alt="">'
+      : '<div class="profile-lightbox-photo profile-lightbox-photo-placeholder">' +
+        escapeHtml((profile.displayName || "?").trim().slice(0, 1).toUpperCase()) + "</div>";
+
+    els.lightboxContent.innerHTML =
+      videoHtml +
+      '<div class="lightbox-body">' +
+      '<div class="lightbox-title-row">' +
+      '<div class="profile-lightbox-head">' +
+      photoHtml +
+      "<div>" +
+      '<h2 class="lightbox-title">' + escapeHtml(profile.displayName || "Untitled") + "</h2>" +
+      '<p class="lightbox-subtitle">' + escapeHtml(roleLabel) + "</p>" +
+      "</div></div>" +
+      (id
+        ? '<div class="lightbox-title-actions">' +
+          '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
+          '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
+          "</div>"
+        : "") +
+      "</div>" +
+      (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
+      "</div>";
+
+    els.lightbox.hidden = false;
+    els.lightboxPanel.scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+    applyLightboxSize();
+    applyLightboxCrop();
+
+    if (id) {
+      var uidAtOpen = profile.uid;
+      loadYouTubeAPI(function () {
+        if (els.lightbox.hidden || state.lightboxProfileUid !== uidAtOpen) return;
+        state.lightboxPlayer = new YT.Player("lightboxPlayerTarget", {
+          videoId: id,
+          playerVars: { autoplay: loadAutoplayPref() ? 1 : 0, rel: 0 }
+        });
+      });
+    }
+  }
+
   // ---- TV Mode's Custom tab: pick a playlist as the channel's source ---
   function renderTVCustomPane() {
     var list = loadPlaylists();
@@ -3218,6 +3510,7 @@
     destroyLightboxPlayer();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
+    state.lightboxProfileUid = null;
     document.title = (row.song || "Untitled") + (row.artist ? " — " + row.artist : "") + " | MVG Library";
     pushRecentlyViewed(row.rowNum);
     renderRecentList(state.rows);
@@ -3328,6 +3621,7 @@
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
     state.lightboxRowNum = null;
+    state.lightboxProfileUid = null;
     document.title = DEFAULT_TITLE;
     unlockBodyScroll();
   }
@@ -3661,6 +3955,7 @@
     // instead) -- still a real view, just without its own nav button to
     // highlight.
     document.body.classList.toggle("mobile-view-playlists", view === "playlists");
+    document.body.classList.toggle("mobile-view-profiles", view === "profiles");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -3700,6 +3995,7 @@
     document.body.classList.toggle("desktop-view-search", view === "search");
     document.body.classList.toggle("desktop-view-favorites", view === "favorites");
     document.body.classList.toggle("desktop-view-playlists", view === "playlists");
+    document.body.classList.toggle("desktop-view-profiles", view === "profiles");
   }
 
   els.sidebarHomeBtn.addEventListener("click", function () {
@@ -5303,6 +5599,7 @@
       els.topBarAdminBtn.hidden = true;
     }
     watchMsgBoardOwnStatus();
+    updateProfilesAuthUI();
   });
 
   fetchData();

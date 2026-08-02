@@ -285,6 +285,12 @@ html, body {
   display: none;
 }
 
+/* Same dedicated-page pattern again, for the Profiles directory
+   (desktop-view-profiles/mobile-view-profiles below). */
+#profilesPage {
+  display: none;
+}
+
 /* Chip row lists every playlist by name -- tap to switch which one's
    detail view (below) is showing. Mirrors .tv-filter-tab's pill look. */
 .playlists-chip-row {
@@ -366,6 +372,171 @@ html, body {
 .tv-exit-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.profiles-signin-note {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 0 0 14px;
+}
+
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.profiles-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 32px 12px;
+  font-size: 0.88rem;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.profile-card:hover {
+  border-color: var(--accent);
+}
+
+.profile-card-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.profile-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-card-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.profile-card-role {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.profile-card-bio {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.profile-field input,
+.profile-field select,
+.profile-field textarea {
+  font: inherit;
+  font-weight: 400;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.profile-field textarea {
+  resize: vertical;
+}
+
+.profile-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  align-self: flex-start;
+}
+
+.profile-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-editor-status {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.profile-editor-status.is-error {
+  color: #c4293f;
+}
+
+.profile-lightbox-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.profile-lightbox-photo {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.profile-lightbox-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 700;
 }
 
 .top-bar-home-link {
@@ -994,7 +1165,8 @@ body.is-searching #featuredStrip {
   #latestStrip,
   #featuredStrip,
   #favoritesStrip,
-  #playlistsPage {
+  #playlistsPage,
+  #profilesPage {
     border: none;
     background: none;
     padding: 0;
@@ -1172,6 +1344,28 @@ body.is-searching #featuredStrip {
   body.desktop-view-playlists #status,
   body.desktop-view-playlists .results-layout,
   body.desktop-view-playlists #jumpNavBottom {
+    display: none;
+  }
+
+  /* Profiles: reached via the sidebar's Profiles link, which calls
+     setDesktopView("profiles") -- same pattern as Playlists just above. */
+  body.desktop-view-profiles #profilesPage {
+    display: block;
+  }
+
+  body.desktop-view-profiles .about-strip,
+  body.desktop-view-profiles #spotlightSidebar,
+  body.desktop-view-profiles #blogLatestSidebar,
+  body.desktop-view-profiles .ad-placeholder,
+  body.desktop-view-profiles #latestStrip,
+  body.desktop-view-profiles #videoEmbed,
+  body.desktop-view-profiles #featuredStrip,
+  body.desktop-view-profiles .controls,
+  body.desktop-view-profiles #filtersGroup,
+  body.desktop-view-profiles #jumpNavTop,
+  body.desktop-view-profiles #status,
+  body.desktop-view-profiles .results-layout,
+  body.desktop-view-profiles #jumpNavBottom {
     display: none;
   }
 }
@@ -4455,6 +4649,22 @@ body.is-searching #featuredStrip {
   }
 
   body.mobile-view-playlists #playlistsPage {
+    display: block;
+  }
+
+  /* Profiles view: no bottom-nav slot of its own (reached via the
+     hamburger menu's Profiles link instead) -- still a real
+     setMobileView("profiles") state, same pattern as Playlists above. */
+  body.mobile-view-profiles #spotlightSidebar,
+  body.mobile-view-profiles #blogLatestSidebar,
+  body.mobile-view-profiles #latestStrip,
+  body.mobile-view-profiles .ad-placeholder,
+  body.mobile-view-profiles #videoEmbed,
+  body.mobile-view-profiles #featuredStrip {
+    display: none;
+  }
+
+  body.mobile-view-profiles #profilesPage {
     display: block;
   }
 }

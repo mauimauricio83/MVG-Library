@@ -42,6 +42,28 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // Public directory: musicians/directors/productions can post a short
+    // profile (one YouTube reel + a photo) to be discovered by each other.
+    // Same public-read/owner-write shape as publicFavorites above, plus
+    // field validation and the banned-user gate reused from /messages,
+    // since this is also user-generated content visible to everyone.
+    match /profiles/{uid} {
+      allow read: if true;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() > 0 &&
+        request.resource.data.displayName.size() <= 60 &&
+        request.resource.data.role in ["musician", "director", "production"] &&
+        request.resource.data.bio is string &&
+        request.resource.data.bio.size() <= 500 &&
+        (!("youtubeUrl" in request.resource.data) ||
+          (request.resource.data.youtubeUrl is string && request.resource.data.youtubeUrl.size() <= 300)) &&
+        (!("photoURL" in request.resource.data) ||
+          (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 500));
+    }
+
     // Message board: anyone (including signed-out visitors) can read, but
     // posting requires sign-in and being neither muted nor banned. Messages
     // are otherwise immutable -- no client-side edits, only admin delete
