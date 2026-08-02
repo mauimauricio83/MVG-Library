@@ -464,6 +464,15 @@ html, body {
   max-width: 480px;
 }
 
+/* Author styles always beat the browser's UA [hidden]{display:none} rule
+   regardless of source order (origin precedence, not specificity) -- same
+   gotcha as .header-icon-btn[hidden] above. Without this, toggling
+   els.profileEditor.hidden in JS (showProfilesBrowse()/
+   showProfileEditorView()) never actually hid the form. */
+.profile-editor[hidden] {
+  display: none;
+}
+
 .profile-field {
   display: flex;
   flex-direction: column;

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.8.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -197,7 +197,6 @@
     profileSaveBtn: document.getElementById("profileSaveBtn"),
     profileDeleteBtn: document.getElementById("profileDeleteBtn"),
     profileEditorStatus: document.getElementById("profileEditorStatus"),
-    profileUseMyLocationBtn: document.getElementById("profileUseMyLocationBtn"),
     profileClearLocationBtn: document.getElementById("profileClearLocationBtn"),
     profileLocationLabel: document.getElementById("profileLocationLabel"),
     profileLocationMap: document.getElementById("profileLocationMap"),
@@ -2268,17 +2267,6 @@
     });
     setTimeout(function () { profileLocationMapInstance.invalidateSize(); }, 0);
   }
-
-  els.profileUseMyLocationBtn.addEventListener("click", function () {
-    if (!navigator.geolocation) return;
-    els.profileUseMyLocationBtn.disabled = true;
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      els.profileUseMyLocationBtn.disabled = false;
-      setProfileLocationMarker(pos.coords.latitude, pos.coords.longitude, true);
-    }, function () {
-      els.profileUseMyLocationBtn.disabled = false;
-    }, { timeout: 8000 });
-  });
 
   els.profileClearLocationBtn.addEventListener("click", clearProfileLocation);
 

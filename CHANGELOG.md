@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.8.0 — current
+## v5.8.1 — current
+- Fixed a real bug: the profile editor form never actually hid itself when navigating back to the Profiles browse grid (or when reopened) -- `.profile-editor`'s own unconditional `display:flex` was silently beating the `hidden` attribute (same class of bug `.header-icon-btn[hidden]` was already fixed for elsewhere), so both views stacked visibly at once. Added the matching `.profile-editor[hidden] { display: none; }` override.
+- Removed the "Use my location" button (browser geolocation) from the profile editor -- pinning is manual-only now (click the map). Some privacy/location-spoofing browser extensions block `navigator.geolocation` outright, which made the button an unreliable, confusing dead end for a chunk of users; manual pin placement always works regardless.
+
+## v5.8.0
 - Added map-based location pinning to Profiles, laying groundwork for the matchmaking system planned later: an interactive Leaflet/OpenStreetMap picker (no API key/billing needed) in the profile editor -- click to drop a pin or use "Use my location" (browser geolocation), with a best-effort reverse-geocoded city/country label (Nominatim). Optional field. Shows as a text line on profile cards and a small static-feeling map + label in the profile lightbox. `firestore.rules` extended to validate the new optional `location`/`locationLabel` fields.
 
 ## v5.7.0
