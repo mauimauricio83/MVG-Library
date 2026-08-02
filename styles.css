@@ -708,6 +708,60 @@ html, body {
   display: none;
 }
 
+/* Watch/Connect nav-mode switch -- hidden in the collapsed icon-only rail
+   (text buttons don't survive 60px), shown once expanded (desktop
+   .is-open, or mobile's overlay, which is always the .is-open state -- see
+   applyNavMode()/data-nav-mode in app.js for the actual show/hide logic). */
+.nav-mode-switch {
+  display: none;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.header-links.is-open .nav-mode-switch {
+  display: flex;
+}
+
+.nav-mode-btn {
+  flex: 1 1 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-mode-btn.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Untagged items (Discord, Settings, sign-in, social, etc.) stay visible in
+   both modes -- only nav items explicitly opted into one via
+   data-nav-mode="watch"/"connect" get filtered. #headerLinks (an ID) is
+   used rather than .header-links so this reliably beats the mobile
+   .header-links.is-open .submit-link display:flex rule regardless of
+   stylesheet order (equal specificity would otherwise make it a tossup). */
+#headerLinks [data-nav-mode="connect"] {
+  display: none;
+}
+
+#headerLinks.nav-mode-connect [data-nav-mode="watch"] {
+  display: none;
+}
+
+#headerLinks.nav-mode-connect [data-nav-mode="connect"] {
+  display: flex;
+}
+
 .submit-link {
   display: flex;
   align-items: center;

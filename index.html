@@ -92,33 +92,37 @@
 <div class="shell">
   <nav class="header-links" id="headerLinks" aria-label="Site links">
     <button type="button" class="header-menu-close" id="headerMenuClose" aria-label="Close menu">&times;</button>
-    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarHomeBtn">
+    <div class="nav-mode-switch" id="navModeSwitch">
+      <button type="button" class="nav-mode-btn" id="navModeWatchBtn" data-mode="watch" aria-pressed="true">🎬 Watch</button>
+      <button type="button" class="nav-mode-btn" id="navModeConnectBtn" data-mode="connect" aria-pressed="false">🤝 Connect</button>
+    </div>
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarHomeBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>
       <span class="header-links-label">Home</span>
     </button>
-    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarTVBtn">
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarTVBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 21h8M12 19v2M7 3l5 3 5-3"/></svg></span>
       <span class="header-links-label">TV Mode</span>
     </button>
-    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarFavoritesBtn">
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarFavoritesBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9Z"/></svg></span>
       <span class="header-links-label">Favorites</span>
     </button>
-    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarPlaylistsBtn">
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarPlaylistsBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
       <span class="header-links-label">Playlists</span>
     </button>
-    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarProfilesBtn">
+    <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarProfilesBtn" data-nav-mode="connect">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 5.9"/><path d="M18.5 14a5.5 5.5 0 0 1 3.5 5.9"/></svg></span>
       <span class="header-links-label">Profiles</span>
     </button>
     <span class="header-links-sep sidebar-page-link">·</span>
-    <button type="button" class="submit-link header-account-btn" id="openSubmitBtn">
+    <button type="button" class="submit-link header-account-btn" id="openSubmitBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
       <span class="header-links-label">Submit music video</span>
     </button>
     <span class="header-links-sep">·</span>
-    <button type="button" class="submit-link header-account-btn" id="openRecentBtn">
+    <button type="button" class="submit-link header-account-btn" id="openRecentBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
       <span class="header-links-label">Recently Viewed</span>
     </button>

@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.8.2 — current
+## v5.9.0 — current
+- Added a Watch/Connect nav-mode switch to the sidebar, to keep the two audiences (casual viewers vs. industry members using Profiles) clearly separated without hard-gating accounts: a persisted toggle that filters the nav down to Home/TV/Favorites/Playlists/Submit/Recently Viewed ("Watch") or Profiles ("Connect"). Untagged items (Discord, Settings, sign-in, socials) stay visible in both. Flipping to Connect also navigates straight to Profiles.
+- Fixed a real bug this surfaced: `LIGHTBOX_SIZE_KEY`/`LIGHTBOX_CROP_KEY`/`TV_CROP_KEY` (and now `NAV_MODE_KEY`) were all declared *after* `state = {...}`, which reads them at construction time to load each saved preference -- so on every fresh page load, all four prefs silently read `localStorage.getItem(undefined)` instead of their real key, always resetting to the default regardless of what was actually saved. Only masked until now because testing a toggle within the same page session (no reload) reads the already-correct in-memory `state` value instead of hitting this path. Moved all the key constants above `state`.
+
+## v5.8.2
 - Fixed the profile editor's Delete button rendering mangled/overlapping: it was reusing `.tv-admin-delete-btn`, a fixed 28px circular icon button meant for a single glyph, but had real "🗑 Delete" text crammed into it. Gave it its own `.profile-delete-btn` pill-button style instead.
 
 ## v5.8.1

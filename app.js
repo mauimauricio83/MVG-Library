@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.8.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -180,6 +180,8 @@
     addPlaylistNewName: document.getElementById("addPlaylistNewName"),
     addPlaylistCreateBtn: document.getElementById("addPlaylistCreateBtn"),
     sidebarProfilesBtn: document.getElementById("sidebarProfilesBtn"),
+    navModeWatchBtn: document.getElementById("navModeWatchBtn"),
+    navModeConnectBtn: document.getElementById("navModeConnectBtn"),
     profilesPage: document.getElementById("profilesPage"),
     profilesEditBtn: document.getElementById("profilesEditBtn"),
     profilesBrowse: document.getElementById("profilesBrowse"),
@@ -590,6 +592,12 @@
     }
   }
 
+  var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
+  var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
+  var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
+  var TV_CROP_KEY = "mvg-tv-crop";
+  var NAV_MODE_KEY = "mvg-nav-mode";
+
   var state = {
     rows: [],
     view: loadLastTabPref(),
@@ -605,6 +613,7 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     lightboxCrop: loadLightboxCropPref(),
+    navMode: loadNavModePref(),
     recentSet: {},
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
@@ -647,11 +656,6 @@
     // list that may never have been loaded.
     adminReturnView: "landing"
   };
-
-  var CACHE_KEY = "mvg-wiki-cache-v5"; // bumped: v4 rows predate the release-date artifact fix
-  var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
-  var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
-  var TV_CROP_KEY = "mvg-tv-crop";
 
   var CATEGORY_CLASS = {
     "Music Video": "tag-music-video",
@@ -794,6 +798,20 @@
   function saveTVCropPref(isCropped) {
     try {
       localStorage.setItem(TV_CROP_KEY, isCropped ? "1" : "0");
+    } catch (e) {}
+  }
+
+  function loadNavModePref() {
+    try {
+      return localStorage.getItem(NAV_MODE_KEY) === "connect" ? "connect" : "watch";
+    } catch (e) {
+      return "watch";
+    }
+  }
+
+  function saveNavModePref(mode) {
+    try {
+      localStorage.setItem(NAV_MODE_KEY, mode);
     } catch (e) {}
   }
 
@@ -2310,6 +2328,41 @@
     setDesktopView("profiles");
     setMobileView("profiles");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // ---- Watch / Connect nav-mode switch -----------------------------
+  // Two audiences share this sidebar: casual viewers (Home/TV/Favorites/
+  // Playlists/Submit/Recently Viewed) and industry members using Profiles
+  // (and whatever the matchmaking system adds later). Rather than a real
+  // account-type field -- more onboarding friction, and locks people into
+  // one lane -- this is just a persisted display filter over the same nav:
+  // anyone can flip it anytime, nothing is actually gated. Items opt in via
+  // data-nav-mode="watch"/"connect" in index.html; untagged items (Discord,
+  // Settings, sign-in, etc.) stay visible in both modes.
+  function applyNavMode() {
+    els.headerLinks.classList.toggle("nav-mode-connect", state.navMode === "connect");
+    els.navModeWatchBtn.classList.toggle("is-active", state.navMode === "watch");
+    els.navModeWatchBtn.setAttribute("aria-pressed", state.navMode === "watch" ? "true" : "false");
+    els.navModeConnectBtn.classList.toggle("is-active", state.navMode === "connect");
+    els.navModeConnectBtn.setAttribute("aria-pressed", state.navMode === "connect" ? "true" : "false");
+  }
+
+  applyNavMode();
+
+  els.navModeWatchBtn.addEventListener("click", function () {
+    state.navMode = "watch";
+    saveNavModePref("watch");
+    applyNavMode();
+    setDesktopView("home");
+    setMobileView("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.navModeConnectBtn.addEventListener("click", function () {
+    state.navMode = "connect";
+    saveNavModePref("connect");
+    applyNavMode();
+    els.sidebarProfilesBtn.click();
   });
 
   els.profilesEditBtn.addEventListener("click", openProfileEditorForm);
