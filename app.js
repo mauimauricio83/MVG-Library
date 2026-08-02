@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.7.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -197,6 +197,10 @@
     profileSaveBtn: document.getElementById("profileSaveBtn"),
     profileDeleteBtn: document.getElementById("profileDeleteBtn"),
     profileEditorStatus: document.getElementById("profileEditorStatus"),
+    profileUseMyLocationBtn: document.getElementById("profileUseMyLocationBtn"),
+    profileClearLocationBtn: document.getElementById("profileClearLocationBtn"),
+    profileLocationLabel: document.getElementById("profileLocationLabel"),
+    profileLocationMap: document.getElementById("profileLocationMap"),
     topBarSearchInput: document.getElementById("topBarSearchInput"),
     topBarSearchClear: document.getElementById("topBarSearchClear"),
     topBarSettingsBtn: document.getElementById("topBarSettingsBtn"),
@@ -2113,6 +2117,7 @@
       '<div class="profile-card-photo">' + photoHtml + "</div>" +
       '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + "</div>" +
       '<div class="profile-card-role">' + escapeHtml(roleLabel) + "</div>" +
+      (profile.locationLabel ? '<div class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</div>" : "") +
       (profile.bio ? '<p class="profile-card-bio">' + escapeHtml(profile.bio) + "</p>" : "") +
       "</button>";
   }
@@ -2190,6 +2195,93 @@
     });
   }
 
+  // ---- Location pinning (captured now, matchmaking uses it later) ------
+  // Leaflet + OpenStreetMap tiles -- no API key/billing account needed,
+  // unlike Google Maps, which matters for a hobby project already avoiding
+  // paid dependencies elsewhere (see the AdSense-only monetization so far).
+  var profileLocationMapInstance = null;
+  var profileLocationMarker = null;
+  var pendingLocation = null;
+  var pendingLocationLabel = "";
+
+  function setProfileLocationLabel(text) {
+    pendingLocationLabel = text || "";
+    els.profileLocationLabel.textContent = pendingLocationLabel;
+  }
+
+  // Best-effort only -- Nominatim's free reverse-geocoding endpoint, no key
+  // required for reasonable browser-referer traffic. Falls back to plain
+  // coordinates (still fully usable for matchmaking later) if it fails.
+  function reverseGeocode(lat, lng) {
+    setProfileLocationLabel(lat.toFixed(3) + ", " + lng.toFixed(3));
+    fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng + "&zoom=10")
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (pendingLocation && pendingLocation.lat === lat && pendingLocation.lng === lng && data && data.address) {
+          var a = data.address;
+          var place = a.city || a.town || a.village || a.county || "";
+          var label = [place, a.country].filter(Boolean).join(", ");
+          if (label) setProfileLocationLabel(label);
+        }
+      })
+      .catch(function () {});
+  }
+
+  function setProfileLocationMarker(lat, lng, pan) {
+    pendingLocation = { lat: lat, lng: lng };
+    if (profileLocationMarker) {
+      profileLocationMarker.setLatLng([lat, lng]);
+    } else {
+      profileLocationMarker = L.marker([lat, lng]).addTo(profileLocationMapInstance);
+    }
+    if (pan) profileLocationMapInstance.setView([lat, lng], 9);
+    els.profileClearLocationBtn.hidden = false;
+    reverseGeocode(lat, lng);
+  }
+
+  function clearProfileLocation() {
+    pendingLocation = null;
+    setProfileLocationLabel("");
+    els.profileClearLocationBtn.hidden = true;
+    if (profileLocationMarker) {
+      profileLocationMapInstance.removeLayer(profileLocationMarker);
+      profileLocationMarker = null;
+    }
+  }
+
+  // Created once and reused -- Leaflet throws if you re-init a map on a
+  // container that already has one. Must run after the editor is actually
+  // visible (invalidateSize() fixes up tile sizing for a container that
+  // was 0x0 while hidden).
+  function ensureProfileLocationMap() {
+    if (profileLocationMapInstance) {
+      profileLocationMapInstance.invalidateSize();
+      return;
+    }
+    profileLocationMapInstance = L.map(els.profileLocationMap, { worldCopyJump: true }).setView([20, 0], 2);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+      maxZoom: 18
+    }).addTo(profileLocationMapInstance);
+    profileLocationMapInstance.on("click", function (e) {
+      setProfileLocationMarker(e.latlng.lat, e.latlng.lng, false);
+    });
+    setTimeout(function () { profileLocationMapInstance.invalidateSize(); }, 0);
+  }
+
+  els.profileUseMyLocationBtn.addEventListener("click", function () {
+    if (!navigator.geolocation) return;
+    els.profileUseMyLocationBtn.disabled = true;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      els.profileUseMyLocationBtn.disabled = false;
+      setProfileLocationMarker(pos.coords.latitude, pos.coords.longitude, true);
+    }, function () {
+      els.profileUseMyLocationBtn.disabled = false;
+    }, { timeout: 8000 });
+  });
+
+  els.profileClearLocationBtn.addEventListener("click", clearProfileLocation);
+
   function openProfileEditorForm() {
     if (!currentUser) return;
     resetProfilePhotoPick();
@@ -2200,6 +2292,9 @@
     els.profileBioInput.value = "";
     els.profileReelInput.value = "";
     els.profileDeleteBtn.hidden = true;
+    clearProfileLocation();
+    showProfileEditorView();
+    ensureProfileLocationMap();
     db.collection("profiles").doc(currentUser.uid).get().then(function (doc) {
       if (!doc.exists) return;
       var d = doc.data();
@@ -2211,9 +2306,12 @@
         els.profilePhotoPreview.src = d.photoURL;
         els.profilePhotoPreview.hidden = false;
       }
+      if (d.location) {
+        setProfileLocationMarker(d.location.lat, d.location.lng, true);
+        if (d.locationLabel) setProfileLocationLabel(d.locationLabel);
+      }
       els.profileDeleteBtn.hidden = false;
     });
-    showProfileEditorView();
   }
 
   els.sidebarProfilesBtn.addEventListener("click", function () {
@@ -2268,14 +2366,22 @@
       : Promise.resolve(els.profilePhotoPreview.hidden ? "" : els.profilePhotoPreview.src);
 
     uploadPromise.then(function (photoURL) {
-      return db.collection("profiles").doc(currentUser.uid).set({
+      var profileData = {
         displayName: name,
         role: els.profileRoleInput.value,
         bio: els.profileBioInput.value.trim(),
         youtubeUrl: els.profileReelInput.value.trim(),
         photoURL: photoURL || "",
         updatedAt: Date.now()
-      });
+      };
+      // .set() without merge replaces the whole doc, so simply omitting
+      // these keys when there's no pin is enough to clear a previously
+      // saved location (see clearProfileLocation()).
+      if (pendingLocation) {
+        profileData.location = pendingLocation;
+        profileData.locationLabel = pendingLocationLabel;
+      }
+      return db.collection("profiles").doc(currentUser.uid).set(profileData);
     }).then(function () {
       resetProfilePhotoPick();
       showProfilesBrowse();
@@ -2306,9 +2412,19 @@
   // than building a second modal -- see CLAUDE.md's modal pattern note. Only
   // renders Widen/Crop (no fav/playlist/admin buttons, which are row-only
   // concepts a profile doesn't have).
+  var profileLightboxMapInstance = null;
+
+  function destroyProfileLightboxMap() {
+    if (profileLightboxMapInstance) {
+      profileLightboxMapInstance.remove();
+      profileLightboxMapInstance = null;
+    }
+  }
+
   function openProfileLightbox(profile) {
     if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
     destroyLightboxPlayer();
+    destroyProfileLightboxMap();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = null;
     state.lightboxProfileUid = profile.uid;
@@ -2342,6 +2458,8 @@
           "</div>"
         : "") +
       "</div>" +
+      (profile.location ? '<div class="profile-lightbox-map" id="profileLightboxMap"></div>' : "") +
+      (profile.locationLabel ? '<p class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
       (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
       "</div>";
 
@@ -2351,6 +2469,19 @@
     pushModalHistory();
     applyLightboxSize();
     applyLightboxCrop();
+
+    if (profile.location) {
+      profileLightboxMapInstance = L.map("profileLightboxMap", {
+        dragging: false, scrollWheelZoom: false, zoomControl: false,
+        doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false
+      }).setView([profile.location.lat, profile.location.lng], 9);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 18
+      }).addTo(profileLightboxMapInstance);
+      L.marker([profile.location.lat, profile.location.lng]).addTo(profileLightboxMapInstance);
+      setTimeout(function () { if (profileLightboxMapInstance) profileLightboxMapInstance.invalidateSize(); }, 0);
+    }
 
     if (id) {
       var uidAtOpen = profile.uid;
@@ -3616,6 +3747,7 @@
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     destroyLightboxPlayer();
+    destroyProfileLightboxMap();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;

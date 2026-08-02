@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.7.0 — current
+## v5.8.0 — current
+- Added map-based location pinning to Profiles, laying groundwork for the matchmaking system planned later: an interactive Leaflet/OpenStreetMap picker (no API key/billing needed) in the profile editor -- click to drop a pin or use "Use my location" (browser geolocation), with a best-effort reverse-geocoded city/country label (Nominatim). Optional field. Shows as a text line on profile cards and a small static-feeling map + label in the profile lightbox. `firestore.rules` extended to validate the new optional `location`/`locationLabel` fields.
+
+## v5.7.0
 - Added Profiles: a first-pass public directory for musicians/directors/productions to be discoverable, reached via the sidebar/hamburger. Signed-in users can create one profile (name, role, short bio, one embedded YouTube reel, an optional photo -- resized client-side before upload). Everyone else can browse the grid and open a profile to watch its reel in the existing entry-lightbox player. New `profiles/{uid}` Firestore collection (public read, owner write, field-validated, banned-user gated) and `profile-photos/{uid}` Storage path -- deliberately scoped to browse-only for now, no matching or messaging yet.
 
 ## v5.6.1

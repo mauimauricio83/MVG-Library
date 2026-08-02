@@ -61,7 +61,17 @@ service cloud.firestore {
         (!("youtubeUrl" in request.resource.data) ||
           (request.resource.data.youtubeUrl is string && request.resource.data.youtubeUrl.size() <= 300)) &&
         (!("photoURL" in request.resource.data) ||
-          (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 500));
+          (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 500)) &&
+        // Optional lat/lng pin (captured now for the matchmaking system
+        // planned later) plus a best-effort reverse-geocoded label -- see
+        // pickProfileLocation()/reverseGeocode() in app.js.
+        (!("location" in request.resource.data) ||
+          (request.resource.data.location.lat is number &&
+            request.resource.data.location.lat >= -90 && request.resource.data.location.lat <= 90 &&
+            request.resource.data.location.lng is number &&
+            request.resource.data.location.lng >= -180 && request.resource.data.location.lng <= 180)) &&
+        (!("locationLabel" in request.resource.data) ||
+          (request.resource.data.locationLabel is string && request.resource.data.locationLabel.size() <= 120));
     }
 
     // Message board: anyone (including signed-out visitors) can read, but

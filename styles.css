@@ -514,6 +514,62 @@ html, body {
   color: #c4293f;
 }
 
+.profile-field-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.76rem;
+}
+
+.profile-location-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-location-label {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.profile-location-map {
+  width: 100%;
+  height: 220px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-top: 8px;
+  /* Leaflet needs its container to have a real size before init -- see
+     initProfileLocationMap()'s invalidateSize() call, which fixes up the
+     tile layer once this becomes visible (hidden parents report 0 height). */
+}
+
+.profile-location-hint {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.profile-card-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.profile-lightbox-map {
+  width: 100%;
+  height: 160px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin: 10px 0;
+}
+
 .profile-lightbox-head {
   display: flex;
   align-items: center;

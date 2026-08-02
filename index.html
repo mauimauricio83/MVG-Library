@@ -38,6 +38,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="styles.css">
 <script type="application/ld+json">
 {
@@ -436,6 +437,16 @@
         <input type="file" id="profilePhotoInput" accept="image/*">
       </label>
       <img class="profile-photo-preview" id="profilePhotoPreview" alt="" hidden>
+      <div class="profile-field">
+        <span>Location <span class="profile-field-optional">(used for matchmaking later -- optional)</span></span>
+        <div class="profile-location-row">
+          <button type="button" class="tv-exit-btn" id="profileUseMyLocationBtn">📍 Use my location</button>
+          <button type="button" class="tv-exit-btn" id="profileClearLocationBtn" hidden>Clear pin</button>
+          <span class="profile-location-label" id="profileLocationLabel"></span>
+        </div>
+        <div class="profile-location-map" id="profileLocationMap"></div>
+        <p class="profile-location-hint">Click anywhere on the map to drop a pin.</p>
+      </div>
       <div class="profile-editor-actions">
         <button type="submit" class="media-strip-play-all" id="profileSaveBtn">Save profile</button>
         <button type="button" class="tv-admin-delete-btn" id="profileDeleteBtn" hidden aria-label="Delete profile" title="Delete profile">🗑 Delete</button>
@@ -854,6 +865,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
