@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.8.1 — current
+## v5.8.2 — current
+- Fixed the profile editor's Delete button rendering mangled/overlapping: it was reusing `.tv-admin-delete-btn`, a fixed 28px circular icon button meant for a single glyph, but had real "🗑 Delete" text crammed into it. Gave it its own `.profile-delete-btn` pill-button style instead.
+
+## v5.8.1
 - Fixed a real bug: the profile editor form never actually hid itself when navigating back to the Profiles browse grid (or when reopened) -- `.profile-editor`'s own unconditional `display:flex` was silently beating the `hidden` attribute (same class of bug `.header-icon-btn[hidden]` was already fixed for elsewhere), so both views stacked visibly at once. Added the matching `.profile-editor[hidden] { display: none; }` override.
 - Removed the "Use my location" button (browser geolocation) from the profile editor -- pinning is manual-only now (click the map). Some privacy/location-spoofing browser extensions block `navigator.geolocation` outright, which made the button an unreliable, confusing dead end for a chunk of users; manual pin placement always works regardless.
 

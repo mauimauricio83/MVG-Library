@@ -513,6 +513,22 @@ html, body {
   gap: 10px;
 }
 
+.profile-delete-btn {
+  border: 1px solid #c4293f;
+  background: transparent;
+  color: #c4293f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.profile-delete-btn:hover {
+  background: #c4293f;
+  color: #fff;
+}
+
 .profile-editor-status {
   font-size: 0.8rem;
   color: var(--text-muted);
