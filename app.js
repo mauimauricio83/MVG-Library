@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.9.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.9.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -190,6 +190,7 @@
     profilesEmptyMsg: document.getElementById("profilesEmptyMsg"),
     profileEditor: document.getElementById("profileEditor"),
     profileEditorBackBtn: document.getElementById("profileEditorBackBtn"),
+    profileEditorIntro: document.getElementById("profileEditorIntro"),
     profileNameInput: document.getElementById("profileNameInput"),
     profileRoleInput: document.getElementById("profileRoleInput"),
     profileBioInput: document.getElementById("profileBioInput"),
@@ -2157,6 +2158,10 @@
   }
 
   function loadAllProfiles() {
+    // Members-only directory -- profiles/{uid} now requires request.auth !=
+    // null to read (see firestore.rules), so don't even try while signed
+    // out; updateProfilesAuthUI() already hides the grid in that case.
+    if (!currentUser) return Promise.resolve();
     return db.collection("profiles").get().then(function (snap) {
       var profiles = snap.docs.map(function (doc) {
         var d = doc.data();
@@ -2176,6 +2181,11 @@
   function updateProfilesAuthUI() {
     els.profilesEditBtn.hidden = !currentUser;
     els.profilesSigninNote.hidden = !!currentUser;
+    // Members-only directory -- browsing itself is gated behind sign-in
+    // now (firestore.rules requires request.auth != null to read), not
+    // just creating a profile.
+    els.profilesGrid.hidden = !currentUser;
+    if (!currentUser) els.profilesEmptyMsg.hidden = true;
   }
 
   function showProfilesBrowse() {
@@ -2310,11 +2320,15 @@
     els.profileBioInput.value = "";
     els.profileReelInput.value = "";
     els.profileDeleteBtn.hidden = true;
+    els.profileEditorIntro.hidden = true;
     clearProfileLocation();
     showProfileEditorView();
     ensureProfileLocationMap();
     db.collection("profiles").doc(currentUser.uid).get().then(function (doc) {
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        els.profileEditorIntro.hidden = false;
+        return;
+      }
       var d = doc.data();
       els.profileNameInput.value = d.displayName || "";
       els.profileRoleInput.value = d.role || "musician";

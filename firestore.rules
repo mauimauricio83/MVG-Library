@@ -42,13 +42,13 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Public directory: musicians/directors/productions can post a short
-    // profile (one YouTube reel + a photo) to be discovered by each other.
-    // Same public-read/owner-write shape as publicFavorites above, plus
-    // field validation and the banned-user gate reused from /messages,
-    // since this is also user-generated content visible to everyone.
+    // Members-only directory: musicians/directors/productions can post a
+    // short profile (one YouTube reel + a photo) to be discovered by each
+    // other -- signed-in only, not the public-read shape publicFavorites
+    // uses, since this is meant to stay a members' space rather than
+    // something signed-out visitors browse.
     match /profiles/{uid} {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid &&
         !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&

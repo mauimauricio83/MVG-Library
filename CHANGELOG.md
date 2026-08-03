@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.9.3 — current
+## v5.9.4 — current
+- Fixed the reel badge on profile cards being clipped by the photo's own `overflow: hidden` -- moved the image's own clipping onto the `<img>` itself so the overlapping badge can sit outside the circle like intended.
+- Profiles is now a members-only directory: browsing requires sign-in, not just creating a profile (`firestore.rules` now requires `request.auth != null` to read `profiles/{uid}`, deployed and verified server-side). Signed-out visitors see a sign-in prompt instead of the grid.
+- Added a one-time intro message in the profile editor, shown only the first time someone opens it with no existing profile, explaining what the directory is for before the blank form.
+
+## v5.9.3
 - Redesigned the Profiles browse grid on mobile as compact Facebook-friends-list-style rows instead of a grid of big square-photo cards (which read as oversized once the grid dropped to ~2 narrow columns on a phone): a small round avatar, name, one short subtitle line (role), and a small overlapping badge marking whether the profile has a reel. Desktop keeps the existing card-grid layout unchanged.
 
 ## v5.9.2
