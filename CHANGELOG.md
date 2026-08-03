@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.9.1 — current
+## v5.9.2 — current
+- Added a "Profile saved!" popup after saving a profile, mirroring the existing post-submission thank-you flow (including the same Ko-fi support ask) instead of the edit form just quietly swapping back to the browse grid.
+- Fixed a real bug in the admin panel: the Add Entry form (`#adminForm`, `.submit-form`) never actually hid when switching to Bulk Import -- same `[hidden]`-vs-unconditional-`display` CSS gotcha already fixed elsewhere (`.header-icon-btn[hidden]`, `.profile-editor[hidden]`), just not yet applied to `.submit-form`. The two views were rendering stacked on top of each other.
+- Admin saves now auto-publish: adding, editing, or deleting a single entry publishes the live snapshot automatically afterward (status shows "Publishing…" then the result), matching bulk import's existing behavior instead of requiring a separate manual Publish click every time. The Publish button remains for manual retries.
+
+## v5.9.1
 - Fixed a real bug (predates the nav-mode switch): the Profiles sidebar link had `.sidebar-page-link`, a class that a pre-existing mobile rule hides entirely on small screens since those items (Home/TV/Favorites/Playlists) already live in the bottom nav bar. Profiles has no bottom-nav icon, so this silently made it completely unreachable on mobile since it first shipped -- automated testing missed it because a JS `.click()` works on a hidden element even though a real tap can't reach it. Removed the class; Profiles now correctly shows/hides based on nav mode like intended.
 
 ## v5.9.0

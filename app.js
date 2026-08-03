@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.9.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.9.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -218,6 +218,8 @@
     submitThanksModal: document.getElementById("submitThanksModal"),
     submitThanksBack: document.getElementById("submitThanksBack"),
     submitThanksAgain: document.getElementById("submitThanksAgain"),
+    profileThanksModal: document.getElementById("profileThanksModal"),
+    profileThanksBack: document.getElementById("profileThanksBack"),
     msgBoardTab: document.getElementById("msgBoardTab"),
     msgBoardPanel: document.getElementById("msgBoardPanel"),
     msgBoardClose: document.getElementById("msgBoardClose"),
@@ -530,6 +532,7 @@
     closeTVModal();
     closeSubmitModal();
     closeSubmitThanksModal();
+    closeProfileThanksModal();
     closeSettingsModal();
     closeRecentModal();
     closePodcastModal();
@@ -2427,6 +2430,7 @@
       resetProfilePhotoPick();
       showProfilesBrowse();
       loadAllProfiles();
+      openProfileThanksModal();
     }).catch(function (err) {
       console.error("Saving profile failed:", err);
       els.profileEditorStatus.textContent = "Something went wrong -- please try again.";
@@ -3862,6 +3866,28 @@
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
 
+  // Same pattern as openSubmitThanksModal() above, for a saved profile --
+  // reads as "something just happened" instead of the edit form just
+  // quietly swapping back to the browse grid underneath it.
+  function openProfileThanksModal() {
+    els.profileThanksModal.hidden = false;
+    els.profileThanksModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeProfileThanksModal() {
+    if (els.profileThanksModal.hidden) return;
+    els.profileThanksModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.profileThanksModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
+
+  els.profileThanksBack.addEventListener("click", dismissTopModal);
+
   // Message board: a docked popout panel (not a lightbox -- it doesn't block
   // the rest of the page, so it isn't part of closeAllModalsHard()/history
   // stacking). Anyone can open it and read; the Firestore listener is only
@@ -4604,12 +4630,11 @@
   // (admin-only) -- single-doc delete, same cost profile as the Edit
   // button. Removing it from state.rows makes it disappear from the
   // current page immediately; clearing the URL hash stops a stale #row-N
-  // link from trying to reopen it. The public snapshot isn't updated until
-  // Publish, same as any other single admin change -- lands on the admin
-  // landing screen afterward with Publish one click away, rather than
-  // silently leaving it unpublished. closeModalFn closes whatever view the
-  // delete was triggered from (the lightbox, or TV Mode) before showing
-  // the admin landing confirmation.
+  // link from trying to reopen it. Auto-publishes afterward (matches
+  // add/edit/bulk import) -- lands on the admin landing screen with the
+  // publish result shown, rather than silently leaving it unpublished.
+  // closeModalFn closes whatever view the delete was triggered from (the
+  // lightbox, or TV Mode) before showing the admin landing confirmation.
   function deleteRowByAdmin(rowNum, label, closeModalFn) {
     if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
     db.collection("videos").doc(rowNum).delete().then(function () {
@@ -4620,9 +4645,16 @@
       state.adminReturnView = "landing";
       showAdminLanding();
       openAdminModalChrome();
-      els.adminLandingStatus.textContent = 'Deleted "' + label + '". Remember to Publish so the live site reflects it.';
+      els.adminLandingStatus.textContent = 'Deleted "' + label + '". Publishing…';
       els.adminLandingStatus.className = "admin-status";
       els.adminLandingStatus.hidden = false;
+      return publishSnapshot().then(function (result) {
+        els.adminLandingStatus.textContent = 'Deleted "' + label + '". Published ' + result.count + " entries to the live site.";
+      }).catch(function (err) {
+        console.error("Publish failed:", err);
+        els.adminLandingStatus.textContent = 'Deleted "' + label + '". (Publish failed: ' + err.message + " -- use the Publish button to retry.)";
+        els.adminLandingStatus.className = "admin-status is-error";
+      });
     }).catch(function (err) {
       console.error("Admin delete failed:", err);
       alert("Delete failed: " + err.message);
@@ -5065,10 +5097,10 @@
       if (anySpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", SPOTLIGHT_COUNT));
       return Promise.all(evictions);
     }).then(function () {
-      // Bulk imports auto-publish so new entries go live without a separate
-      // manual step -- single add/edit/delete still requires the Publish
-      // button, since those are typically one-off and you may want to batch
-      // several before republishing.
+      // Auto-publish so new entries go live without a separate manual step
+      // (add/edit/delete all do the same now -- see els.adminForm's submit
+      // handler and deleteRowByAdmin()). The Publish button still exists as
+      // a manual/retry option, e.g. if an auto-publish attempt failed.
       return publishSnapshot();
     }).then(function () {
       els.adminBulkCommitBtn.disabled = false;
@@ -5174,7 +5206,13 @@
       db.collection("videos").doc(rowNum).delete().then(function () {
         removeAdminRowLocal(rowNum);
         renderAdminEntries();
-        setAdminStatus('Deleted "' + label + '".');
+        setAdminStatus('Deleted "' + label + '". Publishing…');
+        return publishSnapshot().then(function (result) {
+          setAdminStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
+        }).catch(function (err) {
+          console.error("Publish failed:", err);
+          setAdminStatus('Deleted "' + label + '". (Publish failed: ' + err.message + " -- use the Publish button to retry.)", true);
+        });
       }).catch(function (err) {
         console.error("Admin delete failed:", err);
         setAdminStatus("Delete failed: " + err.message, true);
@@ -5269,6 +5307,19 @@
         if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", SPOTLIGHT_COUNT));
         return Promise.all(evictions);
       }).then(function () {
+        var label = (isNew ? "Added " : "Updated ") + doc.artist + " — " + doc.song + ".";
+        // Auto-publish here too now (matches bulk import) -- a save that
+        // doesn't show up on the live site until a separate manual click was
+        // the #1 point of confusion. Publish failure doesn't roll back the
+        // save; it's reported alongside it and the Publish button still
+        // works as a manual retry.
+        var publishPromise = publishSnapshot().then(function (result) {
+          return label + " Published " + result.count + " entries to the live site.";
+        }).catch(function (err) {
+          console.error("Publish failed:", err);
+          return label + " (Publish failed: " + err.message + " -- use the Publish button to retry.)";
+        });
+
         // A single edit opened straight from the lightbox never loaded the
         // full list -- just close instead of paying for a ~13k-doc read only
         // to show a list the admin didn't ask for. From the landing
@@ -5277,17 +5328,20 @@
         // loaded list worth patching in place.
         if (state.adminReturnView === "lightbox") {
           dismissTopModal();
+          publishPromise.catch(function () {}); // fire-and-forget, no status UI left to show it on
         } else if (state.adminReturnView === "list") {
           upsertAdminRowLocal(rowNum, doc);
           showAdminList();
           renderAdminEntries();
-          setAdminStatus((isNew ? "Added " : "Updated ") + doc.artist + " — " + doc.song + ".");
+          setAdminStatus(label + " Publishing…");
+          publishPromise.then(setAdminStatus);
         } else {
           upsertAdminRowLocal(rowNum, doc);
           showAdminLanding();
-          els.adminLandingStatus.textContent = (isNew ? "Added " : "Updated ") + doc.artist + " — " + doc.song + ".";
+          els.adminLandingStatus.textContent = label + " Publishing…";
           els.adminLandingStatus.className = "admin-status";
           els.adminLandingStatus.hidden = false;
+          publishPromise.then(function (text) { els.adminLandingStatus.textContent = text; });
         }
       });
     }).catch(function (err) {
@@ -5426,6 +5480,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.submitThanksModal.hidden ||
+      !els.profileThanksModal.hidden ||
       !els.settingsModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
       !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");

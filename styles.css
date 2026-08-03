@@ -4126,6 +4126,18 @@ body.is-searching #featuredStrip {
   gap: 14px;
 }
 
+/* Author styles always beat the browser's UA [hidden]{display:none} rule
+   regardless of source order (origin precedence, not specificity) -- same
+   gotcha as .header-icon-btn[hidden] / .profile-editor[hidden] elsewhere.
+   Without this, #adminForm (class="admin-form submit-form") never actually
+   hid when switching to Bulk Import (showAdminBulk() sets hidden=true, but
+   this class's own unconditional display:flex silently won), so the Add
+   Entry form and the Bulk Import panel rendered stacked on top of each
+   other. Also covers #submitForm for the same reason. */
+.submit-form[hidden] {
+  display: none;
+}
+
 .submit-form label {
   display: flex;
   flex-direction: column;
