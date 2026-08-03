@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.9.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.9.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2133,12 +2133,21 @@
     var photoHtml = profile.photoURL
       ? '<img src="' + escapeHtml(profile.photoURL) + '" alt="" loading="lazy">'
       : escapeHtml(initial);
+    // Small overlapping badge (Facebook-style online-dot position) marking
+    // whether this profile has a reel -- the one thing worth flagging at a
+    // glance in the compact mobile list view (see .profile-card-reel-badge
+    // and the mobile @media override in styles.css).
+    var reelBadge = profile.youtubeUrl
+      ? '<span class="profile-card-reel-badge" title="Has a reel">▶</span>'
+      : "";
     return '<button type="button" class="profile-card" data-uid="' + escapeHtml(profile.uid) + '">' +
-      '<div class="profile-card-photo">' + photoHtml + "</div>" +
+      '<div class="profile-card-photo">' + photoHtml + reelBadge + "</div>" +
+      '<div class="profile-card-info">' +
       '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + "</div>" +
       '<div class="profile-card-role">' + escapeHtml(roleLabel) + "</div>" +
       (profile.locationLabel ? '<div class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</div>" : "") +
       (profile.bio ? '<p class="profile-card-bio">' + escapeHtml(profile.bio) + "</p>" : "") +
+      "</div>" +
       "</button>";
   }
 

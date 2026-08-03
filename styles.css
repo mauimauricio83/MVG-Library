@@ -413,6 +413,7 @@ html, body {
 }
 
 .profile-card-photo {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   border-radius: 8px;
@@ -425,6 +426,35 @@ html, body {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Overlapping badge (Facebook-style "online dot" position) flagging that
+   this profile has a reel -- mainly meant for the compact mobile list
+   layout below, where the photo shrinks too far for a text hint. */
+.profile-card-reel-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface);
+}
+
+/* Wraps name/role/location/bio so the mobile override below can lay this
+   whole block out beside the photo instead of stacked under it. */
+.profile-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
 }
 
 .profile-card-photo img {
@@ -455,6 +485,60 @@ html, body {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   line-height: 1.4;
+}
+
+/* Mobile: Facebook-friends-list-style compact rows instead of a grid of
+   big square-photo cards -- a photo that fills a 180px grid column reads
+   as way too large once minmax(180px,1fr) is down to ~2 columns on a
+   phone. Small round avatar + name + one short subtitle line (role) +
+   the reel badge, name-search-list dense rather than gallery-dense. */
+@media (max-width: 640px) {
+  .profiles-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .profile-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: none;
+  }
+
+  .profile-card:hover {
+    border-color: var(--border);
+    background: var(--accent-soft);
+  }
+
+  .profile-card-photo {
+    width: 52px;
+    height: 52px;
+    aspect-ratio: auto;
+    border-radius: 50%;
+    margin-bottom: 0;
+    flex: 0 0 auto;
+    font-size: 1.1rem;
+  }
+
+  .profile-card-name {
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* .profiles-grid-scoped compound selector, not just .profile-card-location
+     -- that base rule lives further down the stylesheet (added later, with
+     the location-pinning feature) and would otherwise win this tie on
+     source order despite matching specificity. */
+  .profiles-grid .profile-card-location,
+  .profiles-grid .profile-card-bio {
+    display: none;
+  }
 }
 
 .profile-editor {

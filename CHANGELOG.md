@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.9.2 — current
+## v5.9.3 — current
+- Redesigned the Profiles browse grid on mobile as compact Facebook-friends-list-style rows instead of a grid of big square-photo cards (which read as oversized once the grid dropped to ~2 narrow columns on a phone): a small round avatar, name, one short subtitle line (role), and a small overlapping badge marking whether the profile has a reel. Desktop keeps the existing card-grid layout unchanged.
+
+## v5.9.2
 - Added a "Profile saved!" popup after saving a profile, mirroring the existing post-submission thank-you flow (including the same Ko-fi support ask) instead of the edit form just quietly swapping back to the browse grid.
 - Fixed a real bug in the admin panel: the Add Entry form (`#adminForm`, `.submit-form`) never actually hid when switching to Bulk Import -- same `[hidden]`-vs-unconditional-`display` CSS gotcha already fixed elsewhere (`.header-icon-btn[hidden]`, `.profile-editor[hidden]`), just not yet applied to `.submit-form`. The two views were rendering stacked on top of each other.
 - Admin saves now auto-publish: adding, editing, or deleting a single entry publishes the live snapshot automatically afterward (status shows "Publishing…" then the result), matching bulk import's existing behavior instead of requiring a separate manual Publish click every time. The Publish button remains for manual retries.
