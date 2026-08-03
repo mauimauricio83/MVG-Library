@@ -9,6 +9,7 @@ Vanilla JS/HTML/CSS static site, no build step. Firestore-backed catalog, hosted
 - **Before every push**, check for divergence first: `git fetch origin && git log --oneline main..origin/main`. A GitHub Action cron lands automated commits (`Regenerate SEO hub pages`, `Update latest blog posts`) regularly — rebase onto them if they've landed.
 - **Keep `app.js`'s client `publishSnapshot()` and `scripts/publish-snapshot.js` (the CLI counterpart) in sync.** Any field added to one needs the identical line in the other.
 - **Firestore `firestore.rules` changes need a manual `firebase deploy`** — editing the file alone doesn't take effect.
+- **Adding a new `hidden`-toggled element? Read the `[hidden]`-attribute cascade gotcha section below first.** Hit six times already — it's not an edge case, it's the default outcome unless checked for.
 
 ## Local dev server
 
@@ -40,9 +41,18 @@ Feature and Spotlight have **cap-eviction** (`enforceCap(kind, timestampField, c
 
 Sponsored has **no** cap-eviction — manually admin-controlled, no capacity limit, by design (it's a paid/manual placement, not an algorithmic rotation).
 
-## `[hidden]`-attribute cascade gotcha
+## ⚠️ `[hidden]`-attribute cascade gotcha — check this EVERY time, not just when something breaks
 
-A component's own unconditional `display` CSS rule can silently beat the browser's default `[hidden]{display:none}` UA rule, regardless of specificity or source order — author styles always win that fight over user-agent styles. If a `hidden`-attribute toggle isn't working, check for a same-selector `display` declaration first. Hit multiple times this project (message board panel, top-bar Admin/Sign-in icons).
+**Rule: any time you add or touch an element that gets toggled via the `hidden` attribute (`el.hidden = true/false` in JS), and that element's own CSS (or a class it carries) sets an unconditional `display` value, add a `.the-selector[hidden] { display: none; }` override in the SAME edit. Don't wait for a bug report.**
+
+Why this keeps happening: a component's own unconditional `display` CSS rule silently beats the browser's default `[hidden]{display:none}` UA rule, regardless of specificity or source order — author styles always win that fight over user-agent styles, even a single low-specificity class selector against the UA stylesheet. There's no error, no warning, no console output — the element just never visually hides. It stays on screen, stacked on top of whatever was supposed to replace it, and looks like a completely different, more confusing bug (two views rendering at once) unless you already know to suspect this.
+
+**Before shipping any new hideable component:**
+1. Does its own CSS rule (or a shared class it carries, e.g. `.submit-form`) set `display` unconditionally?
+2. If yes → add the `[hidden]` override right next to that rule, immediately, in the same commit.
+3. Verify in the browser: toggle `hidden` and confirm `getComputedStyle(el).display` is actually `"none"` — don't just trust that it looks right, the two views can visually overlap in subtle ways.
+
+**Hit six separate times in this project already**, each one initially misdiagnosed as something else: the message board panel, top-bar Admin/Sign-in icons, `.header-icon-btn`, `.profile-editor`, `.submit-form` (the admin Bulk Import/Add Entry overlap bug), `.profiles-grid`. Assume the next hideable element you add has this bug too, until you've checked.
 
 ## Modal-stack conventions
 
