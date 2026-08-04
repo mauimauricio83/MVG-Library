@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.11.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -628,7 +628,6 @@
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
   var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
   var TV_CROP_KEY = "mvg-tv-crop";
-  var NAV_MODE_KEY = "mvg-nav-mode";
 
   var state = {
     rows: [],
@@ -645,7 +644,10 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     lightboxCrop: loadLightboxCropPref(),
-    navMode: loadNavModePref(),
+    // Never persisted across page loads (see applyNavMode()'s comment) --
+    // always starts on "watch", matching the page's own default view
+    // (Home), so the switch and what's actually on screen never disagree.
+    navMode: "watch",
     recentSet: {},
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
@@ -830,20 +832,6 @@
   function saveTVCropPref(isCropped) {
     try {
       localStorage.setItem(TV_CROP_KEY, isCropped ? "1" : "0");
-    } catch (e) {}
-  }
-
-  function loadNavModePref() {
-    try {
-      return localStorage.getItem(NAV_MODE_KEY) === "connect" ? "connect" : "watch";
-    } catch (e) {
-      return "watch";
-    }
-  }
-
-  function saveNavModePref(mode) {
-    try {
-      localStorage.setItem(NAV_MODE_KEY, mode);
     } catch (e) {}
   }
 
@@ -2421,10 +2409,17 @@
   // Playlists/Submit/Recently Viewed) and industry members using Profiles
   // (and whatever the matchmaking system adds later). Rather than a real
   // account-type field -- more onboarding friction, and locks people into
-  // one lane -- this is just a persisted display filter over the same nav:
-  // anyone can flip it anytime, nothing is actually gated. Items opt in via
+  // one lane -- this is just a display filter over the same nav: anyone can
+  // flip it anytime, nothing is actually gated. Items opt in via
   // data-nav-mode="watch"/"connect" in index.html; untagged items (Discord,
   // Settings, sign-in, etc.) stay visible in both modes.
+  //
+  // Deliberately NOT persisted across page loads (no localStorage) --  the
+  // page's own default view is always Home/Watch on a fresh load regardless
+  // of what was last selected, so persisting the switch separately let it
+  // drift out of sync with what's actually on screen (switch shows
+  // "Connect" from a past visit, page shows Watch's Home content). Starting
+  // both from the same fixed default keeps them honest.
   function applyNavMode() {
     els.headerLinks.classList.toggle("nav-mode-connect", state.navMode === "connect");
     els.navModeWatchBtn.classList.toggle("is-active", state.navMode === "watch");
@@ -2437,7 +2432,6 @@
 
   els.navModeWatchBtn.addEventListener("click", function () {
     state.navMode = "watch";
-    saveNavModePref("watch");
     applyNavMode();
     setDesktopView("home");
     setMobileView("home");
@@ -2446,7 +2440,6 @@
 
   els.navModeConnectBtn.addEventListener("click", function () {
     state.navMode = "connect";
-    saveNavModePref("connect");
     applyNavMode();
     els.sidebarProfilesBtn.click();
   });

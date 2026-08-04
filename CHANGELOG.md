@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.11.0 — current
+## v5.11.1 — current
+- Fixed the Watch/Connect switch showing "Connect" as active on a fresh page load while the page itself displayed Watch's Home content. It was a persisted preference (localStorage), but the page's own default view is always Home/Watch on a fresh load regardless -- so returning to the site after a past "Connect" click left the switch and the actual screen disagreeing. Nav mode is no longer persisted across page loads; it always starts on Watch, matching what's actually shown, and still toggles normally within a session.
+
+## v5.11.0
 - Applied the same real-submissions-only filter to the word cloud (`cloud.js`) that Latest Submissions just got -- it had the identical vulnerability and was in fact what surfaced the Michel Gondry backfill block in the first place. Verified: Gondry no longer appears at all; the new top word is a far more reasonable outlier (18 vs. his previous 50).
 - Mobile Latest Submissions and Featured get a "See all" button that expands the horizontal scroll strip into a proper 2-column gallery grid, instead of only being reachable by endless swiping. Play All moves out of the header and into the expanded gallery view (hidden until expanded) rather than sitting there unused before you've even looked at anything. Reuses the existing desktop "See more" toggle mechanism, just relabeled ("See all") and with mobile-specific grid styling. Favorites' mobile behavior is unchanged (horizontal scroll only).
 
