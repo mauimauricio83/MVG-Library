@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.10.0 — current
+## v5.10.1 — current
+- Fixed Latest Submissions being vulnerable to a single large bulk import dominating the whole strip (the same class of problem the word cloud already had -- see `cloud.js`'s `LATEST_POOL` comment): it was a strict top-50-by-rowNum cutoff, so a big batch could occupy every slot until enough newer individual submissions pushed it out. Now the top 3 slots are randomized among the truly newest ~20 entries (so a reload doesn't always show the same order), and the remaining 47 are a weighted random sample favoring recent entries but with older ones still getting a shrinking, non-zero chance -- verified over 500 simulated trials that a 500-entry bulk batch (out of ~13,800 rows) never took more than ~28% of the strip, averaging ~16%.
+
+## v5.10.0
 - Added "Request to collaborate" — the first real matchmaking action on Profiles beyond browsing. A "Request to collaborate" button on someone else's profile (with an optional message) sends a request; a new Requests view (with a pending-count badge) lets the recipient Accept or Decline. Accepting reveals both sides' emails to each other (no in-app messaging yet, so email is the actual hand-off) via a mailto link. New `collabRequests/{id}` Firestore collection -- readable only by its two parties, emails pinned to each user's own auth token so they can't be spoofed, deployed and verified server-side.
 
 ## v5.9.4

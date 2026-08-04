@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.10.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -295,6 +295,8 @@
     ' <a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>';
 
   var LATEST_STRIP_COUNT = 50;
+  var LATEST_TOP_RANDOM_COUNT = 3; // strictly the newest -- randomized among themselves so a reload doesn't always show the same order
+  var LATEST_TOP_POOL_SIZE = 20; // window the top-3 draw from
   var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
 
   var YEAR_NONE = "__no-year__";
@@ -1854,13 +1856,34 @@
   setupSeeMore(els.favoritesStrip, els.favoritesSeeMoreBtn);
 
   var latestPool = [];
+  // A pure top-N-by-rowNum cutoff meant Latest Submissions could go
+  // wall-to-wall a single big bulk import until enough newer individual
+  // submissions pushed it out -- same problem the word cloud has (see
+  // cloud.js). Now: the top few slots are randomized among the truly newest
+  // entries (so a reload doesn't always show the exact same order), and the
+  // rest are a weighted random sample favoring recent entries but still
+  // giving older ones a shrinking, non-zero chance -- see
+  // weightedSampleByRank()/latestSampleWeight().
   function renderLatestStrip(rows) {
-    latestPool = rows
+    var newestFirst = rows
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
       .filter(function (x) { return !isNaN(x.n); })
       .sort(function (a, b) { return b.n - a.n; })
-      .slice(0, LATEST_STRIP_COUNT)
       .map(function (x) { return x.row; });
+
+    var topPool = newestFirst.slice(0, LATEST_TOP_POOL_SIZE);
+    var topPicks = shuffle(topPool).slice(0, LATEST_TOP_RANDOM_COUNT);
+    var topPicksSet = {};
+    topPicks.forEach(function (r) { topPicksSet[r.rowNum] = true; });
+
+    var candidates = newestFirst.filter(function (r) { return !topPicksSet[r.rowNum]; });
+    var restPicks = weightedSampleByRank(candidates, LATEST_STRIP_COUNT - topPicks.length);
+
+    // Selection was weighted-random; display order still reads newest-first
+    // so it doesn't look shuffled at a glance.
+    latestPool = topPicks.concat(restPicks).sort(function (a, b) {
+      return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10);
+    });
     latestStrip.render(latestPool);
   }
 
@@ -3474,6 +3497,30 @@
       var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
     }
     return a;
+  }
+
+  // Older entries get picked less often, never zero -- protects Latest
+  // Submissions from being wall-to-wall a single huge bulk import (the same
+  // class of problem the word cloud has, see cloud.js's LATEST_POOL
+  // comment). `rank` is position in a newest-first list.
+  function latestSampleWeight(rank) {
+    if (rank < 100) return 5;
+    if (rank < 400) return 3;
+    if (rank < 1500) return 2;
+    return 1;
+  }
+
+  // Weighted random sample without replacement (A-Res / Efraimidis-Spirakis:
+  // key each item by random()^(1/weight), keep the highest keys) -- higher
+  // weight means more likely to be picked, never guaranteed, so a long tail
+  // of older entries still occasionally surfaces instead of being cut off
+  // outright by a hard top-N.
+  function weightedSampleByRank(itemsNewestFirst, count) {
+    var keyed = itemsNewestFirst.map(function (item, rank) {
+      return { item: item, key: Math.pow(Math.random(), 1 / latestSampleWeight(rank)) };
+    });
+    keyed.sort(function (a, b) { return b.key - a.key; });
+    return keyed.slice(0, count).map(function (x) { return x.item; });
   }
 
   var ytApiReady = false;
