@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.10.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.10.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -297,6 +297,24 @@
   var LATEST_STRIP_COUNT = 50;
   var LATEST_TOP_RANDOM_COUNT = 3; // strictly the newest -- randomized among themselves so a reload doesn't always show the same order
   var LATEST_TOP_POOL_SIZE = 20; // window the top-3 draw from
+  // Entries below this rowNum are internal research/backfill, not real
+  // user submissions -- Latest Submissions should only ever draw from
+  // rowNum >= this floor. LATEST_EXCLUDED_RANGES additionally strips
+  // specific batches that fall *within* that range but still aren't real
+  // submissions (e.g. the 50-entry Michel Gondry backfill block found via
+  // the word cloud investigation -- consecutive rowNums, clearly one bulk
+  // import, not 50 individual people submitting his videos one at a time).
+  var LATEST_MIN_ROWNUM = 12462;
+  var LATEST_EXCLUDED_RANGES = [[13129, 13178]];
+
+  function isEligibleLatestSubmission(rowNum) {
+    var n = parseInt(rowNum, 10);
+    if (isNaN(n) || n < LATEST_MIN_ROWNUM) return false;
+    for (var i = 0; i < LATEST_EXCLUDED_RANGES.length; i++) {
+      if (n >= LATEST_EXCLUDED_RANGES[i][0] && n <= LATEST_EXCLUDED_RANGES[i][1]) return false;
+    }
+    return true;
+  }
   var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
 
   var YEAR_NONE = "__no-year__";
@@ -1866,8 +1884,8 @@
   // weightedSampleByRank()/latestSampleWeight().
   function renderLatestStrip(rows) {
     var newestFirst = rows
+      .filter(function (r) { return isEligibleLatestSubmission(r.rowNum); })
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
-      .filter(function (x) { return !isNaN(x.n); })
       .sort(function (a, b) { return b.n - a.n; })
       .map(function (x) { return x.row; });
 
