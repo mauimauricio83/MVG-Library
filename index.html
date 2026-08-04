@@ -404,6 +404,7 @@
     <div class="media-strip-head">
       <span class="media-strip-title">🎬 Profiles</span>
       <div class="media-strip-head-actions">
+        <button type="button" class="tv-exit-btn" id="profilesRequestsBtn">Requests<span class="profile-requests-badge" id="profileRequestsBadge" hidden>0</span></button>
         <button type="button" class="media-strip-play-all" id="profilesEditBtn">Edit my profile</button>
       </div>
     </div>
@@ -412,6 +413,16 @@
       <p class="profiles-signin-note" id="profilesSigninNote">Sign in to browse the Profiles directory and create your own.</p>
       <div class="profiles-grid" id="profilesGrid"></div>
       <p class="profiles-empty" id="profilesEmptyMsg" hidden>No profiles yet — be the first to create one.</p>
+    </div>
+
+    <div id="profileRequestsView" hidden>
+      <button type="button" class="tv-exit-btn" id="profileRequestsBackBtn">‹ Back to Profiles</button>
+      <h3 class="profile-requests-subhead">Incoming requests</h3>
+      <div class="profile-requests-list" id="profileIncomingRequests"></div>
+      <p class="profiles-empty" id="profileIncomingEmpty" hidden>No incoming requests yet.</p>
+      <h3 class="profile-requests-subhead">Sent requests</h3>
+      <div class="profile-requests-list" id="profileOutgoingRequests"></div>
+      <p class="profiles-empty" id="profileOutgoingEmpty" hidden>You haven't sent any requests yet.</p>
     </div>
 
     <form class="profile-editor" id="profileEditor" hidden>

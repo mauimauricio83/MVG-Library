@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.9.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -191,6 +191,14 @@
     profileEditor: document.getElementById("profileEditor"),
     profileEditorBackBtn: document.getElementById("profileEditorBackBtn"),
     profileEditorIntro: document.getElementById("profileEditorIntro"),
+    profilesRequestsBtn: document.getElementById("profilesRequestsBtn"),
+    profileRequestsBadge: document.getElementById("profileRequestsBadge"),
+    profileRequestsView: document.getElementById("profileRequestsView"),
+    profileRequestsBackBtn: document.getElementById("profileRequestsBackBtn"),
+    profileIncomingRequests: document.getElementById("profileIncomingRequests"),
+    profileIncomingEmpty: document.getElementById("profileIncomingEmpty"),
+    profileOutgoingRequests: document.getElementById("profileOutgoingRequests"),
+    profileOutgoingEmpty: document.getElementById("profileOutgoingEmpty"),
     profileNameInput: document.getElementById("profileNameInput"),
     profileRoleInput: document.getElementById("profileRoleInput"),
     profileBioInput: document.getElementById("profileBioInput"),
@@ -2191,11 +2199,19 @@
   function showProfilesBrowse() {
     els.profilesBrowse.hidden = false;
     els.profileEditor.hidden = true;
+    els.profileRequestsView.hidden = true;
   }
 
   function showProfileEditorView() {
     els.profilesBrowse.hidden = true;
     els.profileEditor.hidden = false;
+    els.profileRequestsView.hidden = true;
+  }
+
+  function showProfileRequestsView() {
+    els.profilesBrowse.hidden = true;
+    els.profileEditor.hidden = true;
+    els.profileRequestsView.hidden = false;
   }
 
   function resetProfilePhotoPick() {
@@ -2351,6 +2367,9 @@
     showProfilesBrowse();
     updateProfilesAuthUI();
     loadAllProfiles();
+    // Refreshes the Requests badge count so it's already accurate before
+    // the Requests tab is ever clicked, not just after.
+    if (currentUser) loadCollabRequests();
     setDesktopView("profiles");
     setMobileView("profiles");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2526,6 +2545,11 @@
           "</div>"
         : "") +
       "</div>" +
+      (profile.uid !== currentUser.uid
+        ? '<div class="profile-lightbox-actions" id="profileRequestArea">' +
+          '<button type="button" class="profile-request-btn" disabled>Checking…</button>' +
+          "</div>"
+        : "") +
       (profile.location ? '<div class="profile-lightbox-map" id="profileLightboxMap"></div>' : "") +
       (profile.locationLabel ? '<p class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
       (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
@@ -2561,7 +2585,160 @@
         });
       });
     }
+
+    if (profile.uid !== currentUser.uid) {
+      var profileUidAtOpen = profile.uid;
+      checkCollabStatus(profile.uid).then(function (req) {
+        if (els.lightbox.hidden || state.lightboxProfileUid !== profileUidAtOpen) return;
+        renderProfileRequestArea(profile, req);
+      });
+    }
   }
+
+  // ---- "Request to collaborate" -- the first real matchmaking action ---
+  // No in-app messaging yet, so an accepted request's whole job is to swap
+  // emails (each side's own, taken from their own auth token -- see
+  // firestore.rules) so people can actually follow up outside the app.
+  function collabRequestsRef() { return db.collection("collabRequests"); }
+
+  // Checks both directions -- a profile might have already requested ME
+  // before I open theirs, and that should read as "respond to their
+  // request", not offer to send a duplicate one.
+  function checkCollabStatus(otherUid) {
+    var mine = collabRequestsRef().where("fromUid", "==", currentUser.uid).where("toUid", "==", otherUid).limit(1).get();
+    var theirs = collabRequestsRef().where("fromUid", "==", otherUid).where("toUid", "==", currentUser.uid).limit(1).get();
+    return Promise.all([mine, theirs]).then(function (snaps) {
+      var doc = !snaps[0].empty ? snaps[0].docs[0] : (!snaps[1].empty ? snaps[1].docs[0] : null);
+      if (!doc) return null;
+      var data = doc.data();
+      data.id = doc.id;
+      return data;
+    }).catch(function (err) {
+      console.error("Checking collab status failed:", err);
+      return null;
+    });
+  }
+
+  function renderProfileRequestArea(profile, req) {
+    var area = document.getElementById("profileRequestArea");
+    if (!area) return; // lightbox moved on already
+    if (!req) {
+      area.innerHTML = '<button type="button" class="profile-request-btn" id="profileRequestBtn" data-uid="' + escapeHtml(profile.uid) + '">Request to collaborate</button>';
+      return;
+    }
+    if (req.status === "pending" && req.fromUid === currentUser.uid) {
+      area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Request sent</button>';
+      return;
+    }
+    if (req.status === "pending") {
+      area.innerHTML = '<button type="button" class="profile-request-btn is-active" id="profileViewIncomingBtn">This person wants to collaborate — respond in Requests</button>';
+      return;
+    }
+    if (req.status === "accepted") {
+      var email = req.fromUid === currentUser.uid ? req.toEmail : req.fromEmail;
+      area.innerHTML = '<a class="profile-request-btn is-active" href="mailto:' + escapeHtml(email) + '">Connected — email ' + escapeHtml(email) + "</a>";
+      return;
+    }
+    area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Request declined</button>';
+  }
+
+  function sendCollabRequest(profile) {
+    var message = window.prompt("Say a little about what you'd like to collaborate on (optional):", "") || "";
+    if (message.length > 300) message = message.slice(0, 300);
+    var area = document.getElementById("profileRequestArea");
+    if (area) area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Sending…</button>';
+    collabRequestsRef().add({
+      fromUid: currentUser.uid,
+      fromEmail: currentUser.email,
+      fromName: currentUser.displayName || currentUser.email,
+      toUid: profile.uid,
+      toName: profile.displayName || "",
+      message: message,
+      status: "pending",
+      createdAt: Date.now()
+    }).then(function () {
+      renderProfileRequestArea(profile, { status: "pending", fromUid: currentUser.uid });
+    }).catch(function (err) {
+      console.error("Sending collab request failed:", err);
+      if (area) area.innerHTML = '<button type="button" class="profile-request-btn" id="profileRequestBtn" data-uid="' + escapeHtml(profile.uid) + '">Request to collaborate</button>';
+      alert("Couldn't send that request -- please try again.");
+    });
+  }
+
+  function renderRequestRow(req, direction) {
+    var name = direction === "incoming" ? (req.fromName || "Someone") : (req.toName || "That profile");
+    var statusLabel = req.status === "pending" ? "Pending" : req.status === "accepted" ? "Accepted" : "Declined";
+    var actionsHtml = "";
+    if (direction === "incoming" && req.status === "pending") {
+      actionsHtml =
+        '<button type="button" class="profile-delete-btn" data-request-action="decline" data-id="' + escapeHtml(req.id) + '">Decline</button>' +
+        '<button type="button" class="media-strip-play-all" data-request-action="accept" data-id="' + escapeHtml(req.id) + '">Accept</button>';
+    } else if (req.status === "accepted") {
+      var email = direction === "incoming" ? req.fromEmail : req.toEmail;
+      actionsHtml = email ? '<a class="profile-request-btn is-active" href="mailto:' + escapeHtml(email) + '">Email</a>' : "";
+    }
+    return '<div class="profile-request-row">' +
+      '<div class="profile-request-row-info">' +
+      '<div class="profile-request-row-name">' + escapeHtml(name) + '</div>' +
+      (req.message ? '<p class="profile-request-row-message">' + escapeHtml(req.message) + "</p>" : "") +
+      '<div class="profile-request-row-status">' + statusLabel + "</div>" +
+      "</div>" +
+      (actionsHtml ? '<div class="profile-request-row-actions">' + actionsHtml + "</div>" : "") +
+      "</div>";
+  }
+
+  function loadCollabRequests() {
+    var incomingPromise = collabRequestsRef().where("toUid", "==", currentUser.uid).get();
+    var outgoingPromise = collabRequestsRef().where("fromUid", "==", currentUser.uid).get();
+    return Promise.all([incomingPromise, outgoingPromise]).then(function (snaps) {
+      function toList(snap) {
+        return snap.docs.map(function (doc) {
+          var d = doc.data();
+          d.id = doc.id;
+          return d;
+        }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      }
+      var incoming = toList(snaps[0]);
+      var outgoing = toList(snaps[1]);
+
+      els.profileIncomingRequests.innerHTML = incoming.map(function (r) { return renderRequestRow(r, "incoming"); }).join("");
+      els.profileIncomingEmpty.hidden = !!incoming.length;
+      els.profileOutgoingRequests.innerHTML = outgoing.map(function (r) { return renderRequestRow(r, "outgoing"); }).join("");
+      els.profileOutgoingEmpty.hidden = !!outgoing.length;
+
+      var pendingIncomingCount = incoming.filter(function (r) { return r.status === "pending"; }).length;
+      els.profileRequestsBadge.textContent = String(pendingIncomingCount);
+      els.profileRequestsBadge.hidden = !pendingIncomingCount;
+    }).catch(function (err) {
+      console.error("Loading collab requests failed:", err);
+    });
+  }
+
+  function respondToRequest(id, accept) {
+    var update = accept
+      ? { status: "accepted", respondedAt: Date.now(), toEmail: currentUser.email }
+      : { status: "declined", respondedAt: Date.now() };
+    collabRequestsRef().doc(id).update(update).then(function () {
+      loadCollabRequests();
+    }).catch(function (err) {
+      console.error("Responding to collab request failed:", err);
+      alert("Couldn't update that request -- please try again.");
+    });
+  }
+
+  els.profilesRequestsBtn.addEventListener("click", function () {
+    showProfileRequestsView();
+    loadCollabRequests();
+  });
+
+  els.profileRequestsBackBtn.addEventListener("click", showProfilesBrowse);
+
+  els.profileRequestsView.addEventListener("click", function (e) {
+    var actionBtn = e.target.closest("[data-request-action]");
+    if (!actionBtn) return;
+    var id = actionBtn.getAttribute("data-id");
+    respondToRequest(id, actionBtn.getAttribute("data-request-action") === "accept");
+  });
 
   // ---- TV Mode's Custom tab: pick a playlist as the channel's source ---
   function renderTVCustomPane() {
@@ -5497,6 +5674,17 @@
     if (relBtn) {
       var row = findRowByNum(relBtn.getAttribute("data-row"));
       if (row) openLightbox(row);
+    }
+    var requestBtn = e.target.closest("#profileRequestBtn");
+    if (requestBtn) {
+      var requestedProfile = profilesCache.filter(function (p) { return p.uid === requestBtn.getAttribute("data-uid"); })[0];
+      if (requestedProfile) sendCollabRequest(requestedProfile);
+      return;
+    }
+    if (e.target.closest("#profileViewIncomingBtn")) {
+      dismissTopModal();
+      showProfileRequestsView();
+      loadCollabRequests();
     }
   });
 

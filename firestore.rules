@@ -74,6 +74,41 @@ service cloud.firestore {
           (request.resource.data.locationLabel is string && request.resource.data.locationLabel.size() <= 120));
     }
 
+    // "Request to collaborate" -- the first real matchmaking action beyond
+    // just browsing Profiles. A request is only ever readable by its two
+    // parties (query must filter by fromUid or toUid == the caller for a
+    // list to satisfy this). fromEmail is pinned to the auth token's own
+    // email claim so it can't be spoofed; on accept, the recipient reveals
+    // their own email the same way -- this is the whole point of accepting
+    // (no in-app messaging yet, so email is the actual hand-off).
+    match /collabRequests/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if request.auth != null &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.fromEmail == request.auth.token.email &&
+        request.resource.data.toUid is string &&
+        request.resource.data.toUid != request.auth.uid &&
+        request.resource.data.status == "pending" &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() <= 300;
+      // Only the recipient can respond, only from pending, only to
+      // accepted/declined -- fromUid/fromEmail/toUid are immutable past
+      // creation (not listed as allowed to change, so any attempt to
+      // rewrite them fails the exact-match implicit check below).
+      allow update: if request.auth != null &&
+        resource.data.toUid == request.auth.uid &&
+        resource.data.status == "pending" &&
+        request.resource.data.fromUid == resource.data.fromUid &&
+        request.resource.data.fromEmail == resource.data.fromEmail &&
+        request.resource.data.toUid == resource.data.toUid &&
+        request.resource.data.status in ["accepted", "declined"] &&
+        (request.resource.data.status != "accepted" ||
+          request.resource.data.toEmail == request.auth.token.email);
+      allow delete: if false;
+    }
+
     // Message board: anyone (including signed-out visitors) can read, but
     // posting requires sign-in and being neither muted nor banned. Messages
     // are otherwise immutable -- no client-side edits, only admin delete
