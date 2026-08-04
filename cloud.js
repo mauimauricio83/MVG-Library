@@ -11,6 +11,24 @@
   var MIN_FONT = 13;
   var MAX_FONT = 46;
 
+  // Same fix as app.js's isEligibleLatestSubmission()/renderLatestStrip()
+  // (kept duplicated here since cloud.js is a standalone script with no
+  // shared module system) -- entries below rowNum 12462 are internal
+  // research/backfill, not real submissions, and rowNum 13129-13178 is a
+  // 50-entry Michel Gondry backfill block (consecutive rowNums, clearly one
+  // bulk import) that's what made him dominate this exact word cloud.
+  var LATEST_MIN_ROWNUM = 12462;
+  var LATEST_EXCLUDED_RANGES = [[13129, 13178]];
+
+  function isEligibleSubmission(rowNum) {
+    var n = parseInt(rowNum, 10);
+    if (isNaN(n) || n < LATEST_MIN_ROWNUM) return false;
+    for (var i = 0; i < LATEST_EXCLUDED_RANGES.length; i++) {
+      if (n >= LATEST_EXCLUDED_RANGES[i][0] && n <= LATEST_EXCLUDED_RANGES[i][1]) return false;
+    }
+    return true;
+  }
+
   function openCacheDb() {
     return new Promise(function (resolve, reject) {
       if (!window.indexedDB) { reject(new Error("IndexedDB unavailable")); return; }
@@ -56,8 +74,8 @@
 
   function buildWords(rows) {
     var pool = rows
+      .filter(function (r) { return isEligibleSubmission(r.rowNum); })
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
-      .filter(function (x) { return !isNaN(x.n); })
       .sort(function (a, b) { return b.n - a.n; })
       .slice(0, LATEST_POOL)
       .map(function (x) { return x.row; });

@@ -4894,6 +4894,54 @@ body.is-searching #featuredStrip {
     aspect-ratio: 16 / 9;
   }
 
+  /* Latest/Featured get an explicit "See all" expand into a 2-column
+     gallery grid on mobile, instead of relying purely on the horizontal
+     scroll strip -- Play All moves out of the header and into the
+     expanded gallery view itself (hidden until .is-expanded), reusing the
+     exact same setupSeeMore()/.is-expanded toggle the desktop "See more"
+     cap already uses, just with different mobile-only styling. Favorites
+     intentionally not included -- horizontal scroll only, unchanged. */
+  #latestStrip .media-strip-see-more,
+  #featuredStrip .media-strip-see-more {
+    display: block;
+    margin: 14px auto 0;
+    padding: 8px 22px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  #latestStrip .media-strip-play-all,
+  #featuredStrip .media-strip-play-all {
+    display: none;
+  }
+
+  #latestStrip.is-expanded .media-strip-play-all,
+  #featuredStrip.is-expanded .media-strip-play-all {
+    display: inline-block;
+  }
+
+  #latestStrip.is-expanded .media-strip-track,
+  #featuredStrip.is-expanded .media-strip-track {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    overflow: visible;
+  }
+
+  #latestStrip.is-expanded .media-strip-card,
+  #featuredStrip.is-expanded .media-strip-card {
+    width: auto;
+  }
+
+  #latestStrip.is-expanded .media-strip-thumb,
+  #featuredStrip.is-expanded .media-strip-thumb {
+    width: 100%;
+  }
+
   /* Spotlight becomes a single vertical column of full-width cards, like
      YouTube's mobile home feed, instead of the desktop's fixed 3-up grid. */
   .spotlight-sidebar-cards,

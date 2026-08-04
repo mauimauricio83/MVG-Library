@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.10.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1865,7 +1865,7 @@
   function setupSeeMore(sectionEl, btn) {
     btn.addEventListener("click", function () {
       var expanded = sectionEl.classList.toggle("is-expanded");
-      btn.textContent = expanded ? "See less ▴" : "See more ▾";
+      btn.textContent = expanded ? "See less ▴" : "See all ▾";
     });
   }
 

@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.10.2 — current
+## v5.11.0 — current
+- Applied the same real-submissions-only filter to the word cloud (`cloud.js`) that Latest Submissions just got -- it had the identical vulnerability and was in fact what surfaced the Michel Gondry backfill block in the first place. Verified: Gondry no longer appears at all; the new top word is a far more reasonable outlier (18 vs. his previous 50).
+- Mobile Latest Submissions and Featured get a "See all" button that expands the horizontal scroll strip into a proper 2-column gallery grid, instead of only being reachable by endless swiping. Play All moves out of the header and into the expanded gallery view (hidden until expanded) rather than sitting there unused before you've even looked at anything. Reuses the existing desktop "See more" toggle mechanism, just relabeled ("See all") and with mobile-specific grid styling. Favorites' mobile behavior is unchanged (horizontal scroll only).
+
+## v5.10.2
 - Latest Submissions now only draws from rowNum 12462 onward -- everything before that is internal research/backfill data, not real user submissions. Also explicitly excludes rowNum 13129-13178, the 50-entry Michel Gondry backfill block identified via the word cloud investigation (consecutive rowNums, clearly one bulk import, not 50 people individually submitting his videos) -- confirmed zero Gondry entries remain in the eligible pool (817 real submissions, rowNum 12462-13335) after both filters.
 
 ## v5.10.1
