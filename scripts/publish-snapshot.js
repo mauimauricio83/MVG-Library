@@ -53,6 +53,8 @@ async function main() {
       director: d.director || "",
       category: d.category || "",
       youtube: d.youtube || "",
+      vimeo: d.vimeo || "",
+      vimeoThumb: d.vimeoThumb || "",
       mvg: d.mvg || "",
       year: d.year || "",
       releaseDate: d.releaseDate || "",
@@ -67,6 +69,8 @@ async function main() {
       feature: !!d.feature,
       spotlight: !!d.spotlight,
       sponsored: !!d.sponsored,
+      backdoor: !!d.backdoor,
+      createdAt: d.createdAt ? d.createdAt.toMillis() : null,
       searchHaystack: buildSearchHaystack(d)
     };
   });

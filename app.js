@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.11.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -223,6 +223,7 @@
     submitGenre: document.getElementById("submitGenre"),
     submitCountry: document.getElementById("submitCountry"),
     submitFormBtn: document.getElementById("submitFormBtn"),
+    submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
     submitThanksModal: document.getElementById("submitThanksModal"),
     submitThanksBack: document.getElementById("submitThanksBack"),
@@ -272,6 +273,7 @@
     adminBulkBtn: document.getElementById("adminBulkBtn"),
     adminBulkView: document.getElementById("adminBulkView"),
     adminBulkTextarea: document.getElementById("adminBulkTextarea"),
+    adminBulkBackdoorCheckbox: document.getElementById("adminBulkBackdoorCheckbox"),
     adminBulkPreviewBtn: document.getElementById("adminBulkPreviewBtn"),
     adminBulkCancelBtn: document.getElementById("adminBulkCancelBtn"),
     adminBulkStatus: document.getElementById("adminBulkStatus"),
@@ -299,20 +301,20 @@
   var LATEST_TOP_POOL_SIZE = 20; // window the top-3 draw from
   // Entries below this rowNum are internal research/backfill, not real
   // user submissions -- Latest Submissions should only ever draw from
-  // rowNum >= this floor. LATEST_EXCLUDED_RANGES additionally strips
-  // specific batches that fall *within* that range but still aren't real
-  // submissions (e.g. the 50-entry Michel Gondry backfill block found via
-  // the word cloud investigation -- consecutive rowNums, clearly one bulk
-  // import, not 50 individual people submitting his videos one at a time).
-  var LATEST_MIN_ROWNUM = 12462;
-  var LATEST_EXCLUDED_RANGES = [[13129, 13178]];
+  // rowNum >= this floor. rowNum 13179 (Jill Blutt -- "Untitled") is the
+  // earliest confirmed real submission. row.backdoor (admin bulk-import
+  // checkbox, see BULK_FIELD_ALIASES/buildBulkDoc) is the general
+  // per-entry escape valve for anything *above* the floor that still isn't
+  // a real submission -- e.g. a future bulk research/backfill import,
+  // which is exactly what the old hardcoded LATEST_EXCLUDED_RANGES rowNum
+  // list (the 50-entry Michel Gondry block, now entirely below the floor
+  // anyway) was a one-off version of.
+  var LATEST_MIN_ROWNUM = 13179;
 
-  function isEligibleLatestSubmission(rowNum) {
-    var n = parseInt(rowNum, 10);
+  function isEligibleLatestSubmission(row) {
+    var n = parseInt(row.rowNum, 10);
     if (isNaN(n) || n < LATEST_MIN_ROWNUM) return false;
-    for (var i = 0; i < LATEST_EXCLUDED_RANGES.length; i++) {
-      if (n >= LATEST_EXCLUDED_RANGES[i][0] && n <= LATEST_EXCLUDED_RANGES[i][1]) return false;
-    }
+    if (row.backdoor) return false;
     return true;
   }
   var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
@@ -1809,11 +1811,8 @@
         track.innerHTML = !rows.length
           ? '<p class="media-strip-empty">' + escapeHtml(opts.emptyMessage) + "</p>"
           : rows.map(function (row) {
-            var id = extractYouTubeId(row.youtube);
             var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-            var thumb = id
-              ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
-              : "";
+            var thumb = videoThumbImgHtml(row, thumbAlt);
             var artistLine = row.artist || "";
             if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
             var descLine = opts.showDescription && row.description
@@ -1867,12 +1866,11 @@
   // submissions pushed it out -- same problem the word cloud has (see
   // cloud.js). Now: the top few slots are randomized among the truly newest
   // entries (so a reload doesn't always show the exact same order), and the
-  // rest are a weighted random sample favoring recent entries but still
-  // giving older ones a shrinking, non-zero chance -- see
-  // weightedSampleByRank()/latestSampleWeight().
+  // rest are drawn by real submission-age quota (1wk/2wk/3wk/4-6wk) with a
+  // uniform shuffle within each bucket -- see ageBucketSample().
   function renderLatestStrip(rows) {
     var newestFirst = rows
-      .filter(function (r) { return isEligibleLatestSubmission(r.rowNum); })
+      .filter(isEligibleLatestSubmission)
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
       .sort(function (a, b) { return b.n - a.n; })
       .map(function (x) { return x.row; });
@@ -1883,7 +1881,7 @@
     topPicks.forEach(function (r) { topPicksSet[r.rowNum] = true; });
 
     var candidates = newestFirst.filter(function (r) { return !topPicksSet[r.rowNum]; });
-    var restPicks = weightedSampleByRank(candidates, LATEST_STRIP_COUNT - topPicks.length);
+    var restPicks = ageBucketSample(candidates, LATEST_STRIP_COUNT - topPicks.length);
 
     // Selection was weighted-random; display order still reads newest-first
     // so it doesn't look shuffled at a glance.
@@ -1913,11 +1911,8 @@
     }
 
     els.recentList.innerHTML = recentPool.map(function (row) {
-      var id = extractYouTubeId(row.youtube);
       var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-      var thumb = id
-        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
-        : "";
+      var thumb = videoThumbImgHtml(row, thumbAlt);
       return (
         '<button type="button" class="recent-item" data-row="' + escapeHtml(row.rowNum) + '">' +
           '<div class="recent-item-thumb">' + thumb + "</div>" +
@@ -2021,7 +2016,7 @@
   els.playlistPlayAllBtn.addEventListener("click", function () {
     var playlist = findPlaylist(state.selectedPlaylistId);
     if (!playlist) return;
-    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && !!r.youtube; });
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
     startTVMode(rows);
   });
 
@@ -2615,7 +2610,7 @@
         if (els.lightbox.hidden || state.lightboxProfileUid !== uidAtOpen) return;
         state.lightboxPlayer = new YT.Player("lightboxPlayerTarget", {
           videoId: id,
-          playerVars: { autoplay: loadAutoplayPref() ? 1 : 0, rel: 0 }
+          playerVars: { autoplay: loadAutoplayPref() ? 1 : 0, rel: 0, controls: state.lightboxCrop ? 0 : 1 }
         });
       });
     }
@@ -2795,7 +2790,7 @@
     if (!item) return;
     var playlist = findPlaylist(item.getAttribute("data-id"));
     if (!playlist) return;
-    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && !!r.youtube; });
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
     if (!rows.length) {
       alert("This playlist has no playable videos yet.");
       return;
@@ -2832,12 +2827,13 @@
   }
 
   // Unlike Featured (shuffled for variety), Spotlight is a small, deliberate
-  // placement — kept in sheet row order rather than randomized.
+  // placement — kept in sheet row order rather than randomized. Reversed
+  // (newest-flagged rowNum first) per explicit request.
   var hasSpotlightContent = false;
   function renderSpotlightSidebar(rows) {
     var picks = rows
       .filter(function (r) { return r.spotlight; })
-      .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
+      .sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); })
       .slice(0, SPOTLIGHT_COUNT);
 
     hasSpotlightContent = picks.length > 0;
@@ -2847,11 +2843,8 @@
     }
 
     els.spotlightCards.innerHTML = picks.map(function (row) {
-      var id = extractYouTubeId(row.youtube);
       var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-      var thumb = id
-        ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">'
-        : "";
+      var thumb = videoThumbImgHtml(row, thumbAlt);
       var artistLine = row.artist || "";
       if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
       var descLine = row.description
@@ -3085,6 +3078,114 @@
   function extractYouTubeId(url) {
     var m = String(url || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
     return m ? m[1] : null;
+  }
+
+  function extractVimeoId(url) {
+    var m = String(url || "").match(/vimeo\.com\/(?:video\/|channels\/[^/]+\/|groups\/[^/]+\/videos\/|)(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  // Catalog entries carry a `youtube` and/or `vimeo` URL field (see
+  // BULK_FIELD_ALIASES / the single add-edit form) -- this is the one place
+  // that decides which provider a row's video actually is, so every
+  // thumbnail/player call site branches through it instead of assuming
+  // YouTube. youtube wins if a row somehow has both (shouldn't happen via
+  // the admin UI, which treats them as alternatives).
+  function getRowVideoRef(row) {
+    var ytId = extractYouTubeId(row && row.youtube);
+    if (ytId) return { provider: "youtube", id: ytId };
+    var vimeoId = extractVimeoId(row && row.vimeo);
+    if (vimeoId) return { provider: "vimeo", id: vimeoId };
+    return null;
+  }
+
+  function hasVideo(row) {
+    return !!getRowVideoRef(row);
+  }
+
+  // YouTube has a predictable thumbnail URL per video ID (i.ytimg.com);
+  // Vimeo doesn't, so its thumbnail is fetched once via oEmbed at
+  // save-time and cached on the row as `vimeoThumb` (see
+  // fetchVimeoThumbnail() / the admin add-edit and bulk-import submit
+  // paths) rather than hit Vimeo's API on every visitor pageview.
+  function getRowThumbUrl(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return null;
+    if (ref.provider === "youtube") return "https://i.ytimg.com/vi/" + ref.id + "/mqdefault.jpg";
+    return row.vimeoThumb || null;
+  }
+
+  function videoThumbImgHtml(row, altText) {
+    var src = getRowThumbUrl(row);
+    return src ? '<img src="' + src + '" alt="' + altText + '" loading="lazy">' : "";
+  }
+
+  var vimeoApiReady = false;
+  var vimeoApiCallbacks = [];
+  function loadVimeoAPI(cb) {
+    if (vimeoApiReady) { cb(); return; }
+    vimeoApiCallbacks.push(cb);
+    if (vimeoApiCallbacks.length > 1) return;
+    var tag = document.createElement("script");
+    tag.onload = function () {
+      vimeoApiReady = true;
+      vimeoApiCallbacks.forEach(function (fn) { fn(); });
+      vimeoApiCallbacks = [];
+    };
+    tag.src = "https://player.vimeo.com/api/player.js";
+    document.head.appendChild(tag);
+  }
+
+  // Common surface over YT.Player and Vimeo.Player so the three player-
+  // creation call sites (profile reel, TV Mode, video-detail lightbox)
+  // don't each need their own provider branch. `targetElId` is an empty
+  // container div both SDKs replace with their own iframe in place.
+  function createVideoPlayer(targetElId, ref, opts) {
+    opts = opts || {};
+    if (ref.provider === "youtube") {
+      loadYouTubeAPI(function () {
+        if (opts.isStale && opts.isStale()) return;
+        var player = new YT.Player(targetElId, {
+          videoId: ref.id,
+          playerVars: { autoplay: opts.autoplay ? 1 : 0, rel: 0, controls: opts.controls === false ? 0 : 1 },
+          events: {
+            onStateChange: function (e) {
+              if (opts.onEnded && e.data === YT.PlayerState.ENDED) opts.onEnded();
+            },
+            onError: function (e) {
+              // 100: video not found/private, 101 & 150: embedding disabled by the owner
+              if (opts.onError && (e.data === 100 || e.data === 101 || e.data === 150)) opts.onError();
+            }
+          }
+        });
+        if (opts.onReady) opts.onReady(player);
+      });
+    } else {
+      loadVimeoAPI(function () {
+        if (opts.isStale && opts.isStale()) return;
+        var player = new Vimeo.Player(targetElId, {
+          id: ref.id,
+          autoplay: !!opts.autoplay,
+          controls: opts.controls !== false
+        });
+        player.on("ended", function () { if (opts.onEnded) opts.onEnded(); });
+        player.on("error", function () { if (opts.onError) opts.onError(); });
+        if (opts.onReady) opts.onReady(player);
+      });
+    }
+  }
+
+  // One-time lookup of a Vimeo video's thumbnail via its public oEmbed
+  // endpoint (CORS-enabled) -- called at admin save-time (single add/edit
+  // and bulk-import preview), not per-visitor, so the public site never
+  // needs to talk to Vimeo directly. Resolves null on any failure (private/
+  // deleted video, network error) rather than rejecting, since a missing
+  // thumbnail shouldn't block saving the entry.
+  function fetchVimeoThumbnail(vimeoId) {
+    return fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + vimeoId))
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) { return (data && data.thumbnail_url) || null; })
+      .catch(function () { return null; });
   }
 
   function teardownTV() {
@@ -3510,28 +3611,63 @@
     return a;
   }
 
-  // Older entries get picked less often, never zero -- protects Latest
-  // Submissions from being wall-to-wall a single huge bulk import (the same
-  // class of problem the word cloud has, see cloud.js's LATEST_POOL
-  // comment). `rank` is position in a newest-first list.
-  function latestSampleWeight(rank) {
-    if (rank < 100) return 5;
-    if (rank < 400) return 3;
-    if (rank < 1500) return 2;
-    return 1;
+  // Slot quotas by real submission age (createdAt), not rowNum rank --
+  // protects Latest Submissions from being wall-to-wall a single huge bulk
+  // import (the same class of problem the word cloud has, see cloud.js's
+  // LATEST_POOL comment) while matching real calendar-week recency.
+  var LATEST_AGE_BUCKETS = [
+    { maxDays: 7, share: 0.40 },
+    { maxDays: 14, share: 0.30 },
+    { maxDays: 21, share: 0.20 },
+    { maxDays: 42, share: 0.10 }
+  ];
+
+  function daysOld(row) {
+    if (!row.createdAt) return null;
+    return (Date.now() - row.createdAt) / 86400000;
   }
 
-  // Weighted random sample without replacement (A-Res / Efraimidis-Spirakis:
-  // key each item by random()^(1/weight), keep the highest keys) -- higher
-  // weight means more likely to be picked, never guaranteed, so a long tail
-  // of older entries still occasionally surfaces instead of being cut off
-  // outright by a hard top-N.
-  function weightedSampleByRank(itemsNewestFirst, count) {
-    var keyed = itemsNewestFirst.map(function (item, rank) {
-      return { item: item, key: Math.pow(Math.random(), 1 / latestSampleWeight(rank)) };
+  // Buckets candidates by real age into the weekly tiers above, each with an
+  // explicit slot quota (share * count), uniformly shuffled within itself --
+  // age controls how many slots come from around how recent, nothing more.
+  // Anything older than the oldest tier, or missing createdAt entirely
+  // (older/imported entries that pre-date timestamp tracking), falls into a
+  // residual pool used only to backfill shortfalls, so the strip still
+  // reads as "mostly recent, but always a mix of everything else" even
+  // before real age data exists for the whole catalog.
+  function ageBucketSample(candidates, count) {
+    var buckets = LATEST_AGE_BUCKETS.map(function () { return []; });
+    candidates.forEach(function (row) {
+      var age = daysOld(row);
+      if (age == null) return;
+      for (var i = 0; i < LATEST_AGE_BUCKETS.length; i++) {
+        if (age <= LATEST_AGE_BUCKETS[i].maxDays) { buckets[i].push(row); break; }
+      }
     });
-    keyed.sort(function (a, b) { return b.key - a.key; });
-    return keyed.slice(0, count).map(function (x) { return x.item; });
+
+    var picked = [];
+    var pickedSet = {};
+    function takeFrom(list, n) {
+      var pool = shuffle(list);
+      for (var i = 0; i < pool.length && n > 0; i++) {
+        var row = pool[i];
+        if (pickedSet[row.rowNum]) continue;
+        picked.push(row);
+        pickedSet[row.rowNum] = true;
+        n--;
+      }
+    }
+
+    LATEST_AGE_BUCKETS.forEach(function (bucket, i) {
+      takeFrom(buckets[i], Math.round(count * bucket.share));
+    });
+
+    if (picked.length < count) {
+      var everyoneElse = candidates.filter(function (row) { return !pickedSet[row.rowNum]; });
+      takeFrom(everyoneElse, count - picked.length);
+    }
+
+    return picked.slice(0, count);
   }
 
   var ytApiReady = false;
@@ -3590,22 +3726,6 @@
     els.tvCropBtn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
   }
 
-  function onTVStateChange(e) {
-    if (state.tv.active && e.data === YT.PlayerState.ENDED) advanceTV();
-  }
-
-  // Without this, a video that's gone private/deleted (100) or has
-  // embedding disabled by the owner (101/150 -- the same codes the
-  // video-detail lightbox's player checks) just sits there stalled instead
-  // of playing anything, since the iframe never reaches PLAYING/ENDED.
-  // Skipping straight to the next track keeps the "channel" running instead
-  // of silently stopping.
-  function onTVError(e) {
-    if (state.tv.active && (e.data === 100 || e.data === 101 || e.data === 150)) {
-      advanceTV();
-    }
-  }
-
   // startPaused: when set, the new track loads cued (first frame, not
   // playing) instead of autoplaying -- used when filters change mid-track
   // to preserve whatever play/pause state the viewer was already in (see
@@ -3646,29 +3766,51 @@
     els.tvInfoPanel.innerHTML = tvInfoMarkup(row);
   }
 
+  // Reuses the existing player in place (loadVideoById/loadVideo) when the
+  // next track is the SAME provider as what's already loaded -- avoids a
+  // visible player teardown/rebuild on every skip. A provider switch (a
+  // YouTube track followed by a Vimeo one, or vice versa) can't reuse the
+  // other SDK's player, so it tears down and rebuilds the target div fresh.
   function loadTVTrack(row, startPaused) {
-    var id = extractYouTubeId(row.youtube);
-    if (!id) {
+    var ref = getRowVideoRef(row);
+    if (!ref) {
       advanceTV();
       return;
     }
     updateTVTrackDetails(row);
-    if (state.tv.player && state.tv.player.loadVideoById) {
+
+    if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "youtube" && state.tv.player.loadVideoById) {
       if (startPaused && state.tv.player.cueVideoById) {
-        state.tv.player.cueVideoById(id);
+        state.tv.player.cueVideoById(ref.id);
       } else {
-        state.tv.player.loadVideoById(id);
+        state.tv.player.loadVideoById(ref.id);
       }
-    } else {
-      loadYouTubeAPI(function () {
-        if (!state.tv.active) return;
-        state.tv.player = new YT.Player("tvPlayerTarget", {
-          videoId: id,
-          playerVars: { autoplay: startPaused ? 0 : 1, rel: 0 },
-          events: { onStateChange: onTVStateChange, onError: onTVError }
-        });
-      });
+      return;
     }
+    if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "vimeo" && state.tv.player.loadVideo) {
+      state.tv.player.loadVideo(ref.id).then(function () {
+        if (startPaused) state.tv.player.pause(); else state.tv.player.play();
+      }).catch(function () { if (state.tv.active) advanceTV(); });
+      return;
+    }
+
+    if (state.tv.player && state.tv.player.destroy) {
+      try { state.tv.player.destroy(); } catch (e) {}
+    }
+    state.tv.player = null;
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    if (frame) frame.innerHTML = '<div id="tvPlayerTarget"></div>';
+    createVideoPlayer("tvPlayerTarget", ref, {
+      autoplay: !startPaused,
+      controls: !state.tv.crop,
+      isStale: function () { return !state.tv.active; },
+      onEnded: function () { if (state.tv.active) advanceTV(); },
+      onError: function () { if (state.tv.active) advanceTV(); },
+      onReady: function (player) {
+        state.tv.player = player;
+        state.tv.playerProvider = ref.provider;
+      }
+    });
   }
 
   function advanceTV() {
@@ -3698,7 +3840,7 @@
       armTV();
       return;
     }
-    var pool = state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    var pool = state.rows.filter(matchesFilters).filter(function (r) { return hasVideo(r); });
     if (!pool.length) {
       armTV(); // tears the player down and shows the no-matches message
       return;
@@ -3728,8 +3870,8 @@
   function armTV() {
     teardownTV();
     var pool = state.tvCustomPool
-      ? state.tvCustomPool.filter(function (r) { return !!r.youtube; })
-      : state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+      ? state.tvCustomPool.filter(function (r) { return hasVideo(r); })
+      : state.rows.filter(matchesFilters).filter(function (r) { return hasVideo(r); });
     if (!pool.length) {
       els.videoBox.innerHTML = emptyTVMarkup();
       return;
@@ -3763,7 +3905,7 @@
   // plain TV Mode entry points (see openTVModalFresh/armTV).
   function startTVMode(customPool) {
     openTVModal();
-    var pool = customPool || state.rows.filter(matchesFilters).filter(function (r) { return !!r.youtube; });
+    var pool = customPool || state.rows.filter(matchesFilters).filter(function (r) { return hasVideo(r); });
     if (!pool.length) {
       els.videoBox.innerHTML = emptyTVMarkup();
       return;
@@ -3785,19 +3927,19 @@
   }
 
   els.featuredPlayAll.addEventListener("click", function () {
-    startTVMode(featuredPool.filter(function (r) { return !!r.youtube; }));
+    startTVMode(featuredPool.filter(function (r) { return hasVideo(r); }));
   });
 
   els.latestPlayAll.addEventListener("click", function () {
-    startTVMode(latestPool.filter(function (r) { return !!r.youtube; }));
+    startTVMode(latestPool.filter(function (r) { return hasVideo(r); }));
   });
 
   els.recentPlayAll.addEventListener("click", function () {
-    startTVMode(recentPool.filter(function (r) { return !!r.youtube; }));
+    startTVMode(recentPool.filter(function (r) { return hasVideo(r); }));
   });
 
   els.favoritesPlayAll.addEventListener("click", function () {
-    startTVMode(favoritesPool.filter(function (r) { return !!r.youtube; }));
+    startTVMode(favoritesPool.filter(function (r) { return hasVideo(r); }));
   });
 
   els.videoBox.addEventListener("click", function (e) {
@@ -3877,7 +4019,7 @@
     var genres = row.genres || [];
     var scored = [];
     state.rows.forEach(function (r) {
-      if (r.rowNum === row.rowNum || !r.youtube) return;
+      if (r.rowNum === row.rowNum || !hasVideo(r)) return;
       var score = 0;
       if (row.director && r.director === row.director) score += 3;
       if (row.artist && r.artist === row.artist) score += 2;
@@ -3949,8 +4091,9 @@
     pushRecentlyViewed(row.rowNum);
     renderRecentList(state.rows);
 
-    var id = extractYouTubeId(row.youtube);
-    var videoHtml = id
+    var videoRef = getRowVideoRef(row);
+    var id = videoRef ? videoRef.id : null;
+    var videoHtml = videoRef
       ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
       : '<div class="lightbox-video-empty">No video available for this entry.</div>';
 
@@ -4024,25 +4167,18 @@
       });
     }
 
-    if (id) {
+    if (videoRef) {
       var rowNumAtOpen = row.rowNum;
-      var youtubeUrl = row.youtube;
-      loadYouTubeAPI(function () {
-        // bail if the lightbox was closed or switched to another entry while the API was loading
-        if (els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen) return;
-        state.lightboxPlayer = new YT.Player("lightboxPlayerTarget", {
-          videoId: id,
-          playerVars: { autoplay: loadAutoplayPref() ? 1 : 0, rel: 0 },
-          events: {
-            onError: function (e) {
-              // 100: video not found/private, 101 & 150: embedding disabled by the owner
-              if (e.data === 100 || e.data === 101 || e.data === 150) {
-                destroyLightboxPlayer();
-                showLightboxVideoFallback(youtubeUrl);
-              }
-            }
-          }
-        });
+      var fallbackUrl = row.youtube || row.vimeo;
+      createVideoPlayer("lightboxPlayerTarget", videoRef, {
+        autoplay: loadAutoplayPref(),
+        controls: !state.lightboxCrop,
+        isStale: function () { return els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen; },
+        onError: function () {
+          destroyLightboxPlayer();
+          showLightboxVideoFallback(fallbackUrl);
+        },
+        onReady: function (player) { state.lightboxPlayer = player; }
       });
     }
   }
@@ -4966,11 +5102,12 @@
   function upsertAdminRowLocal(rowNum, fields) {
     var plain = {
       rowNum: rowNum, artist: fields.artist, song: fields.song, director: fields.director,
-      category: fields.category, youtube: fields.youtube, mvg: fields.mvg, year: fields.year,
+      category: fields.category, youtube: fields.youtube, vimeo: fields.vimeo, vimeoThumb: fields.vimeoThumb,
+      mvg: fields.mvg, year: fields.year,
       releaseDate: fields.releaseDate, studio: fields.studio, producer: fields.producer,
       dp: fields.dp, editor: fields.editor, choreographer: fields.choreographer, country: fields.country,
       genres: fields.genres, description: fields.description, feature: fields.feature, spotlight: fields.spotlight,
-      sponsored: fields.sponsored
+      sponsored: fields.sponsored, backdoor: fields.backdoor
     };
     var idx = -1;
     for (var i = 0; i < state.adminRows.length; i++) {
@@ -4997,7 +5134,7 @@
     var f = els.adminForm;
     f.elements.rowNum.value = row ? row.rowNum : "";
     if (row) {
-      ["artist", "song", "director", "category", "youtube", "mvg", "year", "releaseDate",
+      ["artist", "song", "director", "category", "youtube", "vimeo", "mvg", "year", "releaseDate",
         "studio", "producer", "dp", "editor", "choreographer", "country", "description"].forEach(function (key) {
         if (f.elements[key]) f.elements[key].value = row[key] || "";
       });
@@ -5005,6 +5142,7 @@
       f.elements.feature.checked = !!row.feature;
       f.elements.spotlight.checked = !!row.spotlight;
       f.elements.sponsored.checked = !!row.sponsored;
+      f.elements.backdoor.checked = !!row.backdoor;
     }
   }
 
@@ -5049,6 +5187,8 @@
           director: d.director || "",
           category: d.category || "",
           youtube: d.youtube || "",
+          vimeo: d.vimeo || "",
+          vimeoThumb: d.vimeoThumb || "",
           mvg: d.mvg || "",
           year: d.year || "",
           releaseDate: d.releaseDate || "",
@@ -5063,6 +5203,13 @@
           feature: !!d.feature,
           spotlight: !!d.spotlight,
           sponsored: !!d.sponsored,
+          backdoor: !!d.backdoor,
+          // Epoch millis, when known -- powers the age-bucketed Latest
+          // Submissions sampling (see ageBucketSample()). Only set via
+          // FieldValue.serverTimestamp() on new-doc creation, so older/
+          // imported entries may lack it; ageBucketSample() falls back to
+          // treating those as residual/undated rather than failing.
+          createdAt: d.createdAt ? d.createdAt.toMillis() : null,
           // youtubeSearchText (the uploader's own YouTube description/tags,
           // backfilled via scripts/backfill-youtube-metadata.js) fills the
           // search gap for entries with no curated description of our own.
@@ -5124,6 +5271,7 @@
     director: ["director"],
     category: ["category"],
     youtube: ["youtube link", "youtube"],
+    vimeo: ["vimeo link", "vimeo"],
     mvg: ["mvg link", "mvg"],
     year: ["year", "year of release"],
     releaseDate: ["release date", "release date (optional)"],
@@ -5180,6 +5328,7 @@
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = false;
     els.adminBulkTextarea.value = "";
+    els.adminBulkBackdoorCheckbox.checked = false;
     els.adminBulkStatus.hidden = true;
     els.adminBulkPreview.innerHTML = "";
     els.adminBulkCommitRow.hidden = true;
@@ -5190,7 +5339,7 @@
     return /^(true|yes|y|1|x)$/i.test(String(raw || "").trim());
   }
 
-  function buildBulkDoc(norm, rowNum, isNew, existing) {
+  function buildBulkDoc(norm, rowNum, isNew, existing, forceBackdoor) {
     var feature = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.feature));
     var spotlight = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.spotlight));
     var sponsored = isTruthyFlagText(pickAlias(norm, BULK_FIELD_ALIASES.sponsored));
@@ -5204,6 +5353,7 @@
       director: pickAlias(norm, BULK_FIELD_ALIASES.director),
       category: pickAlias(norm, BULK_FIELD_ALIASES.category),
       youtube: pickAlias(norm, BULK_FIELD_ALIASES.youtube),
+      vimeo: pickAlias(norm, BULK_FIELD_ALIASES.vimeo),
       mvg: pickAlias(norm, BULK_FIELD_ALIASES.mvg),
       year: pickAlias(norm, BULK_FIELD_ALIASES.year),
       releaseDate: fixReleaseDate(pickAlias(norm, BULK_FIELD_ALIASES.releaseDate)),
@@ -5218,6 +5368,7 @@
       feature: feature,
       spotlight: spotlight,
       sponsored: sponsored,
+      backdoor: !!forceBackdoor,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -5232,7 +5383,7 @@
   // with no Row # (the common case -- pasting brand-new submissions) get
   // fresh IDs from a single reserveRowNums() transaction, so a pure bulk-add
   // costs 1 read + 1 write total regardless of how many rows are pasted.
-  function parseBulkImportText(text) {
+  function parseBulkImportText(text, forceBackdoor) {
     var parsed = Papa.parse(text.trim(), { header: true, delimiter: "\t", skipEmptyLines: true });
     var entries = parsed.data.map(function (raw) {
       var norm = normalizeBulkRow(raw);
@@ -5259,7 +5410,7 @@
       });
 
       var nextReserved = 0;
-      return entries.map(function (e) {
+      var mapped = entries.map(function (e) {
         if (!e.valid) return { valid: false };
         var rowNum, existing, isNew;
         if (e.rowNum) {
@@ -5271,8 +5422,24 @@
           existing = null;
           isNew = true;
         }
-        return { rowNum: rowNum, isNew: isNew, doc: buildBulkDoc(e.norm, rowNum, isNew, existing), valid: true };
+        return { rowNum: rowNum, isNew: isNew, doc: buildBulkDoc(e.norm, rowNum, isNew, existing, forceBackdoor), valid: true };
       });
+
+      // Vimeo has no predictable thumbnail URL (unlike YouTube's
+      // i.ytimg.com) -- resolve it once per row via oEmbed here, at
+      // admin-preview time, rather than per-visitor. youtube wins when a
+      // row somehow has both, so no fetch needed there.
+      var thumbFetches = mapped.map(function (r) {
+        if (!r.valid || r.doc.youtube) return null;
+        var vimeoId = extractVimeoId(r.doc.vimeo);
+        if (!vimeoId) return null;
+        // Merge write (see adminBulkCommitBtn) -- only set the key on
+        // success, so a transient oEmbed failure doesn't null out a
+        // thumbnail fetched on a previous save.
+        return fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) r.doc.vimeoThumb = thumb; });
+      }).filter(Boolean);
+
+      return Promise.all(thumbFetches).then(function () { return mapped; });
     });
   }
 
@@ -5308,7 +5475,7 @@
     els.adminBulkStatus.textContent = "Checking rows…";
     els.adminBulkStatus.className = "admin-status";
     els.adminBulkStatus.hidden = false;
-    parseBulkImportText(text).then(function (rows) {
+    parseBulkImportText(text, els.adminBulkBackdoorCheckbox.checked).then(function (rows) {
       els.adminBulkPreviewBtn.disabled = false;
       state.adminBulkParsed = rows.filter(function (r) { return r.valid; });
       renderBulkPreview(rows);
@@ -5428,6 +5595,7 @@
       if (r.feature) badges += '<span class="admin-badge">Feature</span>';
       if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
       if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
+      if (r.backdoor) badges += '<span class="admin-badge admin-badge-backdoor">Backdoor</span>';
       return (
         '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
           '<div class="admin-row-main">' +
@@ -5524,6 +5692,7 @@
       var feature = formData.get("feature") === "on";
       var spotlight = formData.get("spotlight") === "on";
       var sponsored = formData.get("sponsored") === "on";
+      var backdoor = formData.get("backdoor") === "on";
       var wasFeature = state.adminFormOriginal ? state.adminFormOriginal.feature : false;
       var wasSpotlight = state.adminFormOriginal ? state.adminFormOriginal.spotlight : false;
       var genres = String(formData.get("genres") || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
@@ -5537,6 +5706,7 @@
         director: field("director"),
         category: field("category"),
         youtube: field("youtube"),
+        vimeo: field("vimeo"),
         mvg: field("mvg"),
         year: field("year"),
         releaseDate: field("releaseDate"),
@@ -5551,6 +5721,7 @@
         feature: feature,
         spotlight: spotlight,
         sponsored: sponsored,
+        backdoor: backdoor,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (isNew) doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -5559,7 +5730,19 @@
       if (feature !== wasFeature) doc.featureAt = feature ? firebase.firestore.FieldValue.serverTimestamp() : null;
       if (spotlight !== wasSpotlight) doc.spotlightAt = spotlight ? firebase.firestore.FieldValue.serverTimestamp() : null;
 
-      return db.collection("videos").doc(rowNum).set(doc, { merge: true }).then(function () {
+      // Vimeo has no predictable thumbnail URL like YouTube's i.ytimg.com --
+      // resolved once here via oEmbed rather than per-visitor (see
+      // getRowThumbUrl()). Merge write below, so only set the key on
+      // success -- a transient fetch failure shouldn't null out a
+      // thumbnail already stored from a previous save.
+      var vimeoId = !doc.youtube ? extractVimeoId(doc.vimeo) : null;
+      var thumbPromise = vimeoId
+        ? fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) doc.vimeoThumb = thumb; })
+        : Promise.resolve();
+
+      return thumbPromise.then(function () {
+        return db.collection("videos").doc(rowNum).set(doc, { merge: true });
+      }).then(function () {
         var evictions = [];
         if (feature && !wasFeature) evictions.push(enforceCap("feature", "featureAt", 30));
         if (spotlight && !wasSpotlight) evictions.push(enforceCap("spotlight", "spotlightAt", SPOTLIGHT_COUNT));
@@ -5622,6 +5805,15 @@
     var formData = new FormData(els.submitForm);
     // Honeypot: real visitors never see or fill this field.
     if (formData.get("website")) return;
+
+    // YouTube and Vimeo are both optional individually (see index.html) so
+    // one field doesn't force a submitter with the other kind of link to
+    // fill in something fake -- but the entry needs at least one.
+    if (!String(formData.get("youtube") || "").trim() && !String(formData.get("vimeo") || "").trim()) {
+      els.submitVideoLinkHint.hidden = false;
+      return;
+    }
+    els.submitVideoLinkHint.hidden = true;
 
     if (!SUBMIT_WEBAPP_URL) {
       console.error("SUBMIT_WEBAPP_URL isn't configured yet.");
@@ -5781,11 +5973,8 @@
     // Thumbnail is only shown on desktop (see styles.css) -- mobile keeps
     // the compact text-row list unchanged. Always included in the markup
     // either way so there's no separate desktop/mobile render path.
-    var id = extractYouTubeId(row.youtube);
     var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-    var thumb = '<div class="entry-thumb">' +
-      (id ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="' + thumbAlt + '" loading="lazy">' : "") +
-      "</div>";
+    var thumb = '<div class="entry-thumb">' + videoThumbImgHtml(row, thumbAlt) + "</div>";
 
     return (
       '<li class="entry" data-row="' + escapeHtml(row.rowNum) + '">' +

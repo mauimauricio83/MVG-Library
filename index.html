@@ -640,6 +640,9 @@
         <label>YouTube Link
           <input type="url" name="youtube" placeholder="https://youtube.com/watch?v=…">
         </label>
+        <label>Vimeo Link <span class="submit-optional">(used only if YouTube Link is blank)</span>
+          <input type="url" name="vimeo" placeholder="https://vimeo.com/…">
+        </label>
         <label>MVG Link <span class="submit-optional">(Instagram Reel)</span>
           <input type="url" name="mvg">
         </label>
@@ -676,6 +679,7 @@
         <label class="admin-form-checkbox"><input type="checkbox" name="feature"> Feature</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Spotlight</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="sponsored"> Sponsored</label>
+        <label class="admin-form-checkbox"><input type="checkbox" name="backdoor"> Backdoor import <span class="submit-optional">(excluded from Latest Submissions / word cloud -- for research/backfill entries, not real submissions)</span></label>
 
         <div class="admin-form-actions">
           <button type="submit" class="submit-form-btn" id="adminFormSaveBtn">Save</button>
@@ -686,8 +690,9 @@
 
       <div id="adminBulkView" hidden>
         <h2 class="admin-form-title">Bulk Import</h2>
-        <p class="admin-bulk-hint">Paste rows copied from a spreadsheet, including the header row. Recognized columns (any order, extras ignored, common alternate spellings OK -- e.g. "Youtube Link" or "Year of release"): Artist, Song Title, Director, Category, YouTube Link, MVG Link, Year, Release date, Studio, Producer, DP, Editor, Choreographer, Country, Genre 1, Genre 2, Genre 3 (or a single Genre column), Description, Feature, Spotlight, Sponsored, Row #. Include "Row #" to update an existing entry; leave it blank to create a new one.</p>
+        <p class="admin-bulk-hint">Paste rows copied from a spreadsheet, including the header row. Recognized columns (any order, extras ignored, common alternate spellings OK -- e.g. "Youtube Link" or "Year of release"): Artist, Song Title, Director, Category, YouTube Link, Vimeo Link, MVG Link, Year, Release date, Studio, Producer, DP, Editor, Choreographer, Country, Genre 1, Genre 2, Genre 3 (or a single Genre column), Description, Feature, Spotlight, Sponsored, Row #. Include "Row #" to update an existing entry; leave it blank to create a new one.</p>
         <textarea id="adminBulkTextarea" class="admin-bulk-textarea" rows="6" placeholder="Paste spreadsheet rows here, header row first…"></textarea>
+        <label class="admin-form-checkbox"><input type="checkbox" id="adminBulkBackdoorCheckbox"> Backdoor import <span class="submit-optional">(this whole batch is research/backfill, not real submissions -- excludes all of it from Latest Submissions / word cloud)</span></label>
         <div class="admin-form-actions">
           <button type="button" class="submit-form-btn" id="adminBulkPreviewBtn">Preview</button>
           <button type="button" class="admin-row-btn" id="adminBulkCancelBtn">Cancel</button>
@@ -769,9 +774,13 @@
       <label>Song Title<span class="submit-required">*</span>
         <input type="text" name="song" id="submitSong" required>
       </label>
-      <label>YouTube Link<span class="submit-required">*</span>
-        <input type="url" name="youtube" placeholder="https://youtube.com/watch?v=…" required>
+      <label>YouTube Link
+        <input type="url" name="youtube" id="submitYoutube" placeholder="https://youtube.com/watch?v=…">
       </label>
+      <label>Vimeo Link <span class="submit-optional">(if not on YouTube)</span>
+        <input type="url" name="vimeo" id="submitVimeo" placeholder="https://vimeo.com/…">
+      </label>
+      <p class="submit-form-status" id="submitVideoLinkHint" hidden>Provide a YouTube or Vimeo link.</p>
       <label>Director<span class="submit-required">*</span>
         <input type="text" name="director" placeholder="Last name, first name" required>
       </label>

@@ -2,7 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.11.1 — current
+## v5.12.0 — current
+- Added Vimeo embedding as an alternative to YouTube everywhere a catalog entry's video shows up (cards, TV Mode, the video-detail lightbox, admin form, bulk import, the public submission form): entries carry a `vimeo` field alongside `youtube`, a shared `getRowVideoRef()`/`createVideoPlayer()` picks the right provider and SDK (YT IFrame API vs. Vimeo Player.js) per row, and Vimeo thumbnails (no predictable URL like YouTube's `i.ytimg.com`) are resolved once via oEmbed at admin save-time and cached as `vimeoThumb`, not fetched per visitor. TV Mode reuses the live player across track skips only when the next track is the same provider; switching provider mid-queue rebuilds cleanly.
+- Latest Submissions now draws by real submission age (weeks since `createdAt`, newly published in the public snapshot) instead of rowNum rank: 1 week old ~40% of slots, 2 weeks ~30%, 3 weeks ~20%, 4-6 weeks ~10%, shuffled within each tier, shortfalls backfilled from the rest of the pool. The top 3 slots stay a random draw from the truly newest entries, unchanged.
+- Reversed Spotlight order (newest-flagged entry first).
+- 4:3 crop mode now also strips the YouTube player's own bottom control bar (`controls: 0`) instead of just cropping it off -- the top title/channel overlay can't be suppressed the same way (YouTube deprecated `showinfo`/`modestbranding` and always forces it on hover/pause), so partial cropping there is a documented, accepted limitation of the CSS scale+clip technique.
+- Revised the Latest Submissions / word cloud eligibility floor to rowNum 13179 ("Jill Blutt — Untitled", the earliest confirmed real submission), and added a `backdoor` flag (bulk-import checkbox, also settable on the single add/edit form) as the general per-entry way to exclude a future research/backfill import from both, replacing the old hardcoded-rowNum-range mechanism.
+- Confirmed Country/Genre are already dropdowns on the public submission form (no change needed).
+
+## v5.11.1
 - Fixed the Watch/Connect switch showing "Connect" as active on a fresh page load while the page itself displayed Watch's Home content. It was a persisted preference (localStorage), but the page's own default view is always Home/Watch on a fresh load regardless -- so returning to the site after a past "Connect" click left the switch and the actual screen disagreeing. Nav mode is no longer persisted across page loads; it always starts on Watch, matching what's actually shown, and still toggles normally within a session.
 
 ## v5.11.0

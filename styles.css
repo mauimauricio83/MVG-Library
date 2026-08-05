@@ -3793,7 +3793,18 @@ body.is-searching #featuredStrip {
 /* Visual-only crop toggle (applyLightboxCrop() in app.js) -- the source
    video is still the real 16:9 YouTube embed, just scaled up and clipped
    by this frame's overflow:hidden. 133.34% is the iframe width needed so
-   its full (unchanged) height maps to a 4:3 box: (16/9) / (4/3) = 4/3. */
+   its full (unchanged) height maps to a 4:3 box: (16/9) / (4/3) = 4/3.
+   The scaled-up iframe is still a real 16:9 box (just bigger), so
+   YouTube's own UI isn't distorted -- but chrome pinned to the iframe's
+   edges (bottom control bar, top title/channel overlay) gets pushed past
+   the visible clip region and cut off along with the picture. The bottom
+   bar is removed via controls:0 in playerVars whenever crop is active
+   (see the three `new YT.Player(...)` call sites in app.js). The top
+   title/channel overlay can't be suppressed the same way -- YouTube
+   deprecated the showinfo/modestbranding params years ago and always
+   forces that overlay on load/hover/pause, so its partial cropping in
+   4:3 mode is an accepted, inherent limitation of this CSS-only
+   scale+clip technique. */
 .lightbox-video-frame.is-crop-4-3 {
   padding-top: 75%;
 }
@@ -4028,6 +4039,11 @@ body.is-searching #featuredStrip {
 .admin-badge-sponsored {
   background: #f5b942;
   color: #26210a;
+}
+
+.admin-badge-backdoor {
+  background: #6b6280;
+  color: #fff;
 }
 
 .admin-row-actions {

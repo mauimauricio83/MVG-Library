@@ -13,19 +13,19 @@
 
   // Same fix as app.js's isEligibleLatestSubmission()/renderLatestStrip()
   // (kept duplicated here since cloud.js is a standalone script with no
-  // shared module system) -- entries below rowNum 12462 are internal
-  // research/backfill, not real submissions, and rowNum 13129-13178 is a
-  // 50-entry Michel Gondry backfill block (consecutive rowNums, clearly one
-  // bulk import) that's what made him dominate this exact word cloud.
-  var LATEST_MIN_ROWNUM = 12462;
-  var LATEST_EXCLUDED_RANGES = [[13129, 13178]];
+  // shared module system) -- entries below rowNum 13179 (Jill Blutt --
+  // "Untitled", the earliest confirmed real submission) are internal
+  // research/backfill, not real submissions. row.backdoor is the general
+  // per-entry escape valve for anything above the floor that still isn't a
+  // real submission (admin bulk-import checkbox) -- what made Michel
+  // Gondry dominate this exact word cloud was a 50-entry backfill block
+  // that's now entirely below the floor anyway.
+  var LATEST_MIN_ROWNUM = 13179;
 
-  function isEligibleSubmission(rowNum) {
-    var n = parseInt(rowNum, 10);
+  function isEligibleSubmission(row) {
+    var n = parseInt(row.rowNum, 10);
     if (isNaN(n) || n < LATEST_MIN_ROWNUM) return false;
-    for (var i = 0; i < LATEST_EXCLUDED_RANGES.length; i++) {
-      if (n >= LATEST_EXCLUDED_RANGES[i][0] && n <= LATEST_EXCLUDED_RANGES[i][1]) return false;
-    }
+    if (row.backdoor) return false;
     return true;
   }
 
@@ -74,7 +74,7 @@
 
   function buildWords(rows) {
     var pool = rows
-      .filter(function (r) { return isEligibleSubmission(r.rowNum); })
+      .filter(isEligibleSubmission)
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
       .sort(function (a, b) { return b.n - a.n; })
       .slice(0, LATEST_POOL)
