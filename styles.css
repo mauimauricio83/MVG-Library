@@ -1529,9 +1529,10 @@ html, body {
 }
 
 /* While actively searching (state.query non-empty -- see render()'s
-   is-searching toggle), Featured just pushes the results the user is
-   looking for further down, so hide it until the query is cleared. */
-body.is-searching #featuredStrip {
+   is-searching toggle), Featured/Discover just push the results the user
+   is looking for further down, so hide them until the query is cleared. */
+body.is-searching #featuredStrip,
+body.is-searching #discoverSection {
   display: none;
 }
 
@@ -2992,6 +2993,40 @@ body.is-searching #featuredStrip {
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Same .spotlight-card look, own grid -- see the HTML comment above
+   #discoverSection for why this is a separate section, not folded into
+   Spotlight itself (random draw vs. curated). */
+.discover-section {
+  margin: 0 0 28px;
+}
+
+.discover-section[hidden] {
+  display: none;
+}
+
+.discover-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.discover-see-more {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 22px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.discover-see-more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Shares .spotlight-card's box/thumb/title styling -- these fill in the
@@ -5139,9 +5174,11 @@ body.is-searching #featuredStrip {
   }
 
   /* Spotlight becomes a single vertical column of full-width cards, like
-     YouTube's mobile home feed, instead of the desktop's fixed 3-up grid. */
+     YouTube's mobile home feed, instead of the desktop's fixed 3-up grid.
+     Discover follows the same pattern. */
   .spotlight-sidebar-cards,
-  .blog-latest-cards {
+  .blog-latest-cards,
+  .discover-grid {
     display: flex;
     flex-direction: column;
     gap: 16px;

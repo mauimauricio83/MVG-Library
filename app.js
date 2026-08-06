@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.16.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.17.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -188,6 +188,9 @@
     profilesEditBtn: document.getElementById("profilesEditBtn"),
     profilesBrowse: document.getElementById("profilesBrowse"),
     profilesSigninNote: document.getElementById("profilesSigninNote"),
+    discoverSection: document.getElementById("discoverSection"),
+    discoverGrid: document.getElementById("discoverGrid"),
+    discoverSeeMoreBtn: document.getElementById("discoverSeeMoreBtn"),
     profilesGrid: document.getElementById("profilesGrid"),
     profilesFilters: document.getElementById("profilesFilters"),
     profilesSearchInput: document.getElementById("profilesSearchInput"),
@@ -1356,6 +1359,7 @@
     renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
+    renderDiscoverSection(state.rows);
     render();
     applyDeepLinkFromHash();
     applyFavoritesShareFromHash();
@@ -3060,6 +3064,73 @@
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
     els.spotlightSidebar.style.top = (headerHeight + 12) + "px";
   }
+
+  // ---- Discover: unbounded randomized browsing (see the HTML comment
+  // above #discoverSection) -- not curated like Spotlight/Featured, just a
+  // fresh random draw from the whole catalog, "See more" appending further
+  // random picks indefinitely.
+  var DISCOVER_INITIAL_DESKTOP = 15;
+  var DISCOVER_INITIAL_MOBILE = 5;
+  var DISCOVER_MORE_DESKTOP = 12;
+  var DISCOVER_MORE_MOBILE = 4;
+
+  var discoverShownSet = {}; // rowNum -> true, so repeats are avoided until a full lap's done
+
+  function isMobileViewport() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function discoverCardHtml(row) {
+    var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+    var thumb = videoThumbImgHtml(row, thumbAlt);
+    var artistLine = row.artist || "";
+    if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
+    return '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+      '<div class="spotlight-card-thumb">' + thumb + "</div>" +
+      '<div class="spotlight-card-info">' +
+        '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+        '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
+      "</div>" +
+    "</div>";
+  }
+
+  // Random sample of `count` NEW rows (not shown yet this session). Once
+  // fewer than `count` unseen rows remain, starts a fresh lap through the
+  // whole catalog instead of just dead-ending once everything's been shown
+  // once -- the whole point of "unbounded".
+  function sampleDiscoverRows(count) {
+    var pool = state.rows.filter(function (r) { return hasVideo(r) && !discoverShownSet[r.rowNum]; });
+    if (pool.length < count) {
+      discoverShownSet = {};
+      pool = state.rows.filter(function (r) { return hasVideo(r); });
+    }
+    return shuffle(pool).slice(0, count);
+  }
+
+  function appendDiscoverRows(count) {
+    var picks = sampleDiscoverRows(count);
+    picks.forEach(function (r) { discoverShownSet[r.rowNum] = true; });
+    els.discoverGrid.insertAdjacentHTML("beforeend", picks.map(discoverCardHtml).join(""));
+  }
+
+  function renderDiscoverSection(rows) {
+    if (!rows.some(hasVideo)) { els.discoverSection.hidden = true; return; }
+    els.discoverSection.hidden = false;
+    els.discoverGrid.innerHTML = "";
+    discoverShownSet = {};
+    appendDiscoverRows(isMobileViewport() ? DISCOVER_INITIAL_MOBILE : DISCOVER_INITIAL_DESKTOP);
+  }
+
+  els.discoverSeeMoreBtn.addEventListener("click", function () {
+    appendDiscoverRows(isMobileViewport() ? DISCOVER_MORE_MOBILE : DISCOVER_MORE_DESKTOP);
+  });
+
+  els.discoverGrid.addEventListener("click", function (e) {
+    var card = e.target.closest(".spotlight-card");
+    if (!card) return;
+    var row = findRowByNum(card.getAttribute("data-row"));
+    if (row) openLightbox(row);
+  });
 
   // Latest blog posts (themusicvideoguy.com/news), fetched once at startup
   // from a same-origin static file -- see BLOG_LATEST_URL. Independent of
@@ -5407,6 +5478,7 @@
     renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
+    renderDiscoverSection(state.rows);
     render();
   }
 

@@ -341,6 +341,21 @@
     <button type="button" class="media-strip-see-more" id="featuredSeeMoreBtn">See all ▾</button>
   </section>
 
+  <!-- Randomized, unbounded browsing -- not curated like Spotlight/Featured
+       (any admin flag), just a fresh random draw from the whole catalog.
+       "See more" keeps appending further random picks indefinitely (see
+       sampleDiscoverRows() in app.js); avoids repeats within a session
+       until the whole catalog's been shown once, then starts a fresh lap
+       rather than dead-ending. Same card look as Spotlight (.spotlight-card),
+       just its own grid/count/breakpoints. -->
+  <section class="discover-section" id="discoverSection" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">🔀 Discover</span>
+    </div>
+    <div class="discover-grid" id="discoverGrid"></div>
+    <button type="button" class="discover-see-more" id="discoverSeeMoreBtn">See more ▾</button>
+  </section>
+
   <!-- Its own dedicated page (like Search/TV Mode), not an inline Home
        section -- reached via the sidebar/bottom-nav Favorites button, which
        now calls setDesktopView("favorites")/setMobileView("favorites")

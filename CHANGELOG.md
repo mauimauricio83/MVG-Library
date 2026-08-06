@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.17.0 — current
+- Added a "Discover" section after Featured -- unbounded randomized browsing of the whole catalog, not curated like Spotlight/Featured. Desktop: 3-column grid (Spotlight's card style), 15 videos initially, "See more" appends 12 at a time. Mobile: 5 initially, "See more" appends 4. Avoids repeats within a session until the whole catalog's been shown once, then starts a fresh randomized lap rather than dead-ending.
+
 ## v5.16.0 — current
 - Replaced the "accept collab request -> reveal email -> mailto" hand-off with real in-app 1:1 messaging. A new "Message" button (replacing the old mailto link, on both a connected profile's lightbox and the Requests list) opens a chat thread modal with live updates while it's open. New Firestore collections: `dmThreads/{sortedUidPair}` (deterministic per-pair ID, so there's at most one thread per pair) and its `messages` subcollection, plus `acceptedPairs/{sortedUidPair}` -- a small marker doc written when a request is accepted, purely so the thread-creation security rule can verify server-side that two people are actually connected (collabRequests' own doc IDs are auto-generated, not derivable from a pair, so rules can't check one directly). **Requires `firebase deploy --only firestore:rules`** to take effect -- committing the rules file alone doesn't deploy it.
 
