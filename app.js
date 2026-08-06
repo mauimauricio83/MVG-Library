@@ -3726,15 +3726,24 @@
   // browser happens to schedule a CSS animation. On a 60Hz display, a 50Hz
   // target will show slight beating/jitter -- physically inherent to
   // emulating one rate on a display running another, not a bug to chase.
-  // Must match the CSS: .video-interlace-overlay's gradient repeats every
-  // 2x this value, so shifting by exactly this amount swaps which lines
-  // read as darkened instead of just nudging the same pattern.
-  var INTERLACE_LINE_PX = 2;
+  // Real NTSC has ~486 active scanlines split into two ~243-line fields.
+  // Matching that exactly scales line pitch with the player's actual
+  // rendered height the way a real interlaced signal's would -- but at
+  // typical player sizes, true 243-line-per-field pitch is finer than a
+  // browser can render legibly over compressed video (the CSS reads as a
+  // faint haze, not scanlines). This coarsens to roughly a third of the
+  // real line count -- still scales with player height, just chosen for
+  // visibility over broadcast accuracy.
+  var INTERLACE_TOTAL_LINES = 162;
   var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay", tv: "tvInterlaceOverlay" };
   var interlaceHz = { lightbox: 0, tv: 0 };
   var interlaceField = { lightbox: false, tv: false };
   var interlaceLastFlip = { lightbox: 0, tv: 0 };
   var interlaceRAF = null;
+
+  function interlaceFrameEl(which) {
+    return which === "tv" ? els.videoBox.querySelector(".video-embed-frame") : document.getElementById("lightboxVideoFrame");
+  }
 
   function tickInterlace(now) {
     Object.keys(INTERLACE_OVERLAY_IDS).forEach(function (which) {
@@ -3744,7 +3753,14 @@
       interlaceLastFlip[which] = now;
       interlaceField[which] = !interlaceField[which];
       var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
-      if (el) el.style.backgroundPositionY = interlaceField[which] ? INTERLACE_LINE_PX + "px" : "0px";
+      var frame = interlaceFrameEl(which);
+      if (!el || !frame) return;
+      // Recomputed on every flip (not just on toggle/resize) so a crop
+      // toggle, widen, or window resize between flips is picked up for
+      // free without a separate resize listener.
+      var linePx = Math.max(1, frame.clientHeight / INTERLACE_TOTAL_LINES);
+      el.style.backgroundSize = "100% " + (linePx * 2) + "px";
+      el.style.backgroundPositionY = interlaceField[which] ? linePx + "px" : "0px";
     });
     interlaceRAF = requestAnimationFrame(tickInterlace);
   }

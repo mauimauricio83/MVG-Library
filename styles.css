@@ -2835,18 +2835,18 @@ body.is-searching #featuredStrip {
 
 /* Admin-only debug toggle -- see the interlace comment in app.js
    (tickInterlace/setInterlaceHz) for why this is an approximation, not a
-   real interlaced signal. backgroundPositionY is flipped by JS on a timer
-   (by INTERLACE_LINE_PX, must match the 2x value below) to fake the
-   classic odd/even field flicker. 1px-on/1px-off read as barely visible
-   against real video content -- 2px dark lines at higher opacity actually
-   read as scanlines instead of a faint haze. */
+   real interlaced signal. Color stops are relative (0%/50%/50%/100%) so
+   background-size alone controls the tile's actual pixel size --
+   background-size and backgroundPositionY are both set dynamically by JS
+   (INTERLACE_TOTAL_LINES), recomputed from the player's actual rendered
+   height on every flip, so line density scales with player size the way
+   a real interlaced signal's would, rather than a fixed pixel count. */
 .video-interlace-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background-image: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0px, rgba(0, 0, 0, 0.75) 2px, transparent 2px, transparent 4px);
-  background-size: 100% 4px;
+  background-image: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.75) 50%, transparent 50%, transparent 100%);
 }
 
 .video-interlace-overlay[hidden] {
