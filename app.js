@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2588,6 +2588,7 @@
       (profile.location ? '<div class="profile-lightbox-map" id="profileLightboxMap"></div>' : "") +
       (profile.locationLabel ? '<p class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
       (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
+      profileCreditsHtml(profile) +
       "</div>";
 
     els.lightbox.hidden = false;
@@ -4172,6 +4173,72 @@
     return '<dl class="lightbox-credits">' + rowsHtml + "</dl>";
   }
 
+  // ---- Profile <-> catalog credit matching ----------------------------
+
+  // Cross-references a Profile's display name against the catalog's own
+  // free-text credit fields, so a profile can surface "videos in the
+  // library credited to you" without a separate manual linking step.
+  // Exact match only (after normalization) -- deliberately no partial/
+  // fuzzy matching. A real credit that just doesn't match exactly
+  // (spelling/formatting differences) is a false negative, which is the
+  // safer failure mode here vs. a false positive linking someone to a
+  // video that isn't actually theirs.
+  var PROFILE_CREDIT_FIELDS = [
+    ["artist", "Artist"],
+    ["director", "Director"],
+    ["producer", "Producer"],
+    ["dp", "DP"],
+    ["editor", "Editor"],
+    ["choreographer", "Choreographer"],
+    ["studio", "Studio"]
+  ];
+  var PROFILE_CREDITS_MAX = 12;
+
+  // Director is entered "Last name, first name" (see the add/edit form
+  // placeholder) -- reversed to natural order before comparing against a
+  // profile's displayName. producer/dp/editor/choreographer can list
+  // multiple people in one field (formatting varies -- commas, "&", "and")
+  // which isn't split apart here, so a multi-name field just won't match
+  // any single person exactly; same safer-false-negative tradeoff as above.
+  function normalizeCreditName(name, isDirector) {
+    var s = String(name || "").trim();
+    if (!s) return "";
+    if (isDirector) {
+      var parts = s.split(",");
+      if (parts.length === 2) s = parts[1].trim() + " " + parts[0].trim();
+    }
+    return s.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function findCatalogCreditsForProfile(profile) {
+    var target = normalizeCreditName(profile.displayName, false);
+    if (!target) return [];
+    var matches = [];
+    state.rows.forEach(function (row) {
+      if (!hasVideo(row)) return;
+      for (var i = 0; i < PROFILE_CREDIT_FIELDS.length; i++) {
+        var field = PROFILE_CREDIT_FIELDS[i][0];
+        var val = normalizeCreditName(row[field], field === "director");
+        if (val && val === target) {
+          matches.push({ row: row, roleLabel: PROFILE_CREDIT_FIELDS[i][1] });
+          break; // one credit tag per video is enough, even if it matches more than one field
+        }
+      }
+    });
+    matches.sort(function (a, b) { return parseInt(b.row.rowNum, 10) - parseInt(a.row.rowNum, 10); });
+    return matches;
+  }
+
+  function profileCreditsHtml(profile) {
+    var matches = findCatalogCreditsForProfile(profile);
+    if (!matches.length) return "";
+    var items = matches.slice(0, PROFILE_CREDITS_MAX).map(function (m) {
+      var label = escapeHtml(m.row.song || "(untitled)") + (m.row.artist ? " — " + escapeHtml(m.row.artist) : "");
+      return '<button type="button" class="related-btn" data-row="' + escapeHtml(m.row.rowNum) + '" title="' + escapeHtml(m.roleLabel) + ' credit">' + label + "</button>";
+    }).join("");
+    return '<div class="lightbox-related"><span class="lightbox-related-label">Credits in the library (name match):</span>' + items + "</div>";
+  }
+
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
   function destroyLightboxPlayer() {
@@ -4196,6 +4263,11 @@
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
     destroyLightboxPlayer();
+    // A profile's credits list (profileCreditsHtml()) can link straight
+    // into a video from inside a profile lightbox -- clean up its Leaflet
+    // map instance first, since it'd otherwise be left referencing a DOM
+    // node this overwrites. No-op if no map is open.
+    destroyProfileLightboxMap();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = row.rowNum;
     state.lightboxProfileUid = null;

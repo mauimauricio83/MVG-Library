@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.13.0 — current
+## v5.14.0 — current
+- A Profile's lightbox now surfaces "Credits in the library" -- videos whose director/artist/producer/DP/editor/choreographer/studio field exactly matches the profile's display name (after normalization, including reversing the catalog's "Last, First" director format). Deliberately exact-match only, no fuzzy matching -- a real credit that doesn't match due to spelling/formatting differences is a false negative, the safer failure mode vs. wrongly linking someone to a video that isn't theirs. Fixed a latent bug this surfaced: `openLightbox()` didn't clean up an open profile's Leaflet map instance, which only mattered once a profile lightbox could hand off into a video lightbox (via a credit link) for the first time.
+
+## v5.13.0
 - Added admin-only debug toggles to both the video-detail lightbox and TV Mode, next to the 4:3 crop button: Mirror (exact horizontal flip) and Interlace (cycles Off/60Hz/50Hz). Interlace is a scanline overlay flipped on a real-time-locked `requestAnimationFrame` timer, not a real interlaced signal -- there's no pixel access into a cross-origin YouTube/Vimeo iframe, so the actual source frames can't be read or resampled.
 - Also seeded "Trip-Hop" into the public submission form's Genre dropdown ahead of any tagged entry (`SUBMIT_GENRE_EXTRAS` in `app.js`) -- the dropdown is normally live-derived from existing entries only.
 
