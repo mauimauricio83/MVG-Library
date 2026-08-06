@@ -5,7 +5,7 @@ Vanilla JS/HTML/CSS static site, no build step. Firestore-backed catalog, hosted
 ## Housekeeping rules (do these every meaningful commit)
 
 - **Bump `APP_VERSION`** in `app.js` (near the top, has an inline reminder comment) **and add a `CHANGELOG.md` entry** for any user-visible change — feature, fix, or redesign. This was neglected for ~7 commits before v5.3.0; don't let it drift again. Regenerated-content commits (`Regenerate SEO hub pages [automated]`, `Update latest blog posts [automated]`) don't need a version bump — bump once per batch of hand-written changes, not per commit.
-- **Never push without the user's explicit go-ahead.** Commit locally freely; ask before `git push`.
+- **Push immediately after committing, without asking first, unless a critical decision is genuinely needed** (e.g. a destructive/irreversible action, a Firestore rules change, something with real user-facing risk). Commit locally, then push right away — don't sit on it waiting for a go-ahead. This reverses the project's earlier "always ask before push" rule (changed 2026-08-06).
 - **Before every push**, check for divergence first: `git fetch origin && git log --oneline main..origin/main`. A GitHub Action cron lands automated commits (`Regenerate SEO hub pages`, `Update latest blog posts`) regularly — rebase onto them if they've landed.
 - **Keep `app.js`'s client `publishSnapshot()` and `scripts/publish-snapshot.js` (the CLI counterpart) in sync.** Any field added to one needs the identical line in the other.
 - **Firestore `firestore.rules` changes need a manual `firebase deploy`** — editing the file alone doesn't take effect.
