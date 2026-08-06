@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.15.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -189,6 +189,9 @@
     profilesBrowse: document.getElementById("profilesBrowse"),
     profilesSigninNote: document.getElementById("profilesSigninNote"),
     profilesGrid: document.getElementById("profilesGrid"),
+    profilesFilters: document.getElementById("profilesFilters"),
+    profilesSearchInput: document.getElementById("profilesSearchInput"),
+    profilesRoleFilter: document.getElementById("profilesRoleFilter"),
     profilesEmptyMsg: document.getElementById("profilesEmptyMsg"),
     profileEditor: document.getElementById("profileEditor"),
     profileEditorBackBtn: document.getElementById("profileEditorBackBtn"),
@@ -2193,6 +2196,25 @@
   function renderProfilesGrid(profiles) {
     els.profilesGrid.innerHTML = profiles.map(renderProfileCard).join("");
     els.profilesEmptyMsg.hidden = !!profiles.length;
+    // "No profiles yet" only makes sense when the directory is genuinely
+    // empty -- a filter/search that matches nothing needs its own message
+    // so it doesn't read as "nobody has ever made a profile."
+    els.profilesEmptyMsg.textContent = profilesCache.length
+      ? "No profiles match your search/filter."
+      : "No profiles yet — be the first to create one.";
+  }
+
+  var profilesSearchDebounce = null;
+  function applyProfilesFilter() {
+    var role = els.profilesRoleFilter.value;
+    var q = els.profilesSearchInput.value.trim().toLowerCase();
+    var filtered = profilesCache.filter(function (p) {
+      if (role && p.role !== role) return false;
+      if (!q) return true;
+      var haystack = ((p.displayName || "") + " " + (p.bio || "") + " " + (p.locationLabel || "")).toLowerCase();
+      return haystack.indexOf(q) !== -1;
+    });
+    renderProfilesGrid(filtered);
   }
 
   function loadAllProfiles() {
@@ -2208,13 +2230,19 @@
       });
       profiles.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
       profilesCache = profiles;
-      renderProfilesGrid(profiles);
+      applyProfilesFilter();
     }).catch(function (err) {
       console.error("Loading profiles failed:", err);
       els.profilesGrid.innerHTML = "";
       els.profilesEmptyMsg.hidden = false;
     });
   }
+
+  els.profilesRoleFilter.addEventListener("change", applyProfilesFilter);
+  els.profilesSearchInput.addEventListener("input", function () {
+    clearTimeout(profilesSearchDebounce);
+    profilesSearchDebounce = setTimeout(applyProfilesFilter, 150);
+  });
 
   function updateProfilesAuthUI() {
     els.profilesEditBtn.hidden = !currentUser;
@@ -2223,6 +2251,7 @@
     // now (firestore.rules requires request.auth != null to read), not
     // just creating a profile.
     els.profilesGrid.hidden = !currentUser;
+    els.profilesFilters.hidden = !currentUser;
     if (!currentUser) els.profilesEmptyMsg.hidden = true;
   }
 

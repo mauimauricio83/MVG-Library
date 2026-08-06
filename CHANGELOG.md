@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.15.0 — current
+- Added search and role filtering to the Profiles browse grid -- previously just an unfiltered list of every profile. Search matches name/bio/location text; role filters to Musician/Director/Production. The "no profiles yet" empty state now distinguishes a genuinely empty directory from a filter/search that matched nothing.
+
 ## v5.14.0 — current
 - A Profile's lightbox now surfaces "Credits in the library" -- videos whose director/artist/producer/DP/editor/choreographer/studio field exactly matches the profile's display name (after normalization, including reversing the catalog's "Last, First" director format). Deliberately exact-match only, no fuzzy matching -- a real credit that doesn't match due to spelling/formatting differences is a false negative, the safer failure mode vs. wrongly linking someone to a video that isn't theirs. Fixed a latent bug this surfaced: `openLightbox()` didn't clean up an open profile's Leaflet map instance, which only mattered once a profile lightbox could hand off into a video lightbox (via a credit link) for the first time.
 

@@ -413,6 +413,15 @@
 
     <div class="profiles-browse" id="profilesBrowse">
       <p class="profiles-signin-note" id="profilesSigninNote">Sign in to browse the Profiles directory and create your own.</p>
+      <div class="profiles-filters" id="profilesFilters" hidden>
+        <input type="search" id="profilesSearchInput" class="filter-select" placeholder="Search name or bio…" aria-label="Search profiles">
+        <select id="profilesRoleFilter" class="filter-select" aria-label="Filter by role">
+          <option value="">All roles</option>
+          <option value="musician">Musician / artist</option>
+          <option value="director">Director</option>
+          <option value="production">Production / studio</option>
+        </select>
+      </div>
       <div class="profiles-grid" id="profilesGrid"></div>
       <p class="profiles-empty" id="profilesEmptyMsg" hidden>No profiles yet — be the first to create one.</p>
     </div>

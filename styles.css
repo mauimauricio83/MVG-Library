@@ -393,6 +393,26 @@ html, body {
   line-height: 1.5;
 }
 
+.profiles-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.profiles-filters input.filter-select {
+  flex: 1 1 200px;
+  max-width: none;
+  cursor: text;
+}
+
+/* Same [hidden] cascade gotcha as .profiles-grid[hidden] below -- this
+   element's own display:flex rule beats the UA default the moment
+   updateProfilesAuthUI() toggles hidden on it. */
+.profiles-filters[hidden] {
+  display: none;
+}
+
 .profiles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
