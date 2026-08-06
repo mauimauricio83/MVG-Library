@@ -3726,6 +3726,10 @@
   // browser happens to schedule a CSS animation. On a 60Hz display, a 50Hz
   // target will show slight beating/jitter -- physically inherent to
   // emulating one rate on a display running another, not a bug to chase.
+  // Must match the CSS: .video-interlace-overlay's gradient repeats every
+  // 2x this value, so shifting by exactly this amount swaps which lines
+  // read as darkened instead of just nudging the same pattern.
+  var INTERLACE_LINE_PX = 2;
   var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay", tv: "tvInterlaceOverlay" };
   var interlaceHz = { lightbox: 0, tv: 0 };
   var interlaceField = { lightbox: false, tv: false };
@@ -3740,7 +3744,7 @@
       interlaceLastFlip[which] = now;
       interlaceField[which] = !interlaceField[which];
       var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
-      if (el) el.style.backgroundPositionY = interlaceField[which] ? "1px" : "0px";
+      if (el) el.style.backgroundPositionY = interlaceField[which] ? INTERLACE_LINE_PX + "px" : "0px";
     });
     interlaceRAF = requestAnimationFrame(tickInterlace);
   }
