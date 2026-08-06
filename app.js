@@ -4197,9 +4197,17 @@
     unlockBodyScroll();
   }
 
+  // Genres requested/expected but not yet tagged on any existing entry --
+  // merged into the submission dropdown below so a submitter can pick one
+  // before the catalog has a single example of it. The public genre filter
+  // (buildGenreOptions()) intentionally does NOT get these -- it's a
+  // browse-by-count list, so an option with zero matching entries there
+  // would just be a dead end.
+  var SUBMIT_GENRE_EXTRAS = ["Trip-Hop"];
+
   // Populated once real data loads -- same live-derived, always-current
   // lists the filter dropdowns use, so there's no separate static list to
-  // maintain here.
+  // maintain here (aside from SUBMIT_GENRE_EXTRAS above).
   function buildSubmitDropdowns(rows) {
     function uniqueSorted(getValues) {
       var seen = {};
@@ -4213,7 +4221,8 @@
     els.submitCategory.innerHTML = '<option value="">Choose…</option>' +
       categories.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
 
-    var genres = uniqueSorted(function (r) { return r.genres || []; });
+    var genres = uniqueSorted(function (r) { return r.genres || []; }).concat(SUBMIT_GENRE_EXTRAS);
+    genres = genres.filter(function (g, i) { return genres.indexOf(g) === i; }).sort(function (a, b) { return a.localeCompare(b); });
     els.submitGenre.innerHTML = '<option value="">Choose…</option>' +
       genres.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + "</option>"; }).join("");
 
