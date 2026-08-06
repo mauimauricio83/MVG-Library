@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -164,6 +164,8 @@
     savePlaylistBtn: document.getElementById("savePlaylistBtn"),
     tvPlaylistBtn: document.getElementById("tvPlaylistBtn"),
     tvCropBtn: document.getElementById("tvCropBtn"),
+    tvMirrorBtn: document.getElementById("tvMirrorBtn"),
+    tvInterlaceBtn: document.getElementById("tvInterlaceBtn"),
     playlistsPage: document.getElementById("playlistsPage"),
     playlistsChipRow: document.getElementById("playlistsChipRow"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
@@ -646,6 +648,10 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     lightboxCrop: loadLightboxCropPref(),
+    // Admin debug toggles, session-only (not persisted -- these are testing
+    // tools, not viewer preferences, so they always start off).
+    lightboxMirror: false,
+    lightboxInterlaceHz: 0, // 0 = off, else 50 or 60
     // Never persisted across page loads (see applyNavMode()'s comment) --
     // always starts on "watch", matching the page's own default view
     // (Home), so the switch and what's actually on screen never disagree.
@@ -654,7 +660,7 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref() },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), mirror: false, interlaceHz: 0 },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -3202,10 +3208,15 @@
     els.tvFavBtn.hidden = true;
     els.tvPlaylistBtn.hidden = true;
     els.tvCropBtn.hidden = true;
+    els.tvMirrorBtn.hidden = true;
+    els.tvInterlaceBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
     els.tvInfoPanel.hidden = true;
+    state.tv.mirror = false;
+    state.tv.interlaceHz = 0;
+    setInterlaceHz("tv", 0);
   }
 
   var tvAdController = null;
@@ -3703,15 +3714,69 @@
     }
   });
 
+  // Admin debug tool: an approximation of interlace flicker, NOT a real
+  // interlaced signal -- there's no pixel/canvas access into a cross-origin
+  // YouTube/Vimeo iframe, so the actual source frames can't be read or
+  // resampled. This overlays a repeating-linear-gradient scanline pattern
+  // on top of the real (progressive) video and shifts it by one line on a
+  // timer, alternating which set of lines reads as darkened -- a
+  // requestAnimationFrame loop (not a CSS animation) checks elapsed time
+  // against the target period so the flip cadence is a real 50/60Hz
+  // regardless of the display's own refresh rate, rather than however a
+  // browser happens to schedule a CSS animation. On a 60Hz display, a 50Hz
+  // target will show slight beating/jitter -- physically inherent to
+  // emulating one rate on a display running another, not a bug to chase.
+  var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay", tv: "tvInterlaceOverlay" };
+  var interlaceHz = { lightbox: 0, tv: 0 };
+  var interlaceField = { lightbox: false, tv: false };
+  var interlaceLastFlip = { lightbox: 0, tv: 0 };
+  var interlaceRAF = null;
+
+  function tickInterlace(now) {
+    Object.keys(INTERLACE_OVERLAY_IDS).forEach(function (which) {
+      var hz = interlaceHz[which];
+      if (!hz) return;
+      if (now - interlaceLastFlip[which] < 1000 / hz) return;
+      interlaceLastFlip[which] = now;
+      interlaceField[which] = !interlaceField[which];
+      var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
+      if (el) el.style.backgroundPositionY = interlaceField[which] ? "1px" : "0px";
+    });
+    interlaceRAF = requestAnimationFrame(tickInterlace);
+  }
+
+  function setInterlaceHz(which, hz) {
+    interlaceHz[which] = hz;
+    var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
+    if (el) el.hidden = !hz;
+    if (hz && interlaceRAF == null) interlaceRAF = requestAnimationFrame(tickInterlace);
+    if (!interlaceHz.lightbox && !interlaceHz.tv && interlaceRAF != null) {
+      cancelAnimationFrame(interlaceRAF);
+      interlaceRAF = null;
+    }
+  }
+
+  // Cycles Off -> 60Hz -> 50Hz -> Off on each click.
+  function nextInterlaceHz(hz) {
+    if (hz === 60) return 50;
+    if (hz === 50) return 0;
+    return 60;
+  }
+
+  var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div><div class="video-interlace-overlay" id="tvInterlaceOverlay" hidden></div>';
+  var TV_PLAYER_TARGET_HTML = '<div class="video-embed-frame">' + TV_PLAYER_TARGET_INNER_HTML + '</div>';
+
   // No title bar -- the YouTube player itself already shows the video's
   // title, so a duplicate label above it was redundant. Skip/Report
   // issue/Exit now live in .filters-toggle-row instead (see
   // playArmedTV()/startTVMode()/teardownTV() for their show/hide).
   function ensureTVShell() {
     if (state.tv.shellBuilt) return;
-    els.videoBox.innerHTML = '<div class="video-embed-frame"><div id="tvPlayerTarget"></div></div>';
+    els.videoBox.innerHTML = TV_PLAYER_TARGET_HTML;
     state.tv.shellBuilt = true;
     applyTVCrop();
+    applyTVMirror();
+    applyTVInterlace();
   }
 
   // Same visual-only crop as the lightbox player's applyLightboxCrop() --
@@ -3724,6 +3789,18 @@
     if (frame) frame.classList.toggle("is-crop-4-3", isCropped);
     els.tvCropBtn.classList.toggle("is-active", isCropped);
     els.tvCropBtn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
+  }
+
+  function applyTVMirror() {
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    if (frame) frame.classList.toggle("is-mirrored", !!state.tv.mirror);
+    els.tvMirrorBtn.classList.toggle("is-active", !!state.tv.mirror);
+  }
+
+  function applyTVInterlace() {
+    setInterlaceHz("tv", state.tv.interlaceHz);
+    els.tvInterlaceBtn.classList.toggle("is-active", !!state.tv.interlaceHz);
+    els.tvInterlaceBtn.textContent = state.tv.interlaceHz ? "Interlace " + state.tv.interlaceHz + "Hz" : "Interlace";
   }
 
   // startPaused: when set, the new track loads cued (first frame, not
@@ -3799,7 +3876,8 @@
     }
     state.tv.player = null;
     var frame = els.videoBox.querySelector(".video-embed-frame");
-    if (frame) frame.innerHTML = '<div id="tvPlayerTarget"></div>';
+    if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
+    setInterlaceHz("tv", state.tv.interlaceHz); // re-applies to the freshly rebuilt overlay div
     createVideoPlayer("tvPlayerTarget", ref, {
       autoplay: !startPaused,
       controls: !state.tv.crop,
@@ -3894,6 +3972,8 @@
     els.tvFavBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
+    els.tvMirrorBtn.hidden = !state.isAdmin;
+    els.tvInterlaceBtn.hidden = !state.isAdmin;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -3921,6 +4001,8 @@
     els.tvFavBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
+    els.tvMirrorBtn.hidden = !state.isAdmin;
+    els.tvInterlaceBtn.hidden = !state.isAdmin;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -3981,6 +4063,16 @@
     state.tv.crop = !state.tv.crop;
     saveTVCropPref(state.tv.crop);
     applyTVCrop();
+  });
+
+  els.tvMirrorBtn.addEventListener("click", function () {
+    state.tv.mirror = !state.tv.mirror;
+    applyTVMirror();
+  });
+
+  els.tvInterlaceBtn.addEventListener("click", function () {
+    state.tv.interlaceHz = nextInterlaceHz(state.tv.interlaceHz);
+    applyTVInterlace();
   });
 
   // Toggles a lightweight info panel in place (title/tags/credits/
@@ -4094,7 +4186,7 @@
     var videoRef = getRowVideoRef(row);
     var id = videoRef ? videoRef.id : null;
     var videoHtml = videoRef
-      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
+      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div><div class="video-interlace-overlay" id="lightboxInterlaceOverlay" hidden></div></div>'
       : '<div class="lightbox-video-empty">No video available for this entry.</div>';
 
     var sub = [];
@@ -4122,6 +4214,13 @@
     var adminDeleteBtn = state.isAdmin
       ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">🗑 Delete</button>'
       : "";
+    // Admin-only debug tools -- not shown to regular visitors.
+    var mirrorBtn = state.isAdmin && videoRef
+      ? '<button type="button" class="lightbox-mirror-btn" title="Mirror" aria-label="Toggle mirror">Mirror</button>'
+      : "";
+    var interlaceBtn = state.isAdmin && videoRef
+      ? '<button type="button" class="lightbox-interlace-btn" title="Interlace flicker (test)" aria-label="Toggle interlace flicker">Interlace</button>'
+      : "";
 
     els.lightboxContent.innerHTML =
       '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
@@ -4136,6 +4235,8 @@
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
+      mirrorBtn +
+      interlaceBtn +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
       "</div>" +
       "</div>" +
@@ -4153,6 +4254,8 @@
     pushModalHistory();
     applyLightboxSize();
     applyLightboxCrop();
+    applyLightboxMirror();
+    applyLightboxInterlace();
 
     var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
     if (lightboxAdEl) {
@@ -4191,6 +4294,12 @@
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
+    // Admin debug toggles don't persist across closing the lightbox --
+    // avoids leaving them on and surprising the next video, and stops the
+    // now-pointless interlace rAF loop.
+    state.lightboxMirror = false;
+    state.lightboxInterlaceHz = 0;
+    setInterlaceHz("lightbox", 0);
     state.lightboxRowNum = null;
     state.lightboxProfileUid = null;
     document.title = DEFAULT_TITLE;
@@ -5889,6 +5998,21 @@
     btn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
   }
 
+  function applyLightboxMirror() {
+    var frame = document.getElementById("lightboxVideoFrame");
+    var btn = els.lightboxContent.querySelector(".lightbox-mirror-btn");
+    if (frame) frame.classList.toggle("is-mirrored", !!state.lightboxMirror);
+    if (btn) btn.classList.toggle("is-active", !!state.lightboxMirror);
+  }
+
+  function applyLightboxInterlace() {
+    setInterlaceHz("lightbox", state.lightboxInterlaceHz);
+    var btn = els.lightboxContent.querySelector(".lightbox-interlace-btn");
+    if (!btn) return;
+    btn.classList.toggle("is-active", !!state.lightboxInterlaceHz);
+    btn.textContent = state.lightboxInterlaceHz ? "Interlace " + state.lightboxInterlaceHz + "Hz" : "Interlace";
+  }
+
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
       dismissTopModal();
@@ -5904,6 +6028,16 @@
       state.lightboxCrop = !state.lightboxCrop;
       saveLightboxCropPref(state.lightboxCrop);
       applyLightboxCrop();
+      return;
+    }
+    if (e.target.closest(".lightbox-mirror-btn")) {
+      state.lightboxMirror = !state.lightboxMirror;
+      applyLightboxMirror();
+      return;
+    }
+    if (e.target.closest(".lightbox-interlace-btn")) {
+      state.lightboxInterlaceHz = nextInterlaceHz(state.lightboxInterlaceHz);
+      applyLightboxInterlace();
       return;
     }
     var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");

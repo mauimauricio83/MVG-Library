@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v5.12.0 — current
+## v5.13.0 — current
+- Added admin-only debug toggles to both the video-detail lightbox and TV Mode, next to the 4:3 crop button: Mirror (exact horizontal flip) and Interlace (cycles Off/60Hz/50Hz). Interlace is a scanline overlay flipped on a real-time-locked `requestAnimationFrame` timer, not a real interlaced signal -- there's no pixel access into a cross-origin YouTube/Vimeo iframe, so the actual source frames can't be read or resampled.
+- Also seeded "Trip-Hop" into the public submission form's Genre dropdown ahead of any tagged entry (`SUBMIT_GENRE_EXTRAS` in `app.js`) -- the dropdown is normally live-derived from existing entries only.
+
+## v5.12.0
 - Added Vimeo embedding as an alternative to YouTube everywhere a catalog entry's video shows up (cards, TV Mode, the video-detail lightbox, admin form, bulk import, the public submission form): entries carry a `vimeo` field alongside `youtube`, a shared `getRowVideoRef()`/`createVideoPlayer()` picks the right provider and SDK (YT IFrame API vs. Vimeo Player.js) per row, and Vimeo thumbnails (no predictable URL like YouTube's `i.ytimg.com`) are resolved once via oEmbed at admin save-time and cached as `vimeoThumb`, not fetched per visitor. TV Mode reuses the live player across track skips only when the next track is the same provider; switching provider mid-queue rebuilds cleanly.
 - Latest Submissions now draws by real submission age (weeks since `createdAt`, newly published in the public snapshot) instead of rowNum rank: 1 week old ~40% of slots, 2 weeks ~30%, 3 weeks ~20%, 4-6 weeks ~10%, shuffled within each tier, shortfalls backfilled from the rest of the pool. The top 3 slots stay a random draw from the truly newest entries, unchanged.
 - Reversed Spotlight order (newest-flagged entry first).

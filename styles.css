@@ -2713,6 +2713,35 @@ body.is-searching #featuredStrip {
   color: #fff;
 }
 
+/* Admin-only debug toggles -- same look as .tv-crop-btn. */
+.tv-mirror-btn,
+.tv-interlace-btn {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tv-mirror-btn:hover,
+.tv-interlace-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tv-mirror-btn.is-active,
+.tv-interlace-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .tv-admin-edit-btn,
 .tv-admin-delete-btn {
   flex: 0 0 auto;
@@ -2795,6 +2824,30 @@ body.is-searching #featuredStrip {
   right: auto;
   width: 133.34%;
   transform: translateX(-50%);
+}
+
+/* Admin-only debug toggle -- flips the whole frame (crop scaling included)
+   as one unit rather than the iframe alone, so it composes cleanly with
+   is-crop-4-3 regardless of which is also active. */
+.video-embed-frame.is-mirrored {
+  transform: scaleX(-1);
+}
+
+/* Admin-only debug toggle -- see the interlace comment in app.js
+   (tickInterlace/setInterlaceHz) for why this is an approximation, not a
+   real interlaced signal. backgroundPositionY is flipped by JS on a timer
+   to fake the classic odd/even field flicker. */
+.video-interlace-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0px, rgba(0, 0, 0, 0.55) 1px, transparent 1px, transparent 2px);
+  background-size: 100% 2px;
+}
+
+.video-interlace-overlay[hidden] {
+  display: none;
 }
 
 .related-btn {
@@ -3536,6 +3589,35 @@ body.is-searching #featuredStrip {
   color: #fff;
 }
 
+/* Admin-only debug toggles -- same look as .lightbox-crop-btn. */
+.lightbox-mirror-btn,
+.lightbox-interlace-btn {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-mirror-btn:hover,
+.lightbox-interlace-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lightbox-mirror-btn.is-active,
+.lightbox-interlace-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .lightbox-playlist-btn {
   flex: 0 0 auto;
   width: 26px;
@@ -3814,6 +3896,12 @@ body.is-searching #featuredStrip {
   right: auto;
   width: 133.34%;
   transform: translateX(-50%);
+}
+
+/* Admin-only debug toggle -- see .video-embed-frame.is-mirrored's comment
+   (TV Mode's equivalent) for why this targets the frame, not the iframe. */
+.lightbox-video-frame.is-mirrored {
+  transform: scaleX(-1);
 }
 
 .lightbox-video-empty {
