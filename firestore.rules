@@ -109,6 +109,59 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Deterministic per-pair marker written once a collab request is
+    // accepted (see respondToRequest() in app.js) -- exists purely so
+    // dmThreads' create rule below can verify two people are actually
+    // connected without an arbitrary query. Rules can only exists()/get() a
+    // KNOWN path, and collabRequests' own doc IDs are auto-generated (not
+    // derivable from the pair), so this reuses the same sorted-pair ID
+    // scheme as dmThreads specifically so it CAN be checked that way.
+    match /acceptedPairs/{pairId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null &&
+        request.auth.uid in request.resource.data.participants &&
+        request.resource.data.participants.size() == 2 &&
+        pairId == (request.resource.data.participants[0] < request.resource.data.participants[1]
+          ? request.resource.data.participants[0] + "_" + request.resource.data.participants[1]
+          : request.resource.data.participants[1] + "_" + request.resource.data.participants[0]);
+      allow update, delete: if false;
+    }
+
+    // Private 1:1 DM threads -- only ever between two people with an
+    // accepted collab request (acceptedPairs above gates creation).
+    // threadId is the same deterministic sorted-pair scheme, so there's at
+    // most one thread per pair and both directions resolve to the same doc.
+    match /dmThreads/{threadId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
+        request.auth.uid in request.resource.data.participants &&
+        request.resource.data.participants.size() == 2 &&
+        threadId == (request.resource.data.participants[0] < request.resource.data.participants[1]
+          ? request.resource.data.participants[0] + "_" + request.resource.data.participants[1]
+          : request.resource.data.participants[1] + "_" + request.resource.data.participants[0]) &&
+        exists(/databases/$(database)/documents/acceptedPairs/$(threadId));
+      // participants is immutable past creation; lastMessage* fields (set
+      // alongside each new message, see the messages create rule below)
+      // are otherwise free to update by either participant.
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants &&
+        request.resource.data.participants == resource.data.participants;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants;
+        allow create: if request.auth != null &&
+          !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants &&
+          request.resource.data.fromUid == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000;
+        allow update, delete: if false;
+      }
+    }
+
     // Message board: anyone (including signed-out visitors) can read, but
     // posting requires sign-in and being neither muted nor banned. Messages
     // are otherwise immutable -- no client-side edits, only admin delete

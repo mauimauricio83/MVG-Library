@@ -4067,6 +4067,75 @@ body.is-searching #featuredStrip {
   line-height: 1.5;
 }
 
+.dm-panel {
+  max-width: 480px;
+  padding: 24px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-messages {
+  flex: 1 1 auto;
+  min-height: 200px;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 14px 0;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dm-message {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.dm-message.is-mine {
+  justify-content: flex-end;
+}
+
+.dm-message-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dm-message.is-mine .dm-message-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.dm-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.dm-composer textarea {
+  flex: 1 1 auto;
+  resize: none;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.dm-composer button {
+  flex: 0 0 auto;
+}
+
 .admin-panel {
   max-width: 560px;
   padding: 24px;

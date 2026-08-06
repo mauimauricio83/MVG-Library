@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.16.0 — current
+- Replaced the "accept collab request -> reveal email -> mailto" hand-off with real in-app 1:1 messaging. A new "Message" button (replacing the old mailto link, on both a connected profile's lightbox and the Requests list) opens a chat thread modal with live updates while it's open. New Firestore collections: `dmThreads/{sortedUidPair}` (deterministic per-pair ID, so there's at most one thread per pair) and its `messages` subcollection, plus `acceptedPairs/{sortedUidPair}` -- a small marker doc written when a request is accepted, purely so the thread-creation security rule can verify server-side that two people are actually connected (collabRequests' own doc IDs are auto-generated, not derivable from a pair, so rules can't check one directly). **Requires `firebase deploy --only firestore:rules`** to take effect -- committing the rules file alone doesn't deploy it.
+
 ## v5.15.0 — current
 - Added search and role filtering to the Profiles browse grid -- previously just an unfiltered list of every profile. Search matches name/bio/location text; role filters to Musician/Director/Production. The "no profiles yet" empty state now distinguishes a genuinely empty directory from a filter/search that matched nothing.
 

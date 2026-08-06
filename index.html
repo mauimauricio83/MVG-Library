@@ -590,6 +590,25 @@
   </div>
 </div>
 
+<!-- Private 1:1 messaging -- only reachable via the "Message" action on an
+     accepted collab request/profile (see openDmThread() in app.js), never
+     a standalone inbox. Firestore: dmThreads/{sortedUidPair}/messages, with
+     thread creation gated server-side on an accepted collabRequest existing
+     between the two people (firestore.rules). -->
+<div class="lightbox" id="dmModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel dm-panel" role="dialog" aria-modal="true" aria-label="Messages">
+    <button type="button" class="lightbox-close" id="dmModalClose" aria-label="Close">&times;</button>
+    <h2 class="recent-title" id="dmModalTitle">Messages</h2>
+    <div class="dm-messages" id="dmMessages"></div>
+    <p class="admin-status" id="dmStatus" hidden></p>
+    <form class="dm-composer" id="dmComposerForm">
+      <textarea id="dmComposerInput" rows="2" maxlength="2000" placeholder="Write a message…" required></textarea>
+      <button type="submit" class="submit-form-btn" id="dmSendBtn">Send</button>
+    </form>
+  </div>
+</div>
+
 <div class="lightbox" id="adminModal" hidden>
   <div class="lightbox-backdrop"></div>
   <div class="lightbox-panel admin-panel" role="dialog" aria-modal="true" aria-label="Manage Entries">

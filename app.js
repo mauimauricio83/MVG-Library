@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.15.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.16.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -255,6 +255,14 @@
     openPodcastBtn: document.getElementById("openPodcastBtn"),
     podcastModal: document.getElementById("podcastModal"),
     podcastModalClose: document.getElementById("podcastModalClose"),
+    dmModal: document.getElementById("dmModal"),
+    dmModalClose: document.getElementById("dmModalClose"),
+    dmModalTitle: document.getElementById("dmModalTitle"),
+    dmMessages: document.getElementById("dmMessages"),
+    dmStatus: document.getElementById("dmStatus"),
+    dmComposerForm: document.getElementById("dmComposerForm"),
+    dmComposerInput: document.getElementById("dmComposerInput"),
+    dmSendBtn: document.getElementById("dmSendBtn"),
     openAdminBtn: document.getElementById("openAdminBtn"),
     adminModal: document.getElementById("adminModal"),
     adminClose: document.getElementById("adminClose"),
@@ -565,6 +573,7 @@
 
   function closeAllModalsHard() {
     closeLightbox();
+    closeDmThread();
     closeTVModal();
     closeSubmitModal();
     closeSubmitThanksModal();
@@ -2700,8 +2709,7 @@
       return;
     }
     if (req.status === "accepted") {
-      var email = req.fromUid === currentUser.uid ? req.toEmail : req.fromEmail;
-      area.innerHTML = '<a class="profile-request-btn is-active" href="mailto:' + escapeHtml(email) + '">Connected — email ' + escapeHtml(email) + "</a>";
+      area.innerHTML = '<button type="button" class="profile-request-btn is-active" data-message-uid="' + escapeHtml(profile.uid) + '" data-message-name="' + escapeHtml(profile.displayName || "") + '">Connected — Message</button>';
       return;
     }
     area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Request declined</button>';
@@ -2739,8 +2747,8 @@
         '<button type="button" class="profile-delete-btn" data-request-action="decline" data-id="' + escapeHtml(req.id) + '">Decline</button>' +
         '<button type="button" class="media-strip-play-all" data-request-action="accept" data-id="' + escapeHtml(req.id) + '">Accept</button>';
     } else if (req.status === "accepted") {
-      var email = direction === "incoming" ? req.fromEmail : req.toEmail;
-      actionsHtml = email ? '<a class="profile-request-btn is-active" href="mailto:' + escapeHtml(email) + '">Email</a>' : "";
+      var otherUid = direction === "incoming" ? req.fromUid : req.toUid;
+      actionsHtml = '<button type="button" class="profile-request-btn is-active" data-message-uid="' + escapeHtml(otherUid) + '" data-message-name="' + escapeHtml(name) + '">Message</button>';
     }
     return '<div class="profile-request-row">' +
       '<div class="profile-request-row-info">' +
@@ -2783,7 +2791,33 @@
     var update = accept
       ? { status: "accepted", respondedAt: Date.now(), toEmail: currentUser.email }
       : { status: "declined", respondedAt: Date.now() };
-    collabRequestsRef().doc(id).update(update).then(function () {
+    if (!accept) {
+      collabRequestsRef().doc(id).update(update).then(function () {
+        loadCollabRequests();
+      }).catch(function (err) {
+        console.error("Responding to collab request failed:", err);
+        alert("Couldn't update that request -- please try again.");
+      });
+      return;
+    }
+    // Accepting also writes a deterministic per-pair marker doc
+    // (acceptedPairs) -- purely so dmThreads' create rule (firestore.rules)
+    // can verify the two people are actually connected without an
+    // arbitrary query. collabRequests doc IDs are auto-generated, not
+    // derivable from the pair, so rules can't exists()-check one directly;
+    // acceptedPairs reuses the same sortedPairId scheme as dmThreads so it
+    // can.
+    collabRequestsRef().doc(id).get().then(function (doc) {
+      if (!doc.exists) throw new Error("Request no longer exists");
+      var fromUid = doc.data().fromUid;
+      var batch = db.batch();
+      batch.update(collabRequestsRef().doc(id), update);
+      batch.set(db.collection("acceptedPairs").doc(sortedPairId(fromUid, currentUser.uid)), {
+        participants: [fromUid, currentUser.uid].sort(),
+        acceptedAt: Date.now()
+      });
+      return batch.commit();
+    }).then(function () {
       loadCollabRequests();
     }).catch(function (err) {
       console.error("Responding to collab request failed:", err);
@@ -2799,10 +2833,127 @@
   els.profileRequestsBackBtn.addEventListener("click", showProfilesBrowse);
 
   els.profileRequestsView.addEventListener("click", function (e) {
+    var messageBtn = e.target.closest("[data-message-uid]");
+    if (messageBtn) {
+      openDmThread(messageBtn.getAttribute("data-message-uid"), messageBtn.getAttribute("data-message-name"));
+      return;
+    }
     var actionBtn = e.target.closest("[data-request-action]");
     if (!actionBtn) return;
     var id = actionBtn.getAttribute("data-id");
     respondToRequest(id, actionBtn.getAttribute("data-request-action") === "accept");
+  });
+
+  // ---- Private 1:1 messaging -- only reachable via a "Message" action on
+  // an accepted collab request (see acceptedPairs / respondToRequest
+  // above), never a standalone inbox. Thread ID is a deterministic sorted
+  // pair of UIDs, so there's at most one thread per pair and either
+  // party's Message click resolves to the same doc.
+  function sortedPairId(uidA, uidB) {
+    return uidA < uidB ? uidA + "_" + uidB : uidB + "_" + uidA;
+  }
+
+  function dmThreadRef(threadId) { return db.collection("dmThreads").doc(threadId); }
+
+  var dmThreadId = null;
+  var dmMessagesUnsub = null;
+
+  function ensureDmThread(otherUid) {
+    var threadId = sortedPairId(currentUser.uid, otherUid);
+    var ref = dmThreadRef(threadId);
+    return ref.get().then(function (doc) {
+      if (doc.exists) return threadId;
+      return ref.set({
+        participants: [currentUser.uid, otherUid].sort(),
+        createdAt: Date.now()
+      }).then(function () { return threadId; });
+    });
+  }
+
+  function renderDmMessage(msg) {
+    var mine = msg.fromUid === currentUser.uid;
+    return '<div class="dm-message' + (mine ? " is-mine" : "") + '"><div class="dm-message-bubble">' + escapeHtml(msg.text) + "</div></div>";
+  }
+
+  function subscribeDmMessages(threadId) {
+    if (dmMessagesUnsub) { dmMessagesUnsub(); dmMessagesUnsub = null; }
+    dmMessagesUnsub = dmThreadRef(threadId).collection("messages").orderBy("createdAt", "asc").onSnapshot(function (snap) {
+      var msgs = snap.docs.map(function (doc) { return doc.data(); });
+      els.dmMessages.innerHTML = msgs.length
+        ? msgs.map(renderDmMessage).join("")
+        : '<p class="profiles-empty">No messages yet — say hi.</p>';
+      els.dmMessages.scrollTop = els.dmMessages.scrollHeight;
+    }, function (err) {
+      console.error("Loading messages failed:", err);
+      els.dmStatus.textContent = "Couldn't load messages.";
+      els.dmStatus.className = "admin-status is-error";
+      els.dmStatus.hidden = false;
+    });
+  }
+
+  function openDmThread(otherUid, otherName) {
+    els.dmModalTitle.textContent = "Message " + (otherName || "");
+    els.dmMessages.innerHTML = '<p class="profiles-empty">Loading…</p>';
+    els.dmStatus.hidden = true;
+    els.dmComposerInput.value = "";
+    els.dmSendBtn.disabled = true;
+    els.dmModal.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+    var openedForUid = otherUid;
+    ensureDmThread(otherUid).then(function (threadId) {
+      if (els.dmModal.hidden || openedForUid !== otherUid) return; // closed or superseded while creating
+      dmThreadId = threadId;
+      els.dmSendBtn.disabled = false;
+      subscribeDmMessages(threadId);
+    }).catch(function (err) {
+      console.error("Opening thread failed:", err);
+      els.dmMessages.innerHTML = "";
+      els.dmStatus.textContent = "Couldn't open this conversation — please try again.";
+      els.dmStatus.className = "admin-status is-error";
+      els.dmStatus.hidden = false;
+    });
+  }
+
+  function closeDmThread() {
+    if (els.dmModal.hidden) return;
+    if (dmMessagesUnsub) { dmMessagesUnsub(); dmMessagesUnsub = null; }
+    dmThreadId = null;
+    els.dmModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.dmModal.addEventListener("click", function (e) {
+    if (e.target.closest("#dmModalClose") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
+
+  els.dmComposerForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = els.dmComposerInput.value.trim();
+    if (!text || !dmThreadId) return;
+    els.dmSendBtn.disabled = true;
+    var threadId = dmThreadId;
+    dmThreadRef(threadId).collection("messages").add({
+      fromUid: currentUser.uid,
+      text: text,
+      createdAt: Date.now()
+    }).then(function () {
+      return dmThreadRef(threadId).update({
+        lastMessageText: text,
+        lastMessageAt: Date.now(),
+        lastMessageFromUid: currentUser.uid
+      });
+    }).then(function () {
+      els.dmComposerInput.value = "";
+      els.dmSendBtn.disabled = false;
+      els.dmComposerInput.focus();
+    }).catch(function (err) {
+      console.error("Sending message failed:", err);
+      els.dmSendBtn.disabled = false;
+      els.dmStatus.textContent = "Message failed to send — please try again.";
+      els.dmStatus.className = "admin-status is-error";
+      els.dmStatus.hidden = false;
+    });
   });
 
   // ---- TV Mode's Custom tab: pick a playlist as the channel's source ---
@@ -6200,6 +6351,10 @@
       showProfileRequestsView();
       loadCollabRequests();
     }
+    var messageBtn = e.target.closest("[data-message-uid]");
+    if (messageBtn) {
+      openDmThread(messageBtn.getAttribute("data-message-uid"), messageBtn.getAttribute("data-message-name"));
+    }
   });
 
   document.addEventListener("keydown", function (e) {
@@ -6207,6 +6362,7 @@
     var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.submitThanksModal.hidden ||
       !els.profileThanksModal.hidden ||
       !els.settingsModal.hidden ||
+      !els.dmModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
       !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
