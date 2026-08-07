@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.20.2 — current
+- Extended `--accent` purple into browser chrome that previously defaulted to generic blue: text selection highlight, the page scrollbar thumb (WebKit/Blink + Firefox), and keyboard focus rings (`:focus-visible`, doesn't show on mouse/touch clicks).
+- Added a subtle glow to the two highest-visibility purple/yellow elements rather than all 35+ places `--accent` shows up as a fill (would've been overload): the Watch/Connect toggle's active pill and `.submit-form-btn` (the shared primary-CTA class across Submit/Save/Send buttons) get a soft purple `box-shadow`; the top-bar site title and section headers (Latest Submissions, Featured, Discover, etc.) get a soft yellow `text-shadow`.
+
 ## v5.20.1 — current
 - Deeper, more vivid `--accent` purple (`#4a0d8f`/`#a855f7`), calibrated against the logo's own dominant color (sampled directly from `icons/icon-192.png`: a deep, highly-saturated indigo, `rgb(32,16,96)`) rather than picking a shade blind.
 - Removed TV Mode's (and Advanced Search's, which shared the same tile look) per-genre color-coding -- genre tiles were each a different color (`TV_GENRE_GROUPS`' now-removed `color` field); all genre/era tiles now use the single unified `--accent` purple like everything else, no more rainbow.
