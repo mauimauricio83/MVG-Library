@@ -942,7 +942,6 @@ html, body {
   margin: 0;
   letter-spacing: 0;
   color: var(--brand-yellow);
-  text-shadow: 0 0 7px var(--brand-yellow);
   white-space: nowrap;
 }
 
@@ -1404,7 +1403,6 @@ html, body {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--brand-yellow);
-  text-shadow: 0 0 6px var(--brand-yellow);
 }
 
 .media-strip-collapse-btn {
@@ -3204,7 +3202,6 @@ body.is-searching #discoverSection {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--brand-yellow);
-  text-shadow: 0 0 6px var(--brand-yellow);
 }
 
 .spotlight-sidebar-cards {
