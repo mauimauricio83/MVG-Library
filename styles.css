@@ -942,7 +942,7 @@ html, body {
   margin: 0;
   letter-spacing: 0;
   color: var(--brand-yellow);
-  text-shadow: 0 0 10px var(--brand-yellow);
+  text-shadow: 0 0 7px var(--brand-yellow);
   white-space: nowrap;
 }
 
@@ -1043,7 +1043,7 @@ html, body {
 .nav-mode-btn.is-active {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 0 14px 1px var(--accent);
+  box-shadow: 0 0 9px 0 var(--accent);
 }
 
 /* Untagged items (Discord, Settings, sign-in, social, etc.) stay visible in
@@ -1404,7 +1404,7 @@ html, body {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--brand-yellow);
-  text-shadow: 0 0 8px var(--brand-yellow);
+  text-shadow: 0 0 6px var(--brand-yellow);
 }
 
 .media-strip-collapse-btn {
@@ -1710,17 +1710,16 @@ body.is-searching #discoverSection {
     display: block;
     margin: 14px auto 0;
     padding: 8px 22px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
+    background: var(--accent);
+    color: #fff;
     font-size: 0.85rem;
     cursor: pointer;
   }
 
   .media-strip-see-more:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+    opacity: 0.9;
   }
 
   /* Desktop "pages", switched via the sidebar's Home link or the top-bar
@@ -3200,6 +3199,7 @@ body.is-searching #discoverSection {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--brand-yellow);
+  text-shadow: 0 0 6px var(--brand-yellow);
 }
 
 .spotlight-sidebar-cards {
@@ -3273,17 +3273,16 @@ body.is-searching #discoverSection {
   display: block;
   margin: 16px auto 0;
   padding: 8px 22px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--accent);
+  color: #fff;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .discover-see-more:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  opacity: 0.9;
 }
 
 /* Shares .spotlight-card's box/thumb/title styling -- these fill in the
@@ -4909,7 +4908,7 @@ body.is-searching #discoverSection {
   padding: 10px 18px;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 0 10px 0 var(--accent);
+  box-shadow: 0 0 7px 0 var(--accent);
 }
 
 .submit-form-btn:hover {
@@ -5401,12 +5400,17 @@ body.is-searching #discoverSection {
     display: block;
     margin: 14px auto 0;
     padding: 8px 22px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
+    background: var(--accent);
+    color: #fff;
     font-size: 0.85rem;
     cursor: pointer;
+  }
+
+  #latestStrip .media-strip-see-more:hover,
+  #featuredStrip .media-strip-see-more:hover {
+    opacity: 0.9;
   }
 
   #latestStrip .media-strip-play-all,

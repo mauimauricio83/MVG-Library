@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.20.3 — current
+- Dialed the glow down a notch across the board (both the purple box-shadows and yellow text-shadows).
+- Added the yellow glow to Spotlight/News titles too (`.spotlight-sidebar-title`) -- they'd been missed when titles first went yellow.
+- All four "See more"/"See all" buttons (Latest, Featured, Favorites, Discover) are now filled purple with white text instead of a plain bordered/gray button, matching the site's other primary CTAs.
+
 ## v5.20.2 — current
 - Extended `--accent` purple into browser chrome that previously defaulted to generic blue: text selection highlight, the page scrollbar thumb (WebKit/Blink + Firefox), and keyboard focus rings (`:focus-visible`, doesn't show on mouse/touch clicks).
 - Added a subtle glow to the two highest-visibility purple/yellow elements rather than all 35+ places `--accent` shows up as a fill (would've been overload): the Watch/Connect toggle's active pill and `.submit-form-btn` (the shared primary-CTA class across Submit/Save/Send buttons) get a soft purple `box-shadow`; the top-bar site title and section headers (Latest Submissions, Featured, Discover, etc.) get a soft yellow `text-shadow`.
