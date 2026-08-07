@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.22.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.22.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -227,6 +227,8 @@
     submitCategory: document.getElementById("submitCategory"),
     submitGenre: document.getElementById("submitGenre"),
     submitCountry: document.getElementById("submitCountry"),
+    adminFormGenreSelect: document.getElementById("adminFormGenreSelect"),
+    adminFormCountrySelect: document.getElementById("adminFormCountrySelect"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -4680,7 +4682,34 @@
     var countries = uniqueSorted(function (r) { return r.country ? [normalizeCountry(r.country)] : []; });
     els.submitCountry.innerHTML = '<option value="">Choose…</option>' +
       countries.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
+
+    // Admin form's Country/Genres stay free-text inputs (an admin needs to
+    // be able to add a value that isn't in the catalog yet) -- these two
+    // selects are just a fast-fill shortcut layered on top, same source
+    // lists as the public form above.
+    var genreOptionsHtml = genres.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + "</option>"; }).join("");
+    els.adminFormGenreSelect.innerHTML = '<option value="">Add an existing genre…</option>' + genreOptionsHtml;
+
+    var countryOptionsHtml = countries.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
+    els.adminFormCountrySelect.innerHTML = '<option value="">Choose an existing country…</option>' + countryOptionsHtml;
   }
+
+  els.adminFormCountrySelect.addEventListener("change", function () {
+    var value = els.adminFormCountrySelect.value;
+    if (!value) return;
+    els.adminForm.elements.country.value = value;
+    els.adminFormCountrySelect.value = "";
+  });
+
+  els.adminFormGenreSelect.addEventListener("change", function () {
+    var value = els.adminFormGenreSelect.value;
+    if (!value) return;
+    var input = els.adminForm.elements.genres;
+    var current = input.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (current.indexOf(value) === -1) current.push(value);
+    input.value = current.join(", ");
+    els.adminFormGenreSelect.value = "";
+  });
 
   function openSubmitModal() {
     els.submitModal.hidden = false;

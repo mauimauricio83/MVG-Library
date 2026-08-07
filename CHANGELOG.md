@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.22.1 — current
+- Admin "Add/Edit Entry" form: Country and Genres were plain free-text fields with nothing to pick from (unlike the public Submit form, whose equivalents are dropdowns). Added a fast-fill dropdown above each, sourced from the same catalog-derived lists as the public form -- picking a value fills/appends into the text field below it, which stays fully editable so a brand-new country or genre not yet in the catalog can still just be typed.
+
 ## v5.22.0 — current
 - Sunset Advanced Search: removed the separate full-page Genre/Era search UI and its top-bar open button entirely (was clunky and duplicated the regular Search view).
 - Search view: removed the Filters collapse/expand toggle -- filters are now always visible, no hide/show state to manage.

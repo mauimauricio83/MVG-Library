@@ -4599,6 +4599,17 @@ body.is-searching #discoverSection {
   color: var(--text);
 }
 
+/* Dropdown-plus-free-text pairing (admin Country/Genres) -- the select is
+   a fast-fill shortcut for an existing value, the text input underneath is
+   the actual source of truth (still name="country"/"genres") and stays
+   fully editable so a value that isn't in the catalog yet can just be
+   typed directly. */
+.admin-form-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .submit-form textarea {
   resize: vertical;
 }

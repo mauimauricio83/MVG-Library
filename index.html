@@ -711,10 +711,20 @@
           <input type="text" name="choreographer">
         </label>
         <label>Country
-          <input type="text" name="country">
+          <div class="admin-form-combo">
+            <select id="adminFormCountrySelect" aria-label="Choose an existing country">
+              <option value="">Choose an existing country…</option>
+            </select>
+            <input type="text" name="country" placeholder="Or type a new country">
+          </div>
         </label>
         <label>Genres <span class="submit-optional">(comma-separated)</span>
-          <input type="text" name="genres" placeholder="Pop, Synthpop">
+          <div class="admin-form-combo">
+            <select id="adminFormGenreSelect" aria-label="Add an existing genre">
+              <option value="">Add an existing genre…</option>
+            </select>
+            <input type="text" name="genres" placeholder="Pop, Synthpop">
+          </div>
         </label>
         <label>Description
           <textarea name="description" rows="3"></textarea>
