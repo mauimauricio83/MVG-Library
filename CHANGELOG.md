@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.22.0 — current
+- Sunset Advanced Search: removed the separate full-page Genre/Era search UI and its top-bar open button entirely (was clunky and duplicated the regular Search view).
+- Search view: removed the Filters collapse/expand toggle -- filters are now always visible, no hide/show state to manage.
+- Search view: switched results from the old compact text-row/thumbnail-grid list to the reddit-style thumb-left/description-right card (the look Advanced Search introduced, now reused here as the site's one search results style; its CSS/JS were renamed from `adv-search-card`/`advSearchResultCardHtml` to `result-card`/`resultCardHtml` since "Advanced Search" no longer exists as a concept).
+- "Save as Playlist" is now "Create Playlist" on desktop, and collapses to a small "+" icon button on mobile (same pattern as TV Mode's own "+" playlist button) -- same underlying snapshot-current-results-into-a-playlist behavior, just relabeled/responsive.
+
 ## v5.21.1 — current
 - Removed the yellow text-shadow glow on titles (top-bar title, section headers, Spotlight/News) in both light and dark mode -- didn't read well, especially in light mode. Box-shadow glow (nav toggle, primary buttons, card hover) is unaffected, kept as-is.
 

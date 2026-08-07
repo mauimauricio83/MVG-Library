@@ -1,7 +1,7 @@
-(function () {
+﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.21.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.22.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -101,13 +101,10 @@
     genreTip: document.getElementById("genreTip"),
     countryFilter: document.getElementById("countryFilter"),
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
-    filtersToggle: document.getElementById("filtersToggle"),
-    filtersPanel: document.getElementById("filtersPanel"),
     filtersGroup: document.getElementById("filtersGroup"),
     tvModal: document.getElementById("tvModal"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
-    filtersToggleCount: document.getElementById("filtersToggleCount"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     tvSkipBtn: document.getElementById("tvSkipBtn"),
     tvReportLink: document.getElementById("tvReportLink"),
@@ -191,14 +188,6 @@
     discoverSection: document.getElementById("discoverSection"),
     discoverGrid: document.getElementById("discoverGrid"),
     discoverSeeMoreBtn: document.getElementById("discoverSeeMoreBtn"),
-    advSearchOpenBtn: document.getElementById("advSearchOpenBtn"),
-    advSearchPage: document.getElementById("advSearchPage"),
-    advSearchInput: document.getElementById("advSearchInput"),
-    advSearchTabs: document.getElementById("advSearchTabs"),
-    advSearchGenreGrid: document.getElementById("advSearchGenreGrid"),
-    advSearchEraGrid: document.getElementById("advSearchEraGrid"),
-    advSearchResults: document.getElementById("advSearchResults"),
-    advSearchEmptyMsg: document.getElementById("advSearchEmptyMsg"),
     profilesGrid: document.getElementById("profilesGrid"),
     profilesFilters: document.getElementById("profilesFilters"),
     profilesSearchInput: document.getElementById("profilesSearchInput"),
@@ -532,188 +521,34 @@
     return Object.keys(groups);
   }
 
-  // ---- Advanced Search: full-page browsing by Genre/Era tabs + its own
-  // search box, reached via advSearchOpenBtn. Reuses TV_GENRE_GROUPS/
-  // TV_ERA_BUCKETS/tvGenreGroupsForRow/tvEraBucketFor (pure, stateless) but
-  // keeps its own state.advSearchGenre/advSearchEra entirely separate from
-  // TV Mode's own filter state, so the two features can never interfere
-  // with each other.
-  function matchesAdvSearch(row) {
-    if (!hasVideo(row)) return false;
-    if (state.advSearchGenre && tvGenreGroupsForRow(row).indexOf(state.advSearchGenre) === -1) return false;
-    if (state.advSearchEra && tvEraBucketFor(row.year) !== state.advSearchEra) return false;
-    return matchesQuery(row, state.query);
-  }
-
-  function hasActiveAdvSearch() {
-    return !!(state.advSearchGenre || state.advSearchEra || state.query);
-  }
-
   // In-house description first; YouTube's own uploader description/tags
   // (backfilled via scripts/backfill-youtube-metadata.js) as fallback.
   // Vimeo has no equivalent data source yet -- a Vimeo-only entry with no
   // in-house description just shows no description, not a bug, there's
   // nothing to fall back to until that gap is backfilled separately.
-  function advSearchDescription(row) {
+  function resultDescription(row) {
     return row.description || row.youtubeSearchText || "";
   }
 
-  function advSearchResultCardHtml(row) {
+  // Thumb-left/description-right list card -- the Search results view's
+  // card template (see render()/renderGroupSection() below). Used to be
+  // Advanced Search's own card before that page was sunset in favor of
+  // just using this look for Search directly.
+  function resultCardHtml(row) {
     var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
     var thumb = videoThumbImgHtml(row, thumbAlt);
     var artistLine = row.artist || "";
     if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
-    var desc = advSearchDescription(row);
-    return '<div class="adv-search-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-      '<div class="adv-search-card-thumb">' + thumb + "</div>" +
-      '<div class="adv-search-card-info">' +
-        '<div class="adv-search-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-        '<div class="adv-search-card-artist">' + escapeHtml(artistLine) + "</div>" +
-        (desc ? '<p class="adv-search-card-desc">' + escapeHtml(desc) + "</p>" : "") +
+    var desc = resultDescription(row);
+    return '<div class="result-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+      '<div class="result-card-thumb">' + thumb + "</div>" +
+      '<div class="result-card-info">' +
+        '<div class="result-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+        '<div class="result-card-artist">' + escapeHtml(artistLine) + "</div>" +
+        (desc ? '<p class="result-card-desc">' + escapeHtml(desc) + "</p>" : "") +
       "</div>" +
     "</div>";
   }
-
-  // A single Era or Genre tile alone can still be thousands of rows --
-  // capped like other lists on the site rather than rendering everything
-  // at once. Not a "load more": narrowing the search (another tab,
-  // typing a query) is the expected way past this, matching how the rest
-  // of the site handles a huge unfiltered result set.
-  var ADV_SEARCH_RESULTS_CAP = 200;
-
-  function renderAdvSearchResults() {
-    if (!hasActiveAdvSearch()) {
-      els.advSearchResults.innerHTML = "";
-      els.advSearchEmptyMsg.hidden = false;
-      els.advSearchEmptyMsg.textContent = "Pick a genre or era, or type in the search box above, to start browsing.";
-      return;
-    }
-    var matches = state.rows.filter(matchesAdvSearch);
-    if (!matches.length) {
-      els.advSearchResults.innerHTML = "";
-      els.advSearchEmptyMsg.hidden = false;
-      els.advSearchEmptyMsg.textContent = "No entries match.";
-      return;
-    }
-    els.advSearchEmptyMsg.hidden = true;
-    var shown = matches.slice(0, ADV_SEARCH_RESULTS_CAP);
-    els.advSearchResults.innerHTML = shown.map(advSearchResultCardHtml).join("") +
-      (matches.length > shown.length
-        ? '<p class="adv-search-more-note">' + (matches.length - shown.length) + " more match — narrow your search to see them.</p>"
-        : "");
-  }
-
-  function renderAdvSearchGenreGrid() {
-    var counts = {};
-    TV_GENRE_GROUPS.forEach(function (g) { counts[g.key] = 0; });
-    state.rows.forEach(function (r) {
-      if (!hasVideo(r)) return;
-      tvGenreGroupsForRow(r).forEach(function (key) { counts[key]++; });
-    });
-    var html = '<button type="button" class="tv-genre-tile tv-genre-tile-all' +
-      (state.advSearchGenre === "" ? " is-active" : "") + '" data-genre="">All Genres</button>';
-    TV_GENRE_GROUPS.forEach(function (g) {
-      var active = state.advSearchGenre === g.key ? " is-active" : "";
-      html += '<button type="button" class="tv-genre-tile' + active + '" data-genre="' + g.key +
-        '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
-        '</span><span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
-    });
-    els.advSearchGenreGrid.innerHTML = html;
-  }
-
-  function renderAdvSearchEraGrid() {
-    var counts = {};
-    TV_ERA_BUCKETS.forEach(function (b) { counts[b.key] = 0; });
-    state.rows.forEach(function (r) {
-      if (!hasVideo(r)) return;
-      var key = tvEraBucketFor(r.year);
-      if (key && counts[key] != null) counts[key]++;
-    });
-    var html = '<button type="button" class="tv-genre-tile tv-genre-tile-all' +
-      (state.advSearchEra === "" ? " is-active" : "") + '" data-era="">All Eras</button>';
-    TV_ERA_BUCKETS.forEach(function (b) {
-      var active = state.advSearchEra === b.key ? " is-active" : "";
-      html += '<button type="button" class="tv-genre-tile' + active + '" data-era="' + b.key + '">' +
-        '<span class="tv-genre-tile-label">' + escapeHtml(b.label) + '</span>' +
-        '<span class="tv-genre-tile-count">' + counts[b.key] + "</span></button>";
-    });
-    els.advSearchEraGrid.innerHTML = html;
-  }
-
-  function updateAdvSearchTabUI() {
-    Array.prototype.forEach.call(els.advSearchTabs.querySelectorAll(".adv-search-tab"), function (btn) {
-      btn.classList.toggle("is-active", btn.getAttribute("data-adv-tab") === state.advSearchTab);
-    });
-    els.advSearchGenreGrid.hidden = state.advSearchTab !== "genre";
-    els.advSearchEraGrid.hidden = state.advSearchTab !== "era";
-  }
-
-  els.advSearchTabs.addEventListener("click", function (e) {
-    var tab = e.target.closest(".adv-search-tab");
-    if (!tab) return;
-    state.advSearchTab = tab.getAttribute("data-adv-tab");
-    updateAdvSearchTabUI();
-  });
-
-  els.advSearchGenreGrid.addEventListener("click", function (e) {
-    var tile = e.target.closest(".tv-genre-tile");
-    if (!tile) return;
-    var key = tile.getAttribute("data-genre");
-    state.advSearchGenre = state.advSearchGenre === key ? "" : key; // tapping the active tile again clears it
-    renderAdvSearchGenreGrid();
-    renderAdvSearchResults();
-  });
-
-  els.advSearchEraGrid.addEventListener("click", function (e) {
-    var tile = e.target.closest(".tv-genre-tile");
-    if (!tile) return;
-    var key = tile.getAttribute("data-era");
-    state.advSearchEra = state.advSearchEra === key ? "" : key;
-    renderAdvSearchEraGrid();
-    renderAdvSearchResults();
-  });
-
-  els.advSearchResults.addEventListener("click", function (e) {
-    var card = e.target.closest(".adv-search-card");
-    if (!card) return;
-    var row = findRowByNum(card.getAttribute("data-row"));
-    if (row) openLightbox(row);
-  });
-
-  var advSearchInputTimer = null;
-  els.advSearchInput.addEventListener("input", function () {
-    clearTimeout(advSearchInputTimer);
-    advSearchInputTimer = setTimeout(function () {
-      state.query = els.advSearchInput.value.trim();
-      if (state.query) state.activeLetter = null;
-      // Keep the other two search boxes in sync, same three-way mirroring
-      // the existing desktop/mobile boxes already do for each other.
-      els.topBarSearchInput.value = state.query;
-      els.search.value = state.query;
-      els.topBarSearchClear.hidden = !state.query;
-      renderAdvSearchResults();
-    }, 120);
-  });
-
-  els.advSearchInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      els.advSearchInput.blur();
-    }
-  });
-
-  function openAdvSearchPage() {
-    els.advSearchInput.value = state.query;
-    renderAdvSearchGenreGrid();
-    renderAdvSearchEraGrid();
-    updateAdvSearchTabUI();
-    renderAdvSearchResults();
-    setDesktopView("advsearch");
-    setMobileView("advsearch");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  els.advSearchOpenBtn.addEventListener("click", openAdvSearchPage);
 
   // This app is often embedded in a Squarespace page via an auto-height
   // iframe (no independent scrolling inside the iframe -- the OUTER page
@@ -876,16 +711,8 @@
     homeYearBeforeTV: "",
     homeGenreBeforeTV: "",
     homeMvgOnlyBeforeTV: false,
-    homeFiltersExpandedBeforeTV: false,
     tvActiveTab: "genre",
     tvYearGranularity: "eras",
-    // Advanced Search page -- independent of TV Mode's own genre/year
-    // filter state (tvActiveTab/tvYearGranularity above) even though both
-    // reuse the same TV_GENRE_GROUPS/TV_ERA_BUCKETS bucket data, so opening
-    // one can never clobber the other.
-    advSearchTab: "genre",
-    advSearchGenre: "",
-    advSearchEra: "",
     // Set when a playlist is picked on TV Mode's Custom tab -- while set,
     // armTV()/refreshTVPoolIfActive() draw from this instead of
     // matchesFilters(), same as "Play All"'s customPool. Cleared by
@@ -1075,22 +902,6 @@
   function saveAutoplayPref(on) {
     try {
       localStorage.setItem(AUTOPLAY_KEY, on ? "on" : "off");
-    } catch (e) {}
-  }
-
-  var FILTERS_EXPANDED_KEY = "mvg-filters-expanded";
-
-  function loadFiltersExpandedPref() {
-    try {
-      return localStorage.getItem(FILTERS_EXPANDED_KEY) === "true";
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function saveFiltersExpandedPref(expanded) {
-    try {
-      localStorage.setItem(FILTERS_EXPANDED_KEY, expanded ? "true" : "false");
     } catch (e) {}
   }
 
@@ -1549,7 +1360,6 @@
     buildCountryOptions(state.rows);
     els.countryFilter.value = state.country;
     buildSubmitDropdowns(state.rows);
-    updateFiltersToggleCount();
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
@@ -1803,22 +1613,6 @@
     return !!(state.category || state.year || state.genre || state.country || state.mvgOnly || state.activeLetter);
   }
 
-  function activeFilterCount() {
-    var n = 0;
-    if (state.category) n++;
-    if (state.year) n++;
-    if (state.genre) n++;
-    if (state.country) n++;
-    if (state.mvgOnly) n++;
-    return n;
-  }
-
-  function updateFiltersToggleCount() {
-    var n = activeFilterCount();
-    els.filtersToggleCount.hidden = n === 0;
-    els.filtersToggleCount.textContent = String(n);
-  }
-
   function clearAllFilters() {
     state.category = "";
     state.year = "";
@@ -1833,7 +1627,6 @@
     els.genreFilter.value = "";
     els.countryFilter.value = "";
     els.mvgOnlyToggle.checked = false;
-    updateFiltersToggleCount();
   }
 
   function buildCategoryChips(rows) {
@@ -1927,19 +1720,6 @@
   els.clearFiltersBtn.addEventListener("click", function () {
     clearAllFilters();
     render();
-  });
-
-  function applyFiltersExpanded(expanded) {
-    els.filtersPanel.hidden = !expanded;
-    els.filtersToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
-  }
-
-  applyFiltersExpanded(loadFiltersExpandedPref());
-
-  els.filtersToggle.addEventListener("click", function () {
-    var expanded = els.filtersToggle.getAttribute("aria-expanded") !== "true";
-    applyFiltersExpanded(expanded);
-    saveFiltersExpandedPref(expanded);
   });
 
   els.mvgOnlyToggle.addEventListener("change", function () {
@@ -3230,7 +3010,7 @@
       var ids = Array.isArray(data.favorites) ? data.favorites : [];
       sharedFavoritesUid = uid;
       favoritesPool = ids.map(findRowByNum).filter(Boolean);
-      els.favoritesTitle.textContent = (data.displayName ? data.displayName + "’s" : "Shared") + " Favorites";
+      els.favoritesTitle.textContent = (data.displayName ? data.displayName + "'s" : "Shared") + " Favorites";
       els.favoritesShareBtn.hidden = true;
       els.favoritesShareStatus.hidden = true;
       favoritesStrip.render(favoritesPool);
@@ -3821,7 +3601,6 @@
     state.tvYearGranularity = granularity;
     state.year = ""; // bucket keys aren't comparable across granularities
     renderTVYearDial(state.rows);
-    updateFiltersToggleCount();
     render();
   });
 
@@ -3879,7 +3658,6 @@
     if (!tvYearDragActive) return;
     tvYearDragActive = false;
     els.tvYearDragLabel.hidden = true;
-    updateFiltersToggleCount();
     render();
   }
   els.tvYearDialRing.addEventListener("pointerup", tvYearDragEnd);
@@ -3894,14 +3672,12 @@
     var center = e.target.closest("#tvYearDialCenter");
     if (center) {
       applyTVYearSelection("");
-      updateFiltersToggleCount();
       render();
       return;
     }
     var tick = e.target.closest(".tv-year-tick");
     if (tick) {
       applyTVYearSelection(tick.getAttribute("data-year"));
-      updateFiltersToggleCount();
       render();
     }
   });
@@ -3937,7 +3713,6 @@
     state.tvCustomPool = null;
     state.tvCustomPlaylistId = null;
     renderTVGenreGrid(state.rows);
-    updateFiltersToggleCount();
     render();
   });
 
@@ -3970,7 +3745,6 @@
     state.homeYearBeforeTV = state.year;
     state.homeGenreBeforeTV = state.genre;
     state.homeMvgOnlyBeforeTV = state.mvgOnly;
-    state.homeFiltersExpandedBeforeTV = els.filtersPanel.hidden ? false : true;
     state.tvFilterMode = true;
     state.tvYearGranularity = "eras";
     state.year = state.homeYearBeforeTV ? tvEraBucketFor(state.homeYearBeforeTV === YEAR_NONE ? "" : state.homeYearBeforeTV) : "";
@@ -3986,17 +3760,12 @@
     els.mvgOnlyTip.hidden = true;
     els.genreTip.hidden = true;
     els.savePlaylistBtn.hidden = true; // Search-only -- nothing to "save as playlist" in TV Mode
-    // No reason to collapse/expand filters in TV Mode -- they're the whole
-    // point of the panel there, not an optional extra like on Search.
-    els.filtersToggle.hidden = true;
-    applyFiltersExpanded(true);
     els.tvFilterTabs.hidden = false;
     state.tvActiveTab = "genre";
     updateTVFilterTabUI();
     renderTVYearDial(state.rows);
     renderTVGenreGrid(state.rows);
     renderTVCustomPane();
-    updateFiltersToggleCount();
   }
 
   function exitTVFilterMode() {
@@ -4014,14 +3783,11 @@
     els.mvgOnlyTip.hidden = false;
     els.genreTip.hidden = false;
     els.savePlaylistBtn.hidden = false;
-    els.filtersToggle.hidden = false;
     els.tvFilterTabs.hidden = true;
-    applyFiltersExpanded(!!state.homeFiltersExpandedBeforeTV);
     buildYearOptions(state.rows);
     buildGenreOptions(state.rows);
     els.yearFilter.value = state.year;
     els.genreFilter.value = state.genre;
-    updateFiltersToggleCount();
   }
 
   // TV Mode is a lightbox (matching the video lightbox's default size) that
@@ -5243,7 +5009,6 @@
     // highlight.
     document.body.classList.toggle("mobile-view-playlists", view === "playlists");
     document.body.classList.toggle("mobile-view-profiles", view === "profiles");
-    document.body.classList.toggle("mobile-view-advsearch", view === "advsearch");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -5285,7 +5050,6 @@
     document.body.classList.toggle("desktop-view-favorites", view === "favorites");
     document.body.classList.toggle("desktop-view-playlists", view === "playlists");
     document.body.classList.toggle("desktop-view-profiles", view === "profiles");
-    document.body.classList.toggle("desktop-view-advsearch", view === "advsearch");
   }
 
   els.sidebarHomeBtn.addEventListener("click", function () {
@@ -5329,10 +5093,7 @@
   }
 
   els.topBarSearchInput.addEventListener("focus", function () {
-    // Advanced Search reuses this same box as its own text filter (see
-    // renderAdvSearchResults()) -- focusing it there shouldn't yank the
-    // view back to plain Search.
-    if (state.desktopView !== "advsearch") setDesktopView("search");
+    setDesktopView("search");
   });
 
   var topBarSearchTimer = null;
@@ -5343,12 +5104,8 @@
       state.query = els.topBarSearchInput.value.trim();
       if (state.query) state.activeLetter = null;
       els.search.value = state.query; // keep the mobile search box in sync
-      if (state.desktopView === "advsearch") {
-        renderAdvSearchResults();
-      } else {
-        setDesktopView("search");
-        render();
-      }
+      setDesktopView("search");
+      render();
     }, 120);
   });
 
@@ -5713,7 +5470,6 @@
     els.genreFilter.value = state.genre;
     buildCountryOptions(state.rows);
     els.countryFilter.value = state.country;
-    updateFiltersToggleCount();
     updateSubtitleStats(state.rows);
     state.recentSet = computeRecentSet(state.rows);
     renderLatestStrip(state.rows);
@@ -6703,6 +6459,10 @@
     if (tip) tip.classList.toggle("is-open");
   });
 
+  // Reddit-style thumb-left/description-right card (see resultCardHtml()
+  // above) -- reused here for the Search view's own results instead of the
+  // old compact entry-row list, plus the extras that view needs: a "New"
+  // badge, the category tag, and the Instagram link.
   function renderEntry(row) {
     var sub = [];
     if (state.view !== "artist" && row.artist) sub.push(escapeHtml(row.artist));
@@ -6715,24 +6475,21 @@
     }
 
     var newBadge = state.recentSet[row.rowNum] ? '<span class="new-badge">New</span>' : "";
-
-    // Thumbnail is only shown on desktop (see styles.css) -- mobile keeps
-    // the compact text-row list unchanged. Always included in the markup
-    // either way so there's no separate desktop/mobile render path.
     var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-    var thumb = '<div class="entry-thumb">' + videoThumbImgHtml(row, thumbAlt) + "</div>";
+    var thumb = videoThumbImgHtml(row, thumbAlt);
+    var desc = resultDescription(row);
 
     return (
-      '<li class="entry" data-row="' + escapeHtml(row.rowNum) + '">' +
-      '<div class="entry-row" role="button" tabindex="0" aria-haspopup="dialog">' +
-      thumb +
-      '<span class="entry-chevron" aria-hidden="true">&#9656;</span>' +
-      '<span class="entry-main">' +
-      '<span class="entry-title">' + escapeHtml(row.song || "(untitled)") + newBadge + "</span>" +
-      (sub.length ? '<span class="entry-sub">' + sub.join(" &middot; ") + "</span>" : "") +
-      "</span>" +
-      (row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "") +
-      (links ? '<span class="entry-links">' + links + "</span>" : "") +
+      '<li class="result-card" data-row="' + escapeHtml(row.rowNum) + '" role="button" tabindex="0" aria-haspopup="dialog">' +
+      '<div class="result-card-thumb">' + thumb + "</div>" +
+      '<div class="result-card-info">' +
+      '<div class="result-card-song">' + escapeHtml(row.song || "(untitled)") + newBadge + "</div>" +
+      (sub.length ? '<div class="result-card-artist">' + sub.join(" &middot; ") + "</div>" : "") +
+      (desc ? '<p class="result-card-desc">' + escapeHtml(desc) + "</p>" : "") +
+      (row.category || links ? '<div class="result-card-meta">' +
+        (row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "") +
+        (links ? '<span class="entry-links">' + links + "</span>" : "") +
+        "</div>" : "") +
       "</div>" +
       "</li>"
     );
@@ -6775,7 +6532,7 @@
       '<section class="group" id="' + id + '">' +
       '<h2 class="group-heading">' + escapeHtml(heading) +
       '<span class="group-count">' + rows.length + (rows.length === 1 ? " entry" : " entries") + "</span></h2>" +
-      '<ul class="entry-list">' + rows.map(renderEntry).join("") + "</ul>" +
+      '<ul class="result-list">' + rows.map(renderEntry).join("") + "</ul>" +
       "</section>"
     );
   }
@@ -6802,7 +6559,6 @@
 
   function render(sync) {
     moveVideoPairHome();
-    updateFiltersToggleCount();
     refreshTVPoolIfActive();
     // On mobile, Featured sits between the search box and the results list,
     // so while actively typing (results often obscured further by the
@@ -6895,7 +6651,7 @@
   els.jumpBottom.addEventListener("click", onJumpClick);
 
   function handleEntryActivate(rowEl) {
-    var li = rowEl.closest(".entry");
+    var li = rowEl.closest(".result-card");
     if (!li) return;
     var rowNum = li.getAttribute("data-row");
     var row = findRowByNum(rowNum);
@@ -6909,13 +6665,13 @@
       return;
     }
     if (e.target.closest("a")) return;
-    var row = e.target.closest(".entry-row");
+    var row = e.target.closest(".result-card");
     if (row) handleEntryActivate(row);
   });
 
   els.results.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    var row = e.target.closest(".entry-row");
+    var row = e.target.closest(".result-card");
     if (row) {
       e.preventDefault();
       handleEntryActivate(row);

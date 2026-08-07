@@ -215,30 +215,13 @@ html, body {
    flex:1 with max-width + auto margins centers it in the remaining space;
    .top-bar-actions needs no margin-left of its own since this element's
    right auto-margin already pushes it flush to the end. */
-/* Groups the search pill with the Advanced Search icon so they center and
-   grow/shrink together (rather than the pill's own margin:0 auto pushing
-   a later sibling away to the far right edge, next to Settings/Admin) --
-   see #advSearchOpenBtn. On mobile this collapses to display:contents so
-   its children lay out as direct .top-bar-search-group children of
-   .top-bar again -- the existing .top-bar-search{display:none} mobile
-   rule still hides just the pill, while the button (mobile's only way
-   into Advanced Search, since #topBarSearchInput doesn't render there)
-   stays visible. */
-.top-bar-search-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  max-width: 520px;
-  margin: 0 auto;
-}
-
 .top-bar-search {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1 1 auto;
-  min-width: 0;
+  max-width: 480px;
+  margin: 0 auto;
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1203,21 +1186,6 @@ html, body {
     height: 18px;
   }
 
-  /* Unlike the other .header-icon-btn instances above (Settings/Admin/
-     Sign-in, all hidden on mobile via .top-bar-actions below), this one
-     is mobile's only way into Advanced Search -- #topBarSearchInput
-     doesn't render there, see .top-bar-search below. Opts out of the
-     absolute-positioning rule above (stays in normal flow) and the group
-     wrapper collapses to display:contents so this ends up a plain
-     .top-bar flex child, same as it always was. */
-  .top-bar-search-group {
-    display: contents;
-  }
-
-  .top-bar-adv-search-btn {
-    position: static;
-  }
-
   /* Bigger tap target for the hamburger specifically -- it's the primary
      way to reach the sidebar on mobile, unlike the other .header-icon-btn
      instances (which are hidden on mobile anyway, see .top-bar-actions
@@ -1755,8 +1723,7 @@ body.is-searching #discoverSection {
   body.desktop-view-search .ad-placeholder,
   body.desktop-view-search #videoEmbed,
   body.desktop-view-search #featuredStrip,
-  body.desktop-view-search #discoverSection,
-  body.desktop-view-search #advSearchPage {
+  body.desktop-view-search #discoverSection {
     display: none;
   }
 
@@ -1775,7 +1742,6 @@ body.is-searching #discoverSection {
   body.desktop-view-favorites #videoEmbed,
   body.desktop-view-favorites #featuredStrip,
   body.desktop-view-favorites #discoverSection,
-  body.desktop-view-favorites #advSearchPage,
   body.desktop-view-favorites .controls,
   body.desktop-view-favorites #filtersGroup,
   body.desktop-view-favorites #jumpNavTop,
@@ -1799,7 +1765,6 @@ body.is-searching #discoverSection {
   body.desktop-view-playlists #videoEmbed,
   body.desktop-view-playlists #featuredStrip,
   body.desktop-view-playlists #discoverSection,
-  body.desktop-view-playlists #advSearchPage,
   body.desktop-view-playlists .controls,
   body.desktop-view-playlists #filtersGroup,
   body.desktop-view-playlists #jumpNavTop,
@@ -1823,7 +1788,6 @@ body.is-searching #discoverSection {
   body.desktop-view-profiles #videoEmbed,
   body.desktop-view-profiles #featuredStrip,
   body.desktop-view-profiles #discoverSection,
-  body.desktop-view-profiles #advSearchPage,
   body.desktop-view-profiles .controls,
   body.desktop-view-profiles #filtersGroup,
   body.desktop-view-profiles #jumpNavTop,
@@ -1833,29 +1797,6 @@ body.is-searching #discoverSection {
     display: none;
   }
 
-  /* Advanced Search: reached via the top-bar search-plus icon
-     (advSearchOpenBtn), which calls setDesktopView("advsearch") -- same
-     page pattern as Favorites/Playlists/Profiles above. */
-  body.desktop-view-advsearch #advSearchPage {
-    display: block;
-  }
-
-  body.desktop-view-advsearch .about-strip,
-  body.desktop-view-advsearch #spotlightSidebar,
-  body.desktop-view-advsearch #blogLatestSidebar,
-  body.desktop-view-advsearch .ad-placeholder,
-  body.desktop-view-advsearch #latestStrip,
-  body.desktop-view-advsearch #videoEmbed,
-  body.desktop-view-advsearch #featuredStrip,
-  body.desktop-view-advsearch #discoverSection,
-  body.desktop-view-advsearch .controls,
-  body.desktop-view-advsearch #filtersGroup,
-  body.desktop-view-advsearch #jumpNavTop,
-  body.desktop-view-advsearch #status,
-  body.desktop-view-advsearch .results-layout,
-  body.desktop-view-advsearch #jumpNavBottom {
-    display: none;
-  }
 }
 
 .controls {
@@ -1978,52 +1919,6 @@ body.is-searching #discoverSection {
   margin-bottom: 10px;
 }
 
-.filters-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.filters-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.filters-toggle-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.filters-toggle-count[hidden] {
-  display: none;
-}
-
-.filters-toggle-chevron {
-  font-size: 0.7rem;
-  transition: transform 0.15s ease;
-}
-
-.filters-toggle[aria-expanded="true"] .filters-toggle-chevron {
-  transform: rotate(180deg);
-}
-
 .filters-row {
   display: flex;
   flex-wrap: wrap;
@@ -2031,10 +1926,6 @@ body.is-searching #discoverSection {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 16px;
-}
-
-.filters-row[hidden] {
-  display: none;
 }
 
 /* TV Mode borrows #filtersGroup into #tvFiltersSlot for the duration (see
@@ -2398,76 +2289,12 @@ body.is-searching #discoverSection {
   font-size: 0.85rem;
 }
 
-/* Advanced Search page -- own search box (advSearchInput, see the HTML
-   comment above #advSearchPage for why it can't just reuse the top-bar
-   box), Genre/Era tabs (own .adv-search-tab, not .tv-filter-tab, so a
-   future TV Mode style change can't silently affect this page too), and
-   tile grids that DO reuse .tv-genre-tile's look directly (unscoped,
-   generic class -- see app.js's advSearchResultCardHtml/renderAdvSearch*
-   for why). */
-.adv-search-input-row {
-  max-width: 640px;
-  margin-bottom: 14px;
-}
-
-.adv-search-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-}
-
-.adv-search-tabs {
-  display: flex;
-  gap: 8px;
-  max-width: 640px;
-  margin-bottom: 14px;
-}
-
-.adv-search-tab {
-  flex: 1 1 0;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 8px 0;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.adv-search-tab:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.adv-search-tab.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.adv-search-tile-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  max-width: 640px;
-  margin-bottom: 20px;
-}
-
-.adv-search-tile-grid[hidden] {
-  display: none;
-}
-
 /* Reddit-style horizontal list: thumbnail left, text (title/artist/
    description, in-house preferred, YouTube's own as fallback -- see
-   advSearchDescription() in app.js) right. Deliberately not a thumbnail
-   grid like Featured/Discover -- the description is the point here. */
-.adv-search-card {
+   resultDescription() in app.js) right. Deliberately not a thumbnail
+   grid like Featured/Discover -- the description is the point here.
+   Used by the Search view's results (see resultCardHtml() in app.js). */
+.result-card {
   display: flex;
   gap: 14px;
   padding: 12px 4px;
@@ -2475,15 +2302,15 @@ body.is-searching #discoverSection {
   cursor: pointer;
 }
 
-.adv-search-card:hover {
+.result-card:hover {
   background: var(--accent-soft);
 }
 
-.adv-search-card:last-child {
+.result-card:last-child {
   border-bottom: none;
 }
 
-.adv-search-card-thumb {
+.result-card-thumb {
   position: relative;
   flex: 0 0 160px;
   width: 160px;
@@ -2493,7 +2320,7 @@ body.is-searching #discoverSection {
   overflow: hidden;
 }
 
-.adv-search-card-thumb img {
+.result-card-thumb img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2501,7 +2328,7 @@ body.is-searching #discoverSection {
   object-fit: cover;
 }
 
-.adv-search-card-info {
+.result-card-info {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -2509,7 +2336,7 @@ body.is-searching #discoverSection {
   gap: 2px;
 }
 
-.adv-search-card-song {
+.result-card-song {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
@@ -2518,7 +2345,7 @@ body.is-searching #discoverSection {
   white-space: nowrap;
 }
 
-.adv-search-card-artist {
+.result-card-artist {
   font-size: 0.8rem;
   color: var(--text-muted);
   overflow: hidden;
@@ -2526,7 +2353,7 @@ body.is-searching #discoverSection {
   white-space: nowrap;
 }
 
-.adv-search-card-desc {
+.result-card-desc {
   margin: 4px 0 0;
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -2537,7 +2364,7 @@ body.is-searching #discoverSection {
   -webkit-box-orient: vertical;
 }
 
-.adv-search-more-note {
+.result-card-more-note {
   padding: 14px 4px;
   color: var(--text-faint);
   font-size: 0.82rem;
@@ -3505,7 +3332,7 @@ body.is-searching #discoverSection {
   cursor: default;
 }
 
-.entry-list {
+.result-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -3516,54 +3343,11 @@ body.is-searching #discoverSection {
   overflow: hidden;
 }
 
-.entry {
-  border-bottom: 1px solid var(--border);
-}
-
-.entry:last-child {
-  border-bottom: none;
-}
-
-.entry-row {
+.result-card-meta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-}
-
-.entry-row:hover {
-  background: var(--accent-soft);
-}
-
-.entry-chevron {
-  flex: 0 0 auto;
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  width: 10px;
-}
-
-/* Thumbnail-grid results (desktop only, see the min-width:641px block
-   below) -- hidden by default so mobile's compact text-row list is
-   unaffected. */
-.entry-thumb {
-  display: none;
-}
-
-.entry-main {
-  flex: 1 1 200px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.entry-title {
-  font-size: 0.92rem;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .new-badge {
@@ -3578,75 +3362,6 @@ body.is-searching #discoverSection {
   border-radius: 4px;
   margin-left: 6px;
   vertical-align: middle;
-}
-
-.entry-sub {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Search results as a thumbnail grid on desktop -- same 16:9 card look as
-   Featured/Latest, still grouped under each .group-heading (By Director/
-   Artist/Song). Mobile is untouched: stays the compact text-row list. */
-@media (min-width: 641px) {
-  .entry-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
-    background: none;
-    border: none;
-    box-shadow: none;
-    overflow: visible;
-  }
-
-  .entry {
-    border-bottom: none;
-  }
-
-  .entry-thumb {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: var(--accent-soft);
-    margin-bottom: 8px;
-  }
-
-  .entry-thumb img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .entry-row {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0;
-    gap: 4px;
-    cursor: pointer;
-  }
-
-  .entry-main {
-    flex: 0 1 auto;
-  }
-
-  .entry-chevron {
-    display: none;
-  }
-
-  .entry-title,
-  .entry-sub {
-    white-space: normal;
-  }
-
-  .entry-links {
-    margin-top: 2px;
-  }
 }
 
 .tag {
@@ -3746,6 +3461,13 @@ body.is-searching #discoverSection {
 .save-playlist-btn:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* Spelled out on desktop, collapses to a "+" icon button on mobile (see the
+   max-width:640px block below) -- same pattern as TV Mode's own
+   .tv-playlist-btn "+" button. */
+.save-playlist-btn-icon {
+  display: none;
 }
 
 /* Lives beside Clear filters instead of on the player's own overlay bar --
@@ -5273,17 +4995,30 @@ body.is-searching #discoverSection {
     max-width: none;
   }
 
-  .entry-row {
-    padding: 10px 10px;
-    gap: 8px;
-  }
-
   .video-embed-hint {
     padding: 20px 12px;
   }
 
   .group-heading {
     scroll-margin-top: 130px;
+  }
+
+  .save-playlist-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+
+  .save-playlist-btn-label {
+    display: none;
+  }
+
+  .save-playlist-btn-icon {
+    display: inline;
   }
 
   .lightbox {
@@ -5524,8 +5259,7 @@ body.is-searching #discoverSection {
   body.mobile-view-search .ad-placeholder,
   body.mobile-view-search #videoEmbed,
   body.mobile-view-search #featuredStrip,
-  body.mobile-view-search #discoverSection,
-  body.mobile-view-search #advSearchPage {
+  body.mobile-view-search #discoverSection {
     display: none;
   }
 
@@ -5557,8 +5291,7 @@ body.is-searching #discoverSection {
   body.mobile-view-favorites .ad-placeholder,
   body.mobile-view-favorites #videoEmbed,
   body.mobile-view-favorites #featuredStrip,
-  body.mobile-view-favorites #discoverSection,
-  body.mobile-view-favorites #advSearchPage {
+  body.mobile-view-favorites #discoverSection {
     display: none;
   }
 
@@ -5575,8 +5308,7 @@ body.is-searching #discoverSection {
   body.mobile-view-playlists .ad-placeholder,
   body.mobile-view-playlists #videoEmbed,
   body.mobile-view-playlists #featuredStrip,
-  body.mobile-view-playlists #discoverSection,
-  body.mobile-view-playlists #advSearchPage {
+  body.mobile-view-playlists #discoverSection {
     display: none;
   }
 
@@ -5593,8 +5325,7 @@ body.is-searching #discoverSection {
   body.mobile-view-profiles .ad-placeholder,
   body.mobile-view-profiles #videoEmbed,
   body.mobile-view-profiles #featuredStrip,
-  body.mobile-view-profiles #discoverSection,
-  body.mobile-view-profiles #advSearchPage {
+  body.mobile-view-profiles #discoverSection {
     display: none;
   }
 
@@ -5602,27 +5333,7 @@ body.is-searching #discoverSection {
     display: block;
   }
 
-  /* Advanced Search view: reached via the top-bar search-plus icon (visible
-     on mobile too), same pattern as Playlists/Profiles above. */
-  body.mobile-view-advsearch #spotlightSidebar,
-  body.mobile-view-advsearch #blogLatestSidebar,
-  body.mobile-view-advsearch #latestStrip,
-  body.mobile-view-advsearch .ad-placeholder,
-  body.mobile-view-advsearch #videoEmbed,
-  body.mobile-view-advsearch #featuredStrip,
-  body.mobile-view-advsearch #discoverSection {
-    display: none;
-  }
-
-  body.mobile-view-advsearch #advSearchPage {
-    display: block;
-  }
-
-  .adv-search-tile-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .adv-search-card-thumb {
+  .result-card-thumb {
     flex-basis: 110px;
     width: 110px;
     padding-top: 62px;

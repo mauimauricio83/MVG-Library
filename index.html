@@ -69,16 +69,11 @@
     <img class="app-header-logo" src="icons/icon-192.png" alt="" width="32" height="32">
     <h1 class="top-bar-title">MUSIC VIDEO LIBRARY</h1>
   </a>
-  <div class="top-bar-search-group">
-    <div class="top-bar-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="top-bar-search-icon"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="search" id="topBarSearchInput" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
-      <button type="button" class="top-bar-search-clear" id="topBarSearchClear" aria-label="Clear search" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <button type="button" class="header-icon-btn top-bar-adv-search-btn" id="advSearchOpenBtn" aria-label="Advanced search" title="Advanced search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+  <div class="top-bar-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="top-bar-search-icon"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="search" id="topBarSearchInput" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
+    <button type="button" class="top-bar-search-clear" id="topBarSearchClear" aria-label="Clear search" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
     </button>
   </div>
   <div class="top-bar-actions">
@@ -227,11 +222,6 @@
 
   <div id="filtersGroup">
     <div class="filters-toggle-row">
-      <button type="button" class="filters-toggle" id="filtersToggle" aria-expanded="false" aria-controls="filtersPanel">
-        <span>Filters</span>
-        <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
-        <span class="filters-toggle-chevron" id="filtersToggleChevron">▾</span>
-      </button>
       <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear filters</button>
       <button type="button" class="tv-power-switch" id="tvPowerSwitch" hidden aria-label="Play/Stop" aria-pressed="false">
         <span class="tv-power-switch-track">
@@ -240,7 +230,10 @@
           <span class="tv-power-switch-knob"></span>
         </span>
       </button>
-      <button type="button" class="save-playlist-btn" id="savePlaylistBtn">Save as Playlist</button>
+      <button type="button" class="save-playlist-btn" id="savePlaylistBtn" aria-label="Create Playlist" title="Create Playlist">
+        <span class="save-playlist-btn-label">Create Playlist</span>
+        <span class="save-playlist-btn-icon" aria-hidden="true">+</span>
+      </button>
       <button type="button" class="tv-skip-btn" id="tvSkipBtn" hidden>Skip ▶</button>
       <a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Report issue</a>
       <div class="tv-toggle-row-right">
@@ -257,7 +250,7 @@
 
     <div class="tv-info-panel" id="tvInfoPanel" hidden></div>
 
-    <div class="filters-row" id="filtersPanel" hidden>
+    <div class="filters-row" id="filtersPanel">
       <div class="category-filters-group">
         <div class="category-filters" id="categoryFilters"></div>
         <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
@@ -499,36 +492,6 @@
       </div>
       <p class="profile-editor-status" id="profileEditorStatus" hidden></p>
     </form>
-  </section>
-
-  <!-- Reached via the top-bar "search plus" icon (advSearchOpenBtn), not a
-       lightbox -- its own full page, same family as Favorites/Playlists/
-       Profiles (desktop-view-advsearch/mobile-view-advsearch in styles.css).
-       Genre/Era tabs reuse TV Mode's own coarse bucket data (TV_GENRE_GROUPS/
-       TV_ERA_BUCKETS in app.js) but are otherwise independent of TV Mode's
-       own filter state -- own state.advSearchGenre/advSearchEra, so opening
-       this page can never interfere with TV Mode or vice versa. Its own
-       search box (advSearchInput) drives the same state.query the rest of
-       the site uses, kept in sync with the top-bar/mobile search boxes --
-       #topBarSearchInput is desktop-only (hidden on mobile via CSS), so
-       this page needs its own input to have a working search box on every
-       viewport size. Starts blank until at least one of genre/era/query is
-       set (matchesAdvSearch()). -->
-  <section class="media-strip" id="advSearchPage" hidden>
-    <div class="media-strip-head">
-      <span class="media-strip-title">Advanced Search</span>
-    </div>
-    <div class="adv-search-input-row">
-      <input type="search" id="advSearchInput" class="adv-search-input" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
-    </div>
-    <div class="adv-search-tabs" id="advSearchTabs">
-      <button type="button" class="adv-search-tab" data-adv-tab="genre">Genre</button>
-      <button type="button" class="adv-search-tab" data-adv-tab="era">Era</button>
-    </div>
-    <div class="adv-search-tile-grid" id="advSearchGenreGrid"></div>
-    <div class="adv-search-tile-grid" id="advSearchEraGrid" hidden></div>
-    <div class="adv-search-results" id="advSearchResults"></div>
-    <p class="profiles-empty" id="advSearchEmptyMsg" hidden></p>
   </section>
 
   <div class="results-layout">
