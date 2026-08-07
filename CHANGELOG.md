@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.19.0 — current
+- Added Advanced Search: a dedicated full page (not a lightbox), reached via a new search-plus icon next to the top-bar search box. Genre/Era tabs (reusing TV Mode's own coarse bucket data, but fully independent filter state so the two features can never interfere) narrow the catalog; the page's own search box (synced with the other two) doubles as a text filter. Starts blank until at least one of genre/era/query is set. Results render as a Reddit-style horizontal list -- thumbnail left, title/artist/description right, preferring the in-house description with YouTube's own uploader description as fallback (`youtubeSearchText`, now published as its own field, not just folded into the search index). No Vimeo-description fallback yet -- that data doesn't exist in the schema, a Vimeo-only entry with no in-house description just shows none.
+- Fixed Discover leaking into Search/Favorites/Playlists views (both desktop and mobile) -- it was only ever added to the Connect/Profiles view's hide-list when it shipped, not the others.
+
 ## v5.18.0 — current
 - Fixed Discover's mobile "See more" doing nothing visible -- a leftover Spotlight-only rule (`.spotlight-card:nth-child(n+4) { display: none }`, meant to cap Spotlight's own mobile stack at 3 cards) was unscoped and silently hiding every Discover card past the 3rd too, since Discover reuses the same `.spotlight-card` look. New cards WERE being added to the DOM, just invisible. Scoped the rule to Spotlight's own container.
 - Doubled Discover's batch sizes: 30/24 on desktop (was 15/12), 10/8 on mobile (was 5/4).

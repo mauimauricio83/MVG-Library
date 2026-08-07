@@ -71,6 +71,7 @@ async function main() {
       sponsored: !!d.sponsored,
       backdoor: !!d.backdoor,
       createdAt: d.createdAt ? d.createdAt.toMillis() : null,
+      youtubeSearchText: d.youtubeSearchText || "",
       searchHaystack: buildSearchHaystack(d)
     };
   });

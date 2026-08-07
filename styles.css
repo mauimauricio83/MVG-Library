@@ -1673,7 +1673,9 @@ body.is-searching #discoverSection {
   body.desktop-view-search #latestStrip,
   body.desktop-view-search .ad-placeholder,
   body.desktop-view-search #videoEmbed,
-  body.desktop-view-search #featuredStrip {
+  body.desktop-view-search #featuredStrip,
+  body.desktop-view-search #discoverSection,
+  body.desktop-view-search #advSearchPage {
     display: none;
   }
 
@@ -1691,6 +1693,8 @@ body.is-searching #discoverSection {
   body.desktop-view-favorites #latestStrip,
   body.desktop-view-favorites #videoEmbed,
   body.desktop-view-favorites #featuredStrip,
+  body.desktop-view-favorites #discoverSection,
+  body.desktop-view-favorites #advSearchPage,
   body.desktop-view-favorites .controls,
   body.desktop-view-favorites #filtersGroup,
   body.desktop-view-favorites #jumpNavTop,
@@ -1713,6 +1717,8 @@ body.is-searching #discoverSection {
   body.desktop-view-playlists #latestStrip,
   body.desktop-view-playlists #videoEmbed,
   body.desktop-view-playlists #featuredStrip,
+  body.desktop-view-playlists #discoverSection,
+  body.desktop-view-playlists #advSearchPage,
   body.desktop-view-playlists .controls,
   body.desktop-view-playlists #filtersGroup,
   body.desktop-view-playlists #jumpNavTop,
@@ -1736,12 +1742,37 @@ body.is-searching #discoverSection {
   body.desktop-view-profiles #videoEmbed,
   body.desktop-view-profiles #featuredStrip,
   body.desktop-view-profiles #discoverSection,
+  body.desktop-view-profiles #advSearchPage,
   body.desktop-view-profiles .controls,
   body.desktop-view-profiles #filtersGroup,
   body.desktop-view-profiles #jumpNavTop,
   body.desktop-view-profiles #status,
   body.desktop-view-profiles .results-layout,
   body.desktop-view-profiles #jumpNavBottom {
+    display: none;
+  }
+
+  /* Advanced Search: reached via the top-bar search-plus icon
+     (advSearchOpenBtn), which calls setDesktopView("advsearch") -- same
+     page pattern as Favorites/Playlists/Profiles above. */
+  body.desktop-view-advsearch #advSearchPage {
+    display: block;
+  }
+
+  body.desktop-view-advsearch .about-strip,
+  body.desktop-view-advsearch #spotlightSidebar,
+  body.desktop-view-advsearch #blogLatestSidebar,
+  body.desktop-view-advsearch .ad-placeholder,
+  body.desktop-view-advsearch #latestStrip,
+  body.desktop-view-advsearch #videoEmbed,
+  body.desktop-view-advsearch #featuredStrip,
+  body.desktop-view-advsearch #discoverSection,
+  body.desktop-view-advsearch .controls,
+  body.desktop-view-advsearch #filtersGroup,
+  body.desktop-view-advsearch #jumpNavTop,
+  body.desktop-view-advsearch #status,
+  body.desktop-view-advsearch .results-layout,
+  body.desktop-view-advsearch #jumpNavBottom {
     display: none;
   }
 }
@@ -2284,6 +2315,149 @@ body.is-searching #discoverSection {
   min-height: 120px;
   color: var(--text-faint);
   font-size: 0.85rem;
+}
+
+/* Advanced Search page -- own search box (advSearchInput, see the HTML
+   comment above #advSearchPage for why it can't just reuse the top-bar
+   box), Genre/Era tabs (own .adv-search-tab, not .tv-filter-tab, so a
+   future TV Mode style change can't silently affect this page too), and
+   tile grids that DO reuse .tv-genre-tile's look directly (unscoped,
+   generic class -- see app.js's advSearchResultCardHtml/renderAdvSearch*
+   for why). */
+.adv-search-input-row {
+  margin-bottom: 14px;
+}
+
+.adv-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.adv-search-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.adv-search-tab {
+  flex: 1 1 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.adv-search-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.adv-search-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.adv-search-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.adv-search-tile-grid[hidden] {
+  display: none;
+}
+
+/* Reddit-style horizontal list: thumbnail left, text (title/artist/
+   description, in-house preferred, YouTube's own as fallback -- see
+   advSearchDescription() in app.js) right. Deliberately not a thumbnail
+   grid like Featured/Discover -- the description is the point here. */
+.adv-search-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.adv-search-card:hover {
+  background: var(--accent-soft);
+}
+
+.adv-search-card:last-child {
+  border-bottom: none;
+}
+
+.adv-search-card-thumb {
+  position: relative;
+  flex: 0 0 160px;
+  width: 160px;
+  padding-top: 90px; /* fixed 16:9 height, not percentage -- keeps the row height stable regardless of card width */
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.adv-search-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adv-search-card-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adv-search-card-song {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adv-search-card-artist {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adv-search-card-desc {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.adv-search-more-note {
+  padding: 14px 4px;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .tv-custom-list {
@@ -5249,7 +5423,9 @@ body.is-searching #discoverSection {
   body.mobile-view-search #latestStrip,
   body.mobile-view-search .ad-placeholder,
   body.mobile-view-search #videoEmbed,
-  body.mobile-view-search #featuredStrip {
+  body.mobile-view-search #featuredStrip,
+  body.mobile-view-search #discoverSection,
+  body.mobile-view-search #advSearchPage {
     display: none;
   }
 
@@ -5280,7 +5456,9 @@ body.is-searching #discoverSection {
   body.mobile-view-favorites #latestStrip,
   body.mobile-view-favorites .ad-placeholder,
   body.mobile-view-favorites #videoEmbed,
-  body.mobile-view-favorites #featuredStrip {
+  body.mobile-view-favorites #featuredStrip,
+  body.mobile-view-favorites #discoverSection,
+  body.mobile-view-favorites #advSearchPage {
     display: none;
   }
 
@@ -5296,7 +5474,9 @@ body.is-searching #discoverSection {
   body.mobile-view-playlists #latestStrip,
   body.mobile-view-playlists .ad-placeholder,
   body.mobile-view-playlists #videoEmbed,
-  body.mobile-view-playlists #featuredStrip {
+  body.mobile-view-playlists #featuredStrip,
+  body.mobile-view-playlists #discoverSection,
+  body.mobile-view-playlists #advSearchPage {
     display: none;
   }
 
@@ -5313,11 +5493,38 @@ body.is-searching #discoverSection {
   body.mobile-view-profiles .ad-placeholder,
   body.mobile-view-profiles #videoEmbed,
   body.mobile-view-profiles #featuredStrip,
-  body.mobile-view-profiles #discoverSection {
+  body.mobile-view-profiles #discoverSection,
+  body.mobile-view-profiles #advSearchPage {
     display: none;
   }
 
   body.mobile-view-profiles #profilesPage {
     display: block;
+  }
+
+  /* Advanced Search view: reached via the top-bar search-plus icon (visible
+     on mobile too), same pattern as Playlists/Profiles above. */
+  body.mobile-view-advsearch #spotlightSidebar,
+  body.mobile-view-advsearch #blogLatestSidebar,
+  body.mobile-view-advsearch #latestStrip,
+  body.mobile-view-advsearch .ad-placeholder,
+  body.mobile-view-advsearch #videoEmbed,
+  body.mobile-view-advsearch #featuredStrip,
+  body.mobile-view-advsearch #discoverSection {
+    display: none;
+  }
+
+  body.mobile-view-advsearch #advSearchPage {
+    display: block;
+  }
+
+  .adv-search-tile-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .adv-search-card-thumb {
+    flex-basis: 110px;
+    width: 110px;
+    padding-top: 62px;
   }
 }

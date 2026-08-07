@@ -76,6 +76,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
     </button>
   </div>
+  <button type="button" class="header-icon-btn" id="advSearchOpenBtn" aria-label="Advanced search" title="Advanced search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+  </button>
   <div class="top-bar-actions">
     <button type="button" class="header-icon-btn" id="topBarSettingsBtn" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
@@ -494,6 +497,36 @@
       </div>
       <p class="profile-editor-status" id="profileEditorStatus" hidden></p>
     </form>
+  </section>
+
+  <!-- Reached via the top-bar "search plus" icon (advSearchOpenBtn), not a
+       lightbox -- its own full page, same family as Favorites/Playlists/
+       Profiles (desktop-view-advsearch/mobile-view-advsearch in styles.css).
+       Genre/Era tabs reuse TV Mode's own coarse bucket data (TV_GENRE_GROUPS/
+       TV_ERA_BUCKETS in app.js) but are otherwise independent of TV Mode's
+       own filter state -- own state.advSearchGenre/advSearchEra, so opening
+       this page can never interfere with TV Mode or vice versa. Its own
+       search box (advSearchInput) drives the same state.query the rest of
+       the site uses, kept in sync with the top-bar/mobile search boxes --
+       #topBarSearchInput is desktop-only (hidden on mobile via CSS), so
+       this page needs its own input to have a working search box on every
+       viewport size. Starts blank until at least one of genre/era/query is
+       set (matchesAdvSearch()). -->
+  <section class="media-strip" id="advSearchPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">🔎 Advanced Search</span>
+    </div>
+    <div class="adv-search-input-row">
+      <input type="search" id="advSearchInput" class="adv-search-input" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
+    </div>
+    <div class="adv-search-tabs" id="advSearchTabs">
+      <button type="button" class="adv-search-tab" data-adv-tab="genre">Genre</button>
+      <button type="button" class="adv-search-tab" data-adv-tab="era">Era</button>
+    </div>
+    <div class="adv-search-tile-grid" id="advSearchGenreGrid"></div>
+    <div class="adv-search-tile-grid" id="advSearchEraGrid" hidden></div>
+    <div class="adv-search-results" id="advSearchResults"></div>
+    <p class="profiles-empty" id="advSearchEmptyMsg" hidden></p>
   </section>
 
   <div class="results-layout">
