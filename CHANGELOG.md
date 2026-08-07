@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.23.0 — current
+- New logo: replaced `icons/icon-192.png`/`icon-512.png` (favicon, header mark, apple-touch-icon) with the new MVG mark, generated from a 5000x5000 master. Regenerated `icon-512-maskable.png` too -- flattened onto a full-bleed square in the logo's own purple (`#4a0d8f`, matches the site's own `--accent`) instead of leaving transparent corners, so an aggressive OS icon mask can't reveal blank corners. Filenames unchanged, so no HTML/manifest references needed updating. A horizontal version is still pending for spots where a wide logo fits better than the circular mark.
+
 ## v5.22.1 — current
 - Admin "Add/Edit Entry" form: Country and Genres were plain free-text fields with nothing to pick from (unlike the public Submit form, whose equivalents are dropdowns). Added a fast-fill dropdown above each, sourced from the same catalog-derived lists as the public form -- picking a value fills/appends into the text field below it, which stays fully editable so a brand-new country or genre not yet in the catalog can still just be typed.
 
