@@ -2,6 +2,10 @@
 
 Vanilla JS/HTML/CSS static site, no build step. Firestore-backed catalog, hosted on GitHub Pages at `mauimauricio83.github.io/MVG-Library/`. Companion repo `E:\Local Apps\mauimauricio83.github.io` hosts the actual domain root (`mauimauricio83.github.io/`) — needed for anything that must live at the true domain root (e.g. `ads.txt`), since this repo is a GitHub Pages *project* site served from a subpath.
 
+## ⚠️ Pending manual step (as of v5.24.0)
+
+`firestore.rules`/`firestore.indexes.json` have NOT been deployed since the v5.24.0 batch (comments, edit suggestions, profile verification, notification badge) added five new collections (`comments`, `editSuggestions`, `verificationRequests`, `verifiedProfiles`) and one composite index. This was deliberately left undeployed rather than run unattended — a Firestore rules/index deploy is exactly the kind of change that gets an explicit confirmation first (see the push-immediately rule below), and the human was stepping away with no one available to confirm. Run `firebase deploy --only firestore:rules,firestore:indexes` to make these features actually work (right now they fail closed with `permission-denied`, handled gracefully in the UI, not a crash). **Delete this section once that's done.**
+
 ## Housekeeping rules (do these every meaningful commit)
 
 - **Bump `APP_VERSION`** in `app.js` (near the top, has an inline reminder comment) **and add a `CHANGELOG.md` entry** for any user-visible change — feature, fix, or redesign. This was neglected for ~7 commits before v5.3.0; don't let it drift again. Regenerated-content commits (`Regenerate SEO hub pages [automated]`, `Update latest blog posts [automated]`) don't need a version bump — bump once per batch of hand-written changes, not per commit.
