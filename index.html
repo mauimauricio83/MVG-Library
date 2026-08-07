@@ -69,16 +69,18 @@
     <img class="app-header-logo" src="icons/icon-192.png" alt="" width="32" height="32">
     <h1 class="top-bar-title">MUSIC VIDEO LIBRARY</h1>
   </a>
-  <div class="top-bar-search">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="top-bar-search-icon"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-    <input type="search" id="topBarSearchInput" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
-    <button type="button" class="top-bar-search-clear" id="topBarSearchClear" aria-label="Clear search" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  <div class="top-bar-search-group">
+    <div class="top-bar-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="top-bar-search-icon"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="search" id="topBarSearchInput" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">
+      <button type="button" class="top-bar-search-clear" id="topBarSearchClear" aria-label="Clear search" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <button type="button" class="header-icon-btn top-bar-adv-search-btn" id="advSearchOpenBtn" aria-label="Advanced search" title="Advanced search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
     </button>
   </div>
-  <button type="button" class="header-icon-btn" id="advSearchOpenBtn" aria-label="Advanced search" title="Advanced search">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
-  </button>
   <div class="top-bar-actions">
     <button type="button" class="header-icon-btn" id="topBarSettingsBtn" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
@@ -353,7 +355,7 @@
        just its own grid/count/breakpoints. -->
   <section class="discover-section" id="discoverSection" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title">🔀 Discover</span>
+      <span class="media-strip-title">Discover</span>
     </div>
     <div class="discover-grid" id="discoverGrid"></div>
     <button type="button" class="discover-see-more" id="discoverSeeMoreBtn">See more ▾</button>
@@ -422,7 +424,7 @@
        than building a second one. -->
   <section class="media-strip" id="profilesPage" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title">🎬 Profiles</span>
+      <span class="media-strip-title">Profiles</span>
       <div class="media-strip-head-actions">
         <button type="button" class="tv-exit-btn" id="profilesRequestsBtn">Requests<span class="profile-requests-badge" id="profileRequestsBadge" hidden>0</span></button>
         <button type="button" class="media-strip-play-all" id="profilesEditBtn">Edit my profile</button>
@@ -514,7 +516,7 @@
        set (matchesAdvSearch()). -->
   <section class="media-strip" id="advSearchPage" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title">🔎 Advanced Search</span>
+      <span class="media-strip-title">Advanced Search</span>
     </div>
     <div class="adv-search-input-row">
       <input type="search" id="advSearchInput" class="adv-search-input" placeholder="Search artist, song, or director…" aria-label="Search" autocomplete="off">

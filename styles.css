@@ -5,8 +5,8 @@
   --text: #18181b;
   --text-muted: #6b6b73;
   --text-faint: #9a9aa2;
-  --accent: #2b5bd7;
-  --accent-soft: #eef2fd;
+  --accent: #5b2e91;
+  --accent-soft: #f1eaf9;
   --tag-music-video: #2b5bd7;
   --tag-music-video-bg: #eaf0fd;
   --tag-dance: #a34dbf;
@@ -171,13 +171,30 @@ html, body {
    flex:1 with max-width + auto margins centers it in the remaining space;
    .top-bar-actions needs no margin-left of its own since this element's
    right auto-margin already pushes it flush to the end. */
+/* Groups the search pill with the Advanced Search icon so they center and
+   grow/shrink together (rather than the pill's own margin:0 auto pushing
+   a later sibling away to the far right edge, next to Settings/Admin) --
+   see #advSearchOpenBtn. On mobile this collapses to display:contents so
+   its children lay out as direct .top-bar-search-group children of
+   .top-bar again -- the existing .top-bar-search{display:none} mobile
+   rule still hides just the pill, while the button (mobile's only way
+   into Advanced Search, since #topBarSearchInput doesn't render there)
+   stays visible. */
+.top-bar-search-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
 .top-bar-search {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1 1 auto;
-  max-width: 480px;
-  margin: 0 auto;
+  min-width: 0;
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1141,6 +1158,21 @@ html, body {
     height: 18px;
   }
 
+  /* Unlike the other .header-icon-btn instances above (Settings/Admin/
+     Sign-in, all hidden on mobile via .top-bar-actions below), this one
+     is mobile's only way into Advanced Search -- #topBarSearchInput
+     doesn't render there, see .top-bar-search below. Opts out of the
+     absolute-positioning rule above (stays in normal flow) and the group
+     wrapper collapses to display:contents so this ends up a plain
+     .top-bar flex child, same as it always was. */
+  .top-bar-search-group {
+    display: contents;
+  }
+
+  .top-bar-adv-search-btn {
+    position: static;
+  }
+
   /* Bigger tap target for the hamburger specifically -- it's the primary
      way to reach the sidebar on mobile, unlike the other .header-icon-btn
      instances (which are hidden on mobile anyway, see .top-bar-actions
@@ -1325,7 +1357,7 @@ html, body {
 .media-strip-title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--brand-yellow);
 }
 
 .media-strip-collapse-btn {
@@ -2325,6 +2357,7 @@ body.is-searching #discoverSection {
    generic class -- see app.js's advSearchResultCardHtml/renderAdvSearch*
    for why). */
 .adv-search-input-row {
+  max-width: 640px;
   margin-bottom: 14px;
 }
 
@@ -2342,6 +2375,7 @@ body.is-searching #discoverSection {
 .adv-search-tabs {
   display: flex;
   gap: 8px;
+  max-width: 640px;
   margin-bottom: 14px;
 }
 
@@ -2372,6 +2406,7 @@ body.is-searching #discoverSection {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  max-width: 640px;
   margin-bottom: 20px;
 }
 
@@ -3117,7 +3152,7 @@ body.is-searching #discoverSection {
   margin-bottom: 12px;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--brand-yellow);
 }
 
 .spotlight-sidebar-cards {
@@ -4169,6 +4204,7 @@ body.is-searching #discoverSection {
   margin: 0 0 4px;
   font-size: 1.2rem;
   font-weight: 700;
+  color: var(--brand-yellow);
 }
 
 .lightbox-subtitle {
@@ -4557,6 +4593,7 @@ body.is-searching #discoverSection {
 .admin-form-title {
   margin: 0 0 4px;
   font-size: 1.1rem;
+  color: var(--brand-yellow);
 }
 
 .admin-form-checkbox {
@@ -4581,6 +4618,7 @@ body.is-searching #discoverSection {
 .recent-title {
   margin: 0;
   font-size: 1.1rem;
+  color: var(--brand-yellow);
 }
 
 .recent-list {
@@ -4654,6 +4692,7 @@ body.is-searching #discoverSection {
 .settings-title {
   margin: 0 0 18px;
   font-size: 1.2rem;
+  color: var(--brand-yellow);
 }
 
 .settings-row {
@@ -4724,6 +4763,7 @@ body.is-searching #discoverSection {
 .submit-form-title {
   margin: 0 0 4px;
   font-size: 1.2rem;
+  color: var(--brand-yellow);
 }
 
 .submit-form-intro {
@@ -5101,8 +5141,8 @@ body.is-searching #discoverSection {
     --text: #f1f1f2;
     --text-muted: #a5a5ad;
     --text-faint: #77777f;
-    --accent: #6f93ea;
-    --accent-soft: #1c2740;
+    --accent: #a78bfa;
+    --accent-soft: #2b2140;
     --brand-yellow: #f5e300;
     --tag-music-video-bg: #1c2740;
     --tag-dance-bg: #2c1f36;
@@ -5126,8 +5166,8 @@ body.is-searching #discoverSection {
   --text: #18181b;
   --text-muted: #6b6b73;
   --text-faint: #9a9aa2;
-  --accent: #2b5bd7;
-  --accent-soft: #eef2fd;
+  --accent: #5b2e91;
+  --accent-soft: #f1eaf9;
   --tag-music-video-bg: #eaf0fd;
   --tag-dance-bg: #f6ecfa;
   --tag-montage-bg: #fcefe1;
@@ -5148,8 +5188,8 @@ body.is-searching #discoverSection {
   --text: #f1f1f2;
   --text-muted: #a5a5ad;
   --text-faint: #77777f;
-  --accent: #6f93ea;
-  --accent-soft: #1c2740;
+  --accent: #a78bfa;
+  --accent-soft: #2b2140;
   --brand-yellow: #f5e300;
   --tag-music-video-bg: #1c2740;
   --tag-dance-bg: #2c1f36;
