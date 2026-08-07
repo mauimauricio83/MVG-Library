@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.20.1 — current
+- Deeper, more vivid `--accent` purple (`#4a0d8f`/`#a855f7`), calibrated against the logo's own dominant color (sampled directly from `icons/icon-192.png`: a deep, highly-saturated indigo, `rgb(32,16,96)`) rather than picking a shade blind.
+- Removed TV Mode's (and Advanced Search's, which shared the same tile look) per-genre color-coding -- genre tiles were each a different color (`TV_GENRE_GROUPS`' now-removed `color` field); all genre/era tiles now use the single unified `--accent` purple like everything else, no more rainbow.
+- `--accent`/`--accent-soft` are now clearly documented as the single site-wide color control point (see the comment above `:root` in `styles.css`) -- as close to a "global color setting" as a no-build-step plain-CSS site can get. They're still defined in 4 places (2 conceptual values -- light/dark -- each written twice for the auto `prefers-color-scheme` detection and the explicit `[data-theme]` toggle override), which is inherent to having no preprocessor, not something left unfinished.
+
 ## v5.20.0 — current
 - Site-wide recolor: `--accent` (buttons, links, active states) is now a dark purple instead of blue, in both light and dark theme (`#5b2e91`/`#a78bfa`). Section/page titles (Latest Submissions, Featured, Discover, Favorites, Playlists, Profiles, Advanced Search, Spotlight/News, video/profile lightbox titles, and the admin/settings/submit/recent-viewed modal titles) now use `--brand-yellow`, the same yellow the site's own top-bar title already used, instead of the default text color -- one consistent identity instead of two.
 - Removed the emoji from the Discover/Profiles/Advanced Search section headers to match the rest of the site's plain-text titles (Favorites/Playlists keep theirs -- meaningful icons, not decoration).

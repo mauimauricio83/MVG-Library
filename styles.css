@@ -1,3 +1,15 @@
+/* Site-wide color control point: --accent drives every button/link/
+   active-state/genre-era-tile color across the whole site (nothing sets
+   its own color independently anymore -- TV Mode's genre tiles used to
+   have a per-genre --tile-color override, removed so they're unified with
+   this too). To change the site's whole color identity, edit --accent/
+   --accent-soft here. They're defined in 4 places, not 1 -- an
+   unavoidable consequence of having no build step (no way to compute a
+   derived light-mode vs. dark-mode value from a single source without a
+   preprocessor): once for :root/prefers-color-scheme (auto light/dark)
+   and once more for [data-theme="light"]/[data-theme="dark"] (the
+   explicit theme-toggle override, see styles.css further down). All 4
+   must be changed together -- search "--accent: #" to find them all. */
 :root {
   --bg: #fafafa;
   --surface: #ffffff;
@@ -5,8 +17,8 @@
   --text: #18181b;
   --text-muted: #6b6b73;
   --text-faint: #9a9aa2;
-  --accent: #5b2e91;
-  --accent-soft: #f1eaf9;
+  --accent: #4a0d8f;
+  --accent-soft: #efe4fb;
   --tag-music-video: #2b5bd7;
   --tag-music-video-bg: #eaf0fd;
   --tag-dance: #a34dbf;
@@ -2253,7 +2265,7 @@ body.is-searching #discoverSection {
   justify-content: space-between;
   gap: 6px;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--tile-color, var(--accent));
+  border-left: 4px solid var(--accent);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
@@ -2272,12 +2284,12 @@ body.is-searching #discoverSection {
 }
 
 .tv-genre-tile:hover {
-  border-color: var(--tile-color, var(--accent));
+  border-color: var(--accent);
 }
 
 .tv-genre-tile.is-active {
-  background: var(--tile-color, var(--accent));
-  border-color: var(--tile-color, var(--accent));
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -5141,8 +5153,8 @@ body.is-searching #discoverSection {
     --text: #f1f1f2;
     --text-muted: #a5a5ad;
     --text-faint: #77777f;
-    --accent: #a78bfa;
-    --accent-soft: #2b2140;
+    --accent: #a855f7;
+    --accent-soft: #2a1150;
     --brand-yellow: #f5e300;
     --tag-music-video-bg: #1c2740;
     --tag-dance-bg: #2c1f36;
@@ -5166,8 +5178,8 @@ body.is-searching #discoverSection {
   --text: #18181b;
   --text-muted: #6b6b73;
   --text-faint: #9a9aa2;
-  --accent: #5b2e91;
-  --accent-soft: #f1eaf9;
+  --accent: #4a0d8f;
+  --accent-soft: #efe4fb;
   --tag-music-video-bg: #eaf0fd;
   --tag-dance-bg: #f6ecfa;
   --tag-montage-bg: #fcefe1;
@@ -5188,8 +5200,8 @@ body.is-searching #discoverSection {
   --text: #f1f1f2;
   --text-muted: #a5a5ad;
   --text-faint: #77777f;
-  --accent: #a78bfa;
-  --accent-soft: #2b2140;
+  --accent: #a855f7;
+  --accent-soft: #2a1150;
   --brand-yellow: #f5e300;
   --tag-music-video-bg: #1c2740;
   --tag-dance-bg: #2c1f36;

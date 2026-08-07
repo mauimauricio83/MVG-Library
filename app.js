@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.20.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.20.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -390,16 +390,16 @@
   // tags not listed here (new/rare ones) fall back to "other" rather than
   // breaking the grouping.
   var TV_GENRE_GROUPS = [
-    { key: "pop", label: "Pop", color: "#ef5b5b" },
-    { key: "rock", label: "Rock", color: "#f4b942" },
-    { key: "metal-punk", label: "Metal & Punk", color: "#8a5cf6" },
-    { key: "hiphop", label: "Hip-Hop/Rap", color: "#ff8c42" },
-    { key: "rnb", label: "R&B/Soul/Funk", color: "#e0568c" },
-    { key: "electronic", label: "Electronic/Dance", color: "#33c9dc" },
-    { key: "country", label: "Country/Folk", color: "#b5834d" },
-    { key: "world", label: "Latin/World/Reggae", color: "#4caf6e" },
-    { key: "jazz", label: "Jazz/Blues/Classical", color: "#6f93ea" },
-    { key: "other", label: "Other", color: "#9aa0a6" }
+    { key: "pop", label: "Pop" },
+    { key: "rock", label: "Rock" },
+    { key: "metal-punk", label: "Metal & Punk" },
+    { key: "hiphop", label: "Hip-Hop/Rap" },
+    { key: "rnb", label: "R&B/Soul/Funk" },
+    { key: "electronic", label: "Electronic/Dance" },
+    { key: "country", label: "Country/Folk" },
+    { key: "world", label: "Latin/World/Reggae" },
+    { key: "jazz", label: "Jazz/Blues/Classical" },
+    { key: "other", label: "Other" }
   ];
 
   var TV_GENRE_MAP = {
@@ -615,7 +615,7 @@
     TV_GENRE_GROUPS.forEach(function (g) {
       var active = state.advSearchGenre === g.key ? " is-active" : "";
       html += '<button type="button" class="tv-genre-tile' + active + '" data-genre="' + g.key +
-        '" style="--tile-color:' + g.color + '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
+        '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
         '</span><span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
     });
     els.advSearchGenreGrid.innerHTML = html;
@@ -3922,7 +3922,7 @@
     TV_GENRE_GROUPS.forEach(function (g) {
       var active = state.genre === g.key ? " is-active" : "";
       html += '<button type="button" class="tv-genre-tile' + active + '" data-genre="' + g.key +
-        '" style="--tile-color:' + g.color + '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
+        '"><span class="tv-genre-tile-label">' + escapeHtml(g.label) +
         '</span><span class="tv-genre-tile-count">' + counts[g.key] + "</span></button>";
     });
     els.tvGenreGrid.innerHTML = html;
