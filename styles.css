@@ -1025,7 +1025,6 @@ html, body {
 .nav-mode-btn.is-active {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 0 9px 0 var(--accent);
 }
 
 /* Untagged items (Discord, Settings, sign-in, social, etc.) stay visible in

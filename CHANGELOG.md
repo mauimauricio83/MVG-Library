@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.23.1 — current
+- Removed the last remaining purple glow: the Watch/Connect toggle's active pill (`.nav-mode-btn.is-active`) still had the `box-shadow` glow from v5.20.2, missed by the later glow-dialing-down/removal passes (v5.20.3, v5.21.1).
+
 ## v5.23.0 — current
 - New logo: replaced `icons/icon-192.png`/`icon-512.png` (favicon, header mark, apple-touch-icon) with the new MVG mark, generated from a 5000x5000 master. Regenerated `icon-512-maskable.png` too -- flattened onto a full-bleed square in the logo's own purple (`#4a0d8f`, matches the site's own `--accent`) instead of leaving transparent corners, so an aggressive OS icon mask can't reveal blank corners. Filenames unchanged, so no HTML/manifest references needed updating. A horizontal version is still pending for spots where a wide logo fits better than the circular mark.
 
