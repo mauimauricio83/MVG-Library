@@ -1735,6 +1735,7 @@ body.is-searching #discoverSection {
   body.desktop-view-profiles #latestStrip,
   body.desktop-view-profiles #videoEmbed,
   body.desktop-view-profiles #featuredStrip,
+  body.desktop-view-profiles #discoverSection,
   body.desktop-view-profiles .controls,
   body.desktop-view-profiles #filtersGroup,
   body.desktop-view-profiles #jumpNavTop,
@@ -5192,8 +5193,12 @@ body.is-searching #discoverSection {
 
   /* The pool is 6 (see SPOTLIGHT_COUNT), but mobile's vertical stack only
      shows the first 3 -- 6 full-width cards would be a long scroll before
-     reaching News/Latest below it. */
-  .spotlight-card:nth-child(n+4) {
+     reaching News/Latest below it. Scoped to Spotlight's own container --
+     Discover reuses .spotlight-card for its look too, and this rule
+     unscoped was silently hiding all of Discover's cards past the 3rd,
+     making its mobile "See more" look broken (cards WERE being added to
+     the DOM, just invisible). */
+  .spotlight-sidebar-cards .spotlight-card:nth-child(n+4) {
     display: none;
   }
 
@@ -5307,7 +5312,8 @@ body.is-searching #discoverSection {
   body.mobile-view-profiles #latestStrip,
   body.mobile-view-profiles .ad-placeholder,
   body.mobile-view-profiles #videoEmbed,
-  body.mobile-view-profiles #featuredStrip {
+  body.mobile-view-profiles #featuredStrip,
+  body.mobile-view-profiles #discoverSection {
     display: none;
   }
 

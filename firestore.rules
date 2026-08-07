@@ -106,7 +106,13 @@ service cloud.firestore {
         request.resource.data.status in ["accepted", "declined"] &&
         (request.resource.data.status != "accepted" ||
           request.resource.data.toEmail == request.auth.token.email);
-      allow delete: if false;
+      // Rescinding: only the original sender, and only while still
+      // pending -- once accepted, deleting would desync acceptedPairs/
+      // dmThreads (which key off this having happened), and a declined
+      // request has nothing left to "cancel".
+      allow delete: if request.auth != null &&
+        resource.data.fromUid == request.auth.uid &&
+        resource.data.status == "pending";
     }
 
     // Deterministic per-pair marker written once a collab request is

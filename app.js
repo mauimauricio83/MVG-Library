@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.17.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.18.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2705,7 +2705,8 @@
       return;
     }
     if (req.status === "pending" && req.fromUid === currentUser.uid) {
-      area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Request sent</button>';
+      area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Request sent</button>' +
+        '<button type="button" class="profile-delete-btn" data-request-action="rescind" data-id="' + escapeHtml(req.id) + '">Rescind</button>';
       return;
     }
     if (req.status === "pending") {
@@ -2750,6 +2751,8 @@
       actionsHtml =
         '<button type="button" class="profile-delete-btn" data-request-action="decline" data-id="' + escapeHtml(req.id) + '">Decline</button>' +
         '<button type="button" class="media-strip-play-all" data-request-action="accept" data-id="' + escapeHtml(req.id) + '">Accept</button>';
+    } else if (direction === "outgoing" && req.status === "pending") {
+      actionsHtml = '<button type="button" class="profile-delete-btn" data-request-action="rescind" data-id="' + escapeHtml(req.id) + '">Rescind</button>';
     } else if (req.status === "accepted") {
       var otherUid = direction === "incoming" ? req.fromUid : req.toUid;
       actionsHtml = '<button type="button" class="profile-request-btn is-active" data-message-uid="' + escapeHtml(otherUid) + '" data-message-name="' + escapeHtml(name) + '">Message</button>';
@@ -2829,6 +2832,24 @@
     });
   }
 
+  // Withdraws a still-pending outgoing request -- deletes the doc outright
+  // rather than marking it "withdrawn", so the sender can just send a new
+  // one later if they change their mind (sendCollabRequest()/
+  // checkCollabStatus() have no separate handling for a withdrawn state,
+  // they just see no request at all). Only ever offered for pending
+  // requests (see renderRequestRow()/renderProfileRequestArea()) --
+  // firestore.rules only allows the original sender to delete, and only
+  // while still pending, so an accepted/declined request can't be erased
+  // this way even if someone hand-crafts the call.
+  function rescindCollabRequest(id, onDone) {
+    collabRequestsRef().doc(id).delete().then(function () {
+      if (onDone) onDone();
+    }).catch(function (err) {
+      console.error("Rescinding collab request failed:", err);
+      alert("Couldn't rescind that request -- please try again.");
+    });
+  }
+
   els.profilesRequestsBtn.addEventListener("click", function () {
     showProfileRequestsView();
     loadCollabRequests();
@@ -2845,7 +2866,12 @@
     var actionBtn = e.target.closest("[data-request-action]");
     if (!actionBtn) return;
     var id = actionBtn.getAttribute("data-id");
-    respondToRequest(id, actionBtn.getAttribute("data-request-action") === "accept");
+    var action = actionBtn.getAttribute("data-request-action");
+    if (action === "rescind") {
+      rescindCollabRequest(id, loadCollabRequests);
+      return;
+    }
+    respondToRequest(id, action === "accept");
   });
 
   // ---- Private 1:1 messaging -- only reachable via a "Message" action on
@@ -3069,10 +3095,10 @@
   // above #discoverSection) -- not curated like Spotlight/Featured, just a
   // fresh random draw from the whole catalog, "See more" appending further
   // random picks indefinitely.
-  var DISCOVER_INITIAL_DESKTOP = 15;
-  var DISCOVER_INITIAL_MOBILE = 5;
-  var DISCOVER_MORE_DESKTOP = 12;
-  var DISCOVER_MORE_MOBILE = 4;
+  var DISCOVER_INITIAL_DESKTOP = 30;
+  var DISCOVER_INITIAL_MOBILE = 10;
+  var DISCOVER_MORE_DESKTOP = 24;
+  var DISCOVER_MORE_MOBILE = 8;
 
   var discoverShownSet = {}; // rowNum -> true, so repeats are avoided until a full lap's done
 
@@ -6426,6 +6452,14 @@
     var messageBtn = e.target.closest("[data-message-uid]");
     if (messageBtn) {
       openDmThread(messageBtn.getAttribute("data-message-uid"), messageBtn.getAttribute("data-message-name"));
+      return;
+    }
+    var rescindBtn = e.target.closest('[data-request-action="rescind"]');
+    if (rescindBtn) {
+      var rescindProfile = profilesCache.filter(function (p) { return p.uid === state.lightboxProfileUid; })[0];
+      rescindCollabRequest(rescindBtn.getAttribute("data-id"), function () {
+        if (rescindProfile) renderProfileRequestArea(rescindProfile, null);
+      });
     }
   });
 

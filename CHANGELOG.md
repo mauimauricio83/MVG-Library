@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.18.0 — current
+- Fixed Discover's mobile "See more" doing nothing visible -- a leftover Spotlight-only rule (`.spotlight-card:nth-child(n+4) { display: none }`, meant to cap Spotlight's own mobile stack at 3 cards) was unscoped and silently hiding every Discover card past the 3rd too, since Discover reuses the same `.spotlight-card` look. New cards WERE being added to the DOM, just invisible. Scoped the rule to Spotlight's own container.
+- Doubled Discover's batch sizes: 30/24 on desktop (was 15/12), 10/8 on mobile (was 5/4).
+- Fixed Discover (and Latest Submissions/Featured) staying visible in Connect mode -- `#discoverSection` was missing from the view-switch CSS added when Discover shipped.
+- Added the ability to rescind a still-pending outgoing collab request (both from the Requests list and the "Request sent" state on a profile's own lightbox) -- deletes the request outright rather than marking it "withdrawn", so sending a new one later just works. Requires a firestore.rules change (sender can now delete their own request, but only while status is still "pending") -- **needs `firebase deploy --only firestore:rules`** to take effect.
+
 ## v5.17.0 — current
 - Added a "Discover" section after Featured -- unbounded randomized browsing of the whole catalog, not curated like Spotlight/Featured. Desktop: 3-column grid (Spotlight's card style), 15 videos initially, "See more" appends 12 at a time. Mobile: 5 initially, "See more" appends 4. Avoids repeats within a session until the whole catalog's been shown once, then starts a fresh randomized lap rather than dead-ending.
 
