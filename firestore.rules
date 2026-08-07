@@ -186,6 +186,101 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Per-video comments -- same shape/rules as the message board's
+    // `messages` collection (public read, signed-in + not muted/banned to
+    // post, admin-only delete, no client-side edits), just filtered by
+    // rowNum instead of being one global feed. Needs a composite
+    // (rowNum, createdAt) index -- see firestore.indexes.json.
+    match /comments/{id} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.authorUid == request.auth.uid &&
+        request.resource.data.rowNum is string &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 1000 &&
+        !exists(/databases/$(database)/documents/mutedUsers/$(request.auth.uid)) &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Crowdsourced single-field edit suggestions -- a visitor proposes a
+    // correction (see openSuggestEditModal() in app.js), an admin Accepts
+    // (applies it to the `videos` doc) or Declines. currentValue/entryLabel
+    // are a snapshot at submission time (display only, not re-validated),
+    // so nothing here trusts them beyond size limits. A submitter can read
+    // their own suggestions to see status; admins can read/update all.
+    match /editSuggestions/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.submittedByUid == request.auth.uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow create: if request.auth != null &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
+        request.resource.data.submittedByUid == request.auth.uid &&
+        request.resource.data.rowNum is string &&
+        request.resource.data.field is string &&
+        request.resource.data.suggestedValue is string &&
+        request.resource.data.suggestedValue.size() > 0 &&
+        request.resource.data.suggestedValue.size() <= 500 &&
+        request.resource.data.note is string &&
+        request.resource.data.note.size() <= 300 &&
+        request.resource.data.currentValue is string &&
+        request.resource.data.currentValue.size() <= 500 &&
+        request.resource.data.fieldLabel is string &&
+        request.resource.data.fieldLabel.size() <= 60 &&
+        request.resource.data.entryLabel is string &&
+        request.resource.data.entryLabel.size() <= 200 &&
+        request.resource.data.submittedByName is string &&
+        request.resource.data.submittedByName.size() <= 100 &&
+        request.resource.data.status == "pending";
+      // Only an admin can respond, and only status may change.
+      allow update: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        request.resource.data.rowNum == resource.data.rowNum &&
+        request.resource.data.field == resource.data.field &&
+        request.resource.data.suggestedValue == resource.data.suggestedValue &&
+        request.resource.data.submittedByUid == resource.data.submittedByUid &&
+        request.resource.data.status in ["accepted", "declined"];
+      allow delete: if false;
+    }
+
+    // Verification review workflow (private) -- see verifiedProfiles below
+    // for the public-facing flag this produces. A profile owner requests,
+    // an admin Approves/Declines (see the admin panel's Verification
+    // Requests view in app.js); matchedRowNums is just a display snapshot
+    // for the admin, not re-validated against the catalog here.
+    match /verificationRequests/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.profileUid == request.auth.uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow create: if request.auth != null &&
+        request.resource.data.profileUid == request.auth.uid &&
+        request.resource.data.profileName is string &&
+        request.resource.data.profileName.size() <= 60 &&
+        request.resource.data.matchedRowNums is list &&
+        request.resource.data.matchedRowNums.size() <= 12 &&
+        request.resource.data.status == "pending";
+      allow update: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        request.resource.data.profileUid == resource.data.profileUid &&
+        request.resource.data.status in ["approved", "declined"];
+      allow delete: if false;
+    }
+
+    // Public "is this uid verified" flag -- doc presence = verified, world-
+    // readable so profile cards/lightboxes can show the badge to anyone,
+    // admin-only to set. Deliberately its OWN collection rather than a
+    // `verified` field on profiles/{uid}, since that collection's write
+    // rule only ever allows the owner to write their own doc -- approving
+    // someone else's verification would otherwise need a carve-out there.
+    match /verifiedProfiles/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Moderation flags for the message board. Readable by anyone so a
     // muted/banned visitor's own client can show why posting is blocked
     // (enforcement itself happens server-side via the /messages rule above,

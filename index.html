@@ -115,6 +115,7 @@
     <button type="button" class="submit-link header-account-btn" id="sidebarProfilesBtn" data-nav-mode="connect">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 5.9"/><path d="M18.5 14a5.5 5.5 0 0 1 3.5 5.9"/></svg></span>
       <span class="header-links-label">Profiles</span>
+      <span class="profile-requests-badge" id="sidebarProfilesBadge" hidden>0</span>
     </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn" data-nav-mode="watch">
@@ -635,8 +636,30 @@
           <button type="button" class="admin-row-btn" id="adminGoAddBtn">+ Add Entry</button>
           <button type="button" class="admin-row-btn" id="adminGoBulkBtn">Bulk Import</button>
           <button type="button" class="admin-row-btn" id="adminGoPublishBtn">Publish</button>
+          <button type="button" class="admin-row-btn" id="adminGoSuggestionsBtn">Edit Suggestions<span class="profile-requests-badge" id="adminSuggestionsBadge" hidden>0</span></button>
+          <button type="button" class="admin-row-btn" id="adminGoVerificationsBtn">Verification Requests<span class="profile-requests-badge" id="adminVerificationsBadge" hidden>0</span></button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
+      </div>
+
+      <div id="adminSuggestionsView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminSuggestionsBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Edit Suggestions</h2>
+        </div>
+        <p class="admin-bulk-hint">Suggestions visitors have made for existing entries -- Accept applies the change directly and republishes; Decline just dismisses it.</p>
+        <p class="admin-status" id="adminSuggestionsStatus" hidden></p>
+        <div class="admin-entries-list" id="adminSuggestionsList"></div>
+      </div>
+
+      <div id="adminVerificationsView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminVerificationsBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Verification Requests</h2>
+        </div>
+        <p class="admin-bulk-hint">A verified badge confirms a Profile really is the person credited in the catalog. Only approve when the matched catalog credit(s) shown genuinely look like this person.</p>
+        <p class="admin-status" id="adminVerificationsStatus" hidden></p>
+        <div class="admin-entries-list" id="adminVerificationsList"></div>
       </div>
 
       <div id="adminListView" hidden>
@@ -920,6 +943,31 @@
         <button type="button" class="submit-form-btn" id="submitThanksAgain">Submit again</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="lightbox" id="suggestEditModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Suggest an edit">
+    <button type="button" class="lightbox-close" id="suggestEditClose" aria-label="Close">&times;</button>
+    <form class="submit-form" id="suggestEditForm">
+      <h2 class="submit-form-title">Suggest an edit</h2>
+      <p class="submit-form-intro" id="suggestEditIntro"></p>
+      <label>Field
+        <select id="suggestEditField" required></select>
+      </label>
+      <label>Current value
+        <input type="text" id="suggestEditCurrent" readonly tabindex="-1">
+      </label>
+      <label>Suggested value<span class="submit-required">*</span>
+        <input type="text" id="suggestEditValue" required maxlength="500">
+      </label>
+      <label>Why? <span class="submit-optional">(optional)</span>
+        <textarea id="suggestEditNote" rows="2" maxlength="300"></textarea>
+      </label>
+      <button type="submit" class="submit-form-btn" id="suggestEditSubmitBtn">Submit suggestion</button>
+      <p class="submit-form-status" id="suggestEditStatus" hidden></p>
+    </form>
   </div>
 </div>
 

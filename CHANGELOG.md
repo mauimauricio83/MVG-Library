@@ -2,6 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.24.0 — current
+Four community/data-quality features, built off the existing message-board/collab-request/credit-matching patterns:
+- **Per-video comments**: a real comment thread on every video lightbox (new `comments` collection), same public-read/signed-in-to-post/admin-delete shape as the message board, just scoped to one rowNum instead of a single global feed.
+- **Suggest an edit**: any signed-in visitor can propose a single-field correction from the lightbox ("Suggest an edit", next to Report issue) -- picks a field, sees the current value, types a replacement. Lands in a new admin "Edit Suggestions" review queue (badge-counted on the Admin landing screen); Accept applies it straight to the entry and republishes, Decline just dismisses it.
+- **Verified profiles**: a profile owner with at least one matched catalog credit (the existing auto credit-matching) can request a verified badge. Reviewed in a new admin "Verification Requests" queue; approving adds a small checkmark badge next to their name on cards and in the lightbox everywhere. Verified status lives in its own public `verifiedProfiles` collection rather than a field on the profile doc, so approving someone doesn't need write access to their profile.
+- **Notification badge**: the sidebar's Profiles link now carries a combined unread count (pending incoming collab requests + DM threads waiting on a reply) visible from the hamburger menu regardless of what page you're on, instead of only being visible once already inside Connect > Requests. Refreshed on sign-in and whenever the menu opens.
+
+**Still needs a manual step**: this batch adds five new Firestore collections (`comments`, `editSuggestions`, `verificationRequests`, `verifiedProfiles`) plus one composite index (`comments`: rowNum + createdAt) -- none of it goes live until `firestore.rules`/`firestore.indexes.json` are deployed by hand (`firebase deploy --only firestore:rules,firestore:indexes`). Until then these features fail closed (permission-denied, handled gracefully in the UI) rather than doing anything unsafe.
+
 ## v5.23.1 — current
 - Removed the last remaining purple glow: the Watch/Connect toggle's active pill (`.nav-mode-btn.is-active`) still had the `box-shadow` glow from v5.20.2, missed by the later glow-dialing-down/removal passes (v5.20.3, v5.21.1).
 

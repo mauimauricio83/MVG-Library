@@ -800,6 +800,23 @@ html, body {
   margin: 4px 0 10px;
 }
 
+.profile-verify-area {
+  margin: 10px 0;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
+
 .profile-request-btn {
   display: inline-block;
   border: 1px solid var(--accent);
@@ -3855,6 +3872,23 @@ body.is-searching #discoverSection {
   text-decoration: underline;
 }
 
+.suggest-edit-open-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.suggest-edit-open-btn:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .lightbox-panel .ad-placeholder {
   margin: 0;
   padding: 12px;
@@ -4043,6 +4077,98 @@ body.is-searching #discoverSection {
 .lightbox-related-label {
   color: var(--text-muted);
   margin-right: 4px;
+}
+
+.lightbox-comments {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+
+.lightbox-comments-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.comment-form textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
+.comment-form button {
+  align-self: flex-end;
+}
+
+.comment-signin-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comment-empty {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+.comment-item-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.comment-item-author {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.comment-item-time {
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+
+.comment-delete-btn {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+}
+
+.comment-delete-btn:hover {
+  color: var(--accent);
+}
+
+.comment-item-text {
+  color: var(--text);
+  font-size: 0.88rem;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .submit-panel {

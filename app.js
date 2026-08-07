@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.23.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.24.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -229,6 +229,29 @@
     submitCountry: document.getElementById("submitCountry"),
     adminFormGenreSelect: document.getElementById("adminFormGenreSelect"),
     adminFormCountrySelect: document.getElementById("adminFormCountrySelect"),
+    suggestEditModal: document.getElementById("suggestEditModal"),
+    suggestEditClose: document.getElementById("suggestEditClose"),
+    suggestEditForm: document.getElementById("suggestEditForm"),
+    suggestEditIntro: document.getElementById("suggestEditIntro"),
+    suggestEditField: document.getElementById("suggestEditField"),
+    suggestEditCurrent: document.getElementById("suggestEditCurrent"),
+    suggestEditValue: document.getElementById("suggestEditValue"),
+    suggestEditNote: document.getElementById("suggestEditNote"),
+    suggestEditSubmitBtn: document.getElementById("suggestEditSubmitBtn"),
+    suggestEditStatus: document.getElementById("suggestEditStatus"),
+    adminGoSuggestionsBtn: document.getElementById("adminGoSuggestionsBtn"),
+    adminSuggestionsBadge: document.getElementById("adminSuggestionsBadge"),
+    adminSuggestionsView: document.getElementById("adminSuggestionsView"),
+    adminSuggestionsBackBtn: document.getElementById("adminSuggestionsBackBtn"),
+    adminSuggestionsStatus: document.getElementById("adminSuggestionsStatus"),
+    adminSuggestionsList: document.getElementById("adminSuggestionsList"),
+    adminGoVerificationsBtn: document.getElementById("adminGoVerificationsBtn"),
+    adminVerificationsBadge: document.getElementById("adminVerificationsBadge"),
+    adminVerificationsView: document.getElementById("adminVerificationsView"),
+    adminVerificationsBackBtn: document.getElementById("adminVerificationsBackBtn"),
+    adminVerificationsStatus: document.getElementById("adminVerificationsStatus"),
+    adminVerificationsList: document.getElementById("adminVerificationsList"),
+    sidebarProfilesBadge: document.getElementById("sidebarProfilesBadge"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -613,6 +636,7 @@
     closeRecentModal();
     closePodcastModal();
     closeAdminModal();
+    closeSuggestEditModal();
     closeHeaderMenu();
   }
 
@@ -2162,6 +2186,29 @@
   var pendingPhotoBlob = null;
   var pendingPhotoPreviewUrl = null;
 
+  // Verified status lives in its own tiny world-readable collection
+  // (verifiedProfiles/{uid}, doc presence = verified) rather than a field
+  // on the profile doc itself -- same existence-check pattern as
+  // mutedUsers/bannedUsers, and it means approving a request never needs
+  // write access to someone ELSE's profiles/{uid} doc (which the owner-only
+  // write rule there deliberately doesn't grant, even to admins).
+  var verifiedProfileUids = {};
+
+  function loadVerifiedProfiles() {
+    return db.collection("verifiedProfiles").get().then(function (snap) {
+      verifiedProfileUids = {};
+      snap.forEach(function (doc) { verifiedProfileUids[doc.id] = true; });
+    }).catch(function (err) {
+      console.error("Loading verified profiles failed:", err);
+    });
+  }
+
+  function verifiedBadgeHtml(uid) {
+    return verifiedProfileUids[uid]
+      ? ' <span class="verified-badge" title="Verified — confirmed by an admin">✓</span>'
+      : "";
+  }
+
   function renderProfileCard(profile) {
     var roleLabel = PROFILE_ROLE_LABELS[profile.role] || profile.role || "";
     var initial = (profile.displayName || "?").trim().slice(0, 1).toUpperCase();
@@ -2178,7 +2225,7 @@
     return '<button type="button" class="profile-card" data-uid="' + escapeHtml(profile.uid) + '">' +
       '<div class="profile-card-photo">' + photoHtml + reelBadge + "</div>" +
       '<div class="profile-card-info">' +
-      '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + "</div>" +
+      '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + verifiedBadgeHtml(profile.uid) + "</div>" +
       '<div class="profile-card-role">' + escapeHtml(roleLabel) + "</div>" +
       (profile.locationLabel ? '<div class="profile-card-location">' + ICON_PIN + ' ' + escapeHtml(profile.locationLabel) + "</div>" : "") +
       (profile.bio ? '<p class="profile-card-bio">' + escapeHtml(profile.bio) + "</p>" : "") +
@@ -2215,7 +2262,8 @@
     // null to read (see firestore.rules), so don't even try while signed
     // out; updateProfilesAuthUI() already hides the grid in that case.
     if (!currentUser) return Promise.resolve();
-    return db.collection("profiles").get().then(function (snap) {
+    return Promise.all([db.collection("profiles").get(), loadVerifiedProfiles()]).then(function (results) {
+      var snap = results[0];
       var profiles = snap.docs.map(function (doc) {
         var d = doc.data();
         d.uid = doc.id;
@@ -2592,7 +2640,7 @@
       '<div class="profile-lightbox-head">' +
       photoHtml +
       "<div>" +
-      '<h2 class="lightbox-title">' + escapeHtml(profile.displayName || "Untitled") + "</h2>" +
+      '<h2 class="lightbox-title">' + escapeHtml(profile.displayName || "Untitled") + verifiedBadgeHtml(profile.uid) + "</h2>" +
       '<p class="lightbox-subtitle">' + escapeHtml(roleLabel) + "</p>" +
       "</div></div>" +
       (id
@@ -2611,6 +2659,7 @@
       (profile.locationLabel ? '<p class="profile-card-location">' + ICON_PIN + ' ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
       (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
       profileCreditsHtml(profile) +
+      profileVerifyAreaHtml(profile) +
       "</div>";
 
     els.lightbox.hidden = false;
@@ -2649,6 +2698,12 @@
       checkCollabStatus(profile.uid).then(function (req) {
         if (els.lightbox.hidden || state.lightboxProfileUid !== profileUidAtOpen) return;
         renderProfileRequestArea(profile, req);
+      });
+    } else if (!verifiedProfileUids[profile.uid] && findCatalogCreditsForProfile(profile).length) {
+      var ownUidAtOpen = profile.uid;
+      checkVerificationStatus(profile.uid).then(function (pending) {
+        if (els.lightbox.hidden || state.lightboxProfileUid !== ownUidAtOpen) return;
+        renderProfileVerifyArea(pending);
       });
     }
   }
@@ -2769,9 +2824,72 @@
       var pendingIncomingCount = incoming.filter(function (r) { return r.status === "pending"; }).length;
       els.profileRequestsBadge.textContent = String(pendingIncomingCount);
       els.profileRequestsBadge.hidden = !pendingIncomingCount;
+      notifyPendingRequests = pendingIncomingCount;
+      renderCombinedNotifyBadge();
     }).catch(function (err) {
       console.error("Loading collab requests failed:", err);
     });
+  }
+
+  // ---- Site-wide notification badge --------------------------------------
+  // Surfaces the same "pending incoming request" count Requests already
+  // tracked (previously only visible once already on the Profiles page)
+  // plus a lightweight DM "someone's waiting on a reply" count, on the
+  // sidebar's Profiles link itself -- visible from the hamburger menu
+  // regardless of which mode (Watch/Connect) or page you're currently on,
+  // rather than only after already navigating into Connect > Requests.
+  // Deliberately not a live listener (would mean two always-on Firestore
+  // subscriptions per signed-in visitor for a nice-to-have counter) --
+  // refreshed on sign-in and every time the menu opens instead.
+  var notifyPendingRequests = 0;
+  var notifyUnreadDms = 0;
+
+  function renderCombinedNotifyBadge() {
+    var total = notifyPendingRequests + notifyUnreadDms;
+    els.sidebarProfilesBadge.textContent = String(total);
+    els.sidebarProfilesBadge.hidden = !total;
+  }
+
+  function markDmThreadRead(threadId) {
+    if (!currentUser) return;
+    var patch = {};
+    patch["lastReadAt_" + currentUser.uid] = Date.now();
+    dmThreadRef(threadId).update(patch).catch(function (err) {
+      console.error("Marking thread read failed:", err);
+    });
+  }
+
+  // A thread counts as "waiting on you" if the last message wasn't yours
+  // and arrived after your own lastReadAt_<uid> marker for that thread
+  // (set by markDmThreadRead() whenever you actually open it) -- an
+  // approximation of "unread" (per-thread, not per-message), which is
+  // plenty for a simple notification count.
+  function refreshUnreadDmCount() {
+    if (!currentUser) { notifyUnreadDms = 0; renderCombinedNotifyBadge(); return Promise.resolve(); }
+    var readField = "lastReadAt_" + currentUser.uid;
+    return db.collection("dmThreads").where("participants", "array-contains", currentUser.uid).get().then(function (snap) {
+      var count = 0;
+      snap.forEach(function (doc) {
+        var d = doc.data();
+        if (!d.lastMessageAt || d.lastMessageFromUid === currentUser.uid) return;
+        if (d.lastMessageAt > (d[readField] || 0)) count++;
+      });
+      notifyUnreadDms = count;
+      renderCombinedNotifyBadge();
+    }).catch(function (err) {
+      console.error("Checking unread DMs failed:", err);
+    });
+  }
+
+  function refreshNotificationBadge() {
+    if (!currentUser) {
+      notifyPendingRequests = 0;
+      notifyUnreadDms = 0;
+      renderCombinedNotifyBadge();
+      return;
+    }
+    loadCollabRequests();
+    refreshUnreadDmCount();
   }
 
   function respondToRequest(id, accept) {
@@ -2916,6 +3034,9 @@
       dmThreadId = threadId;
       els.dmSendBtn.disabled = false;
       subscribeDmMessages(threadId);
+      markDmThreadRead(threadId);
+      notifyUnreadDms = Math.max(0, notifyUnreadDms - 1);
+      renderCombinedNotifyBadge();
     }).catch(function (err) {
       console.error("Opening thread failed:", err);
       els.dmMessages.innerHTML = "";
@@ -4398,6 +4519,172 @@
     return '<div class="lightbox-related"><span class="lightbox-related-label">Related:</span>' + items + "</div>";
   }
 
+  // ---- Per-video comments -----------------------------------------------
+  // Flat `comments` collection (not a subcollection) filtered by rowNum,
+  // same shape/convention as the message board's `messages` collection --
+  // public read, signed-in + not-banned create, admin-only delete. See
+  // firestore.rules and the composite (rowNum, createdAt) index it needs.
+  var commentsUnsub = null;
+
+  function lightboxCommentsHtml(row) {
+    var composer = currentUser
+      ? '<form class="comment-form" id="commentForm" data-rownum="' + escapeHtml(row.rowNum) + '">' +
+          '<textarea id="commentInput" rows="2" maxlength="1000" placeholder="Add a comment…" required></textarea>' +
+          '<button type="submit" class="submit-form-btn">Post</button>' +
+        "</form>"
+      : '<p class="comment-signin-note"><button type="button" class="submit-form-btn" id="commentSignInBtn">Sign in with Google</button> to leave a comment.</p>';
+    return '<div class="lightbox-comments">' +
+      '<h3 class="lightbox-comments-title">Comments</h3>' +
+      composer +
+      '<div class="comment-list" id="commentList"><p class="comment-empty">Loading comments…</p></div>' +
+    "</div>";
+  }
+
+  function renderCommentList(docs) {
+    var listEl = document.getElementById("commentList");
+    if (!listEl) return; // lightbox closed or switched to another row while this snapshot was in flight
+    if (!docs.length) {
+      listEl.innerHTML = '<p class="comment-empty">No comments yet — be the first.</p>';
+      return;
+    }
+    listEl.innerHTML = docs.map(function (doc) {
+      var d = doc.data();
+      var when = d.createdAt && d.createdAt.toDate ? formatMsgBoardTime(d.createdAt.toDate()) : "";
+      var deleteBtn = state.isAdmin
+        ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">' + ICON_TRASH + "</button>"
+        : "";
+      return '<div class="comment-item">' +
+        '<div class="comment-item-meta">' +
+          '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
+          '<span class="comment-item-time">' + escapeHtml(when) + "</span>" +
+          deleteBtn +
+        "</div>" +
+        '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
+      "</div>";
+    }).join("");
+  }
+
+  function startCommentsListener(rowNum) {
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
+    commentsUnsub = db.collection("comments").where("rowNum", "==", rowNum).orderBy("createdAt", "asc").limit(200)
+      .onSnapshot(function (snap) {
+        renderCommentList(snap.docs);
+      }, function (err) {
+        console.error("Comments listener failed:", err);
+        var listEl = document.getElementById("commentList");
+        if (listEl) listEl.innerHTML = '<p class="comment-empty">Couldn\'t load comments.</p>';
+      });
+  }
+
+  // ---- Suggest an edit ---------------------------------------------------
+  // Lightweight crowdsourced data-quality flow: any signed-in visitor can
+  // propose a single-field correction from the video lightbox. Nothing
+  // applies automatically -- it lands in editSuggestions as "pending" for
+  // an admin to Accept (writes the value straight to the video doc and
+  // republishes, see goAdminSuggestions() below) or Decline.
+  var EDIT_SUGGESTION_FIELDS = [
+    { key: "artist", label: "Artist" },
+    { key: "song", label: "Song Title" },
+    { key: "director", label: "Director" },
+    { key: "category", label: "Category" },
+    { key: "year", label: "Year" },
+    { key: "releaseDate", label: "Release date" },
+    { key: "studio", label: "Studio" },
+    { key: "producer", label: "Producer" },
+    { key: "dp", label: "Director of Photography" },
+    { key: "editor", label: "Editor" },
+    { key: "choreographer", label: "Choreographer" },
+    { key: "country", label: "Country" },
+    { key: "genres", label: "Genres (comma-separated)" },
+    { key: "description", label: "Description" },
+    { key: "youtube", label: "YouTube Link" },
+    { key: "vimeo", label: "Vimeo Link" },
+    { key: "mvg", label: "MVG Link (Instagram Reel)" }
+  ];
+  var suggestEditRowNum = null;
+
+  function suggestEditCurrentValue(row, field) {
+    if (field === "genres") return (row.genres || []).join(", ");
+    return row[field] || "";
+  }
+
+  function openSuggestEditModal(rowNum) {
+    var row = findRowByNum(rowNum);
+    if (!row) return;
+    suggestEditRowNum = rowNum;
+    els.suggestEditIntro.textContent = 'For "' + (row.song || "this entry") + '"' + (row.artist ? " by " + row.artist : "") + " -- an admin reviews every suggestion before it's applied.";
+    els.suggestEditField.innerHTML = EDIT_SUGGESTION_FIELDS.map(function (f) {
+      return '<option value="' + f.key + '">' + escapeHtml(f.label) + "</option>";
+    }).join("");
+    els.suggestEditField.value = EDIT_SUGGESTION_FIELDS[0].key;
+    els.suggestEditCurrent.value = suggestEditCurrentValue(row, els.suggestEditField.value);
+    els.suggestEditValue.value = "";
+    els.suggestEditNote.value = "";
+    els.suggestEditStatus.hidden = true;
+    els.suggestEditSubmitBtn.disabled = false;
+    els.suggestEditModal.hidden = false;
+    els.suggestEditModal.querySelector(".lightbox-panel").scrollTop = 0;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeSuggestEditModal() {
+    if (els.suggestEditModal.hidden) return;
+    els.suggestEditModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.suggestEditClose.addEventListener("click", dismissTopModal);
+  els.suggestEditModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
+
+  els.suggestEditField.addEventListener("change", function () {
+    var row = findRowByNum(suggestEditRowNum);
+    if (row) els.suggestEditCurrent.value = suggestEditCurrentValue(row, els.suggestEditField.value);
+  });
+
+  els.suggestEditForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!currentUser) {
+      auth.signInWithPopup(googleProvider).catch(function (err) { console.error("Sign-in failed:", err); });
+      return;
+    }
+    var row = findRowByNum(suggestEditRowNum);
+    if (!row) return;
+    var field = els.suggestEditField.value;
+    var fieldMeta = EDIT_SUGGESTION_FIELDS.filter(function (f) { return f.key === field; })[0];
+    var suggestedValue = els.suggestEditValue.value.trim();
+    if (!suggestedValue) return;
+    els.suggestEditSubmitBtn.disabled = true;
+    db.collection("editSuggestions").add({
+      rowNum: row.rowNum,
+      field: field,
+      fieldLabel: fieldMeta ? fieldMeta.label : field,
+      currentValue: suggestEditCurrentValue(row, field),
+      suggestedValue: suggestedValue,
+      note: els.suggestEditNote.value.trim(),
+      entryLabel: (row.artist ? row.artist + " — " : "") + (row.song || "(untitled)"),
+      submittedByUid: currentUser.uid,
+      submittedByName: currentUser.displayName || currentUser.email || "Anonymous",
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      els.suggestEditStatus.textContent = "Thanks! An admin will review this suggestion.";
+      els.suggestEditStatus.className = "submit-form-status";
+      els.suggestEditStatus.hidden = false;
+      els.suggestEditValue.value = "";
+      els.suggestEditNote.value = "";
+    }).catch(function (err) {
+      console.error("Submitting edit suggestion failed:", err);
+      els.suggestEditStatus.textContent = "Couldn't submit that -- please try again.";
+      els.suggestEditStatus.className = "submit-form-status is-error";
+      els.suggestEditStatus.hidden = false;
+    }).finally(function () {
+      els.suggestEditSubmitBtn.disabled = false;
+    });
+  });
+
   function creditsHtml(row) {
     var pairs = [];
     if (row.director) pairs.push(["Director", row.director]);
@@ -4480,6 +4767,59 @@
       return '<button type="button" class="related-btn" data-row="' + escapeHtml(m.row.rowNum) + '" title="' + escapeHtml(m.roleLabel) + ' credit">' + label + "</button>";
     }).join("");
     return '<div class="lightbox-related"><span class="lightbox-related-label">Credits in the library (name match):</span>' + items + "</div>";
+  }
+
+  // ---- Profile verification ----------------------------------------------
+  // Turns the passive credit-matching above into an active trust signal: a
+  // profile owner with at least one matched catalog credit can request a
+  // verified badge, an admin reviews the match and approves/declines (see
+  // the admin panel's Verification Requests view). Status is a separate
+  // request/review doc (verificationRequests, owner+admin read only); the
+  // public-facing "is this uid verified" flag lives in its own
+  // world-readable verifiedProfiles/{uid} existence-check collection (see
+  // loadVerifiedProfiles() above) so approving one never needs write access
+  // to someone else's profiles/{uid} doc.
+  function profileVerifyAreaHtml(profile) {
+    if (profile.uid !== currentUser.uid) return "";
+    if (verifiedProfileUids[profile.uid]) return "";
+    if (!findCatalogCreditsForProfile(profile).length) return "";
+    return '<div class="profile-verify-area" id="profileVerifyArea"><button type="button" class="profile-request-btn" disabled>Checking…</button></div>';
+  }
+
+  function renderProfileVerifyArea(pending) {
+    var area = document.getElementById("profileVerifyArea");
+    if (!area) return; // lightbox moved on already
+    area.innerHTML = pending
+      ? '<button type="button" class="profile-request-btn" disabled>Verification request pending review</button>'
+      : '<button type="button" class="profile-request-btn" id="profileVerifyBtn">Get verified</button>';
+  }
+
+  function checkVerificationStatus(uid) {
+    return db.collection("verificationRequests").where("profileUid", "==", uid).where("status", "==", "pending").limit(1).get()
+      .then(function (snap) { return !snap.empty; })
+      .catch(function (err) {
+        console.error("Checking verification status failed:", err);
+        return false;
+      });
+  }
+
+  function sendVerificationRequest(profile) {
+    var matches = findCatalogCreditsForProfile(profile);
+    var area = document.getElementById("profileVerifyArea");
+    if (area) area.innerHTML = '<button type="button" class="profile-request-btn" disabled>Sending…</button>';
+    db.collection("verificationRequests").add({
+      profileUid: profile.uid,
+      profileName: profile.displayName || "",
+      matchedRowNums: matches.slice(0, 12).map(function (m) { return m.row.rowNum; }),
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      renderProfileVerifyArea(true);
+    }).catch(function (err) {
+      console.error("Sending verification request failed:", err);
+      if (area) area.innerHTML = '<button type="button" class="profile-request-btn" id="profileVerifyBtn">Get verified</button>';
+      alert("Couldn't send that -- please try again.");
+    });
   }
 
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
@@ -4582,6 +4922,7 @@
       mirrorBtn +
       interlaceBtn +
       '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
+      '<button type="button" class="suggest-edit-open-btn" data-rownum="' + escapeHtml(row.rowNum) + '">Suggest an edit</button>' +
       "</div>" +
       "</div>" +
       (sub.length ? '<p class="lightbox-subtitle">' + sub.join(" · ") + "</p>" : "") +
@@ -4590,6 +4931,7 @@
       descHtml +
       (links ? '<div class="lightbox-links">' + links + "</div>" : "") +
       lightboxRelatedHtml(row) +
+      lightboxCommentsHtml(row) +
       "</div>";
 
     els.lightbox.hidden = false;
@@ -4600,6 +4942,7 @@
     applyLightboxCrop();
     applyLightboxMirror();
     applyLightboxInterlace();
+    startCommentsListener(row.rowNum);
 
     var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
     if (lightboxAdEl) {
@@ -4635,6 +4978,7 @@
     destroyLightboxPlayer();
     destroyProfileLightboxMap();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
@@ -5183,6 +5527,7 @@
     }
     els.headerLinks.classList.add("is-open");
     els.headerMenuBtn.setAttribute("aria-expanded", "true");
+    refreshNotificationBadge();
     if (isMobileHeaderMenu()) {
       lockBodyScroll();
       pushModalHistory();
@@ -5438,14 +5783,209 @@
     els.adminLandingStatus.hidden = true;
     showAdminLanding();
     openAdminModalChrome();
+    refreshAdminLandingBadges();
   }
 
   function showAdminLanding() {
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminListView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
     els.adminLandingView.hidden = false;
   }
+
+  function showAdminSuggestions() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminSuggestionsView.hidden = false;
+  }
+
+  function showAdminVerifications() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = false;
+  }
+
+  function goAdminSuggestions() {
+    showAdminSuggestions();
+    return loadEditSuggestions();
+  }
+
+  function loadEditSuggestions() {
+    els.adminSuggestionsStatus.textContent = "Loading…";
+    els.adminSuggestionsStatus.className = "admin-status";
+    els.adminSuggestionsStatus.hidden = false;
+    els.adminSuggestionsList.innerHTML = "";
+    return db.collection("editSuggestions").where("status", "==", "pending").get().then(function (snap) {
+      var docs = snap.docs.slice().sort(function (a, b) {
+        var ta = a.data().createdAt, tb = b.data().createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      renderEditSuggestions(docs);
+      els.adminSuggestionsStatus.hidden = true;
+      updateAdminBadge(els.adminSuggestionsBadge, docs.length);
+    }).catch(function (err) {
+      console.error("Loading edit suggestions failed:", err);
+      els.adminSuggestionsStatus.textContent = "Couldn't load suggestions: " + err.message;
+      els.adminSuggestionsStatus.className = "admin-status is-error";
+    });
+  }
+
+  function renderEditSuggestions(docs) {
+    if (!docs.length) {
+      els.adminSuggestionsList.innerHTML = '<p class="admin-empty">No pending suggestions.</p>';
+      return;
+    }
+    els.adminSuggestionsList.innerHTML = docs.map(function (doc) {
+      var d = doc.data();
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(d.entryLabel || ("#" + d.rowNum)) + " — " + escapeHtml(d.fieldLabel || d.field) + "</div>" +
+            '<div class="admin-row-sub">&ldquo;' + escapeHtml(d.currentValue || "(blank)") + '&rdquo; &rarr; &ldquo;' + escapeHtml(d.suggestedValue) + "&rdquo;" +
+              (d.note ? " — " + escapeHtml(d.note) : "") + " — suggested by " + escapeHtml(d.submittedByName || "someone") + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-suggestion-action="accept" data-id="' + doc.id + '">Accept</button>' +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-suggestion-action="decline" data-id="' + doc.id + '">Decline</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function applyEditSuggestion(data) {
+    var patch = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if (data.field === "genres") {
+      patch.genres = String(data.suggestedValue || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    } else {
+      patch[data.field] = data.suggestedValue;
+    }
+    return db.collection("videos").doc(data.rowNum).update(patch);
+  }
+
+  els.adminSuggestionsList.addEventListener("click", function (e) {
+    var id = null, accept = null;
+    var acceptBtn = e.target.closest('[data-suggestion-action="accept"]');
+    var declineBtn = e.target.closest('[data-suggestion-action="decline"]');
+    if (acceptBtn) { id = acceptBtn.getAttribute("data-id"); accept = true; }
+    else if (declineBtn) { id = declineBtn.getAttribute("data-id"); accept = false; }
+    if (!id) return;
+
+    var docRef = db.collection("editSuggestions").doc(id);
+    els.adminSuggestionsStatus.hidden = true;
+    var chain = accept
+      ? docRef.get().then(function (doc) {
+          if (!doc.exists) return;
+          return applyEditSuggestion(doc.data()).then(function () { return docRef.update({ status: "accepted" }); });
+        })
+      : docRef.update({ status: "declined" });
+
+    chain.then(function () {
+      if (accept) {
+        els.adminSuggestionsStatus.textContent = "Applied. Publishing…";
+        els.adminSuggestionsStatus.className = "admin-status";
+        els.adminSuggestionsStatus.hidden = false;
+        return publishSnapshot().then(function (result) {
+          els.adminSuggestionsStatus.textContent = "Applied and published " + result.count + " entries to the live site.";
+        }).catch(function (err) {
+          console.error("Publish failed:", err);
+          els.adminSuggestionsStatus.textContent = "Applied, but publish failed: " + err.message + " -- use the Publish button to retry.";
+          els.adminSuggestionsStatus.className = "admin-status is-error";
+        });
+      }
+    }).then(function () {
+      return loadEditSuggestions();
+    }).catch(function (err) {
+      console.error("Resolving edit suggestion failed:", err);
+      els.adminSuggestionsStatus.textContent = "That didn't go through: " + err.message;
+      els.adminSuggestionsStatus.className = "admin-status is-error";
+      els.adminSuggestionsStatus.hidden = false;
+    });
+  });
+
+  function loadVerificationRequests() {
+    els.adminVerificationsStatus.textContent = "Loading…";
+    els.adminVerificationsStatus.className = "admin-status";
+    els.adminVerificationsStatus.hidden = false;
+    els.adminVerificationsList.innerHTML = "";
+    return db.collection("verificationRequests").where("status", "==", "pending").get().then(function (snap) {
+      var docs = snap.docs.slice().sort(function (a, b) {
+        var ta = a.data().createdAt, tb = b.data().createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      renderVerificationRequests(docs);
+      els.adminVerificationsStatus.hidden = true;
+      updateAdminBadge(els.adminVerificationsBadge, docs.length);
+    }).catch(function (err) {
+      console.error("Loading verification requests failed:", err);
+      els.adminVerificationsStatus.textContent = "Couldn't load requests: " + err.message;
+      els.adminVerificationsStatus.className = "admin-status is-error";
+    });
+  }
+
+  function goAdminVerifications() {
+    showAdminVerifications();
+    return loadVerificationRequests();
+  }
+
+  function renderVerificationRequests(docs) {
+    if (!docs.length) {
+      els.adminVerificationsList.innerHTML = '<p class="admin-empty">No pending verification requests.</p>';
+      return;
+    }
+    els.adminVerificationsList.innerHTML = docs.map(function (doc) {
+      var d = doc.data();
+      var matchedLabels = (d.matchedRowNums || []).map(function (rn) {
+        var row = findRowByNum(rn);
+        return row ? (row.song || "(untitled)") + (row.artist ? " — " + row.artist : "") : "#" + rn;
+      });
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(d.profileName || "Someone") + "</div>" +
+            '<div class="admin-row-sub">Matched credits: ' + (matchedLabels.length ? escapeHtml(matchedLabels.join(", ")) : "(none listed)") + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-verification-action="approve" data-id="' + doc.id + '" data-uid="' + escapeHtml(d.profileUid) + '" data-name="' + escapeHtml(d.profileName || "") + '">Approve</button>' +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-verification-action="decline" data-id="' + doc.id + '">Decline</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  els.adminVerificationsList.addEventListener("click", function (e) {
+    var approveBtn = e.target.closest('[data-verification-action="approve"]');
+    var declineBtn = e.target.closest('[data-verification-action="decline"]');
+    if (!approveBtn && !declineBtn) return;
+
+    var id = (approveBtn || declineBtn).getAttribute("data-id");
+    var docRef = db.collection("verificationRequests").doc(id);
+    els.adminVerificationsStatus.hidden = true;
+    var chain = approveBtn
+      ? db.collection("verifiedProfiles").doc(approveBtn.getAttribute("data-uid")).set({
+          profileName: approveBtn.getAttribute("data-name") || "",
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function () { return docRef.update({ status: "approved" }); })
+      : docRef.update({ status: "declined" });
+
+    chain.then(function () {
+      return loadVerificationRequests();
+    }).catch(function (err) {
+      console.error("Resolving verification request failed:", err);
+      els.adminVerificationsStatus.textContent = "That didn't go through: " + err.message;
+      els.adminVerificationsStatus.className = "admin-status is-error";
+      els.adminVerificationsStatus.hidden = false;
+    });
+  });
 
   function goAdminManageEntries() {
     state.adminReturnView = "list";
@@ -6142,6 +6682,29 @@
   els.adminGoManageBtn.addEventListener("click", goAdminManageEntries);
   els.adminBackBtn.addEventListener("click", showAdminLanding);
 
+  function updateAdminBadge(el, count) {
+    el.textContent = String(count);
+    el.hidden = count === 0;
+  }
+
+  // Landing-view badge counts -- lightweight equality-only queries (no
+  // orderBy, so no composite index needed), refreshed each time the admin
+  // panel is opened rather than kept live, since this is an admin-only,
+  // low-traffic panel.
+  function refreshAdminLandingBadges() {
+    db.collection("editSuggestions").where("status", "==", "pending").get().then(function (snap) {
+      updateAdminBadge(els.adminSuggestionsBadge, snap.size);
+    }).catch(function () {});
+    db.collection("verificationRequests").where("status", "==", "pending").get().then(function (snap) {
+      updateAdminBadge(els.adminVerificationsBadge, snap.size);
+    }).catch(function () {});
+  }
+
+  els.adminGoSuggestionsBtn.addEventListener("click", goAdminSuggestions);
+  els.adminSuggestionsBackBtn.addEventListener("click", showAdminLanding);
+  els.adminGoVerificationsBtn.addEventListener("click", goAdminVerifications);
+  els.adminVerificationsBackBtn.addEventListener("click", showAdminLanding);
+
   els.adminGoAddBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminForm(null); });
   els.adminAddBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminForm(null); });
   els.adminFormCancelBtn.addEventListener("click", returnFromAdminSubview);
@@ -6449,6 +7012,11 @@
       if (requestedProfile) sendCollabRequest(requestedProfile);
       return;
     }
+    if (e.target.closest("#profileVerifyBtn")) {
+      var ownProfile = profilesCache.filter(function (p) { return p.uid === currentUser.uid; })[0];
+      if (ownProfile) sendVerificationRequest(ownProfile);
+      return;
+    }
     if (e.target.closest("#profileViewIncomingBtn")) {
       dismissTopModal();
       showProfileRequestsView();
@@ -6465,7 +7033,53 @@
       rescindCollabRequest(rescindBtn.getAttribute("data-id"), function () {
         if (rescindProfile) renderProfileRequestArea(rescindProfile, null);
       });
+      return;
     }
+    if (e.target.closest("#commentSignInBtn")) {
+      auth.signInWithPopup(googleProvider).catch(function (err) {
+        console.error("Sign-in failed:", err);
+      });
+      return;
+    }
+    var suggestEditBtn = e.target.closest(".suggest-edit-open-btn");
+    if (suggestEditBtn) {
+      openSuggestEditModal(suggestEditBtn.getAttribute("data-rownum"));
+      return;
+    }
+    var commentDeleteBtn = e.target.closest(".comment-delete-btn");
+    if (commentDeleteBtn) {
+      if (!window.confirm("Delete this comment?")) return;
+      db.collection("comments").doc(commentDeleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+        console.error("Deleting comment failed:", err);
+        alert("Couldn't delete that comment -- please try again.");
+      });
+    }
+  });
+
+  els.lightbox.addEventListener("submit", function (e) {
+    var form = e.target.closest("#commentForm");
+    if (!form) return;
+    e.preventDefault();
+    if (!currentUser) return;
+    var input = document.getElementById("commentInput");
+    var text = input.value.trim();
+    if (!text) return;
+    var btn = form.querySelector("button");
+    btn.disabled = true;
+    db.collection("comments").add({
+      rowNum: form.getAttribute("data-rownum"),
+      text: text,
+      authorUid: currentUser.uid,
+      authorName: currentUser.displayName || currentUser.email || "Anonymous",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      input.value = "";
+    }).catch(function (err) {
+      console.error("Posting comment failed:", err);
+      alert("Couldn't post that comment -- please try again.");
+    }).finally(function () {
+      btn.disabled = false;
+    });
   });
 
   document.addEventListener("keydown", function (e) {
@@ -6475,7 +7089,7 @@
       !els.settingsModal.hidden ||
       !els.dmModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
-      !els.adminModal.hidden || els.headerLinks.classList.contains("is-open");
+      !els.adminModal.hidden || !els.suggestEditModal.hidden || els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
     if (!els.msgBoardPanel.hidden) closeMsgBoard();
   });
@@ -6817,6 +7431,7 @@
     }
     watchMsgBoardOwnStatus();
     updateProfilesAuthUI();
+    refreshNotificationBadge();
   });
 
   fetchData();
