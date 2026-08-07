@@ -10,6 +10,7 @@ Vanilla JS/HTML/CSS static site, no build step. Firestore-backed catalog, hosted
 - **Keep `app.js`'s client `publishSnapshot()` and `scripts/publish-snapshot.js` (the CLI counterpart) in sync.** Any field added to one needs the identical line in the other.
 - **Firestore `firestore.rules` changes need a manual `firebase deploy`** — editing the file alone doesn't take effect.
 - **Adding a new `hidden`-toggled element? Read the `[hidden]`-attribute cascade gotcha section below first.** Hit six times already — it's not an edge case, it's the default outcome unless checked for.
+- **No emoji, ever** (decided 2026-08-07, after stripping 🎬🤝🗑🎵🕘📍❤ from the whole site). If a UI element genuinely needs an icon, use an inline outline SVG — see `ICON_TRASH`/`ICON_PIN`/`ICON_INSTAGRAM` in `app.js` and the top-bar search/settings/admin/sign-in icons in `index.html` for the established style (`viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`, `em`-based inline sizing so it scales with surrounding text). This does **not** cover plain monochrome text symbols already in use as compact icons (▾ ▴ ▶ ✓ ♥ ♡ ✎) — those are explicitly fine, don't "fix" them into SVGs too, that scope was deliberately excluded.
 
 ## Local dev server
 

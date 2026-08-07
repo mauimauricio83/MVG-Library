@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var APP_VERSION = "5.20.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.21.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2161,7 +2161,7 @@
       .reverse()
       .map(function (n) { return findRowByNum(n); })
       .filter(Boolean);
-    els.favoritesTitle.textContent = "❤ Favorites";
+    els.favoritesTitle.textContent = "Favorites";
     els.favoritesShareBtn.hidden = false;
     els.favoritesShareStatus.hidden = true;
     favoritesStrip.render(favoritesPool);
@@ -2398,7 +2398,7 @@
       '<div class="profile-card-info">' +
       '<div class="profile-card-name">' + escapeHtml(profile.displayName || "Untitled") + "</div>" +
       '<div class="profile-card-role">' + escapeHtml(roleLabel) + "</div>" +
-      (profile.locationLabel ? '<div class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</div>" : "") +
+      (profile.locationLabel ? '<div class="profile-card-location">' + ICON_PIN + ' ' + escapeHtml(profile.locationLabel) + "</div>" : "") +
       (profile.bio ? '<p class="profile-card-bio">' + escapeHtml(profile.bio) + "</p>" : "") +
       "</div>" +
       "</button>";
@@ -2826,7 +2826,7 @@
           "</div>"
         : "") +
       (profile.location ? '<div class="profile-lightbox-map" id="profileLightboxMap"></div>' : "") +
-      (profile.locationLabel ? '<p class="profile-card-location">📍 ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
+      (profile.locationLabel ? '<p class="profile-card-location">' + ICON_PIN + ' ' + escapeHtml(profile.locationLabel) + "</p>" : "") +
       (profile.bio ? '<p class="lightbox-desc">' + escapeHtml(profile.bio) + "</p>" : "") +
       profileCreditsHtml(profile) +
       "</div>";
@@ -4716,6 +4716,15 @@
 
   var ICON_INSTAGRAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.3.06 2.2.27 2.9.56.8.3 1.4.7 2 1.4.6.6 1 1.2 1.4 2 .3.7.5 1.6.6 2.9.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.3-.27 2.2-.56 2.9a5.8 5.8 0 0 1-1.4 2 5.8 5.8 0 0 1-2 1.4c-.7.3-1.6.5-2.9.56-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.3-.06-2.2-.27-2.9-.56a5.8 5.8 0 0 1-2-1.4 5.8 5.8 0 0 1-1.4-2c-.3-.7-.5-1.6-.56-2.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.3.27-2.2.56-2.9.3-.8.7-1.4 1.4-2 .6-.6 1.2-1 2-1.4.7-.3 1.6-.5 2.9-.56C8.4 2.2 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.76.07-1.03.05-1.6.22-1.97.36-.5.2-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.3.94-.36 1.97C2.8 8.48 2.8 8.85 2.8 12s0 3.52.1 4.76c.06 1.03.22 1.6.36 1.97.2.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.3 1.97.36 1.24.06 1.6.07 4.76.07s3.52 0 4.76-.07c1.03-.06 1.6-.22 1.97-.36.5-.2.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.3-.94.36-1.97.06-1.24.07-1.6.07-4.76s0-3.52-.07-4.76c-.06-1.03-.22-1.6-.36-1.97a3.3 3.3 0 0 0-.79-1.22 3.3 3.3 0 0 0-1.22-.79c-.37-.14-.94-.3-1.97-.36C15.52 4 15.15 4 12 4Zm0 3.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.86-2a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0Z"/></svg>';
 
+  // Outline icons (Feather/Tabler-style stroke path, matching the top-bar
+  // search/settings/admin/sign-in icons) -- per house policy, real emoji
+  // (colorful pictographs) never go back in; when a UI element genuinely
+  // needs an icon, it's one of these instead. Plain monochrome text
+  // symbols already in use elsewhere (▾ ▴ ▶ ✓ ♥ ♡ ✎) are NOT emoji and
+  // are explicitly out of scope for this -- don't "fix" those too.
+  var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+  var ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:0.9em;height:0.9em;vertical-align:-0.1em"><path d="M12 22s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+
   function destroyLightboxPlayer() {
     if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
       try { state.lightboxPlayer.destroy(); } catch (e) {}
@@ -4779,7 +4788,7 @@
       ? '<button type="button" class="lightbox-admin-edit-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Edit entry (admin)" aria-label="Edit entry">✎ Edit</button>'
       : "";
     var adminDeleteBtn = state.isAdmin
-      ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">🗑 Delete</button>'
+      ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">' + ICON_TRASH + ' Delete</button>'
       : "";
     // Admin-only debug tools -- not shown to regular visitors.
     var mirrorBtn = state.isAdmin && videoRef

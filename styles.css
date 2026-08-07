@@ -1536,6 +1536,11 @@ html, body {
   border-radius: 8px;
   overflow: hidden;
   background: var(--accent-soft);
+  transition: box-shadow 0.15s ease;
+}
+
+.media-strip-card:hover .media-strip-thumb {
+  box-shadow: 0 0 10px 0 var(--accent);
 }
 
 .sponsored-badge {
@@ -3214,6 +3219,11 @@ body.is-searching #discoverSection {
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg);
+  transition: box-shadow 0.15s ease;
+}
+
+.spotlight-card:hover {
+  box-shadow: 0 0 10px 0 var(--accent);
 }
 
 .spotlight-card-thumb {

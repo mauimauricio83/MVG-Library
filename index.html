@@ -98,8 +98,8 @@
   <nav class="header-links" id="headerLinks" aria-label="Site links">
     <button type="button" class="header-menu-close" id="headerMenuClose" aria-label="Close menu">&times;</button>
     <div class="nav-mode-switch" id="navModeSwitch">
-      <button type="button" class="nav-mode-btn" id="navModeWatchBtn" data-mode="watch" aria-pressed="true">🎬 Watch</button>
-      <button type="button" class="nav-mode-btn" id="navModeConnectBtn" data-mode="connect" aria-pressed="false">🤝 Connect</button>
+      <button type="button" class="nav-mode-btn" id="navModeWatchBtn" data-mode="watch" aria-pressed="true">Watch</button>
+      <button type="button" class="nav-mode-btn" id="navModeConnectBtn" data-mode="connect" aria-pressed="false">Connect</button>
     </div>
     <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarHomeBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>
@@ -245,7 +245,7 @@
       <a class="tv-report-link" id="tvReportLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Report issue</a>
       <div class="tv-toggle-row-right">
         <button type="button" class="tv-admin-edit-btn" id="tvAdminEditBtn" hidden aria-label="Edit entry (admin)" title="Edit entry (admin)">✎</button>
-        <button type="button" class="tv-admin-delete-btn" id="tvAdminDeleteBtn" hidden aria-label="Delete entry (admin)" title="Delete entry (admin)">🗑</button>
+        <button type="button" class="tv-admin-delete-btn" id="tvAdminDeleteBtn" hidden aria-label="Delete entry (admin)" title="Delete entry (admin)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
         <button type="button" class="tv-fav-btn" id="tvFavBtn" hidden aria-label="Toggle favorite" title="Favorite">♡</button>
         <button type="button" class="tv-playlist-btn" id="tvPlaylistBtn" hidden aria-label="Add to playlist" title="Add to playlist">+</button>
         <button type="button" class="tv-crop-btn" id="tvCropBtn" hidden aria-label="Toggle 4:3 crop" title="Crop to 4:3">4:3</button>
@@ -370,7 +370,7 @@
        instead of a blank page. -->
   <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title" id="favoritesTitle">❤ Favorites</span>
+      <span class="media-strip-title" id="favoritesTitle">Favorites</span>
       <div class="media-strip-head-actions">
         <button type="button" class="media-strip-play-all" id="favoritesShareBtn">Share Favorites</button>
         <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
@@ -392,7 +392,7 @@
        createMediaStrip() the same way Favorites' own strip does. -->
   <section class="media-strip" id="playlistsPage" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title">🎵 Playlists</span>
+      <span class="media-strip-title">Playlists</span>
       <div class="media-strip-head-actions">
         <button type="button" class="media-strip-play-all" id="playlistsNewBtn">+ New Playlist</button>
       </div>
@@ -405,7 +405,7 @@
         <div class="playlist-detail-actions">
           <button type="button" class="media-strip-play-all" id="playlistPlayAllBtn">▶ Play All</button>
           <button type="button" class="tv-exit-btn" id="playlistRenameBtn">Rename</button>
-          <button type="button" class="tv-admin-delete-btn" id="playlistDeleteBtn" aria-label="Delete playlist" title="Delete playlist">🗑</button>
+          <button type="button" class="tv-admin-delete-btn" id="playlistDeleteBtn" aria-label="Delete playlist" title="Delete playlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
         </div>
       </div>
       <div class="media-strip-body">
@@ -495,7 +495,7 @@
       </div>
       <div class="profile-editor-actions">
         <button type="submit" class="media-strip-play-all" id="profileSaveBtn">Save profile</button>
-        <button type="button" class="profile-delete-btn" id="profileDeleteBtn" hidden aria-label="Delete profile" title="Delete profile">🗑 Delete</button>
+        <button type="button" class="profile-delete-btn" id="profileDeleteBtn" hidden aria-label="Delete profile" title="Delete profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> Delete</button>
       </div>
       <p class="profile-editor-status" id="profileEditorStatus" hidden></p>
     </form>
@@ -612,7 +612,7 @@
     <button type="button" class="lightbox-close" id="recentModalClose" aria-label="Close">&times;</button>
     <div class="recent-body">
       <div class="recent-header">
-        <h2 class="recent-title">🕘 Recently Viewed</h2>
+        <h2 class="recent-title">Recently Viewed</h2>
         <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
       </div>
       <div class="recent-list" id="recentList"></div>

@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.21.0 — current
+- Removed remaining emoji site-wide (🎬 Watch, 🤝 Connect, ❤ Favorites, 🎵 Playlists, 🕘 Recently Viewed titles; 🗑 delete buttons and 📍 location labels replaced with inline outline SVG icons matching the existing top-bar icon style). Codified as a standing rule in `CLAUDE.md`: no emoji, ever -- use an outline SVG icon if one's genuinely needed. Plain text symbols already used as compact icons (▾ ▴ ▶ ✓ ♥ ♡ ✎) are explicitly exempt, not touched.
+- Added a soft purple glow on hover to video thumbnail cards (Latest/Featured/Favorites) and Spotlight/Discover cards (shared `.spotlight-card`) -- previously just a cursor change with no other hover feedback.
+
 ## v5.20.3 — current
 - Dialed the glow down a notch across the board (both the purple box-shadows and yellow text-shadows).
 - Added the yellow glow to Spotlight/News titles too (`.spotlight-sidebar-title`) -- they'd been missed when titles first went yellow.
