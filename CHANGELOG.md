@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.30.1 — current
+- Fixed a real gap in the previous version's blog listing redesign: the big cards and list-view items were built with page-local `.post-card`/`.post-list-item` CSS that only approximated the homepage's News-card look, and the page was still capped at `max-width:860px` (centered), while the homepage's News section fills `.app`'s full width. Now the listing reuses styles.css's actual `.spotlight-card`/`.blog-latest-card`/`.spotlight-card-thumb`/`.blog-latest-extra-item` classes directly (pixel-identical to the homepage cards), and `main` has no width cap on the listing view so it spans the same full width `.app` gives the homepage's News section.
+
 ## v5.30.0 — current
 - `blog.html` listing page redesigned to match the homepage's News section sizing: the first 6 posts render as big 16:9 thumbnail cards (`.post-card`, reusing the same aspect ratio as the homepage's `.blog-latest-card`), the next 14 render as a compact thumbnailed list (`.post-list-item`), and pagination kicks in every 20 posts (`blog.html?page=2`, etc.).
 
