@@ -140,6 +140,104 @@
     text-align: center;
   }
 
+  /* Section 2 of the listing page: up to 14 more posts as a compact
+     thumbnailed list (same row pattern as the homepage's
+     .blog-latest-extra-item), below the 6 big cards above. */
+  .post-list {
+    margin-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .post-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 0;
+    text-decoration: none;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .post-list-thumb {
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 6px;
+    flex: 0 0 auto;
+    background: var(--accent-soft);
+  }
+
+  .post-list-info {
+    min-width: 0;
+  }
+
+  .post-list-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+
+  .post-list-item:hover .post-list-title {
+    color: var(--accent);
+  }
+
+  .post-list-excerpt {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post-list-date {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 36px;
+  }
+
+  .pagination-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+
+  .pagination-link:hover {
+    border-color: var(--accent);
+  }
+
+  .pagination-link.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .pagination-link.is-disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  @media (max-width: 480px) {
+    .post-list-thumb {
+      width: 84px;
+    }
+  }
+
   /* Single-post view */
   .post-title {
     font-family: "Archivo Black", sans-serif;
@@ -380,6 +478,41 @@
     "</a>";
   }
 
+  function postListItemHtml(p) {
+    var cover = p.coverImageURL
+      ? '<img class="post-list-thumb" src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
+      : '<div class="post-list-thumb"></div>';
+    return '<a class="post-list-item" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+      cover +
+      '<div class="post-list-info">' +
+        '<h2 class="post-list-title">' + escapeHtml(p.title || "(untitled)") + "</h2>" +
+        (p.excerpt ? '<p class="post-list-excerpt">' + escapeHtml(p.excerpt) + "</p>" : "") +
+        '<div class="post-list-date">' + escapeHtml(formatDate(p.publishedAt || p.createdAt)) + "</div>" +
+      "</div>" +
+    "</a>";
+  }
+
+  var POSTS_PER_PAGE = 20;
+  var BIG_CARDS_PER_PAGE = 6;
+
+  function paginationHtml(page, totalPages) {
+    if (totalPages <= 1) return "";
+    var out = ['<nav class="pagination" aria-label="Pagination">'];
+    out.push(
+      '<a class="pagination-link' + (page <= 1 ? " is-disabled" : "") + '" href="blog.html?page=' + (page - 1) + '">&larr;</a>'
+    );
+    for (var i = 1; i <= totalPages; i++) {
+      out.push(
+        '<a class="pagination-link' + (i === page ? " is-active" : "") + '" href="blog.html' + (i === 1 ? "" : "?page=" + i) + '">' + i + "</a>"
+      );
+    }
+    out.push(
+      '<a class="pagination-link' + (page >= totalPages ? " is-disabled" : "") + '" href="blog.html?page=' + (page + 1) + '">&rarr;</a>'
+    );
+    out.push("</nav>");
+    return out.join("");
+  }
+
   function sidebarItemHtml(p) {
     var cover = p.coverImageURL
       ? '<img src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
@@ -413,8 +546,9 @@
     });
   }
 
-  function renderListing() {
-    document.title = "Blog — MVG Library";
+  function renderListing(page) {
+    page = Math.max(1, page || 1);
+    document.title = page > 1 ? "Blog — Page " + page + " — MVG Library" : "Blog — MVG Library";
     main.classList.remove("has-sidebar");
     main.innerHTML =
       '<h1 class="page-title">Blog</h1>' +
@@ -432,7 +566,20 @@
         body.outerHTML = '<p class="empty-state">No posts yet — check back soon.</p>';
         return;
       }
-      body.outerHTML = '<div class="post-grid">' + posts.map(postCardHtml).join("") + "</div>";
+
+      var totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
+      if (page > totalPages) page = totalPages;
+      var pageStart = (page - 1) * POSTS_PER_PAGE;
+      var pagePosts = posts.slice(pageStart, pageStart + POSTS_PER_PAGE);
+      var bigCards = pagePosts.slice(0, BIG_CARDS_PER_PAGE);
+      var listPosts = pagePosts.slice(BIG_CARDS_PER_PAGE);
+
+      var html = '<div class="post-grid">' + bigCards.map(postCardHtml).join("") + "</div>";
+      if (listPosts.length) {
+        html += '<div class="post-list">' + listPosts.map(postListItemHtml).join("") + "</div>";
+      }
+      html += paginationHtml(page, totalPages);
+      body.outerHTML = html;
     }).catch(function (err) {
       console.error("Loading posts failed:", err);
       var body = document.querySelector(".loading-state");
@@ -478,8 +625,10 @@
     });
   }
 
-  var slug = new URLSearchParams(location.search).get("post");
-  if (slug) renderPost(slug); else renderListing();
+  var params = new URLSearchParams(location.search);
+  var slug = params.get("post");
+  if (slug) renderPost(slug);
+  else renderListing(parseInt(params.get("page"), 10) || 1);
 })();
 </script>
 </body>

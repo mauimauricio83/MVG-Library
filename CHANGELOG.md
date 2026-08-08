@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.30.0 — current
+- `blog.html` listing page redesigned to match the homepage's News section sizing: the first 6 posts render as big 16:9 thumbnail cards (`.post-card`, reusing the same aspect ratio as the homepage's `.blog-latest-card`), the next 14 render as a compact thumbnailed list (`.post-list-item`), and pagination kicks in every 20 posts (`blog.html?page=2`, etc.).
+
 ## v5.29.0 — current
 - **Fixed a real bug**: images and text could render visually outside the blog editor's Body field during editing. Root cause: `.blog-editor-body` was `flex: 1 1 auto` nested inside `.blog-editor-form`, itself a `flex: 1 1 auto; overflow-y: auto` flex column -- per the flex spec, an `overflow:auto` flex item's automatic minimum size collapses to 0 (not content-based), which let the browser size the body field down to exactly its `min-height` regardless of actual content, silently spilling the rest past its own border. Fixed with `flex: none`, opting the field out of the flex distribution algorithm entirely so it sizes purely by its own content, like a normal block box. Verified: a box with ~1000px of content now measures ~1000px, not clamped to the 420px min-height.
 - Blog editor: added a video embed button (YouTube or Vimeo URL -> responsive embed, inserted at the cursor same as images).
