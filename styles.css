@@ -4557,11 +4557,125 @@ body.is-searching #discoverSection {
   gap: 8px;
 }
 
+/* Full-frame post editor -- deliberately NOT a .lightbox (a 560px-capped
+   modal was cramping the whole form into a tiny two-column squeeze, see
+   the "clunky and small" feedback that prompted this). Takes over the
+   whole viewport like a real editor page, sits above the admin lightbox
+   (z-index 1000) since it opens on top of it. */
+.blog-editor-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.blog-editor-page[hidden] {
+  display: none;
+}
+
+.blog-editor-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.blog-editor-topbar-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--brand-yellow);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blog-editor-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.blog-editor-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+.blog-editor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.blog-editor-meta label,
+.blog-editor-body-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.blog-editor-meta input,
+.blog-editor-meta textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.blog-editor-title-field input {
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 12px 14px;
+}
+
+.blog-editor-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.blog-editor-meta-row label {
+  flex: 1 1 260px;
+}
+
+.blog-editor-cover-preview {
+  max-width: 320px;
+  max-height: 180px;
+  width: auto;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .blog-editor-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: -1px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding-top: 4px;
+  z-index: 1;
 }
 
 .blog-editor-toolbar button {
@@ -4571,7 +4685,7 @@ body.is-searching #discoverSection {
   color: var(--text-muted);
   font: inherit;
   font-size: 0.8rem;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-radius: 6px 6px 0 0;
   cursor: pointer;
 }
@@ -4581,17 +4695,22 @@ body.is-searching #discoverSection {
   border-color: var(--accent);
 }
 
+#adminBlogImageBtn {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--accent);
+}
+
 .blog-editor-body {
-  min-height: 260px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 12px 14px;
+  flex: 1 1 auto;
+  min-height: 420px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: 0 6px 6px 6px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
-  font-size: 0.92rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
 .blog-editor-body:focus {
@@ -4603,16 +4722,31 @@ body.is-searching #discoverSection {
   max-width: 100%;
   border-radius: 6px;
   display: block;
-  margin: 10px 0;
+  margin: 14px 0;
 }
 
 .blog-editor-body h2 {
-  font-size: 1.2rem;
-  margin: 0.6em 0 0.3em;
+  font-size: 1.3rem;
+  margin: 0.7em 0 0.3em;
 }
 
 .blog-editor-body p {
-  margin: 0 0 0.7em;
+  margin: 0 0 0.8em;
+}
+
+@media (max-width: 640px) {
+  .blog-editor-topbar {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+  }
+
+  .blog-editor-form {
+    padding: 18px 14px 50px;
+  }
+
+  .blog-editor-body {
+    min-height: 300px;
+  }
 }
 
 .recent-header {

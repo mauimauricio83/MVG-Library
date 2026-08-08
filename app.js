@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.26.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.26.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -253,6 +253,8 @@
     adminVerificationsList: document.getElementById("adminVerificationsList"),
     sidebarProfilesBadge: document.getElementById("sidebarProfilesBadge"),
     adminGoBlogBtn: document.getElementById("adminGoBlogBtn"),
+    blogEditorPage: document.getElementById("blogEditorPage"),
+    blogEditorCloseBtn: document.getElementById("blogEditorCloseBtn"),
     adminBlogListView: document.getElementById("adminBlogListView"),
     adminBlogBackBtn: document.getElementById("adminBlogBackBtn"),
     adminBlogNewBtn: document.getElementById("adminBlogNewBtn"),
@@ -665,6 +667,7 @@
     closePodcastModal();
     closeAdminModal();
     closeSuggestEditModal();
+    closeBlogEditorPage();
     closeHeaderMenu();
   }
 
@@ -5825,7 +5828,6 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
-    els.adminBlogForm.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -5836,19 +5838,7 @@
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
-    els.adminBlogForm.hidden = true;
     els.adminBlogListView.hidden = false;
-  }
-
-  function showAdminBlogForm() {
-    els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
-    els.adminForm.hidden = true;
-    els.adminBulkView.hidden = true;
-    els.adminSuggestionsView.hidden = true;
-    els.adminVerificationsView.hidden = true;
-    els.adminBlogListView.hidden = true;
-    els.adminBlogForm.hidden = false;
   }
 
   function showAdminSuggestions() {
@@ -6122,8 +6112,27 @@
     els.adminBlogCoverInput.value = "";
   }
 
+  // Its own full-viewport page (see .blog-editor-page in styles.css), not
+  // another lightbox -- a 560px-capped modal squeezed the whole form into
+  // an unusably cramped two-column grid. Sits stacked on top of the still-
+  // open admin modal (z-index 1100 vs. the lightbox's 1000) rather than
+  // replacing it, so closing it just reveals the blog list underneath
+  // again with no extra state to restore.
+  function openBlogEditorPage() {
+    els.blogEditorPage.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeBlogEditorPage() {
+    if (els.blogEditorPage.hidden) return;
+    els.blogEditorPage.hidden = true;
+    unlockBodyScroll();
+  }
+
   function openBlogEditor(post) {
     blogSlugManuallyEdited = !!post;
+    lastBlogBodyRange = null;
     els.adminBlogFormTitle.textContent = post ? "Edit Post" : "New Post";
     els.adminBlogPostId.value = post ? post.id : db.collection("blogPosts").doc().id;
     els.adminBlogTitleInput.value = post ? (post.title || "") : "";
@@ -6138,13 +6147,19 @@
     els.adminBlogFormStatus.hidden = true;
     els.adminBlogSaveDraftBtn.disabled = false;
     els.adminBlogPublishBtn.disabled = false;
-    showAdminBlogForm();
+    openBlogEditorPage();
   }
 
   els.adminGoBlogBtn.addEventListener("click", goAdminBlog);
   els.adminBlogBackBtn.addEventListener("click", showAdminLanding);
   els.adminBlogNewBtn.addEventListener("click", function () { openBlogEditor(null); });
-  els.adminBlogCancelBtn.addEventListener("click", showAdminBlogList);
+  // A local close, not dismissTopModal() -- the editor page is stacked on
+  // top of the still-open admin modal without its own history entry (see
+  // openBlogEditorPage()), so routing through the history-back/closeAll
+  // path would take the whole admin modal down with it instead of just
+  // returning to the blog list underneath.
+  els.adminBlogCancelBtn.addEventListener("click", closeBlogEditorPage);
+  els.blogEditorCloseBtn.addEventListener("click", closeBlogEditorPage);
 
   els.adminBlogTitleInput.addEventListener("input", function () {
     if (!blogSlugManuallyEdited) els.adminBlogSlugInput.value = slugify(els.adminBlogTitleInput.value);
@@ -6201,23 +6216,43 @@
     }).then(function (snap) { return snap.ref.getDownloadURL(); });
   }
 
-  els.adminBlogImageBtn.addEventListener("click", function () {
-    savedBlogSelectionRange = captureSelectionRange(els.adminBlogBodyInput);
-    els.adminBlogInlineImageInput.click();
+  // Clicking ANYTHING outside the contenteditable body (a toolbar button,
+  // the file input) collapses/moves the DOM selection before a click
+  // handler's own code gets a chance to read it -- capturing "where was
+  // the cursor" only at the moment of the click is already too late.
+  // Tracking it continuously via selectionchange instead means the image
+  // insert always has an accurate last-known caret position to restore,
+  // regardless of what stole focus in between. Falls back to inserting at
+  // the end of the body if nothing's been placed in it yet (e.g. the very
+  // first click is straight on the Image button before ever focusing body).
+  var lastBlogBodyRange = null;
+  document.addEventListener("selectionchange", function () {
+    if (els.blogEditorPage.hidden) return;
+    var sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    if (els.adminBlogBodyInput.contains(range.commonAncestorContainer)) {
+      lastBlogBodyRange = range.cloneRange();
+    }
   });
 
-  // Clicking a file input steals focus/selection from the contenteditable
-  // body -- the caret position has to be captured before that happens (see
-  // the click handler above) and restored here before inserting, or the
-  // image lands wherever focus happens to fall back to instead of where
-  // the admin was actually typing.
-  var savedBlogSelectionRange = null;
-  function captureSelectionRange(container) {
+  function restoreBlogBodySelection() {
+    els.adminBlogBodyInput.focus();
     var sel = window.getSelection();
-    if (!sel.rangeCount) return null;
-    var range = sel.getRangeAt(0);
-    return container.contains(range.commonAncestorContainer) ? range : null;
+    sel.removeAllRanges();
+    if (lastBlogBodyRange) {
+      sel.addRange(lastBlogBodyRange);
+    } else {
+      var range = document.createRange();
+      range.selectNodeContents(els.adminBlogBodyInput);
+      range.collapse(false);
+      sel.addRange(range);
+    }
   }
+
+  els.adminBlogImageBtn.addEventListener("click", function () {
+    els.adminBlogInlineImageInput.click();
+  });
 
   els.adminBlogInlineImageInput.addEventListener("change", function () {
     var file = els.adminBlogInlineImageInput.files[0];
@@ -6225,10 +6260,7 @@
     if (!file) return;
     els.adminBlogImageBtn.disabled = true;
     uploadBlogInlineImage(file).then(function (url) {
-      els.adminBlogBodyInput.focus();
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      if (savedBlogSelectionRange) sel.addRange(savedBlogSelectionRange);
+      restoreBlogBodySelection();
       document.execCommand("insertHTML", false, '<img src="' + url + '" alt="">');
     }).catch(function (err) {
       console.error("Inline image upload failed:", err);
@@ -6307,6 +6339,7 @@
       pendingBlogCoverBlob = null;
       return loadBlogPostsAdmin();
     }).then(function () {
+      closeBlogEditorPage();
       showAdminBlogList();
       els.adminBlogListStatus.textContent = status === "published" ? "Published." : "Draft saved.";
       els.adminBlogListStatus.className = "admin-status";
@@ -7424,7 +7457,8 @@
       !els.settingsModal.hidden ||
       !els.dmModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
-      !els.adminModal.hidden || !els.suggestEditModal.hidden || els.headerLinks.classList.contains("is-open");
+      !els.adminModal.hidden || !els.suggestEditModal.hidden || !els.blogEditorPage.hidden ||
+      els.headerLinks.classList.contains("is-open");
     if (anyOpen) dismissTopModal();
     if (!els.msgBoardPanel.hidden) closeMsgBoard();
   });

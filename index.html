@@ -680,45 +680,6 @@
         <div class="admin-entries-list" id="adminBlogList"></div>
       </div>
 
-      <form class="admin-form submit-form" id="adminBlogForm" hidden>
-        <h2 class="admin-form-title" id="adminBlogFormTitle">New Post</h2>
-        <input type="hidden" id="adminBlogPostId">
-
-        <label>Title<span class="submit-required">*</span>
-          <input type="text" id="adminBlogTitleInput" required>
-        </label>
-        <label>Slug (used in the post's URL)<span class="submit-required">*</span>
-          <input type="text" id="adminBlogSlugInput" pattern="[a-z0-9\-]+" required>
-        </label>
-        <label>Excerpt <span class="submit-optional">(shown on the listing page; auto-filled from the body if left blank)</span>
-          <textarea id="adminBlogExcerptInput" rows="2" maxlength="300"></textarea>
-        </label>
-        <label>Cover image <span class="submit-optional">(optional)</span>
-          <input type="file" id="adminBlogCoverInput" accept="image/*">
-        </label>
-        <img class="profile-photo-preview" id="adminBlogCoverPreview" alt="" hidden>
-
-        <label>Body<span class="submit-required">*</span></label>
-        <div class="blog-editor-toolbar" id="adminBlogToolbar">
-          <button type="button" data-cmd="bold" title="Bold"><strong>B</strong></button>
-          <button type="button" data-cmd="italic" title="Italic"><em>I</em></button>
-          <button type="button" data-cmd="formatBlock" data-arg="H2" title="Heading">H2</button>
-          <button type="button" data-cmd="formatBlock" data-arg="P" title="Paragraph">¶</button>
-          <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">&bull; List</button>
-          <button type="button" data-cmd="createLink" title="Link">Link</button>
-          <button type="button" id="adminBlogImageBtn" title="Insert image">Image</button>
-        </div>
-        <div class="blog-editor-body" id="adminBlogBodyInput" contenteditable="true"></div>
-        <input type="file" id="adminBlogInlineImageInput" accept="image/*" hidden>
-
-        <div class="admin-form-actions">
-          <button type="submit" class="submit-form-btn" id="adminBlogSaveDraftBtn" data-status="draft">Save Draft</button>
-          <button type="submit" class="submit-form-btn" id="adminBlogPublishBtn" data-status="published">Publish</button>
-          <button type="button" class="admin-row-btn" id="adminBlogCancelBtn">Cancel</button>
-        </div>
-        <p class="admin-status" id="adminBlogFormStatus" hidden></p>
-      </form>
-
       <div id="adminListView" hidden>
         <div class="admin-toolbar">
           <button type="button" class="admin-row-btn" id="adminBackBtn">&larr; Back</button>
@@ -1001,6 +962,56 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="blog-editor-page" id="blogEditorPage" hidden>
+  <div class="blog-editor-topbar">
+    <h2 class="blog-editor-topbar-title" id="adminBlogFormTitle">New Post</h2>
+    <div class="blog-editor-topbar-actions">
+      <button type="button" class="admin-row-btn" id="adminBlogCancelBtn">Cancel</button>
+      <button type="submit" form="adminBlogForm" class="submit-form-btn" id="adminBlogSaveDraftBtn" data-status="draft">Save Draft</button>
+      <button type="submit" form="adminBlogForm" class="submit-form-btn" id="adminBlogPublishBtn" data-status="published">Publish</button>
+      <button type="button" class="lightbox-close" id="blogEditorCloseBtn" aria-label="Close">&times;</button>
+    </div>
+  </div>
+  <form class="blog-editor-form" id="adminBlogForm">
+    <input type="hidden" id="adminBlogPostId">
+    <div class="blog-editor-meta">
+      <label class="blog-editor-title-field">
+        <span>Title<span class="submit-required">*</span></span>
+        <input type="text" id="adminBlogTitleInput" required placeholder="Post title">
+      </label>
+      <div class="blog-editor-meta-row">
+        <label>
+          <span>Slug (used in the post's URL)<span class="submit-required">*</span></span>
+          <input type="text" id="adminBlogSlugInput" pattern="[a-z0-9\-]+" required>
+        </label>
+        <label>
+          <span>Cover image <span class="submit-optional">(optional)</span></span>
+          <input type="file" id="adminBlogCoverInput" accept="image/*">
+        </label>
+      </div>
+      <img class="blog-editor-cover-preview" id="adminBlogCoverPreview" alt="" hidden>
+      <label>
+        <span>Excerpt <span class="submit-optional">(shown on the listing page; auto-filled from the body if left blank)</span></span>
+        <textarea id="adminBlogExcerptInput" rows="2" maxlength="300"></textarea>
+      </label>
+    </div>
+
+    <label class="blog-editor-body-label">Body<span class="submit-required">*</span></label>
+    <div class="blog-editor-toolbar" id="adminBlogToolbar">
+      <button type="button" data-cmd="bold" title="Bold"><strong>B</strong></button>
+      <button type="button" data-cmd="italic" title="Italic"><em>I</em></button>
+      <button type="button" data-cmd="formatBlock" data-arg="H2" title="Heading">H2</button>
+      <button type="button" data-cmd="formatBlock" data-arg="P" title="Paragraph">&para;</button>
+      <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">&bull; List</button>
+      <button type="button" data-cmd="createLink" title="Link">Link</button>
+      <button type="button" id="adminBlogImageBtn" title="Insert image here">+ Image</button>
+    </div>
+    <div class="blog-editor-body" id="adminBlogBodyInput" contenteditable="true"></div>
+    <input type="file" id="adminBlogInlineImageInput" accept="image/*" hidden>
+    <p class="admin-status" id="adminBlogFormStatus" hidden></p>
+  </form>
 </div>
 
 <div class="lightbox" id="suggestEditModal" hidden>

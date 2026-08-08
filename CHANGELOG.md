@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.26.1 — current
+- Blog post editor was cramped into a 560px lightbox with the whole form squeezed into a two-column grid -- rebuilt as its own full-viewport editor page (sticky top bar with Save Draft/Publish/Cancel, single wide column, a much larger body editor) instead.
+- Fixed inline image insertion so it actually lands where the cursor was, not just at the end -- was capturing the selection only at the moment the toolbar's Image button was clicked, which is already too late (clicking anything outside the contenteditable body moves the DOM selection first). Now tracks the last valid cursor position in the body continuously via `selectionchange`, so an image inserts exactly where you clicked before opening the file picker.
+
 ## v5.26.0 — current
 Self-hosted blog -- the first step toward dropping the Squarespace News feed entirely:
 - New `blogPosts` Firestore collection + Storage bucket for post images, same admin-write/public-read shape as the rest of the site.
