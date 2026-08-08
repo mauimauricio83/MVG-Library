@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.25.1 — current
+- `land.html` now has an "Enter Here →" button linking to the real site -- it's a thumbnail-source page first, but no reason it can't also work if someone actually clicks through it.
+
 ## v5.25.0 — current
 - Added `land.html`: a standalone, stylized title-card page (logo, "MUSIC VIDEO LIBRARY" in the header's own Archivo Black/yellow treatment, tagline, purple glow background) sized for a 16:9 screenshot -- not a real navigation entry point, just a personal-use thumbnail source. `noindex, follow`, no site chrome/nav.
 - Footer now has a "land" link on the far left mirroring the existing "cloud" easter-egg link on the far right (same rainbow letter-hop hover style) -- `.app-footer` restructured from centered text to a 3-column grid (land / version text / cloud) to fit both symmetrically.

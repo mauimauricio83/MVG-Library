@@ -90,6 +90,29 @@
     font-weight: 700;
   }
 
+  .enter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: clamp(4px, 1vh, 12px);
+    padding: 0.85em 2em;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+    letter-spacing: 0.03em;
+    box-shadow: 0 0 34px rgba(168, 85, 247, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .enter-btn:hover {
+    background: #bd7bfa;
+    box-shadow: 0 0 46px rgba(168, 85, 247, 0.65);
+    transform: translateY(-2px);
+  }
+
   .glow-ring {
     position: absolute;
     inset: 0;
@@ -104,6 +127,7 @@
     <h1 class="title">MUSIC VIDEO LIBRARY</h1>
     <p class="subtitle">Every music video, every credit, all in one place — searchable by director, artist, or song.</p>
     <p class="byline">by <strong>The Music Video Guy</strong></p>
+    <a class="enter-btn" href="index.html">Enter Here →</a>
   </main>
 </body>
 </html>
