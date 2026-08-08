@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 <style>
   :root {
     --bg: #121214;
@@ -56,41 +57,6 @@
   }
 
   a { color: var(--accent); }
-
-  header.top {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    max-width: 860px;
-    margin: 0 auto;
-  }
-
-  header.top img {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-  }
-
-  header.top .site-name {
-    font-family: "Archivo Black", sans-serif;
-    font-weight: 400;
-    font-size: 1rem;
-    color: var(--yellow);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  header.top .spacer { flex: 1 1 auto; }
-
-  header.top a.back {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    text-decoration: none;
-  }
-
-  header.top a.back:hover { color: var(--accent); }
 
   main {
     max-width: 860px;
@@ -253,22 +219,28 @@
   }
 
   .back-to-list:hover { color: var(--accent); }
+
+  /* Reuses styles.css's .shell/.app flex layout (sidebar + content side by
+     side on desktop) purely for that structural relationship -- this
+     page's own <main> already carries its own max-width/padding for the
+     article reading width, so .app's default padding would just double up. */
+  .app {
+    padding: 0;
+  }
 </style>
 </head>
 <body>
 
-<header class="top">
-  <a class="back" href="./" aria-label="MVG Library home" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
-    <img src="icons/icon-192.png" alt="">
-    <span class="site-name">MUSIC VIDEO LIBRARY</span>
-  </a>
-  <span class="spacer"></span>
-  <a class="back" href="./">&larr; Back to Library</a>
-</header>
+<div class="shell">
+<script src="site-nav.js"></script>
+<div class="app">
 
 <main id="blogMain">
   <div class="loading-state">Loading…</div>
 </main>
+
+</div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.27.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.28.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -272,6 +272,8 @@
     adminBlogCoverPreview: document.getElementById("adminBlogCoverPreview"),
     adminBlogToolbar: document.getElementById("adminBlogToolbar"),
     adminBlogBodyInput: document.getElementById("adminBlogBodyInput"),
+    adminBlogLinkBtn: document.getElementById("adminBlogLinkBtn"),
+    adminBlogUnlinkBtn: document.getElementById("adminBlogUnlinkBtn"),
     adminBlogImageBtn: document.getElementById("adminBlogImageBtn"),
     adminBlogInlineImageInput: document.getElementById("adminBlogInlineImageInput"),
     adminBlogSaveDraftBtn: document.getElementById("adminBlogSaveDraftBtn"),
@@ -6221,14 +6223,7 @@
     var btn = e.target.closest("button[data-cmd]");
     if (!btn) return;
     els.adminBlogBodyInput.focus();
-    var cmd = btn.getAttribute("data-cmd");
-    var arg = btn.getAttribute("data-arg") || null;
-    if (cmd === "createLink") {
-      var url = window.prompt("Link URL:", "https://");
-      if (!url) return;
-      arg = url;
-    }
-    document.execCommand(cmd, false, arg);
+    document.execCommand(btn.getAttribute("data-cmd"), false, btn.getAttribute("data-arg") || null);
   });
 
   function uploadBlogInlineImage(file) {
@@ -6272,6 +6267,59 @@
       sel.addRange(range);
     }
   }
+
+  // execCommand("createLink") silently no-ops when the selection is a
+  // single image (returns true, changes nothing -- confirmed empirically,
+  // not just a hunch) instead of throwing or doing something visibly wrong,
+  // which makes it an easy thing to ship broken without noticing. Detected
+  // the same way a browser represents "you clicked an image inside a
+  // contenteditable": a collapsed-length-1 range whose one selected child
+  // is that img. Wrapping/unwrapping it in <a> by hand sidesteps
+  // execCommand for that case entirely; plain text selections still go
+  // through execCommand as before, since that half already works fine.
+  function getSelectedImageNode() {
+    var sel = window.getSelection();
+    if (!sel.rangeCount || sel.isCollapsed) return null;
+    var range = sel.getRangeAt(0);
+    if (range.startContainer !== range.endContainer) return null;
+    if (range.endOffset - range.startOffset !== 1) return null;
+    var node = range.startContainer.childNodes[range.startOffset];
+    return (node && node.nodeType === 1 && node.tagName === "IMG") ? node : null;
+  }
+
+  function wrapImageInLink(img, url) {
+    var existingAnchor = img.closest("a");
+    if (existingAnchor) {
+      existingAnchor.setAttribute("href", url);
+      return;
+    }
+    var a = document.createElement("a");
+    a.href = url;
+    img.parentNode.insertBefore(a, img);
+    a.appendChild(img);
+  }
+
+  function unwrapImageLink(img) {
+    var existingAnchor = img.closest("a");
+    if (!existingAnchor || !existingAnchor.parentNode) return;
+    existingAnchor.parentNode.insertBefore(img, existingAnchor);
+    existingAnchor.parentNode.removeChild(existingAnchor);
+  }
+
+  els.adminBlogLinkBtn.addEventListener("click", function () {
+    restoreBlogBodySelection();
+    var img = getSelectedImageNode();
+    var url = window.prompt("Link URL:", "https://");
+    if (!url) return;
+    if (img) wrapImageInLink(img, url); else document.execCommand("createLink", false, url);
+  });
+
+  els.adminBlogUnlinkBtn.addEventListener("click", function () {
+    restoreBlogBodySelection();
+    var img = getSelectedImageNode();
+    if (img) { unwrapImageLink(img); return; }
+    document.execCommand("unlink", false, null);
+  });
 
   els.adminBlogImageBtn.addEventListener("click", function () {
     els.adminBlogInlineImageInput.click();

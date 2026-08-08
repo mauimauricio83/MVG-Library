@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.28.0 — current
+- `blog.html` and `support.html` now get the same header + sidebar as the main app, via a new shared `site-nav.js` (not the whole `app.js` -- these stay lightweight static pages, internal nav items just link back to `index.html` since there's no app state here to drive them; Submit still deep-links to `index.html#submit`, which already opens the modal). Caught and fixed a real layout bug while building it: the sidebar has to sit *inside* `.shell` alongside `.app`, not before it -- getting that nesting wrong silently pushed all page content ~950px down the page instead of beside the sidebar.
+- Blog editor: added paragraph alignment (left/center/right).
+- Blog editor: the Link button now actually works on a selected image, not just text -- `execCommand("createLink")` was silently no-oping on images (returns success, changes nothing), so an image link is now wrapped/unwrapped by hand. Added a matching Unlink button. Drag-to-reposition images within the body already worked natively (`contenteditable` images are draggable by default) -- nothing to build there.
+
 ## v5.27.0 — current
 - Blog editor: rounded out the formatting toolbar -- Undo/Redo, Underline, Strikethrough, H1/H3 (H2 already existed), Numbered list, and Blockquote, alongside the existing Bold/Italic/H2/bulleted-list/Link/Image. Grouped into clusters with subtle dividers now that it's 15 buttons instead of 7. Public post pages (`blog.html`) got matching styles for all of it.
 - Blog editor: Author and Date are now real editable fields (next to Slug/Cover), not just whatever the signed-in admin's account name happens to be and whenever Save was clicked -- lets a post be credited to someone else or backdated/postdated (e.g. importing older writeups). Date defaults to today for a new post, or the post's existing date when editing.
