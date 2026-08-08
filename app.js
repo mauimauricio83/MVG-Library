@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.25.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.26.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -252,6 +252,28 @@
     adminVerificationsStatus: document.getElementById("adminVerificationsStatus"),
     adminVerificationsList: document.getElementById("adminVerificationsList"),
     sidebarProfilesBadge: document.getElementById("sidebarProfilesBadge"),
+    adminGoBlogBtn: document.getElementById("adminGoBlogBtn"),
+    adminBlogListView: document.getElementById("adminBlogListView"),
+    adminBlogBackBtn: document.getElementById("adminBlogBackBtn"),
+    adminBlogNewBtn: document.getElementById("adminBlogNewBtn"),
+    adminBlogListStatus: document.getElementById("adminBlogListStatus"),
+    adminBlogList: document.getElementById("adminBlogList"),
+    adminBlogForm: document.getElementById("adminBlogForm"),
+    adminBlogFormTitle: document.getElementById("adminBlogFormTitle"),
+    adminBlogPostId: document.getElementById("adminBlogPostId"),
+    adminBlogTitleInput: document.getElementById("adminBlogTitleInput"),
+    adminBlogSlugInput: document.getElementById("adminBlogSlugInput"),
+    adminBlogExcerptInput: document.getElementById("adminBlogExcerptInput"),
+    adminBlogCoverInput: document.getElementById("adminBlogCoverInput"),
+    adminBlogCoverPreview: document.getElementById("adminBlogCoverPreview"),
+    adminBlogToolbar: document.getElementById("adminBlogToolbar"),
+    adminBlogBodyInput: document.getElementById("adminBlogBodyInput"),
+    adminBlogImageBtn: document.getElementById("adminBlogImageBtn"),
+    adminBlogInlineImageInput: document.getElementById("adminBlogInlineImageInput"),
+    adminBlogSaveDraftBtn: document.getElementById("adminBlogSaveDraftBtn"),
+    adminBlogPublishBtn: document.getElementById("adminBlogPublishBtn"),
+    adminBlogCancelBtn: document.getElementById("adminBlogCancelBtn"),
+    adminBlogFormStatus: document.getElementById("adminBlogFormStatus"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -2330,13 +2352,13 @@
   // Downscales to at most 400px on the long edge before upload -- keeps
   // storage/bandwidth cheap without needing a server-side image pipeline
   // (matches the "keep it cheap" approach the snapshot gzip already takes).
-  function resizeImageFile(file) {
+  function resizeImageFile(file, maxSide) {
+    maxSide = maxSide || 400;
     return new Promise(function (resolve, reject) {
       var img = new Image();
       var url = URL.createObjectURL(file);
       img.onload = function () {
         URL.revokeObjectURL(url);
-        var maxSide = 400;
         var scale = Math.min(1, maxSide / Math.max(img.width, img.height));
         var w = Math.round(img.width * scale);
         var h = Math.round(img.height * scale);
@@ -5802,7 +5824,31 @@
     els.adminListView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminBlogForm.hidden = true;
     els.adminLandingView.hidden = false;
+  }
+
+  function showAdminBlogList() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogForm.hidden = true;
+    els.adminBlogListView.hidden = false;
+  }
+
+  function showAdminBlogForm() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminBlogForm.hidden = false;
   }
 
   function showAdminSuggestions() {
@@ -5994,6 +6040,285 @@
       els.adminVerificationsStatus.textContent = "That didn't go through: " + err.message;
       els.adminVerificationsStatus.className = "admin-status is-error";
       els.adminVerificationsStatus.hidden = false;
+    });
+  });
+
+  // ---- Blog Posts (admin editor) -----------------------------------------
+  // Self-hosted replacement for the Squarespace-fed News feed -- see
+  // blog.html for the public listing/post pages this content actually
+  // shows up on. A post's own document ID is pre-generated client-side
+  // (db.collection().doc().id, no write) as soon as the editor opens for a
+  // NEW post, so image uploads have a real postId to key off of (see
+  // uploadBlogInlineImage()) even before the post itself is first saved.
+  function slugify(text) {
+    return String(text || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
+  }
+
+  var blogPostsCache = [];
+  var pendingBlogCoverBlob = null;
+  var blogSlugManuallyEdited = false;
+
+  function goAdminBlog() {
+    showAdminBlogList();
+    return loadBlogPostsAdmin();
+  }
+
+  function loadBlogPostsAdmin() {
+    els.adminBlogListStatus.textContent = "Loading…";
+    els.adminBlogListStatus.className = "admin-status";
+    els.adminBlogListStatus.hidden = false;
+    els.adminBlogList.innerHTML = "";
+    return db.collection("blogPosts").get().then(function (snap) {
+      blogPostsCache = snap.docs.map(function (doc) {
+        var d = doc.data();
+        d.id = doc.id;
+        return d;
+      }).sort(function (a, b) {
+        var ta = a.updatedAt || a.createdAt, tb = b.updatedAt || b.createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      renderAdminBlogList();
+      els.adminBlogListStatus.hidden = true;
+    }).catch(function (err) {
+      console.error("Loading blog posts failed:", err);
+      els.adminBlogListStatus.textContent = "Couldn't load posts: " + err.message;
+      els.adminBlogListStatus.className = "admin-status is-error";
+    });
+  }
+
+  function renderAdminBlogList() {
+    if (!blogPostsCache.length) {
+      els.adminBlogList.innerHTML = '<p class="admin-empty">No posts yet.</p>';
+      return;
+    }
+    els.adminBlogList.innerHTML = blogPostsCache.map(function (p) {
+      var badge = p.status === "published"
+        ? '<span class="admin-badge">Published</span>'
+        : '<span class="admin-badge admin-badge-backdoor">Draft</span>';
+      return (
+        '<div class="admin-row" data-postid="' + escapeHtml(p.id) + '">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(p.title || "(untitled)") + "</div>" +
+            '<div class="admin-row-sub">/' + escapeHtml(p.slug || "") + " " + badge + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-blog-action="edit" data-id="' + escapeHtml(p.id) + '">Edit</button>' +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-blog-action="delete" data-id="' + escapeHtml(p.id) + '">Delete</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function resetBlogCoverPreview() {
+    pendingBlogCoverBlob = null;
+    els.adminBlogCoverPreview.hidden = true;
+    els.adminBlogCoverPreview.removeAttribute("src");
+    els.adminBlogCoverInput.value = "";
+  }
+
+  function openBlogEditor(post) {
+    blogSlugManuallyEdited = !!post;
+    els.adminBlogFormTitle.textContent = post ? "Edit Post" : "New Post";
+    els.adminBlogPostId.value = post ? post.id : db.collection("blogPosts").doc().id;
+    els.adminBlogTitleInput.value = post ? (post.title || "") : "";
+    els.adminBlogSlugInput.value = post ? (post.slug || "") : "";
+    els.adminBlogExcerptInput.value = post ? (post.excerpt || "") : "";
+    els.adminBlogBodyInput.innerHTML = post ? (post.body || "") : "";
+    resetBlogCoverPreview();
+    if (post && post.coverImageURL) {
+      els.adminBlogCoverPreview.src = post.coverImageURL;
+      els.adminBlogCoverPreview.hidden = false;
+    }
+    els.adminBlogFormStatus.hidden = true;
+    els.adminBlogSaveDraftBtn.disabled = false;
+    els.adminBlogPublishBtn.disabled = false;
+    showAdminBlogForm();
+  }
+
+  els.adminGoBlogBtn.addEventListener("click", goAdminBlog);
+  els.adminBlogBackBtn.addEventListener("click", showAdminLanding);
+  els.adminBlogNewBtn.addEventListener("click", function () { openBlogEditor(null); });
+  els.adminBlogCancelBtn.addEventListener("click", showAdminBlogList);
+
+  els.adminBlogTitleInput.addEventListener("input", function () {
+    if (!blogSlugManuallyEdited) els.adminBlogSlugInput.value = slugify(els.adminBlogTitleInput.value);
+  });
+  els.adminBlogSlugInput.addEventListener("input", function () { blogSlugManuallyEdited = true; });
+
+  els.adminBlogList.addEventListener("click", function (e) {
+    var editBtn = e.target.closest('[data-blog-action="edit"]');
+    if (editBtn) {
+      var post = blogPostsCache.filter(function (p) { return p.id === editBtn.getAttribute("data-id"); })[0];
+      if (post) openBlogEditor(post);
+      return;
+    }
+    var deleteBtn = e.target.closest('[data-blog-action="delete"]');
+    if (deleteBtn) {
+      var id = deleteBtn.getAttribute("data-id");
+      var toDelete = blogPostsCache.filter(function (p) { return p.id === id; })[0];
+      if (!window.confirm('Delete "' + (toDelete ? toDelete.title : "this post") + '"? This can\'t be undone.')) return;
+      db.collection("blogPosts").doc(id).delete().then(function () {
+        return loadBlogPostsAdmin();
+      }).catch(function (err) {
+        console.error("Deleting post failed:", err);
+        els.adminBlogListStatus.textContent = "Delete failed: " + err.message;
+        els.adminBlogListStatus.className = "admin-status is-error";
+        els.adminBlogListStatus.hidden = false;
+      });
+    }
+  });
+
+  // ---- WYSIWYG toolbar ---------------------------------------------------
+  // document.execCommand is deprecated but still broadly functional for
+  // this exact use case (basic rich text) across evergreen browsers -- the
+  // pragmatic choice for a no-build-step vanilla-JS admin tool over pulling
+  // in a whole editor library for four formatting commands.
+  els.adminBlogToolbar.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-cmd]");
+    if (!btn) return;
+    els.adminBlogBodyInput.focus();
+    var cmd = btn.getAttribute("data-cmd");
+    var arg = btn.getAttribute("data-arg") || null;
+    if (cmd === "createLink") {
+      var url = window.prompt("Link URL:", "https://");
+      if (!url) return;
+      arg = url;
+    }
+    document.execCommand(cmd, false, arg);
+  });
+
+  function uploadBlogInlineImage(file) {
+    var postId = els.adminBlogPostId.value;
+    return resizeImageFile(file, 1600).then(function (blob) {
+      var path = "blog-images/" + postId + "/" + Date.now() + ".jpg";
+      return firebase.storage().ref(path).put(blob, { contentType: "image/jpeg" });
+    }).then(function (snap) { return snap.ref.getDownloadURL(); });
+  }
+
+  els.adminBlogImageBtn.addEventListener("click", function () {
+    savedBlogSelectionRange = captureSelectionRange(els.adminBlogBodyInput);
+    els.adminBlogInlineImageInput.click();
+  });
+
+  // Clicking a file input steals focus/selection from the contenteditable
+  // body -- the caret position has to be captured before that happens (see
+  // the click handler above) and restored here before inserting, or the
+  // image lands wherever focus happens to fall back to instead of where
+  // the admin was actually typing.
+  var savedBlogSelectionRange = null;
+  function captureSelectionRange(container) {
+    var sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    var range = sel.getRangeAt(0);
+    return container.contains(range.commonAncestorContainer) ? range : null;
+  }
+
+  els.adminBlogInlineImageInput.addEventListener("change", function () {
+    var file = els.adminBlogInlineImageInput.files[0];
+    els.adminBlogInlineImageInput.value = "";
+    if (!file) return;
+    els.adminBlogImageBtn.disabled = true;
+    uploadBlogInlineImage(file).then(function (url) {
+      els.adminBlogBodyInput.focus();
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      if (savedBlogSelectionRange) sel.addRange(savedBlogSelectionRange);
+      document.execCommand("insertHTML", false, '<img src="' + url + '" alt="">');
+    }).catch(function (err) {
+      console.error("Inline image upload failed:", err);
+      alert("Couldn't upload that image -- please try again.");
+    }).finally(function () {
+      els.adminBlogImageBtn.disabled = false;
+    });
+  });
+
+  els.adminBlogCoverInput.addEventListener("change", function () {
+    var file = els.adminBlogCoverInput.files[0];
+    if (!file) return;
+    resizeImageFile(file, 1600).then(function (blob) {
+      pendingBlogCoverBlob = blob;
+      els.adminBlogCoverPreview.src = URL.createObjectURL(blob);
+      els.adminBlogCoverPreview.hidden = false;
+    }).catch(function (err) {
+      console.error("Cover image resize failed:", err);
+      els.adminBlogFormStatus.textContent = "Couldn't read that image -- try a different file.";
+      els.adminBlogFormStatus.className = "admin-status is-error";
+      els.adminBlogFormStatus.hidden = false;
+    });
+  });
+
+  // Plain text preview of the body, used only as the excerpt fallback when
+  // the admin leaves that field blank -- strips tags via a detached
+  // element rather than a regex (regex-stripping HTML is never reliable).
+  function plainTextExcerpt(html, maxLen) {
+    var div = document.createElement("div");
+    div.innerHTML = html;
+    var text = (div.textContent || "").replace(/\s+/g, " ").trim();
+    return text.length > maxLen ? text.slice(0, maxLen).trim() + "…" : text;
+  }
+
+  els.adminBlogForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var status = (e.submitter && e.submitter.getAttribute("data-status")) || "draft";
+    var title = els.adminBlogTitleInput.value.trim();
+    var slug = slugify(els.adminBlogSlugInput.value);
+    var bodyHtml = els.adminBlogBodyInput.innerHTML.trim();
+    if (!title || !slug || !bodyHtml) {
+      els.adminBlogFormStatus.textContent = "Title, slug, and body are all required.";
+      els.adminBlogFormStatus.className = "admin-status is-error";
+      els.adminBlogFormStatus.hidden = false;
+      return;
+    }
+    els.adminBlogSlugInput.value = slug;
+
+    var postId = els.adminBlogPostId.value;
+    var isNew = !blogPostsCache.some(function (p) { return p.id === postId; });
+    els.adminBlogSaveDraftBtn.disabled = true;
+    els.adminBlogPublishBtn.disabled = true;
+    els.adminBlogFormStatus.hidden = true;
+
+    var coverUploadPromise = pendingBlogCoverBlob
+      ? firebase.storage().ref("blog-images/" + postId + "/cover.jpg").put(pendingBlogCoverBlob, { contentType: "image/jpeg" })
+          .then(function (snap) { return snap.ref.getDownloadURL(); })
+      : Promise.resolve(els.adminBlogCoverPreview.hidden ? "" : els.adminBlogCoverPreview.src);
+
+    coverUploadPromise.then(function (coverURL) {
+      var wasPublished = !isNew && blogPostsCache.filter(function (p) { return p.id === postId; })[0].status === "published";
+      var patch = {
+        title: title,
+        slug: slug,
+        body: bodyHtml,
+        excerpt: els.adminBlogExcerptInput.value.trim() || plainTextExcerpt(bodyHtml, 200),
+        coverImageURL: coverURL || "",
+        authorName: currentUser.displayName || currentUser.email || "The Music Video Guy",
+        status: status,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (isNew) patch.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      if (status === "published" && !wasPublished) patch.publishedAt = firebase.firestore.FieldValue.serverTimestamp();
+      return db.collection("blogPosts").doc(postId).set(patch, { merge: true });
+    }).then(function () {
+      pendingBlogCoverBlob = null;
+      return loadBlogPostsAdmin();
+    }).then(function () {
+      showAdminBlogList();
+      els.adminBlogListStatus.textContent = status === "published" ? "Published." : "Draft saved.";
+      els.adminBlogListStatus.className = "admin-status";
+      els.adminBlogListStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Saving blog post failed:", err);
+      els.adminBlogFormStatus.textContent = "Couldn't save: " + err.message;
+      els.adminBlogFormStatus.className = "admin-status is-error";
+      els.adminBlogFormStatus.hidden = false;
+    }).finally(function () {
+      els.adminBlogSaveDraftBtn.disabled = false;
+      els.adminBlogPublishBtn.disabled = false;
     });
   });
 

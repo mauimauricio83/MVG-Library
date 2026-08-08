@@ -2,6 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.26.0 — current
+Self-hosted blog -- the first step toward dropping the Squarespace News feed entirely:
+- New `blogPosts` Firestore collection + Storage bucket for post images, same admin-write/public-read shape as the rest of the site.
+- Admin panel gets a "Blog Posts" section: a list view (draft/published badges) and an editor with title/slug (auto-generated, editable)/excerpt/cover image, and a WYSIWYG body (Bold/Italic/Heading/Link/bulleted list/inline image upload) built on `contenteditable` + `execCommand` -- no editor library, matching the no-build-step site.
+- New `blog.html`: a public listing page and individual post pages at `blog.html?post=<slug>` -- real, bookmarkable, shareable per-post URLs, which is the actual fix for "can't link to individual posts." Static pre-rendering (mirroring the existing SEO hub-page generator) is a planned fast-follow for crawlability, not required for the editor/publish flow to work.
+- New "Blog" link in the header nav, separate from the existing (Squarespace-sourced) "News" link -- nothing about the homepage News sidebar or the News link changes yet; this runs in parallel until there's enough content to cut over.
+
+**Needs the same manual step as v5.24.0**: `blogPosts` rules + `blog-images` Storage rules are written but not deployed (`firebase deploy --only firestore:rules,storage:rules`). Until then, the admin editor and public blog pages both fail closed with a handled `permission-denied`.
+
 ## v5.25.1 — current
 - `land.html` now has an "Enter Here →" button linking to the real site -- it's a thumbnail-source page first, but no reason it can't also work if someone actually clicks through it.
 

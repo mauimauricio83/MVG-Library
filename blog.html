@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
+<title>Blog — MVG Library</title>
+<meta id="metaDescription" name="description" content="News, notes, and features from The Music Video Guy.">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121214;
+    --surface: #1b1b1e;
+    --border: #2c2c30;
+    --text: #f1f1f2;
+    --text-muted: #a5a5ad;
+    --text-faint: #77777f;
+    --accent: #a855f7;
+    --accent-soft: #2a1150;
+    --yellow: #f5e300;
+    --radius: 10px;
+  }
+  :root[data-theme="light"] {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --text-muted: #6b6b73;
+    --text-faint: #9a9aa2;
+    --accent: #4a0d8f;
+    --accent-soft: #efe4fb;
+    --yellow: #a68900;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  a { color: var(--accent); }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  header.top img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+  }
+
+  header.top .site-name {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--yellow);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  header.top .spacer { flex: 1 1 auto; }
+
+  header.top a.back {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  header.top a.back:hover { color: var(--accent); }
+
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  .page-title {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: var(--yellow);
+    margin: 0 0 8px;
+  }
+
+  .page-intro {
+    color: var(--text-muted);
+    margin: 0 0 32px;
+    max-width: 60ch;
+  }
+
+  .post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+  }
+
+  .post-card {
+    display: block;
+    text-decoration: none;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+
+  .post-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+
+  .post-card-cover {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: var(--accent-soft);
+  }
+
+  .post-card-body {
+    padding: 14px 16px;
+  }
+
+  .post-card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0 0 6px;
+  }
+
+  .post-card-excerpt {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post-card-date {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+
+  .empty-state, .loading-state {
+    color: var(--text-faint);
+    padding: 40px 0;
+    text-align: center;
+  }
+
+  /* Single-post view */
+  .post-title {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+    color: var(--yellow);
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+
+  .post-meta {
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    margin: 0 0 24px;
+  }
+
+  .post-cover {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    border-radius: var(--radius);
+    margin: 0 0 24px;
+    background: var(--accent-soft);
+  }
+
+  .post-body {
+    font-size: 1.02rem;
+  }
+
+  .post-body img {
+    max-width: 100%;
+    border-radius: 8px;
+    display: block;
+    margin: 18px 0;
+  }
+
+  .post-body h2 {
+    font-size: 1.3rem;
+    margin: 1.2em 0 0.4em;
+  }
+
+  .post-body p {
+    margin: 0 0 1em;
+  }
+
+  .post-body a { text-decoration: underline; }
+
+  .back-to-list {
+    display: inline-block;
+    margin-top: 32px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .back-to-list:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="back" href="./" aria-label="MVG Library home" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+    <img src="icons/icon-192.png" alt="">
+    <span class="site-name">MUSIC VIDEO LIBRARY</span>
+  </a>
+  <span class="spacer"></span>
+  <a class="back" href="./">&larr; Back to Library</a>
+</header>
+
+<main id="blogMain">
+  <div class="loading-state">Loading…</div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyAStHfrJ9NwLfaIclL9ODHFchxMm5MBlMw",
+    authDomain: "mvg-library.firebaseapp.com",
+    projectId: "mvg-library",
+    storageBucket: "mvg-library.firebasestorage.app",
+    messagingSenderId: "231351803618",
+    appId: "1:231351803618:web:abc5015bccc8361296c8bb",
+    measurementId: "G-GS1TQ1CXRZ"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var main = document.getElementById("blogMain");
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function formatDate(ts) {
+    if (!ts || !ts.toDate) return "";
+    return ts.toDate().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  }
+
+  function postCardHtml(p) {
+    var cover = p.coverImageURL
+      ? '<img class="post-card-cover" src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
+      : '<div class="post-card-cover"></div>';
+    return '<a class="post-card" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+      cover +
+      '<div class="post-card-body">' +
+        '<h2 class="post-card-title">' + escapeHtml(p.title || "(untitled)") + "</h2>" +
+        (p.excerpt ? '<p class="post-card-excerpt">' + escapeHtml(p.excerpt) + "</p>" : "") +
+        '<div class="post-card-date">' + escapeHtml(formatDate(p.publishedAt || p.createdAt)) + "</div>" +
+      "</div>" +
+    "</a>";
+  }
+
+  function renderListing() {
+    document.title = "Blog — MVG Library";
+    main.innerHTML =
+      '<h1 class="page-title">Blog</h1>' +
+      '<p class="page-intro">News, notes, and features from The Music Video Guy.</p>' +
+      '<div class="loading-state">Loading posts…</div>';
+
+    db.collection("blogPosts").where("status", "==", "published").get().then(function (snap) {
+      var posts = snap.docs.map(function (doc) { return doc.data(); });
+      posts.sort(function (a, b) {
+        var ta = a.publishedAt || a.createdAt, tb = b.publishedAt || b.createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      var body = document.querySelector(".loading-state");
+      if (!posts.length) {
+        body.outerHTML = '<p class="empty-state">No posts yet — check back soon.</p>';
+        return;
+      }
+      body.outerHTML = '<div class="post-grid">' + posts.map(postCardHtml).join("") + "</div>";
+    }).catch(function (err) {
+      console.error("Loading posts failed:", err);
+      var body = document.querySelector(".loading-state");
+      if (body) body.textContent = "Couldn't load posts right now.";
+    });
+  }
+
+  function renderPost(slug) {
+    main.innerHTML = '<div class="loading-state">Loading…</div>';
+    db.collection("blogPosts").where("slug", "==", slug).where("status", "==", "published").limit(1).get().then(function (snap) {
+      if (snap.empty) {
+        main.innerHTML = '<p class="empty-state">That post doesn\'t exist (or isn\'t published).</p>' +
+          '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>';
+        return;
+      }
+      var p = snap.docs[0].data();
+      document.title = (p.title || "Post") + " — MVG Library Blog";
+      var descMeta = document.getElementById("metaDescription");
+      if (descMeta && p.excerpt) descMeta.setAttribute("content", p.excerpt);
+
+      var cover = p.coverImageURL ? '<img class="post-cover" src="' + escapeHtml(p.coverImageURL) + '" alt="">' : "";
+      main.innerHTML =
+        cover +
+        '<h1 class="post-title">' + escapeHtml(p.title || "(untitled)") + "</h1>" +
+        '<p class="post-meta">' + escapeHtml(p.authorName || "The Music Video Guy") +
+          (p.publishedAt ? " · " + escapeHtml(formatDate(p.publishedAt)) : "") + "</p>" +
+        '<div class="post-body">' + (p.body || "") + "</div>" +
+        '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>';
+    }).catch(function (err) {
+      console.error("Loading post failed:", err);
+      main.innerHTML = '<p class="empty-state">Couldn\'t load that post right now.</p>';
+    });
+  }
+
+  var slug = new URLSearchParams(location.search).get("post");
+  if (slug) renderPost(slug); else renderListing();
+})();
+</script>
+</body>
+</html>

@@ -23,5 +23,17 @@ service firebase.storage {
         request.resource.size < 2 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');
     }
+
+    // Blog post images (cover + inline body images, see the admin editor's
+    // image-upload toolbar button in app.js) -- admin-only write, same 5MB
+    // backstop pattern as the others, larger cap than profile photos since
+    // these render at full article width rather than a small avatar.
+    match /blog-images/{postId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
   }
 }

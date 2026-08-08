@@ -281,6 +281,18 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Self-hosted blog (replacing the Squarespace-fed News feed over time --
+    // see blog.html / the admin panel's Blog Posts view in app.js). Public
+    // can read published posts (a list query already filtered to
+    // status=="published" is what makes the OR below safe for both get and
+    // list); admins can read/write everything including drafts.
+    match /blogPosts/{id} {
+      allow read: if resource.data.status == "published" ||
+        (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Moderation flags for the message board. Readable by anyone so a
     // muted/banned visitor's own client can show why posting is blocked
     // (enforcement itself happens server-side via the /messages rule above,
