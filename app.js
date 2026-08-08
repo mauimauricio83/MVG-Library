@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.28.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.29.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -275,6 +275,7 @@
     adminBlogLinkBtn: document.getElementById("adminBlogLinkBtn"),
     adminBlogUnlinkBtn: document.getElementById("adminBlogUnlinkBtn"),
     adminBlogImageBtn: document.getElementById("adminBlogImageBtn"),
+    adminBlogVideoBtn: document.getElementById("adminBlogVideoBtn"),
     adminBlogInlineImageInput: document.getElementById("adminBlogInlineImageInput"),
     adminBlogSaveDraftBtn: document.getElementById("adminBlogSaveDraftBtn"),
     adminBlogPublishBtn: document.getElementById("adminBlogPublishBtn"),
@@ -6323,6 +6324,30 @@
 
   els.adminBlogImageBtn.addEventListener("click", function () {
     els.adminBlogInlineImageInput.click();
+  });
+
+  // contenteditable="false" on the wrapper makes it an atomic "island" --
+  // selectable and deletable as one unit, same as how the browser already
+  // treats an <img>, but you can't click inside and start typing into the
+  // iframe. Reuses extractYouTubeId()/extractVimeoId() (see getRowVideoRef()
+  // above), the same parsing the catalog's own video fields go through.
+  els.adminBlogVideoBtn.addEventListener("click", function () {
+    var url = window.prompt("YouTube or Vimeo video URL:", "https://");
+    if (!url) return;
+    var ytId = extractYouTubeId(url);
+    var vimeoId = !ytId ? extractVimeoId(url) : null;
+    var src = ytId
+      ? "https://www.youtube.com/embed/" + ytId
+      : vimeoId
+        ? "https://player.vimeo.com/video/" + vimeoId
+        : null;
+    if (!src) {
+      alert("Couldn't recognize that as a YouTube or Vimeo link.");
+      return;
+    }
+    restoreBlogBodySelection();
+    document.execCommand("insertHTML", false,
+      '<div class="blog-video-embed" contenteditable="false"><iframe src="' + src + '" title="Embedded video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>');
   });
 
   els.adminBlogInlineImageInput.addEventListener("change", function () {

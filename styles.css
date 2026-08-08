@@ -4709,7 +4709,18 @@ body.is-searching #discoverSection {
 }
 
 .blog-editor-body {
-  flex: 1 1 auto;
+  /* flex: none (not the default flex:0 1 auto, and definitely not
+     flex:1 1 auto) -- .blog-editor-form (its parent) is a flex:1 1 auto,
+     overflow-y:auto column, and per the flex spec, an overflow:auto flex
+     item's OWN automatic minimum size collapses to 0 (not content-based).
+     With any flex-shrink still active, that let the browser size this box
+     down to exactly min-height regardless of how much content it actually
+     held, silently spilling the rest past its own border instead of
+     growing or scrolling -- exactly what made images/text render "outside
+     the box" during editing. flex:none opts this item out of the flex
+     distribution algorithm entirely, sizing it purely by its own
+     min-height + content like a normal block box. */
+  flex: none;
   min-height: 420px;
   padding: 16px 18px;
   border: 1px solid var(--border);
@@ -4730,6 +4741,24 @@ body.is-searching #discoverSection {
   border-radius: 6px;
   display: block;
   margin: 14px 0;
+}
+
+.blog-video-embed {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  margin: 14px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+}
+
+.blog-video-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .blog-editor-body h1 {

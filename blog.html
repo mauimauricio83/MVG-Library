@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>
 <style>
   :root {
     --bg: #121214;
@@ -175,6 +176,24 @@
     margin: 18px 0;
   }
 
+  .post-body .blog-video-embed {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%;
+    margin: 18px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .post-body .blog-video-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
   .post-body h1 {
     font-size: 1.7rem;
     margin: 1.2em 0 0.4em;
@@ -220,6 +239,75 @@
 
   .back-to-list:hover { color: var(--accent); }
 
+  /* Widened only for the single-post view (see renderPost() below), which
+     needs room for the article + sidebar side by side -- the listing grid
+     stays at the narrower default width, it doesn't need it. */
+  main.has-sidebar {
+    max-width: 1140px;
+  }
+
+  .post-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  .post-sidebar {
+    position: sticky;
+    top: 20px;
+  }
+
+  .post-sidebar-title {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: 0.95rem;
+    color: var(--yellow);
+    margin: 0 0 14px;
+  }
+
+  .post-sidebar-item {
+    display: flex;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .post-sidebar-item img {
+    width: 84px;
+    height: 47px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex: 0 0 auto;
+    background: var(--accent-soft);
+  }
+
+  .post-sidebar-item-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .post-sidebar-item:hover .post-sidebar-item-title {
+    color: var(--accent);
+  }
+
+  .post-sidebar-empty {
+    color: var(--text-faint);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 720px) {
+    .post-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .post-sidebar {
+      position: static;
+    }
+  }
+
   /* Reuses styles.css's .shell/.app flex layout (sidebar + content side by
      side on desktop) purely for that structural relationship -- this
      page's own <main> already carries its own max-width/padding for the
@@ -238,6 +326,12 @@
 <main id="blogMain">
   <div class="loading-state">Loading…</div>
 </main>
+
+<div class="ad-placeholder" style="max-width:860px;margin:0 auto 40px;padding:0 20px;">
+  <a href="https://hisong.io/MUSICVIDEOGUY5" target="_blank" rel="noopener noreferrer">
+    <img class="ad-image" src="https://images.squarespace-cdn.com/content/6280a1062dd56f7434ce1d85/205146cf-b9ae-4b31-874b-0bf0975d1b93/promocode.png?content-type=image%2Fpng" alt="Promo code — use code MUSICVIDEOGUY5">
+  </a>
+</div>
 
 </div>
 </div>
@@ -286,8 +380,42 @@
     "</a>";
   }
 
+  function sidebarItemHtml(p) {
+    var cover = p.coverImageURL
+      ? '<img src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
+      : '<img src="" alt="" loading="lazy" style="visibility:hidden">';
+    return '<a class="post-sidebar-item" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+      cover +
+      '<span class="post-sidebar-item-title">' + escapeHtml(p.title || "(untitled)") + "</span>" +
+    "</a>";
+  }
+
+  function renderPostSidebar(excludeSlug) {
+    var el = document.getElementById("postSidebarList");
+    if (!el) return;
+    db.collection("blogPosts").where("status", "==", "published").get().then(function (snap) {
+      var el2 = document.getElementById("postSidebarList");
+      if (!el2) return; // navigated away while this was loading
+      var posts = snap.docs.map(function (doc) { return doc.data(); })
+        .filter(function (p) { return p.slug !== excludeSlug; });
+      posts.sort(function (a, b) {
+        var ta = a.publishedAt || a.createdAt, tb = b.publishedAt || b.createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      posts = posts.slice(0, 6);
+      el2.innerHTML = posts.length
+        ? posts.map(sidebarItemHtml).join("")
+        : '<p class="post-sidebar-empty">No other posts yet.</p>';
+    }).catch(function (err) {
+      console.error("Loading sidebar posts failed:", err);
+      var el3 = document.getElementById("postSidebarList");
+      if (el3) el3.innerHTML = "";
+    });
+  }
+
   function renderListing() {
     document.title = "Blog — MVG Library";
+    main.classList.remove("has-sidebar");
     main.innerHTML =
       '<h1 class="page-title">Blog</h1>' +
       '<p class="page-intro">News, notes, and features from The Music Video Guy.</p>' +
@@ -313,6 +441,7 @@
   }
 
   function renderPost(slug) {
+    main.classList.remove("has-sidebar");
     main.innerHTML = '<div class="loading-state">Loading…</div>';
     db.collection("blogPosts").where("slug", "==", slug).where("status", "==", "published").limit(1).get().then(function (snap) {
       if (snap.empty) {
@@ -326,13 +455,23 @@
       if (descMeta && p.excerpt) descMeta.setAttribute("content", p.excerpt);
 
       var cover = p.coverImageURL ? '<img class="post-cover" src="' + escapeHtml(p.coverImageURL) + '" alt="">' : "";
+      main.classList.add("has-sidebar");
       main.innerHTML =
-        cover +
-        '<h1 class="post-title">' + escapeHtml(p.title || "(untitled)") + "</h1>" +
-        '<p class="post-meta">' + escapeHtml(p.authorName || "The Music Video Guy") +
-          (p.publishedAt ? " · " + escapeHtml(formatDate(p.publishedAt)) : "") + "</p>" +
-        '<div class="post-body">' + (p.body || "") + "</div>" +
-        '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>';
+        '<div class="post-layout">' +
+          '<article>' +
+            cover +
+            '<h1 class="post-title">' + escapeHtml(p.title || "(untitled)") + "</h1>" +
+            '<p class="post-meta">' + escapeHtml(p.authorName || "The Music Video Guy") +
+              (p.publishedAt ? " · " + escapeHtml(formatDate(p.publishedAt)) : "") + "</p>" +
+            '<div class="post-body">' + (p.body || "") + "</div>" +
+            '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>' +
+          "</article>" +
+          '<aside class="post-sidebar">' +
+            '<h2 class="post-sidebar-title">Previous Articles</h2>' +
+            '<div id="postSidebarList"><p class="post-sidebar-empty">Loading…</p></div>' +
+          "</aside>" +
+        "</div>";
+      renderPostSidebar(p.slug);
     }).catch(function (err) {
       console.error("Loading post failed:", err);
       main.innerHTML = '<p class="empty-state">Couldn\'t load that post right now.</p>';

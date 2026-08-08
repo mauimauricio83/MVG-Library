@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.29.0 — current
+- **Fixed a real bug**: images and text could render visually outside the blog editor's Body field during editing. Root cause: `.blog-editor-body` was `flex: 1 1 auto` nested inside `.blog-editor-form`, itself a `flex: 1 1 auto; overflow-y: auto` flex column -- per the flex spec, an `overflow:auto` flex item's automatic minimum size collapses to 0 (not content-based), which let the browser size the body field down to exactly its `min-height` regardless of actual content, silently spilling the rest past its own border. Fixed with `flex: none`, opting the field out of the flex distribution algorithm entirely so it sizes purely by its own content, like a normal block box. Verified: a box with ~1000px of content now measures ~1000px, not clamped to the 420px min-height.
+- Blog editor: added a video embed button (YouTube or Vimeo URL -> responsive embed, inserted at the cursor same as images).
+- `blog.html`: added the site's promo ad banner at the bottom of every page, plus a "Previous Articles" sidebar on individual post pages (thumbnail + title for up to 6 other published posts, excluding the one you're reading).
+
 ## v5.28.0 — current
 - `blog.html` and `support.html` now get the same header + sidebar as the main app, via a new shared `site-nav.js` (not the whole `app.js` -- these stay lightweight static pages, internal nav items just link back to `index.html` since there's no app state here to drive them; Submit still deep-links to `index.html#submit`, which already opens the modal). Caught and fixed a real layout bug while building it: the sidebar has to sit *inside* `.shell` alongside `.app`, not before it -- getting that nesting wrong silently pushed all page content ~950px down the page instead of beside the sidebar.
 - Blog editor: added paragraph alignment (left/center/right).
