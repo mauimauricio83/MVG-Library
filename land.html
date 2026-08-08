@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVG Library</title>
+<meta name="description" content="MVG Library — the definitive archive of music videos.">
+<meta name="robots" content="noindex, follow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0b12;
+    --accent: #a855f7;
+    --accent-deep: #4a0d8f;
+    --yellow: #f5e300;
+    --text-muted: #b9b3c9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 8%, rgba(168, 85, 247, 0.35), transparent 60%),
+      radial-gradient(ellipse 70% 60% at 85% 95%, rgba(74, 13, 143, 0.5), transparent 65%),
+      var(--bg);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #fff;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 1600px;
+    padding: 6vh 6vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: clamp(20px, 4vh, 44px);
+  }
+
+  .logo {
+    width: clamp(120px, 14vw, 220px);
+    height: clamp(120px, 14vw, 220px);
+    filter: drop-shadow(0 0 60px rgba(168, 85, 247, 0.55));
+  }
+
+  .title {
+    font-family: "Archivo Black", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.6rem, 7vw, 6.5rem);
+    line-height: 1.02;
+    letter-spacing: 0.005em;
+    color: var(--yellow);
+    text-wrap: balance;
+    margin: 0;
+    text-shadow: 0 0 46px rgba(245, 227, 0, 0.28);
+  }
+
+  .subtitle {
+    margin: 0;
+    max-width: 46ch;
+    font-size: clamp(1rem, 1.7vw, 1.5rem);
+    line-height: 1.4;
+    color: #fff;
+  }
+
+  .byline {
+    margin: 0;
+    font-size: clamp(0.75rem, 1.1vw, 1rem);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .byline strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .glow-ring {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <img class="logo" src="icons/icon-512.png" alt="" width="220" height="220">
+    <h1 class="title">MUSIC VIDEO LIBRARY</h1>
+    <p class="subtitle">Every music video, every credit, all in one place — searchable by director, artist, or song.</p>
+    <p class="byline">by <strong>The Music Video Guy</strong></p>
+  </main>
+</body>
+</html>

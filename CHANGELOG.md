@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.25.0 — current
+- Added `land.html`: a standalone, stylized title-card page (logo, "MUSIC VIDEO LIBRARY" in the header's own Archivo Black/yellow treatment, tagline, purple glow background) sized for a 16:9 screenshot -- not a real navigation entry point, just a personal-use thumbnail source. `noindex, follow`, no site chrome/nav.
+- Footer now has a "land" link on the far left mirroring the existing "cloud" easter-egg link on the far right (same rainbow letter-hop hover style) -- `.app-footer` restructured from centered text to a 3-column grid (land / version text / cloud) to fit both symmetrically.
+
 ## v5.24.1 — current
 - Related videos (in the video lightbox) now show a small thumbnail on each pill instead of plain text -- reuses the existing `.related-btn` pill shared with Profiles' "Credits in the library" list, which stays exactly as it was (no thumbnails there, unaffected by this change).
 

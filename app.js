@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.24.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.25.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -331,8 +331,14 @@
     settingsStatus: document.getElementById("settingsStatus")
   };
 
-  els.appFooter.innerHTML = "v" + APP_VERSION + " · Created by MnC · 2026" +
-    ' <a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>';
+  // "land" mirrors the existing "cloud" easter-egg link -- same rainbow
+  // letter-hop style (shares .cloud-link), opposite side. Points at
+  // land.html, a standalone stylized title card meant to be screenshotted
+  // as a 16:9 thumbnail image, not a real navigation entry point.
+  els.appFooter.innerHTML =
+    '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
+    '<span class="app-footer-text">v' + APP_VERSION + " · Created by MnC · 2026</span>" +
+    '<a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>';
 
   var LATEST_STRIP_COUNT = 50;
   var LATEST_TOP_RANDOM_COUNT = 3; // strictly the newest -- randomized among themselves so a reload doesn't always show the same order
