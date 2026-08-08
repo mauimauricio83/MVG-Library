@@ -206,6 +206,25 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Blog-post comments -- same shape/rules as the per-video `comments`
+    // collection above, just keyed by postSlug instead of rowNum (blog.html
+    // is a standalone page with no rowNum concept). Needs a composite
+    // (postSlug, createdAt) index -- see firestore.indexes.json.
+    match /blogComments/{id} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.authorUid == request.auth.uid &&
+        request.resource.data.postSlug is string &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 1000 &&
+        !exists(/databases/$(database)/documents/mutedUsers/$(request.auth.uid)) &&
+        !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Crowdsourced single-field edit suggestions -- a visitor proposes a
     // correction (see openSuggestEditModal() in app.js), an admin Accepts
     // (applies it to the `videos` doc) or Declines. currentValue/entryLabel

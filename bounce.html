@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>??? — MVG Library</title>
+<meta name="robots" content="noindex, follow">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+
+  body {
+    cursor: none;
+  }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+  }
+
+  .back-link {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    color: #444;
+    text-decoration: none;
+    font: 0.8rem -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    cursor: pointer;
+  }
+
+  .back-link:hover {
+    color: #888;
+  }
+
+  .hits {
+    position: fixed;
+    bottom: 14px;
+    right: 16px;
+    z-index: 10;
+    color: #333;
+    font: 0.72rem -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color 0.3s ease;
+  }
+
+  .hits.is-flash {
+    color: #fff;
+  }
+
+  /* Deliberately square (no border-radius) and pixelated, like a logo
+     rendered at low-res on a 2000s DVD player's onscreen display. */
+  .logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 90px;
+    height: 90px;
+    image-rendering: pixelated;
+    will-change: transform;
+  }
+
+  .particle {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  @keyframes particle-burst {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="support.html">&larr; back</a>
+<div class="hits" id="hitCounter">Corner hits: 0</div>
+
+<div class="stage">
+  <img class="logo" id="logo" src="icons/icon-512.png" alt="" width="90" height="90">
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logo = document.getElementById("logo");
+  var stage = document.querySelector(".stage");
+  var hitCounter = document.getElementById("hitCounter");
+
+  var SIZE = 90;
+  var SPEED = 220; // px/sec -- equal on both axes, so the logo always
+                   // travels at a clean 45 degrees, the same trick that
+                   // makes a real corner hit mathematically inevitable
+                   // eventually (not just luck) instead of astronomically
+                   // rare, since vx and vy stay in lockstep after every
+                   // bounce.
+
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  var x = Math.random() * (w - SIZE);
+  var y = Math.random() * (h - SIZE);
+  var vx = SPEED * (Math.random() < 0.5 ? 1 : -1);
+  var vy = SPEED * (Math.random() < 0.5 ? 1 : -1);
+  var hitCount = 0;
+  var lastTime = null;
+
+  window.addEventListener("resize", function () {
+    w = window.innerWidth;
+    h = window.innerHeight;
+    x = Math.min(x, w - SIZE);
+    y = Math.min(y, h - SIZE);
+  });
+
+  // ---- Audio: a bright, triumphant major chord (synthesized, not a real
+  // recording -- no external assets, no copyrighted melody). Web Audio
+  // requires a user gesture to start, which the click on the heart that
+  // brought someone here already provided.
+  var audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playChord() {
+    var ctx = getAudioCtx();
+    var now = ctx.currentTime;
+    // A bright major chord spread across two octaves (root, third, fifth,
+    // octave, tenth) -- reads as a big triumphant "ta-daa", not a specific tune.
+    var freqs = [261.63, 329.63, 392.0, 523.25, 659.25];
+    var master = ctx.createGain();
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(0.22, now + 0.03);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+    master.connect(ctx.destination);
+
+    freqs.forEach(function (freq) {
+      var osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      osc.connect(master);
+      osc.start(now);
+      osc.stop(now + 2.3);
+    });
+  }
+
+  // ---- Visuals: a multicolor particle burst radiating from the corner.
+  var PARTICLE_COLORS = ["#ef5b5b", "#f4b942", "#4caf6e", "#4a90e2", "#b06fe0", "#f5e300"];
+
+  function burstAt(cx, cy) {
+    var count = 24;
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement("div");
+      p.className = "particle";
+      var angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+      var dist = 120 + Math.random() * 160;
+      var dx = Math.cos(angle) * dist;
+      var dy = Math.sin(angle) * dist;
+      p.style.background = PARTICLE_COLORS[i % PARTICLE_COLORS.length];
+      p.style.left = cx + "px";
+      p.style.top = cy + "px";
+      p.style.transform = "translate(0, 0) scale(1)";
+      p.style.transition = "transform 0.8s cubic-bezier(0.15, 0.7, 0.3, 1), opacity 0.8s ease";
+      stage.appendChild(p);
+      // Force layout so the transition below actually animates from the
+      // starting transform instead of jumping straight to the end state.
+      void p.offsetWidth;
+      p.style.transform = "translate(" + dx + "px, " + dy + "px) scale(0.2)";
+      p.style.opacity = "0";
+      (function (el) {
+        setTimeout(function () { el.remove(); }, 850);
+      })(p);
+    }
+  }
+
+  function onCornerHit(cx, cy) {
+    hitCount++;
+    hitCounter.textContent = "Corner hits: " + hitCount;
+    hitCounter.classList.add("is-flash");
+    setTimeout(function () { hitCounter.classList.remove("is-flash"); }, 300);
+    burstAt(cx, cy);
+    playChord();
+  }
+
+  function tick(t) {
+    if (lastTime == null) lastTime = t;
+    var dt = Math.min((t - lastTime) / 1000, 0.05);
+    lastTime = t;
+
+    x += vx * dt;
+    y += vy * dt;
+
+    var hitX = false, hitY = false;
+
+    if (x <= 0) { x = 0; vx = Math.abs(vx); hitX = true; }
+    else if (x + SIZE >= w) { x = w - SIZE; vx = -Math.abs(vx); hitX = true; }
+
+    if (y <= 0) { y = 0; vy = Math.abs(vy); hitY = true; }
+    else if (y + SIZE >= h) { y = h - SIZE; vy = -Math.abs(vy); hitY = true; }
+
+    // A "perfect corner" hit is both walls being reached in the same
+    // physics step -- the classic, notoriously rare DVD-logo moment.
+    if (hitX && hitY) {
+      onCornerHit(x + SIZE / 2, y + SIZE / 2);
+    }
+
+    logo.style.transform = "translate(" + x + "px, " + y + "px)";
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

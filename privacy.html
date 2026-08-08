@@ -15,10 +15,19 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="hub.css">
+<style>
+  /* Same reasoning as support.html/blog.html: .hub-page already carries
+     its own max-width/padding for the reading width, so .app's default
+     padding (needed only for its sidebar-sharing flex behavior) would
+     otherwise double up with it. */
+  .app { padding: 0; }
+</style>
 </head>
 <body>
+<div class="shell">
+<script src="site-nav.js"></script>
+<div class="app">
 <div class="hub-page">
-<a class="hub-back" href="index.html">&larr; MVG Library</a>
 <h1>Privacy Policy</h1>
 <p class="hub-intro">Last updated: July 2026</p>
 
@@ -40,6 +49,8 @@
 
 <h2>Contact</h2>
 <p>Questions about this policy: <a href="mailto:maui@themusicvideoguy.com">maui@themusicvideoguy.com</a></p>
+</div>
+</div>
 </div>
 </body>
 </html>

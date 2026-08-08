@@ -136,6 +136,33 @@
       '</div>' +
     '</nav>';
 
+  // Same footer index.html gets (app.js builds this dynamically into
+  // #appFooter there) -- these pages don't load app.js, so it's just
+  // reproduced statically here. SITE_VERSION isn't read from app.js (no
+  // shared module system, no build step), so bump it by hand alongside
+  // APP_VERSION in app.js when that changes.
+  var SITE_VERSION = "5.31.0";
+  var FOOTER_HTML =
+    '<footer class="app-footer">' +
+      '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
+      '<span class="app-footer-text">v' + SITE_VERSION + ' &middot; Created by MnC &middot; 2026</span>' +
+      '<a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>' +
+    "</footer>";
+
+  function appendFooter() {
+    var app = document.querySelector(".app");
+    // Appended at load time, as the last child of .app -- safe even on
+    // pages like blog.html whose #blogMain content is filled in later by
+    // an async Firestore fetch, since the footer is a sibling, not nested
+    // inside the part that gets rewritten.
+    if (app) app.insertAdjacentHTML("beforeend", FOOTER_HTML);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", appendFooter);
+  } else {
+    appendFooter();
+  }
+
   var thisScript = document.currentScript;
   thisScript.insertAdjacentHTML("afterend", HEADER_LINKS_HTML);
   document.body.insertAdjacentHTML("afterbegin", TOP_BAR_HTML);

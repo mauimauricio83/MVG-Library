@@ -379,6 +379,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 (function () {
   "use strict";
@@ -394,7 +395,11 @@
   };
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
+  var auth = firebase.auth();
+  var googleProvider = new firebase.auth.GoogleAuthProvider();
   var main = document.getElementById("blogMain");
+  var currentUser = null;
+  var isAdmin = false;
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -405,6 +410,69 @@
   function formatDate(ts) {
     if (!ts || !ts.toDate) return "";
     return ts.toDate().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  }
+
+  function formatCommentTime(ts) {
+    if (!ts || !ts.toDate) return "";
+    var date = ts.toDate();
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+      date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  // ---- Blog-post comments -------------------------------------------------
+  // Flat `blogComments` collection filtered by postSlug -- same shape/
+  // convention as app.js's per-video `comments` (public read, signed-in +
+  // not-banned create, admin-only delete). See firestore.rules and the
+  // composite (postSlug, createdAt) index it needs.
+  var commentsUnsub = null;
+
+  function postCommentsHtml(slug) {
+    var composer = currentUser
+      ? '<form class="comment-form" id="commentForm" data-slug="' + escapeHtml(slug) + '">' +
+          '<textarea id="commentInput" rows="2" maxlength="1000" placeholder="Add a comment…" required></textarea>' +
+          '<button type="submit" class="submit-form-btn">Post</button>' +
+        "</form>"
+      : '<p class="comment-signin-note"><button type="button" class="submit-form-btn" id="commentSignInBtn">Sign in with Google</button> to leave a comment.</p>';
+    return '<div class="lightbox-comments">' +
+      '<h3 class="lightbox-comments-title">Comments</h3>' +
+      composer +
+      '<div class="comment-list" id="commentList"><p class="comment-empty">Loading comments…</p></div>' +
+    "</div>";
+  }
+
+  function renderCommentList(docs) {
+    var listEl = document.getElementById("commentList");
+    if (!listEl) return; // navigated to another post while this snapshot was in flight
+    if (!docs.length) {
+      listEl.innerHTML = '<p class="comment-empty">No comments yet — be the first.</p>';
+      return;
+    }
+    listEl.innerHTML = docs.map(function (doc) {
+      var d = doc.data();
+      var deleteBtn = isAdmin
+        ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">&times;</button>'
+        : "";
+      return '<div class="comment-item">' +
+        '<div class="comment-item-meta">' +
+          '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
+          '<span class="comment-item-time">' + escapeHtml(formatCommentTime(d.createdAt)) + "</span>" +
+          deleteBtn +
+        "</div>" +
+        '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
+      "</div>";
+    }).join("");
+  }
+
+  function startCommentsListener(slug) {
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
+    commentsUnsub = db.collection("blogComments").where("postSlug", "==", slug).orderBy("createdAt", "asc").limit(200)
+      .onSnapshot(function (snap) {
+        renderCommentList(snap.docs);
+      }, function (err) {
+        console.error("Comments listener failed:", err);
+        var listEl = document.getElementById("commentList");
+        if (listEl) listEl.innerHTML = '<p class="comment-empty">Couldn\'t load comments.</p>';
+      });
   }
 
   // Reuses styles.css's .spotlight-card/.blog-latest-card classes and
@@ -560,6 +628,7 @@
             '<p class="post-meta">' + escapeHtml(p.authorName || "The Music Video Guy") +
               (p.publishedAt ? " · " + escapeHtml(formatDate(p.publishedAt)) : "") + "</p>" +
             '<div class="post-body">' + (p.body || "") + "</div>" +
+            postCommentsHtml(p.slug) +
             '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>' +
           "</article>" +
           '<aside class="post-sidebar">' +
@@ -568,16 +637,88 @@
           "</aside>" +
         "</div>";
       renderPostSidebar(p.slug);
+      startCommentsListener(p.slug);
     }).catch(function (err) {
       console.error("Loading post failed:", err);
       main.innerHTML = '<p class="empty-state">Couldn\'t load that post right now.</p>';
     });
   }
 
+  main.addEventListener("click", function (e) {
+    if (e.target.closest("#commentSignInBtn")) {
+      auth.signInWithPopup(googleProvider).catch(function (err) {
+        console.error("Sign-in failed:", err);
+      });
+      return;
+    }
+    var deleteBtn = e.target.closest(".comment-delete-btn");
+    if (deleteBtn) {
+      if (!window.confirm("Delete this comment?")) return;
+      db.collection("blogComments").doc(deleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+        console.error("Deleting comment failed:", err);
+        alert("Couldn't delete that comment -- please try again.");
+      });
+    }
+  });
+
+  main.addEventListener("submit", function (e) {
+    var form = e.target.closest("#commentForm");
+    if (!form) return;
+    e.preventDefault();
+    if (!currentUser) return;
+    var input = document.getElementById("commentInput");
+    var text = input.value.trim();
+    if (!text) return;
+    var btn = form.querySelector("button");
+    btn.disabled = true;
+    db.collection("blogComments").add({
+      postSlug: form.getAttribute("data-slug"),
+      text: text,
+      authorUid: currentUser.uid,
+      authorName: currentUser.displayName || currentUser.email || "Anonymous",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      input.value = "";
+    }).catch(function (err) {
+      console.error("Posting comment failed:", err);
+      alert("Couldn't post that comment -- please try again.");
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  });
+
   var params = new URLSearchParams(location.search);
   var slug = params.get("post");
-  if (slug) renderPost(slug);
-  else renderListing(parseInt(params.get("page"), 10) || 1);
+
+  // Auth state isn't known yet on first paint, so render immediately as a
+  // signed-out visitor (the common case), then re-render just the post view
+  // if auth resolves to a signed-in (and maybe admin) user -- that's the
+  // only view with auth-dependent UI (the comment composer / delete button).
+  if (slug) renderPost(slug); else renderListing(parseInt(params.get("page"), 10) || 1);
+
+  var authInitDone = false;
+  auth.onAuthStateChanged(function (user) {
+    currentUser = user;
+    // Skip the very first "signed out" callback -- we already rendered
+    // that way above, so re-rendering would just refetch the same post for
+    // no visible change. Anything after that (signing in, signing out
+    // again) does need a re-render to update the comment composer.
+    var wasInit = authInitDone;
+    authInitDone = true;
+    if (!user) {
+      isAdmin = false;
+      if (slug && wasInit) renderPost(slug);
+      return;
+    }
+    db.collection("admins").doc(user.uid).get().then(function (doc) {
+      isAdmin = doc.exists;
+      if (slug) renderPost(slug);
+    }).catch(function (err) {
+      console.error("Admin check failed:", err);
+      isAdmin = false;
+      if (slug) renderPost(slug);
+    });
+  });
 })();
 </script>
 </body>

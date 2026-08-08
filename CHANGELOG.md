@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.31.0 — current
+- Blog posts now have a comments section, same shape/rules as the per-video comments (`blogComments` Firestore collection, public read, signed-in + not-banned create, admin-only delete, reuses the `.lightbox-comments`/`.comment-*` styling verbatim). Deployed the new rules + composite (postSlug, createdAt) index live.
+- New easter egg: the heart on the Support page now links to `bounce.html`, a fullscreen black page where the (deliberately pixelated, square) MVG logo bounces around DVD-screensaver style. Landing a perfect corner hit -- both walls in the same instant, made achievable (not astronomically rare) by keeping the logo's x/y speed equal so it always travels at 45 degrees -- triggers a multicolor particle burst and a synthesized bright major chord.
+- All pages linked from the homepage (blog, support, privacy -- not the land/cloud easter eggs) now consistently get the same footer as index.html (version, copyright, land/cloud links). `site-nav.js` now renders it directly so it doesn't have to be hand-duplicated per page; `privacy.html` was migrated onto the shared `.shell`/site-nav chrome (sidebar + footer) to match blog.html/support.html, replacing its old standalone back-link.
+
 ## v5.30.1 — current
 - Fixed a real gap in the previous version's blog listing redesign: the big cards and list-view items were built with page-local `.post-card`/`.post-list-item` CSS that only approximated the homepage's News-card look, and the page was still capped at `max-width:860px` (centered), while the homepage's News section fills `.app`'s full width. Now the listing reuses styles.css's actual `.spotlight-card`/`.blog-latest-card`/`.spotlight-card-thumb`/`.blog-latest-extra-item` classes directly (pixel-identical to the homepage cards), and `main` has no width cap on the listing view so it spans the same full width `.app` gives the homepage's News section.
 

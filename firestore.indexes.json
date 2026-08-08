@@ -7,6 +7,14 @@
         { "fieldPath": "rowNum", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "blogComments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "postSlug", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
