@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.31.1 — current
+- Widened the hit target on the Support page's heart easter-egg link -- it was just the bare emoji glyph with zero padding (confirmed the link itself worked fine both locally and on the live site; the miss was almost certainly the tiny hitbox, easy to click just next to). Added 10px of padding with matching negative margin so the clickable area is meaningfully bigger without shifting anything visually.
+
 ## v5.31.0 — current
 - Blog posts now have a comments section, same shape/rules as the per-video comments (`blogComments` Firestore collection, public read, signed-in + not-banned create, admin-only delete, reuses the `.lightbox-comments`/`.comment-*` styling verbatim). Deployed the new rules + composite (postSlug, createdAt) index live.
 - New easter egg: the heart on the Support page now links to `bounce.html`, a fullscreen black page where the (deliberately pixelated, square) MVG logo bounces around DVD-screensaver style. Landing a perfect corner hit -- both walls in the same instant, made achievable (not astronomically rare) by keeping the logo's x/y speed equal so it always travels at 45 degrees -- triggers a multicolor particle burst and a synthesized bright major chord.
