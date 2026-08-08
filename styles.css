@@ -4695,6 +4695,13 @@ body.is-searching #discoverSection {
   border-color: var(--accent);
 }
 
+.blog-editor-toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--border);
+}
+
 #adminBlogImageBtn {
   margin-left: auto;
   font-weight: 700;
@@ -4725,13 +4732,37 @@ body.is-searching #discoverSection {
   margin: 14px 0;
 }
 
+.blog-editor-body h1 {
+  font-size: 1.6rem;
+  margin: 0.7em 0 0.3em;
+}
+
 .blog-editor-body h2 {
   font-size: 1.3rem;
   margin: 0.7em 0 0.3em;
 }
 
+.blog-editor-body h3 {
+  font-size: 1.1rem;
+  margin: 0.7em 0 0.3em;
+}
+
 .blog-editor-body p {
   margin: 0 0 0.8em;
+}
+
+.blog-editor-body ul,
+.blog-editor-body ol {
+  margin: 0 0 0.8em;
+  padding-left: 1.4em;
+}
+
+.blog-editor-body blockquote {
+  margin: 0 0 0.8em;
+  padding: 4px 16px;
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 @media (max-width: 640px) {

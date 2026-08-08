@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.26.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.27.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -265,6 +265,8 @@
     adminBlogPostId: document.getElementById("adminBlogPostId"),
     adminBlogTitleInput: document.getElementById("adminBlogTitleInput"),
     adminBlogSlugInput: document.getElementById("adminBlogSlugInput"),
+    adminBlogAuthorInput: document.getElementById("adminBlogAuthorInput"),
+    adminBlogDateInput: document.getElementById("adminBlogDateInput"),
     adminBlogExcerptInput: document.getElementById("adminBlogExcerptInput"),
     adminBlogCoverInput: document.getElementById("adminBlogCoverInput"),
     adminBlogCoverPreview: document.getElementById("adminBlogCoverPreview"),
@@ -6049,6 +6051,24 @@
       .slice(0, 80);
   }
 
+  // <input type="date"> works in plain YYYY-MM-DD strings, parsed/formatted
+  // at local noon rather than midnight -- midnight is what makes date-only
+  // values so prone to shifting a day backward once run through a
+  // timezone behind UTC (a very common date-input bug).
+  function toDateInputValue(date) {
+    if (!date) return "";
+    var yyyy = date.getFullYear();
+    var mm = String(date.getMonth() + 1).padStart(2, "0");
+    var dd = String(date.getDate()).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
+  }
+
+  function parseDateInputValue(str) {
+    if (!str) return new Date();
+    var parts = str.split("-").map(function (s) { return parseInt(s, 10); });
+    return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+  }
+
   var blogPostsCache = [];
   var pendingBlogCoverBlob = null;
   var blogSlugManuallyEdited = false;
@@ -6137,6 +6157,9 @@
     els.adminBlogPostId.value = post ? post.id : db.collection("blogPosts").doc().id;
     els.adminBlogTitleInput.value = post ? (post.title || "") : "";
     els.adminBlogSlugInput.value = post ? (post.slug || "") : "";
+    els.adminBlogAuthorInput.value = post ? (post.authorName || "") : ((currentUser && (currentUser.displayName || currentUser.email)) || "");
+    var existingDate = post && (post.publishedAt || post.createdAt);
+    els.adminBlogDateInput.value = toDateInputValue(existingDate ? existingDate.toDate() : new Date());
     els.adminBlogExcerptInput.value = post ? (post.excerpt || "") : "";
     els.adminBlogBodyInput.innerHTML = post ? (post.body || "") : "";
     resetBlogCoverPreview();
@@ -6321,19 +6344,22 @@
       : Promise.resolve(els.adminBlogCoverPreview.hidden ? "" : els.adminBlogCoverPreview.src);
 
     coverUploadPromise.then(function (coverURL) {
-      var wasPublished = !isNew && blogPostsCache.filter(function (p) { return p.id === postId; })[0].status === "published";
       var patch = {
         title: title,
         slug: slug,
         body: bodyHtml,
         excerpt: els.adminBlogExcerptInput.value.trim() || plainTextExcerpt(bodyHtml, 200),
         coverImageURL: coverURL || "",
-        authorName: currentUser.displayName || currentUser.email || "The Music Video Guy",
+        authorName: els.adminBlogAuthorInput.value.trim() || currentUser.displayName || currentUser.email || "The Music Video Guy",
+        // Editable date, not just "whenever Save happened" -- lets a post be
+        // backdated/postdated (e.g. importing older writeups). Set on every
+        // save regardless of draft/published, since it's "the date this
+        // post is/will be dated," not specifically a publish-event log.
+        publishedAt: parseDateInputValue(els.adminBlogDateInput.value),
         status: status,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (isNew) patch.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      if (status === "published" && !wasPublished) patch.publishedAt = firebase.firestore.FieldValue.serverTimestamp();
       return db.collection("blogPosts").doc(postId).set(patch, { merge: true });
     }).then(function () {
       pendingBlogCoverBlob = null;
