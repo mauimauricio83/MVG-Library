@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.24.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.24.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4513,10 +4513,14 @@
     var related = relatedEntries(row);
     if (!related.length) return "";
     var items = related.map(function (r) {
+      var thumbAlt = escapeHtml((r.song || "Untitled") + (r.artist ? " — " + r.artist : ""));
       var label = escapeHtml(r.song || "(untitled)") + (r.artist ? " — " + escapeHtml(r.artist) : "");
-      return '<button type="button" class="related-btn" data-row="' + escapeHtml(r.rowNum) + '">' + label + "</button>";
+      return '<button type="button" class="related-btn" data-row="' + escapeHtml(r.rowNum) + '">' +
+        '<span class="related-btn-thumb">' + videoThumbImgHtml(r, thumbAlt) + "</span>" +
+        '<span class="related-btn-label">' + label + "</span>" +
+      "</button>";
     }).join("");
-    return '<div class="lightbox-related"><span class="lightbox-related-label">Related:</span>' + items + "</div>";
+    return '<div class="lightbox-related"><span class="lightbox-related-label">Related:</span><div class="related-btn-row">' + items + "</div></div>";
   }
 
   // ---- Per-video comments -----------------------------------------------

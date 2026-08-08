@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.24.1 — current
+- Related videos (in the video lightbox) now show a small thumbnail on each pill instead of plain text -- reuses the existing `.related-btn` pill shared with Profiles' "Credits in the library" list, which stays exactly as it was (no thumbnails there, unaffected by this change).
+
 ## v5.24.0 — current
 Four community/data-quality features, built off the existing message-board/collab-request/credit-matching patterns:
 - **Per-video comments**: a real comment thread on every video lightbox (new `comments` collection), same public-read/signed-in-to-post/admin-delete shape as the message board, just scoped to one rowNum instead of a single global feed.
