@@ -27,6 +27,15 @@ const MIN_VIDEOS = 3;
 // homepage's "Latest Submissions" definition (highest rowNum first), just a
 // shorter cap than that section's own LATEST_STRIP_COUNT (50 in app.js).
 const RSS_COUNT = 30;
+// Plain REST reads, same zero-npm-dependency reasoning as everything else in
+// this script -- no firebase-admin, no service account needed. Must be a
+// runQuery with an explicit status=="published" filter, not a plain
+// documents.list -- Firestore only allows an unauthenticated list/query when
+// the query itself provably can't return a document the rules would reject
+// (blogPosts' rule is public-read-if-published-or-admin; a filter-less list
+// could in principle return an unpublished draft, so Firestore just denies
+// the whole request with 403 rather than evaluate rules per document).
+const FIRESTORE_RUN_QUERY_URL = "https://firestore.googleapis.com/v1/projects/mvg-library/databases/(default)/documents:runQuery";
 
 function parseCsv(text) {
   const rows = [];
@@ -126,6 +135,50 @@ function normalizeCountry(raw) {
 function extractYouTubeId(url) {
   const m = String(url || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
   return m ? m[1] : null;
+}
+
+// Firestore REST documents wrap every field as { <type>Value: ... } --
+// blogPosts only ever uses these two shapes.
+function fsString(fields, key) {
+  return (fields && fields[key] && fields[key].stringValue) || "";
+}
+function fsDate(fields, key) {
+  const v = fields && fields[key] && fields[key].timestampValue;
+  return v ? new Date(v) : null;
+}
+
+async function fetchBlogPosts() {
+  const res = await fetch(FIRESTORE_RUN_QUERY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "blogPosts" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "status" },
+            op: "EQUAL",
+            value: { stringValue: "published" }
+          }
+        }
+      }
+    })
+  });
+  if (!res.ok) throw new Error("Firestore blogPosts query failed: " + res.status);
+  const results = await res.json();
+  return results
+    .filter((r) => r.document)
+    .map((r) => {
+      const f = r.document.fields || {};
+      return {
+        title: fsString(f, "title"),
+        slug: fsString(f, "slug"),
+        excerpt: fsString(f, "excerpt"),
+        authorName: fsString(f, "authorName") || "The Music Video Guy",
+        date: fsDate(f, "publishedAt") || fsDate(f, "createdAt")
+      };
+    })
+    .filter((p) => p.slug && p.title);
 }
 
 // Slugs collide sometimes (two directors with the same name-minus-punctuation).
@@ -386,6 +439,10 @@ async function main() {
 
   console.log("Parsed " + rows.length + " rows.");
 
+  console.log("Fetching published blog posts...");
+  const blogPosts = await fetchBlogPosts();
+  console.log("Found " + blogPosts.length + " published blog posts.");
+
   function pruneThin(groups) {
     for (const [slug, group] of groups) {
       if (group.rows.length < MIN_VIDEOS) groups.delete(slug);
@@ -449,6 +506,11 @@ async function main() {
     sitemapUrls.push(canonical);
   }
 
+  sitemapUrls.push(SITE_URL + "/blog.html");
+  blogPosts.forEach((p) => {
+    sitemapUrls.push(SITE_URL + "/blog.html?post=" + encodeURIComponent(p.slug));
+  });
+
   const sitemap =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -501,10 +563,43 @@ async function main() {
     "</rss>\n";
   fs.writeFileSync(path.join(ROOT, "rss.xml"), rss);
 
+  // Separate feed from rss.xml on purpose -- articles and new-video drops
+  // are different content types with different audiences, and mixing them
+  // into one feed would mean subscribers to one get spammed with the other.
+  const blogPostsSorted = blogPosts
+    .slice()
+    .sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
+  const blogRssItems = blogPostsSorted.map((p) => {
+    const link = SITE_URL + "/blog.html?post=" + encodeURIComponent(p.slug);
+    const pubDate = (p.date || buildTime).toUTCString();
+    return (
+      "  <item>\n" +
+      "    <title>" + escapeHtml(p.title) + "</title>\n" +
+      "    <link>" + link + "</link>\n" +
+      '    <guid isPermaLink="true">' + link + "</guid>\n" +
+      "    <pubDate>" + pubDate + "</pubDate>\n" +
+      "    <author>" + escapeHtml(p.authorName) + "</author>\n" +
+      (p.excerpt ? "    <description>" + escapeHtml(p.excerpt) + "</description>\n" : "") +
+      "  </item>"
+    );
+  });
+  const blogRss =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<rss version="2.0">\n' +
+    "<channel>\n" +
+    "  <title>MVG Library — Blog</title>\n" +
+    "  <link>" + SITE_URL + "/blog.html</link>\n" +
+    "  <description>News, notes, and features from The Music Video Guy.</description>\n" +
+    "  <lastBuildDate>" + buildTime.toUTCString() + "</lastBuildDate>\n" +
+    blogRssItems.join("\n") + "\n" +
+    "</channel>\n" +
+    "</rss>\n";
+  fs.writeFileSync(path.join(ROOT, "blog-rss.xml"), blogRss);
+
   console.log(
     "Generated " + directorGroups.size + " director pages, " + artistGroups.size + " artist pages, " +
     videoRows.length + " video pages, sitemap.xml with " + sitemapUrls.length + " URLs, " +
-    "and rss.xml with " + rssItems.length + " items."
+    "rss.xml with " + rssItems.length + " items, and blog-rss.xml with " + blogRssItems.length + " items."
   );
 }
 

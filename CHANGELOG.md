@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.32.0 — current
+- `scripts/generate-seo-pages.js` now also covers the blog: published posts (fetched from Firestore via a plain REST `runQuery` with an explicit `status=="published"` filter -- a filter-less `documents.list` gets a flat 403, since Firestore won't allow an unauthenticated list unless the query itself provably can't return a document the rules would reject) get added to `sitemap.xml` and a new `blog-rss.xml` feed, kept separate from the video-drops `rss.xml` since they're different content types/audiences. `blog.html` now links `blog-rss.xml` via `<link rel="alternate">` for feed-reader discovery. The daily SEO-pages GitHub Action now commits `blog-rss.xml` too.
+- blog.html: replaced the plain "Loading…" text states (listing, individual post, comments, "Previous Articles" sidebar) with shimmering skeleton placeholders sized to match the real content, so nothing jumps into place when it arrives.
+
 ## v5.31.2 — current
 - `bounce.html`: the logo now shifts hue (`filter: hue-rotate()`) on every wall bounce, not just perfect corner hits, so its color visibly cycles as it ricochets around.
 

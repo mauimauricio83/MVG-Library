@@ -14,6 +14,7 @@
 <meta id="metaDescription" name="description" content="News, notes, and features from The Music Video Guy.">
 <meta name="robots" content="index, follow">
 <link rel="icon" href="icons/icon-192.png">
+<link rel="alternate" type="application/rss+xml" title="MVG Library — Blog" href="https://mauimauricio83.github.io/MVG-Library/blog-rss.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
@@ -114,10 +115,122 @@
     }
   }
 
-  .empty-state, .loading-state {
+  .empty-state {
     color: var(--text-faint);
     padding: 40px 0;
     text-align: center;
+  }
+
+  /* Skeleton loaders -- shimmering placeholder shapes shown while Firestore
+     data is in flight, instead of a bare "Loading…" string. Every skeleton
+     piece is sized to match the real element it stands in for (card, list
+     row, comment, article) so there's no layout jump when real content
+     swaps in. */
+  @keyframes skel-shimmer {
+    0% { background-position: -300px 0; }
+    100% { background-position: 300px 0; }
+  }
+
+  .skel {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+    background-size: 600px 100%;
+    animation: skel-shimmer 1.4s ease-in-out infinite;
+    border-radius: 4px;
+  }
+
+  .skel-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .skel-card-thumb {
+    width: 100%;
+    padding-top: 56.25%;
+  }
+
+  .skel-card-body {
+    padding: 8px 10px;
+  }
+
+  .skel-line {
+    height: 0.8em;
+    margin: 6px 0;
+  }
+
+  .skel-line.is-short {
+    width: 55%;
+  }
+
+  .skel-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .skel-list-thumb {
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    flex: 0 0 auto;
+  }
+
+  .skel-list-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-top: 4px;
+  }
+
+  .skel-post-cover {
+    width: 100%;
+    height: 320px;
+    margin: 0 0 24px;
+  }
+
+  .skel-post-title {
+    height: 2.2rem;
+    max-width: 70%;
+    margin: 0 0 16px;
+  }
+
+  .skel-post-line {
+    height: 1em;
+    margin: 0 0 12px;
+  }
+
+  .skel-comment {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .skel-comment-meta {
+    width: 120px;
+    height: 0.85rem;
+  }
+
+  .skel-comment-line {
+    height: 0.88rem;
+  }
+
+  .skel-sidebar-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .skel-sidebar-thumb {
+    width: 84px;
+    height: 47px;
+    flex: 0 0 auto;
+  }
+
+  .skel-sidebar-info {
+    flex: 1 1 auto;
+    padding-top: 4px;
   }
 
   /* Section 2 of the listing page: up to 14 more posts as a compact
@@ -365,7 +478,11 @@
 <div class="app">
 
 <main id="blogMain">
-  <div class="loading-state">Loading…</div>
+  <div class="post-grid">
+    <div class="skel-card"><div class="skel skel-card-thumb"></div><div class="skel-card-body"><div class="skel skel-line"></div><div class="skel skel-line is-short"></div></div></div>
+    <div class="skel-card"><div class="skel skel-card-thumb"></div><div class="skel-card-body"><div class="skel skel-line"></div><div class="skel skel-line is-short"></div></div></div>
+    <div class="skel-card"><div class="skel skel-card-thumb"></div><div class="skel-card-body"><div class="skel skel-line"></div><div class="skel skel-line is-short"></div></div></div>
+  </div>
 </main>
 
 <div class="ad-placeholder" style="max-width:860px;margin:0 auto 40px;padding:0 20px;">
@@ -407,6 +524,69 @@
     });
   }
 
+  // ---- Skeleton loaders ---------------------------------------------------
+  // Shimmering placeholder shapes, sized to match the real markup they stand
+  // in for so nothing jumps when the real content swaps in.
+  function skeletonCardHtml() {
+    return '<div class="skel-card"><div class="skel skel-card-thumb"></div>' +
+      '<div class="skel-card-body"><div class="skel skel-line"></div><div class="skel skel-line is-short"></div></div></div>';
+  }
+
+  function skeletonCardsHtml(n) {
+    var out = "";
+    for (var i = 0; i < n; i++) out += skeletonCardHtml();
+    return '<div class="post-grid">' + out + "</div>";
+  }
+
+  function skeletonListItemHtml() {
+    return '<div class="skel-list-item"><div class="skel skel-list-thumb"></div>' +
+      '<div class="skel-list-info"><div class="skel skel-line"></div><div class="skel skel-line is-short"></div></div></div>';
+  }
+
+  function skeletonListHtml(n) {
+    var out = "";
+    for (var i = 0; i < n; i++) out += skeletonListItemHtml();
+    return '<div class="post-list blog-latest-extra">' + out + "</div>";
+  }
+
+  function skeletonPostHtml() {
+    return '<div class="post-layout">' +
+      '<article>' +
+        '<div class="skel skel-post-cover"></div>' +
+        '<div class="skel skel-post-title"></div>' +
+        '<div class="skel skel-post-line"></div>' +
+        '<div class="skel skel-post-line"></div>' +
+        '<div class="skel skel-post-line" style="width:80%"></div>' +
+        '<div class="skel skel-post-line" style="width:60%"></div>' +
+      "</article>" +
+      '<aside class="post-sidebar">' +
+        '<h2 class="post-sidebar-title">Previous Articles</h2>' +
+        skeletonSidebarHtml(3) +
+      "</aside>" +
+    "</div>";
+  }
+
+  function skeletonSidebarItemHtml() {
+    return '<div class="skel-sidebar-item"><div class="skel skel-sidebar-thumb"></div>' +
+      '<div class="skel-sidebar-info"><div class="skel skel-line"></div></div></div>';
+  }
+
+  function skeletonSidebarHtml(n) {
+    var out = "";
+    for (var i = 0; i < n; i++) out += skeletonSidebarItemHtml();
+    return out;
+  }
+
+  function skeletonCommentHtml() {
+    return '<div class="skel-comment"><div class="skel skel-comment-meta"></div><div class="skel skel-comment-line"></div></div>';
+  }
+
+  function skeletonCommentsHtml(n) {
+    var out = "";
+    for (var i = 0; i < n; i++) out += skeletonCommentHtml();
+    return out;
+  }
+
   function formatDate(ts) {
     if (!ts || !ts.toDate) return "";
     return ts.toDate().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -436,7 +616,7 @@
     return '<div class="lightbox-comments">' +
       '<h3 class="lightbox-comments-title">Comments</h3>' +
       composer +
-      '<div class="comment-list" id="commentList"><p class="comment-empty">Loading comments…</p></div>' +
+      '<div class="comment-list" id="commentList">' + skeletonCommentsHtml(3) + "</div>" +
     "</div>";
   }
 
@@ -570,7 +750,7 @@
     main.innerHTML =
       '<h1 class="page-title">Blog</h1>' +
       '<p class="page-intro">News, notes, and features from The Music Video Guy.</p>' +
-      '<div class="loading-state">Loading posts…</div>';
+      '<div id="postsLoading">' + skeletonCardsHtml(BIG_CARDS_PER_PAGE) + skeletonListHtml(5) + "</div>";
 
     db.collection("blogPosts").where("status", "==", "published").get().then(function (snap) {
       var posts = snap.docs.map(function (doc) { return doc.data(); });
@@ -578,7 +758,7 @@
         var ta = a.publishedAt || a.createdAt, tb = b.publishedAt || b.createdAt;
         return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
       });
-      var body = document.querySelector(".loading-state");
+      var body = document.getElementById("postsLoading");
       if (!posts.length) {
         body.outerHTML = '<p class="empty-state">No posts yet — check back soon.</p>';
         return;
@@ -599,16 +779,17 @@
       body.outerHTML = html;
     }).catch(function (err) {
       console.error("Loading posts failed:", err);
-      var body = document.querySelector(".loading-state");
+      var body = document.getElementById("postsLoading");
       if (body) body.textContent = "Couldn't load posts right now.";
     });
   }
 
   function renderPost(slug) {
-    main.classList.remove("has-sidebar");
-    main.innerHTML = '<div class="loading-state">Loading…</div>';
+    main.classList.add("has-sidebar");
+    main.innerHTML = skeletonPostHtml();
     db.collection("blogPosts").where("slug", "==", slug).where("status", "==", "published").limit(1).get().then(function (snap) {
       if (snap.empty) {
+        main.classList.remove("has-sidebar");
         main.innerHTML = '<p class="empty-state">That post doesn\'t exist (or isn\'t published).</p>' +
           '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>';
         return;
@@ -619,7 +800,6 @@
       if (descMeta && p.excerpt) descMeta.setAttribute("content", p.excerpt);
 
       var cover = p.coverImageURL ? '<img class="post-cover" src="' + escapeHtml(p.coverImageURL) + '" alt="">' : "";
-      main.classList.add("has-sidebar");
       main.innerHTML =
         '<div class="post-layout">' +
           '<article>' +
@@ -633,13 +813,14 @@
           "</article>" +
           '<aside class="post-sidebar">' +
             '<h2 class="post-sidebar-title">Previous Articles</h2>' +
-            '<div id="postSidebarList"><p class="post-sidebar-empty">Loading…</p></div>' +
+            '<div id="postSidebarList">' + skeletonSidebarHtml(3) + "</div>" +
           "</aside>" +
         "</div>";
       renderPostSidebar(p.slug);
       startCommentsListener(p.slug);
     }).catch(function (err) {
       console.error("Loading post failed:", err);
+      main.classList.remove("has-sidebar");
       main.innerHTML = '<p class="empty-state">Couldn\'t load that post right now.</p>';
     });
   }
