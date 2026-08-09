@@ -118,6 +118,7 @@
   var vy = SPEED * (Math.random() < 0.5 ? 1 : -1);
   var hitCount = 0;
   var lastTime = null;
+  var hue = 0;
 
   window.addEventListener("resize", function () {
     w = window.innerWidth;
@@ -215,6 +216,13 @@
 
     if (y <= 0) { y = 0; vy = Math.abs(vy); hitY = true; }
     else if (y + SIZE >= h) { y = h - SIZE; vy = -Math.abs(vy); hitY = true; }
+
+    // Every wall touch shifts the logo's hue, corner or not, so the color
+    // visibly cycles each time it bounces.
+    if (hitX || hitY) {
+      hue = (hue + 40 + Math.random() * 40) % 360;
+      logo.style.filter = "hue-rotate(" + hue + "deg)";
+    }
 
     // A "perfect corner" hit is both walls being reached in the same
     // physics step -- the classic, notoriously rare DVD-logo moment.

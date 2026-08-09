@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.31.2 — current
+- `bounce.html`: the logo now shifts hue (`filter: hue-rotate()`) on every wall bounce, not just perfect corner hits, so its color visibly cycles as it ricochets around.
+
 ## v5.31.1 — current
 - Widened the hit target on the Support page's heart easter-egg link -- it was just the bare emoji glyph with zero padding (confirmed the link itself worked fine both locally and on the live site; the miss was almost certainly the tiny hitbox, easy to click just next to). Added 10px of padding with matching negative margin so the clickable area is meaningfully bigger without shifting anything visually.
 
