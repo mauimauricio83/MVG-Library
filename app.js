@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.33.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.34.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -298,6 +298,7 @@
     adminChannelQueueCount: document.getElementById("adminChannelQueueCount"),
     adminChannelQueueDuration: document.getElementById("adminChannelQueueDuration"),
     adminChannelQueueList: document.getElementById("adminChannelQueueList"),
+    adminChannelShuffleRow: document.getElementById("adminChannelShuffleRow"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -6746,6 +6747,8 @@
   // duration directly; YouTube's doesn't, so that branch briefly loads a
   // real (hidden, silent, no-autoplay) player just long enough to read
   // getDuration() off it, then tears it down.
+  var channelDurationProbeSeq = 0;
+
   function resolveDurationForRow(row) {
     var ref = getRowVideoRef(row);
     if (!ref) return Promise.resolve(0);
@@ -6756,9 +6759,10 @@
         .catch(function () { return 0; });
     }
     return new Promise(function (resolve) {
-      var hiddenId = "channelDurationProbe";
-      var existing = document.getElementById(hiddenId);
-      if (existing) existing.remove();
+      // Unique per call -- resolveMissingChannelDurations() now runs several
+      // of these concurrently (bulk Shuffle Add), so a shared fixed id would
+      // have each probe's setup/teardown stomp on the others'.
+      var hiddenId = "channelDurationProbe" + (channelDurationProbeSeq++);
       var div = document.createElement("div");
       div.id = hiddenId;
       div.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;";
@@ -6793,22 +6797,76 @@
     });
   }
 
+  // Resolves several videos' durations at once (a worker pool, not one
+  // Promise.all -- unbounded concurrency here would mean up to a Shuffle
+  // Add +1000 worth of hidden YouTube iframes loading simultaneously,
+  // which would bog down or crash the tab) and reports progress, since
+  // Shuffle Add can mean waiting on hundreds of these. Saves are debounced
+  // to one write ~1s after the last resolution lands rather than one
+  // Firestore write per video.
+  var CHANNEL_DURATION_CONCURRENCY = 5;
+  var channelDurationSaveDebounce = null;
+
   function resolveMissingChannelDurations() {
     var missing = adminChannelDraft.items.filter(function (it) { return !it.duration; });
     if (!missing.length) return;
-    var i = 0;
-    function next() {
-      if (i >= missing.length) { renderAdminChannelQueue(); saveChannelDoc(); return; }
-      var item = missing[i++];
+    var total = missing.length;
+    var done = 0;
+    var nextIndex = 0;
+
+    function scheduleSave() {
+      if (channelDurationSaveDebounce) clearTimeout(channelDurationSaveDebounce);
+      channelDurationSaveDebounce = setTimeout(function () { saveChannelDoc(); }, 1000);
+    }
+
+    function reportProgress() {
+      els.adminChannelStatus.className = "admin-status";
+      els.adminChannelStatus.textContent = "Resolving durations: " + done + " / " + total + "…";
+      els.adminChannelStatus.hidden = false;
+    }
+
+    function worker() {
+      if (nextIndex >= missing.length) return Promise.resolve();
+      var item = missing[nextIndex++];
       var row = findRowByNum(item.rowNum);
-      if (!row) { next(); return; }
-      resolveDurationForRow(row).then(function (sec) {
+      var work = row ? resolveDurationForRow(row) : Promise.resolve(0);
+      return work.then(function (sec) {
         item.duration = sec;
+        done++;
+        reportProgress();
         renderAdminChannelQueue();
-        next();
+        scheduleSave();
+        return worker();
       });
     }
-    next();
+
+    reportProgress();
+    var pool = [];
+    for (var i = 0; i < CHANNEL_DURATION_CONCURRENCY; i++) pool.push(worker());
+    Promise.all(pool).then(function () {
+      els.adminChannelStatus.hidden = true;
+      if (channelDurationSaveDebounce) { clearTimeout(channelDurationSaveDebounce); channelDurationSaveDebounce = null; }
+      saveChannelDoc();
+    });
+  }
+
+  // Bulk-populates the queue with `count` random, not-already-queued
+  // catalog videos -- a quick way to seed a long-running Channel without
+  // hand-picking hundreds of tracks. Falls back to however many eligible
+  // videos actually exist if the catalog (minus what's already queued)
+  // has fewer than `count` left.
+  function shuffleAddToChannelQueue(count) {
+    var queued = {};
+    adminChannelDraft.items.forEach(function (it) { queued[it.rowNum] = true; });
+    var eligible = state.rows.filter(function (r) { return hasVideo(r) && !queued[r.rowNum]; });
+    var picked = shuffle(eligible).slice(0, count);
+    if (!picked.length) return;
+    picked.forEach(function (row) {
+      adminChannelDraft.items.push({ rowNum: String(row.rowNum), duration: 0, addedAt: Date.now() });
+    });
+    renderAdminChannelQueue();
+    saveChannelDoc();
+    resolveMissingChannelDurations();
   }
 
   els.adminGoChannelBtn.addEventListener("click", goAdminChannel);
@@ -6824,6 +6882,12 @@
 
   els.adminChannelAddPlaylistBtn.addEventListener("click", function () {
     addPlaylistToChannelQueue(els.adminChannelPlaylistSelect.value);
+  });
+
+  els.adminChannelShuffleRow.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-shuffle-count]");
+    if (!btn) return;
+    shuffleAddToChannelQueue(parseInt(btn.getAttribute("data-shuffle-count"), 10));
   });
 
   els.adminChannelQueueList.addEventListener("click", function (e) {

@@ -4517,6 +4517,16 @@ body.is-searching #discoverSection {
   flex: 1 1 auto;
 }
 
+.admin-channel-shuffle-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-channel-shuffle-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .admin-channel-queue-title {
   margin: 20px 0 8px;
   font-size: 0.92rem;

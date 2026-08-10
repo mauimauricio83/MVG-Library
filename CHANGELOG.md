@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.34.0 — current
+- Admin Channel Mode panel: "Shuffle add from catalog" buttons (+10/+100/+1000) bulk-populate the queue with that many random, not-already-queued catalog videos in one click, instead of hand-picking each one. Duration resolution (see v5.33.0) now runs as a 5-way concurrent worker pool with a progress readout ("Resolving durations: 42/1000…") instead of one-at-a-time, and saves are debounced to one write ~1s after the last resolution lands rather than one per video -- makes a +1000 add practical instead of taking forever and hammering Firestore. Also fixed a real bug this surfaced: the YouTube duration probe used a single fixed hidden-player element id, which was fine one-at-a-time but would have had concurrent probes stomp on each other's setup/teardown; each probe now gets its own id.
+
 ## v5.33.1 — current
 - Admin Channel Mode panel now shows an estimated schedule for each queue item -- "Now playing" for whatever's live, "Plays at HH:MM" for everything else, computed by reusing the exact same play-order/position math the viewer side uses (so it's never a separate, potentially-inconsistent estimate) and walking forward one loop from right now. Items excluded from playback (duration not yet resolved, or the video's since been removed from the catalog) show "Not scheduled (skipped)" instead of a bogus time. Refreshes every 20s while the panel is open. Verified against the live `channel/current` doc (96 real queued items) -- correctly identified the currently-playing item and the wrap-around back to the top of the queue.
 
