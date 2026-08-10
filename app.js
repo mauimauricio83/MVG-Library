@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.35.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.35.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6660,6 +6660,7 @@
   var adminChannelPreviewProvider = null;
   var adminChannelPreviewKind = null;
   var adminChannelPreviewIndex = -1;
+  var adminChannelPreviewItem = null; // the exact item object reference currently loaded ("queue" kind only)
   var adminChannelPreviewInsertVideoId = null;
   var adminChannelPreviewTimer = null;
   var ADMIN_CHANNEL_PREVIEW_RESYNC_MS = 20000;
@@ -6672,9 +6673,24 @@
     adminChannelPreviewPlayer = null;
     adminChannelPreviewKind = null;
     adminChannelPreviewIndex = -1;
+    adminChannelPreviewItem = null;
     adminChannelPreviewInsertVideoId = null;
     if (els.adminChannelPreviewBox) els.adminChannelPreviewBox.innerHTML = '<p class="admin-empty">Not tuned in.</p>';
     if (els.adminChannelPreviewLabel) els.adminChannelPreviewLabel.textContent = "";
+  }
+
+  // Only the admin's own Live View can prune the queue (regular viewers
+  // have no Firestore write access), and only while it's actually open and
+  // has played a queue item through to the end -- there's no server to do
+  // this in the background. Ad-hoc scheduledInsert overlays aren't part of
+  // `items` at all, so they're never removed here.
+  function removeFinishedChannelItem() {
+    if (adminChannelPreviewKind !== "queue" || !adminChannelPreviewItem) return;
+    var idx = adminChannelDraft.items.indexOf(adminChannelPreviewItem);
+    if (idx === -1) return;
+    adminChannelDraft.items.splice(idx, 1);
+    renderAdminChannelQueue();
+    saveChannelDoc();
   }
 
   function loadAdminChannelPreviewTrack(pos) {
@@ -6682,6 +6698,7 @@
     if (!ref) return;
     adminChannelPreviewKind = pos.kind;
     adminChannelPreviewIndex = pos.kind === "queue" ? pos.index : -1;
+    adminChannelPreviewItem = pos.kind === "queue" ? pos.item : null;
     adminChannelPreviewInsertVideoId = pos.kind === "insert" ? pos.item.videoId : null;
     els.adminChannelPreviewLabel.textContent = (pos.kind === "insert" ? "Interrupt: " : "Now playing: ") + channelItemTitle(pos.item);
 
@@ -6694,11 +6711,23 @@
       autoplay: true,
       controls: true,
       isStale: function () { return els.adminChannelView.hidden; },
-      onEnded: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
+      onEnded: function () {
+        if (els.adminChannelView.hidden) return;
+        removeFinishedChannelItem();
+        resyncAdminChannelPreview();
+      },
       onError: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
       onReady: function (player) {
         adminChannelPreviewPlayer = player;
         adminChannelPreviewProvider = ref.provider;
+        // Starts muted -- this player autoplays the moment the admin opens
+        // the panel, with no fresh click/gesture backing it, so audible
+        // autoplay would likely get blocked by the browser anyway; native
+        // controls (visible) let the admin unmute with one click.
+        try {
+          if (ref.provider === "youtube" && player.mute) player.mute();
+          else if (ref.provider === "vimeo" && player.setMuted) player.setMuted(true);
+        } catch (e) {}
         if (pos.offsetSec > 0.5) {
           if (ref.provider === "youtube") { try { player.seekTo(pos.offsetSec, true); } catch (e) {} }
           else if (ref.provider === "vimeo" && player.setCurrentTime) { player.setCurrentTime(pos.offsetSec).catch(function () {}); }
@@ -6816,8 +6845,12 @@
     }).join("");
   }
 
+  // Includes the date, not just the time -- a long queue (hundreds of
+  // videos) can easily push "plays at" times a day or more out, where a
+  // bare time-of-day would be ambiguous about which day it means.
   function formatScheduleClock(date) {
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return date.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " +
+      date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
   // "When does each item actually play" -- reuses the exact same

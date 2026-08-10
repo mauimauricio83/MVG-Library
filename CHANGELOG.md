@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.35.1 — current
+- Channel Mode admin panel: Live View now starts muted (it autoplays on open with no fresh user gesture behind it, so audible autoplay would likely just get blocked anyway -- native controls are visible to unmute with one click) and moved to sit directly above the Queue list on both mobile and desktop, replacing the two-column layout that read as misplaced/cramped on desktop.
+- The queue now clears finished videos: when the admin's own Live View plays a queue item through to the end, that item is removed from the queue (regular viewers can't do this -- no Firestore write access -- so it only happens while an admin has Live View open and playing). Turns the queue into a draining one-shot playlist rather than a forever-loop, for admins who want that.
+- "Plays at" times (queue rows and the scheduled-insert banner) now include the date, not just the time of day -- a long queue easily pushes times a day or more out, where a bare time was ambiguous about which day it meant.
+
 ## v5.35.0 — current
 - Channel Mode admin panel now has a live view to the side -- a real, second synchronized player (reusing the exact same scheduling math the viewer side uses) so the admin can watch/hear what's actually airing while editing the queue, without needing TV Mode open separately.
 - New: "Insert a YouTube or Vimeo link" -- paste a raw video URL (doesn't need to already be in the catalog) and choose to add it **at the end** of the queue, **play immediately**, or **at a specific time**. The latter two use a new one-slot `scheduledInsert` overlay on the `channel/current` doc: while active it preempts the regular rotation entirely (no touching the queue's own order/anchor), and once its duration elapses playback falls straight back to wherever the regular rotation's own clock says "now" is -- same as a real DJ cutting to something live and returning to the rotation, not pausing it. Title looked up via YouTube/Vimeo's public oEmbed; duration resolved the same probe-player way as catalog adds.

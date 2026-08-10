@@ -4533,39 +4533,15 @@ body.is-searching #discoverSection {
   color: var(--text-muted);
 }
 
-/* Two columns once there's room: queue management on the left, a sticky
-   live-view monitor on the right so the admin can see/hear what's
-   actually airing while editing the queue. Stacks on narrow screens --
-   the monitor isn't useful squeezed into a sliver next to the list. */
-.admin-channel-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.admin-channel-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.admin-channel-side {
-  flex: 0 0 300px;
-  position: sticky;
-  top: 12px;
-}
-
-@media (max-width: 760px) {
-  .admin-channel-layout {
-    flex-direction: column;
-  }
-  .admin-channel-side {
-    position: static;
-    width: 100%;
-  }
-}
-
+/* Single column, same on mobile and desktop -- the live-view monitor sits
+   directly above the Queue list (not off to the side, which read as
+   misplaced/cramped on desktop) so the admin can see/hear what's actually
+   airing right where they're about to edit the queue below it. Capped
+   width on wide screens purely so a 16:9 player doesn't stretch edge to
+   edge of the whole admin panel. */
 .admin-channel-preview-box {
   width: 100%;
+  max-width: 480px;
   aspect-ratio: 16 / 9;
   background: #000;
   border-radius: 8px;
