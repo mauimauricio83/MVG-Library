@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.34.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.35.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -299,6 +299,15 @@
     adminChannelQueueDuration: document.getElementById("adminChannelQueueDuration"),
     adminChannelQueueList: document.getElementById("adminChannelQueueList"),
     adminChannelShuffleRow: document.getElementById("adminChannelShuffleRow"),
+    adminChannelInsertUrl: document.getElementById("adminChannelInsertUrl"),
+    adminChannelInsertTime: document.getElementById("adminChannelInsertTime"),
+    adminChannelInsertBtn: document.getElementById("adminChannelInsertBtn"),
+    adminChannelInsertStatus: document.getElementById("adminChannelInsertStatus"),
+    adminChannelScheduledInsertRow: document.getElementById("adminChannelScheduledInsertRow"),
+    adminChannelScheduledInsertText: document.getElementById("adminChannelScheduledInsertText"),
+    adminChannelCancelInsertBtn: document.getElementById("adminChannelCancelInsertBtn"),
+    adminChannelPreviewBox: document.getElementById("adminChannelPreviewBox"),
+    adminChannelPreviewLabel: document.getElementById("adminChannelPreviewLabel"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -805,12 +814,14 @@
     // synced state itself (every client derives its own position from
     // doc.anchorAt + doc.items, see computeChannelPosition()).
     channel: {
-      doc: null,           // { items:[{rowNum,duration,addedAt}], mode, shuffleSeed, anchorAt }, null until first loaded
+      doc: null,           // { items:[{rowNum|provider+videoId, duration, addedAt}], mode, shuffleSeed, anchorAt, scheduledInsert }, null until first loaded
       unsub: null,         // live listener while Channel tab is active
       resyncTimer: null,
       tuned: false,        // true once actively playing in Channel mode
-      currentOrder: null,  // the (possibly shuffled) item array the currently-loaded track came from
-      currentIndex: -1
+      currentKind: null,   // "queue" | "insert" -- what's currently loaded
+      currentOrder: null,  // the (possibly shuffled) item array the currently-loaded track came from ("queue" kind)
+      currentIndex: -1,
+      currentInsertVideoId: null // set when currentKind is "insert"
     },
     // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
     selectedPlaylistId: null,
@@ -4406,21 +4417,54 @@
     return a;
   }
 
-  // Playable = has a resolvable row with a video ref AND a known duration
+  // Queue items come in two shapes: catalog-sourced (`{rowNum, duration}`,
+  // the original shape) and ad-hoc inserts (`{provider, videoId, title,
+  // duration}`, a raw pasted link with no catalog entry at all -- see the
+  // admin panel's "Insert a YouTube or Vimeo link"). These three helpers
+  // are the one place that distinction is handled, so everything else
+  // (scheduling, playback, rendering) can treat any item uniformly.
+  function channelItemRef(item) {
+    if (!item) return null;
+    if (item.provider && item.videoId) return { provider: item.provider, id: item.videoId };
+    if (item.rowNum) {
+      var row = findRowByNum(item.rowNum);
+      return row ? getRowVideoRef(row) : null;
+    }
+    return null;
+  }
+
+  function channelItemTitle(item) {
+    if (!item) return "";
+    if (item.rowNum) {
+      var row = findRowByNum(item.rowNum);
+      return row ? ((row.artist ? row.artist + " — " : "") + (row.song || "")) : ("#" + item.rowNum + " (not found)");
+    }
+    return item.title || "(untitled)";
+  }
+
+  function channelItemKey(item) {
+    if (!item) return null;
+    return item.rowNum ? ("row:" + item.rowNum) : ("adhoc:" + item.provider + ":" + item.videoId);
+  }
+
+  // Playable = has a resolvable video ref AND a known duration
   // (unresolved-duration items are skipped from scheduling rather than
-  // breaking the whole channel -- see resolveItemDuration() in the admin
-  // panel, which is what fills `duration` in for newly-added items).
+  // breaking the whole channel -- see resolveMissingChannelDurations() in
+  // the admin panel, which is what fills `duration` in for newly-added items).
   function channelPlayOrder(doc) {
     if (!doc || !doc.items || !doc.items.length) return [];
     var playable = doc.items.filter(function (it) {
-      if (!it.duration || it.duration <= 0) return false;
-      var row = findRowByNum(it.rowNum);
-      return row && hasVideo(row);
+      return it.duration > 0 && !!channelItemRef(it);
     });
     return doc.mode === "shuffled" ? seededShuffle(playable, doc.shuffleSeed || 0) : playable;
   }
 
-  function computeChannelPosition(doc) {
+  // The regular rotation, ignoring any active scheduledInsert overlay (see
+  // computeChannelPosition() below) -- kept separate so the admin panel's
+  // per-item "plays at" schedule always reflects the underlying queue
+  // rotation, which keeps ticking through an interrupt rather than pausing
+  // for it (see the comment on activeScheduledInsert()).
+  function computeQueueLoopPosition(doc) {
     var order = channelPlayOrder(doc);
     if (!order.length || !doc.anchorAt) return null;
     var total = order.reduce(function (s, it) { return s + it.duration; }, 0);
@@ -4430,10 +4474,36 @@
     if (elapsed < 0) elapsed += total;
     var acc = 0;
     for (var i = 0; i < order.length; i++) {
-      if (elapsed < acc + order[i].duration) return { order: order, index: i, offsetSec: elapsed - acc };
+      if (elapsed < acc + order[i].duration) return { kind: "queue", order: order, index: i, item: order[i], offsetSec: elapsed - acc };
       acc += order[i].duration;
     }
-    return { order: order, index: 0, offsetSec: 0 };
+    return { kind: "queue", order: order, index: 0, item: order[0], offsetSec: 0 };
+  }
+
+  // A one-off "cut to this video right now/at this time" override (see the
+  // admin panel's "Play immediately" / "At a specific time" insert options)
+  // -- deliberately NOT part of `items`/the loop rotation. It's a pure
+  // overlay: while it's active, computeChannelPosition() returns it instead
+  // of the regular queue position; once its duration elapses, the regular
+  // queue resumes wherever the loop's own clock says "now" is (which kept
+  // advancing the whole time -- effectively the interrupt "skips ahead"
+  // the regular rotation by however long it played, same as a real DJ
+  // cutting to something live and then returning to the rotation).
+  function activeScheduledInsert(doc) {
+    var si = doc && doc.scheduledInsert;
+    if (!si || !si.duration) return null;
+    var playAtMs = si.playAt && si.playAt.toMillis ? si.playAt.toMillis() : si.playAt;
+    var offsetSec = (Date.now() - playAtMs) / 1000;
+    if (offsetSec < 0 || offsetSec >= si.duration) return null;
+    return {
+      kind: "insert",
+      item: { provider: si.provider, videoId: si.videoId, title: si.title, duration: si.duration },
+      offsetSec: offsetSec
+    };
+  }
+
+  function computeChannelPosition(doc) {
+    return activeScheduledInsert(doc) || computeQueueLoopPosition(doc);
   }
 
   function updateTVChannelStatus(text) {
@@ -4444,23 +4514,50 @@
     if (state.channel.resyncTimer) { clearInterval(state.channel.resyncTimer); state.channel.resyncTimer = null; }
   }
 
-  // Loads the item at `order[index]` starting at `offsetSec` into the
-  // existing TV player shell, then chains to the next queue item on
+  // Shows Report/Favorite/Playlist/admin-edit/Info for a real catalog row;
+  // an ad-hoc inserted link has none of that (no rowNum to act on), so it
+  // just gets a plain title in the info panel and those controls hidden.
+  function updateTVChannelTrackDetails(item) {
+    if (item.rowNum) {
+      var row = findRowByNum(item.rowNum);
+      if (row) { updateTVTrackDetails(row); return; }
+    }
+    els.tvReportLink.hidden = true;
+    els.tvFavBtn.hidden = true;
+    els.tvPlaylistBtn.hidden = true;
+    els.tvAdminEditBtn.hidden = true;
+    els.tvAdminDeleteBtn.hidden = true;
+    els.tvInfoPanel.innerHTML = '<h3 class="tv-info-title">' + escapeHtml(item.title || "(untitled)") + "</h3>";
+  }
+
+  // Loads `pos.item` (from computeChannelPosition() -- either a regular
+  // queue entry or an active scheduledInsert) starting at `pos.offsetSec`
+  // into the existing TV player shell, then chains to whatever's next on
   // natural end -- same provider-reuse logic as loadTVTrack, just with an
   // extra post-ready seek and a different "what happens next" hook.
-  function loadChannelTrackAt(order, index, offsetSec) {
-    var item = order[index];
-    var row = findRowByNum(item.rowNum);
-    if (!row) { advanceChannelTrack(); return; }
-    var ref = getRowVideoRef(row);
-    if (!ref) { advanceChannelTrack(); return; }
-    updateTVTrackDetails(row);
-    state.channel.currentOrder = order;
-    state.channel.currentIndex = index;
-    var nextItem = order[(index + 1) % order.length];
-    var nextRow = nextItem ? findRowByNum(nextItem.rowNum) : null;
-    updateTVChannelStatus("🔴 You're tuned into the Channel" +
-      (nextRow ? " — up next: " + (nextRow.artist ? nextRow.artist + " — " : "") + (nextRow.song || "") : ""));
+  function loadChannelTrackAt(pos) {
+    var item = pos.item;
+    var ref = channelItemRef(item);
+    if (!ref) {
+      if (pos.kind === "queue") advanceChannelTrack();
+      return;
+    }
+    var offsetSec = pos.offsetSec;
+    updateTVChannelTrackDetails(item);
+    state.channel.currentKind = pos.kind;
+    if (pos.kind === "queue") {
+      state.channel.currentOrder = pos.order;
+      state.channel.currentIndex = pos.index;
+      state.channel.currentInsertVideoId = null;
+      var nextItem = pos.order[(pos.index + 1) % pos.order.length];
+      updateTVChannelStatus("🔴 You're tuned into the Channel" +
+        (nextItem ? " — up next: " + channelItemTitle(nextItem) : ""));
+    } else {
+      state.channel.currentOrder = null;
+      state.channel.currentIndex = -1;
+      state.channel.currentInsertVideoId = item.videoId;
+      updateTVChannelStatus("🔴 " + channelItemTitle(item) + " — back to the regular Channel after this");
+    }
 
     function seekOnceReady(player, provider) {
       if (provider === "youtube") {
@@ -4509,10 +4606,16 @@
   // that joined at different times stay on the same page, not just the same
   // video-within-a-loop.
   function advanceChannelTrack() {
+    if (state.channel.currentKind === "insert") {
+      // The interrupt just ended -- resync falls through to wherever the
+      // regular queue's own clock says "now" is (see activeScheduledInsert).
+      resyncChannelIfNeeded();
+      return;
+    }
     var order = state.channel.currentOrder || [];
     if (!order.length) return;
     var next = (state.channel.currentIndex + 1) % order.length;
-    loadChannelTrackAt(order, next, 0);
+    loadChannelTrackAt({ kind: "queue", order: order, index: next, item: order[next], offsetSec: 0 });
   }
 
   // Wall-clock safety net -- re-derives where the channel "should" be right
@@ -4532,12 +4635,13 @@
       updateTVChannelStatus("Nothing in the Channel queue yet.");
       return;
     }
-    var sameTrack = state.channel.currentOrder === pos.order || (
-      state.channel.currentOrder && state.channel.currentOrder[state.channel.currentIndex] &&
-      pos.order[pos.index] && state.channel.currentOrder[state.channel.currentIndex].rowNum === pos.order[pos.index].rowNum
-    );
-    if (!sameTrack || state.channel.currentIndex !== pos.index) {
-      loadChannelTrackAt(pos.order, pos.index, pos.offsetSec);
+    var sameTrack = pos.kind === "insert"
+      ? (state.channel.currentKind === "insert" && state.channel.currentInsertVideoId === pos.item.videoId)
+      : (state.channel.currentKind === "queue" && state.channel.currentOrder && state.channel.currentOrder[state.channel.currentIndex] &&
+          pos.order[pos.index] && state.channel.currentIndex === pos.index &&
+          channelItemKey(state.channel.currentOrder[state.channel.currentIndex]) === channelItemKey(pos.order[pos.index]));
+    if (!sameTrack) {
+      loadChannelTrackAt(pos);
       return;
     }
     // Same track -- just check drift against actual playback position.
@@ -4574,8 +4678,10 @@
     clearChannelResyncTimer();
     if (state.channel.unsub) { state.channel.unsub(); state.channel.unsub = null; }
     state.channel.tuned = false;
+    state.channel.currentKind = null;
     state.channel.currentOrder = null;
     state.channel.currentIndex = -1;
+    state.channel.currentInsertVideoId = null;
   }
 
   // Entry point for the Channel tab -- bypasses TV Mode's usual armed/
@@ -6111,6 +6217,7 @@
 
   function showAdminLanding() {
     if (adminChannelScheduleTimer) { clearInterval(adminChannelScheduleTimer); adminChannelScheduleTimer = null; }
+    stopAdminChannelPreview();
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminListView.hidden = true;
@@ -6542,6 +6649,99 @@
     return h ? (h + ":" + mm + ":" + ss) : (mm + ":" + ss);
   }
 
+  // ---- Live view (side panel) ---------------------------------------------
+  // A second, independent tuned-in player -- reuses the exact same
+  // computeChannelPosition()/channelItemRef() scheduling functions the real
+  // viewer side uses (so it's never a separate, potentially-inconsistent
+  // guess at what's live), but keeps its own player/timer state rather than
+  // touching state.tv/state.channel, since the admin panel isn't TV Mode
+  // and shouldn't fight over the same player instance.
+  var adminChannelPreviewPlayer = null;
+  var adminChannelPreviewProvider = null;
+  var adminChannelPreviewKind = null;
+  var adminChannelPreviewIndex = -1;
+  var adminChannelPreviewInsertVideoId = null;
+  var adminChannelPreviewTimer = null;
+  var ADMIN_CHANNEL_PREVIEW_RESYNC_MS = 20000;
+
+  function stopAdminChannelPreview() {
+    if (adminChannelPreviewTimer) { clearInterval(adminChannelPreviewTimer); adminChannelPreviewTimer = null; }
+    if (adminChannelPreviewPlayer && adminChannelPreviewPlayer.destroy) {
+      try { adminChannelPreviewPlayer.destroy(); } catch (e) {}
+    }
+    adminChannelPreviewPlayer = null;
+    adminChannelPreviewKind = null;
+    adminChannelPreviewIndex = -1;
+    adminChannelPreviewInsertVideoId = null;
+    if (els.adminChannelPreviewBox) els.adminChannelPreviewBox.innerHTML = '<p class="admin-empty">Not tuned in.</p>';
+    if (els.adminChannelPreviewLabel) els.adminChannelPreviewLabel.textContent = "";
+  }
+
+  function loadAdminChannelPreviewTrack(pos) {
+    var ref = channelItemRef(pos.item);
+    if (!ref) return;
+    adminChannelPreviewKind = pos.kind;
+    adminChannelPreviewIndex = pos.kind === "queue" ? pos.index : -1;
+    adminChannelPreviewInsertVideoId = pos.kind === "insert" ? pos.item.videoId : null;
+    els.adminChannelPreviewLabel.textContent = (pos.kind === "insert" ? "Interrupt: " : "Now playing: ") + channelItemTitle(pos.item);
+
+    if (adminChannelPreviewPlayer && adminChannelPreviewPlayer.destroy) {
+      try { adminChannelPreviewPlayer.destroy(); } catch (e) {}
+    }
+    adminChannelPreviewPlayer = null;
+    els.adminChannelPreviewBox.innerHTML = '<div id="adminChannelPreviewTarget" style="width:100%;height:100%;"></div>';
+    createVideoPlayer("adminChannelPreviewTarget", ref, {
+      autoplay: true,
+      controls: true,
+      isStale: function () { return els.adminChannelView.hidden; },
+      onEnded: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
+      onError: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
+      onReady: function (player) {
+        adminChannelPreviewPlayer = player;
+        adminChannelPreviewProvider = ref.provider;
+        if (pos.offsetSec > 0.5) {
+          if (ref.provider === "youtube") { try { player.seekTo(pos.offsetSec, true); } catch (e) {} }
+          else if (ref.provider === "vimeo" && player.setCurrentTime) { player.setCurrentTime(pos.offsetSec).catch(function () {}); }
+        }
+      }
+    });
+  }
+
+  function resyncAdminChannelPreview() {
+    if (els.adminChannelView.hidden || !adminChannelDraft) return;
+    var pos = computeChannelPosition(adminChannelDraft);
+    if (!pos) {
+      els.adminChannelPreviewLabel.textContent = "Nothing in the queue yet.";
+      els.adminChannelPreviewBox.innerHTML = '<p class="admin-empty">Not tuned in.</p>';
+      return;
+    }
+    var sameTrack = pos.kind === "insert"
+      ? (adminChannelPreviewKind === "insert" && adminChannelPreviewInsertVideoId === pos.item.videoId)
+      : (adminChannelPreviewKind === "queue" && adminChannelPreviewIndex === pos.index);
+    if (!sameTrack) { loadAdminChannelPreviewTrack(pos); return; }
+    if (!adminChannelPreviewPlayer || !adminChannelPreviewPlayer.getCurrentTime) return;
+    if (adminChannelPreviewProvider === "vimeo") {
+      adminChannelPreviewPlayer.getCurrentTime().then(function (current) {
+        if (typeof current === "number" && Math.abs(current - pos.offsetSec) > CHANNEL_DRIFT_TOLERANCE_SEC && adminChannelPreviewPlayer.setCurrentTime) {
+          adminChannelPreviewPlayer.setCurrentTime(pos.offsetSec).catch(function () {});
+        }
+      }).catch(function () {});
+      return;
+    }
+    try {
+      var current = adminChannelPreviewPlayer.getCurrentTime();
+      if (typeof current === "number" && Math.abs(current - pos.offsetSec) > CHANNEL_DRIFT_TOLERANCE_SEC) {
+        adminChannelPreviewPlayer.seekTo(pos.offsetSec, true);
+      }
+    } catch (e) {}
+  }
+
+  function startAdminChannelPreview() {
+    stopAdminChannelPreview();
+    resyncAdminChannelPreview();
+    adminChannelPreviewTimer = setInterval(resyncAdminChannelPreview, ADMIN_CHANNEL_PREVIEW_RESYNC_MS);
+  }
+
   function goAdminChannel() {
     showAdminChannelView();
     return loadChannelAdmin();
@@ -6557,6 +6757,7 @@
     resolveMissingChannelDurations();
     if (adminChannelScheduleTimer) clearInterval(adminChannelScheduleTimer);
     adminChannelScheduleTimer = setInterval(renderAdminChannelQueue, ADMIN_CHANNEL_SCHEDULE_REFRESH_MS);
+    startAdminChannelPreview();
   }
 
   function loadChannelAdmin() {
@@ -6631,7 +6832,11 @@
     var map = new Map();
     var order = channelPlayOrder(adminChannelDraft);
     if (!order.length || !adminChannelDraft.anchorAt) return map;
-    var pos = computeChannelPosition(adminChannelDraft);
+    // Deliberately the queue-only position (ignores any active
+    // scheduledInsert) -- the regular rotation's "plays at" schedule keeps
+    // ticking through an interrupt rather than pausing for it, see
+    // activeScheduledInsert()'s comment.
+    var pos = computeQueueLoopPosition(adminChannelDraft);
     if (!pos) return map;
     var t = Date.now() - pos.offsetSec * 1000;
     for (var i = 0; i < order.length; i++) {
@@ -6647,14 +6852,14 @@
     els.adminChannelQueueCount.textContent = String(items.length);
     var total = items.reduce(function (s, it) { return s + (it.duration || 0); }, 0);
     els.adminChannelQueueDuration.textContent = formatDuration(total);
+    renderAdminChannelScheduledInsert();
     if (!items.length) {
       els.adminChannelQueueList.innerHTML = '<p class="admin-empty">Queue is empty -- search for a video or add a playlist below.</p>';
       return;
     }
     var schedule = computeAdminChannelSchedule();
     els.adminChannelQueueList.innerHTML = items.map(function (it, i) {
-      var row = findRowByNum(it.rowNum);
-      var title = row ? (escapeHtml(row.artist) + " — " + escapeHtml(row.song)) : ("#" + escapeHtml(it.rowNum) + " (not found)");
+      var title = escapeHtml(channelItemTitle(it)) + (it.provider ? " (inserted link)" : "");
       var dur = it.duration ? formatDuration(it.duration) : "resolving duration…";
       var sched = schedule.get(it);
       var schedText = sched
@@ -6752,6 +6957,11 @@
   function resolveDurationForRow(row) {
     var ref = getRowVideoRef(row);
     if (!ref) return Promise.resolve(0);
+    return resolveDurationForRef(ref);
+  }
+
+  function resolveDurationForRef(ref) {
+    if (!ref) return Promise.resolve(0);
     if (ref.provider === "vimeo") {
       return fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id))
         .then(function (res) { return res.ok ? res.json() : null; })
@@ -6828,8 +7038,8 @@
     function worker() {
       if (nextIndex >= missing.length) return Promise.resolve();
       var item = missing[nextIndex++];
-      var row = findRowByNum(item.rowNum);
-      var work = row ? resolveDurationForRow(row) : Promise.resolve(0);
+      var ref = channelItemRef(item);
+      var work = ref ? resolveDurationForRef(ref) : Promise.resolve(0);
       return work.then(function (sec) {
         item.duration = sec;
         done++;
@@ -6868,6 +7078,107 @@
     saveChannelDoc();
     resolveMissingChannelDurations();
   }
+
+  // ---- Insert a YouTube/Vimeo link (not necessarily in the catalog) ------
+  function parseChannelVideoUrl(url) {
+    var yt = extractYouTubeId(url);
+    if (yt) return { provider: "youtube", id: yt };
+    var vm = extractVimeoId(url);
+    if (vm) return { provider: "vimeo", id: vm };
+    return null;
+  }
+
+  function fetchOEmbedTitle(ref) {
+    var url = ref.provider === "youtube"
+      ? "https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + ref.id)
+      : "https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id);
+    return fetch(url)
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (!data) return null;
+        return (data.author_name ? data.author_name + " — " : "") + (data.title || "");
+      })
+      .catch(function () { return null; });
+  }
+
+  function renderAdminChannelScheduledInsert() {
+    var si = adminChannelDraft.scheduledInsert;
+    if (!si) { els.adminChannelScheduledInsertRow.hidden = true; return; }
+    var playAtMs = si.playAt && si.playAt.toMillis ? si.playAt.toMillis() : si.playAt;
+    var now = Date.now();
+    var text;
+    if (now < playAtMs) text = 'Scheduled: "' + si.title + '" plays at ' + formatScheduleClock(new Date(playAtMs));
+    else if (now < playAtMs + si.duration * 1000) text = '🔴 Playing now: "' + si.title + '"';
+    else text = '"' + si.title + '" already aired -- clear this or it\'ll keep showing as pending';
+    els.adminChannelScheduledInsertText.textContent = text;
+    els.adminChannelScheduledInsertRow.hidden = false;
+  }
+
+  function insertChannelVideo() {
+    var url = els.adminChannelInsertUrl.value.trim();
+    var ref = parseChannelVideoUrl(url);
+    if (!ref) {
+      els.adminChannelInsertStatus.className = "admin-status is-error";
+      els.adminChannelInsertStatus.textContent = "Couldn't recognize that as a YouTube or Vimeo link.";
+      els.adminChannelInsertStatus.hidden = false;
+      return;
+    }
+    var timing = document.querySelector('input[name="adminChannelInsertTiming"]:checked').value;
+    var playAtMs = null;
+    if (timing === "now") {
+      playAtMs = Date.now();
+    } else if (timing === "at") {
+      playAtMs = new Date(els.adminChannelInsertTime.value).getTime();
+      if (!els.adminChannelInsertTime.value || isNaN(playAtMs)) {
+        els.adminChannelInsertStatus.className = "admin-status is-error";
+        els.adminChannelInsertStatus.textContent = "Pick a valid date/time first.";
+        els.adminChannelInsertStatus.hidden = false;
+        return;
+      }
+    }
+
+    els.adminChannelInsertBtn.disabled = true;
+    els.adminChannelInsertStatus.className = "admin-status";
+    els.adminChannelInsertStatus.textContent = "Looking up video…";
+    els.adminChannelInsertStatus.hidden = false;
+
+    Promise.all([fetchOEmbedTitle(ref), resolveDurationForRef(ref)]).then(function (results) {
+      els.adminChannelInsertBtn.disabled = false;
+      var title = results[0] || (ref.provider === "youtube" ? "YouTube video " : "Vimeo video ") + ref.id;
+      var duration = results[1];
+      if (!duration) {
+        els.adminChannelInsertStatus.className = "admin-status is-error";
+        els.adminChannelInsertStatus.textContent = "Couldn't determine that video's length -- double check the link and try again.";
+        return;
+      }
+      if (timing === "end") {
+        adminChannelDraft.items.push({ provider: ref.provider, videoId: ref.id, title: title, duration: duration, addedAt: Date.now() });
+        renderAdminChannelQueue();
+      } else {
+        // Only one scheduled insert at a time -- setting a new one replaces
+        // whatever was pending, same as swapping a cart on a DJ deck.
+        adminChannelDraft.scheduledInsert = { provider: ref.provider, videoId: ref.id, title: title, duration: duration, playAt: playAtMs };
+        renderAdminChannelScheduledInsert();
+      }
+      saveChannelDoc();
+      els.adminChannelInsertUrl.value = "";
+      els.adminChannelInsertStatus.hidden = true;
+    });
+  }
+
+  els.adminChannelInsertBtn.addEventListener("click", insertChannelVideo);
+
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="adminChannelInsertTiming"]'), function (radio) {
+    radio.addEventListener("change", function () {
+      els.adminChannelInsertTime.disabled = this.value !== "at";
+    });
+  });
+
+  els.adminChannelCancelInsertBtn.addEventListener("click", function () {
+    adminChannelDraft.scheduledInsert = null;
+    saveChannelDoc();
+    renderAdminChannelScheduledInsert();
+  });
 
   els.adminGoChannelBtn.addEventListener("click", goAdminChannel);
   els.adminChannelBackBtn.addEventListener("click", showAdminLanding);
@@ -7765,6 +8076,7 @@
   function closeAdminModal() {
     if (els.adminModal.hidden) return;
     if (adminChannelScheduleTimer) { clearInterval(adminChannelScheduleTimer); adminChannelScheduleTimer = null; }
+    stopAdminChannelPreview();
     els.adminModal.hidden = true;
     unlockBodyScroll();
   }
