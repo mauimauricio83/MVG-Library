@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.33.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.33.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6109,6 +6109,7 @@
   }
 
   function showAdminLanding() {
+    if (adminChannelScheduleTimer) { clearInterval(adminChannelScheduleTimer); adminChannelScheduleTimer = null; }
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminListView.hidden = true;
@@ -6518,6 +6519,13 @@
   // already tuned in, DJ-deck style. See computeChannelPosition() /
   // tuneChannelMode() near the rest of TV Mode for the viewer side.
   var adminChannelDraft = null;
+  // Re-renders the queue's "Plays at ..." / "Now playing" column periodically
+  // while the panel is open -- those are wall-clock-derived, not something
+  // Firestore pushes updates for on its own. Started in
+  // finishLoadChannelAdmin(), stopped in showAdminLanding()/closeAdminModal()
+  // (every path out of this view goes through one of those two).
+  var adminChannelScheduleTimer = null;
+  var ADMIN_CHANNEL_SCHEDULE_REFRESH_MS = 20000;
 
   function channelDocRef() {
     return db.collection("channel").doc("current");
@@ -6546,6 +6554,8 @@
     renderAdminChannelQueue();
     els.adminChannelStatus.hidden = true;
     resolveMissingChannelDurations();
+    if (adminChannelScheduleTimer) clearInterval(adminChannelScheduleTimer);
+    adminChannelScheduleTimer = setInterval(renderAdminChannelQueue, ADMIN_CHANNEL_SCHEDULE_REFRESH_MS);
   }
 
   function loadChannelAdmin() {
@@ -6604,6 +6614,33 @@
     }).join("");
   }
 
+  function formatScheduleClock(date) {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  // "When does each item actually play" -- reuses the exact same
+  // channelPlayOrder()/computeChannelPosition() the viewer side uses (so
+  // this is never out of sync with reality), then walks forward one full
+  // loop from right now: the currently-playing item starts `offsetSec`
+  // seconds ago, everything after it stacks up by real duration. Keyed by
+  // item object reference (not rowNum) since seededShuffle() preserves the
+  // original item objects, and rowNum alone wouldn't disambiguate a video
+  // added to the queue more than once.
+  function computeAdminChannelSchedule() {
+    var map = new Map();
+    var order = channelPlayOrder(adminChannelDraft);
+    if (!order.length || !adminChannelDraft.anchorAt) return map;
+    var pos = computeChannelPosition(adminChannelDraft);
+    if (!pos) return map;
+    var t = Date.now() - pos.offsetSec * 1000;
+    for (var i = 0; i < order.length; i++) {
+      var item = order[(pos.index + i) % order.length];
+      map.set(item, { startsAt: new Date(t), isNowPlaying: i === 0 });
+      t += item.duration * 1000;
+    }
+    return map;
+  }
+
   function renderAdminChannelQueue() {
     var items = adminChannelDraft.items;
     els.adminChannelQueueCount.textContent = String(items.length);
@@ -6613,15 +6650,20 @@
       els.adminChannelQueueList.innerHTML = '<p class="admin-empty">Queue is empty -- search for a video or add a playlist below.</p>';
       return;
     }
+    var schedule = computeAdminChannelSchedule();
     els.adminChannelQueueList.innerHTML = items.map(function (it, i) {
       var row = findRowByNum(it.rowNum);
       var title = row ? (escapeHtml(row.artist) + " — " + escapeHtml(row.song)) : ("#" + escapeHtml(it.rowNum) + " (not found)");
       var dur = it.duration ? formatDuration(it.duration) : "resolving duration…";
+      var sched = schedule.get(it);
+      var schedText = sched
+        ? (sched.isNowPlaying ? "&#9654; Now playing" : "Plays at " + formatScheduleClock(sched.startsAt))
+        : (it.duration ? "Not scheduled (skipped)" : "");
       return (
         '<div class="admin-row">' +
           '<div class="admin-row-main">' +
             '<div class="admin-row-title">' + (i + 1) + ". " + title + "</div>" +
-            '<div class="admin-row-sub">' + dur + "</div>" +
+            '<div class="admin-row-sub">' + dur + (schedText ? " · " + schedText : "") + "</div>" +
           "</div>" +
           '<div class="admin-row-actions">' +
             '<button type="button" class="admin-row-btn" data-channel-action="up" data-index="' + i + '"' + (i === 0 ? " disabled" : "") + ">&uarr;</button>" +
@@ -7658,6 +7700,7 @@
 
   function closeAdminModal() {
     if (els.adminModal.hidden) return;
+    if (adminChannelScheduleTimer) { clearInterval(adminChannelScheduleTimer); adminChannelScheduleTimer = null; }
     els.adminModal.hidden = true;
     unlockBodyScroll();
   }
