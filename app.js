@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.35.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.35.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6679,18 +6679,37 @@
     if (els.adminChannelPreviewLabel) els.adminChannelPreviewLabel.textContent = "";
   }
 
-  // Only the admin's own Live View can prune the queue (regular viewers
-  // have no Firestore write access), and only while it's actually open and
-  // has played a queue item through to the end -- there's no server to do
-  // this in the background. Ad-hoc scheduledInsert overlays aren't part of
-  // `items` at all, so they're never removed here.
-  function removeFinishedChannelItem() {
-    if (adminChannelPreviewKind !== "queue" || !adminChannelPreviewItem) return;
-    var idx = adminChannelDraft.items.indexOf(adminChannelPreviewItem);
-    if (idx === -1) return;
-    adminChannelDraft.items.splice(idx, 1);
+  // Drops every item that's already had its turn this cycle (i.e. sits
+  // before the current position in PLAY order), so the queue drains over
+  // time instead of looping forever, and whatever's live is always the
+  // first item shown. Deliberately NOT tied to the admin's own Live View
+  // reaching onEnded -- that only fires while the panel happens to be open
+  // continuously, so a briefly-opened-then-closed panel would leave
+  // already-aired items sitting there forever. Instead this runs on every
+  // load and every periodic refresh, so it self-corrects whenever the
+  // admin next looks, whether or not anyone was watching in between.
+  //
+  // Pruning shrinks `total`, which would otherwise shift where the
+  // anchor-relative modulo loop lands for everyone -- resetting anchorAt to
+  // "now minus however far into the current item we already are" keeps the
+  // currently-playing item at the exact same playback position, just as
+  // item 0 of a smaller loop, so nobody watching sees a jump.
+  function pruneFinishedChannelItems() {
+    if (!adminChannelDraft.items.length) return false;
+    var pos = computeQueueLoopPosition(adminChannelDraft);
+    if (!pos || pos.index === 0) return false;
+    var toRemove = pos.order.slice(0, pos.index);
+    toRemove.forEach(function (it) {
+      var idx = adminChannelDraft.items.indexOf(it);
+      if (idx !== -1) adminChannelDraft.items.splice(idx, 1);
+    });
+    adminChannelDraft.anchorAt = Date.now() - pos.offsetSec * 1000;
+    return true;
+  }
+
+  function refreshAdminChannelQueueTick() {
+    if (pruneFinishedChannelItems()) saveChannelDoc();
     renderAdminChannelQueue();
-    saveChannelDoc();
   }
 
   function loadAdminChannelPreviewTrack(pos) {
@@ -6713,7 +6732,7 @@
       isStale: function () { return els.adminChannelView.hidden; },
       onEnded: function () {
         if (els.adminChannelView.hidden) return;
-        removeFinishedChannelItem();
+        refreshAdminChannelQueueTick();
         resyncAdminChannelPreview();
       },
       onError: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
@@ -6781,11 +6800,11 @@
     els.adminChannelModeShuffled.checked = adminChannelDraft.mode === "shuffled";
     els.adminChannelReshuffleBtn.hidden = adminChannelDraft.mode !== "shuffled";
     populateAdminChannelPlaylistSelect();
-    renderAdminChannelQueue();
+    refreshAdminChannelQueueTick();
     els.adminChannelStatus.hidden = true;
     resolveMissingChannelDurations();
     if (adminChannelScheduleTimer) clearInterval(adminChannelScheduleTimer);
-    adminChannelScheduleTimer = setInterval(renderAdminChannelQueue, ADMIN_CHANNEL_SCHEDULE_REFRESH_MS);
+    adminChannelScheduleTimer = setInterval(refreshAdminChannelQueueTick, ADMIN_CHANNEL_SCHEDULE_REFRESH_MS);
     startAdminChannelPreview();
   }
 

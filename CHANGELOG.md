@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.35.2 — current
+- **Fixed a real bug** in v5.35.1's "clear finished videos": it only removed an item when the admin's own Live View player happened to reach the natural end of a video, which meant closing the panel (very likely usage) left already-aired items sitting in the queue forever, and the currently-playing item never actually rose to the top of the list. Replaced with `pruneFinishedChannelItems()`, which drops everything before the current position in play order and resets the schedule anchor to compensate (so the item that was already playing keeps its exact playback position, no jump) -- runs on every panel load and every 20s refresh, not just on a lucky onEnded, so it self-corrects whenever the admin next looks regardless of what happened while nobody was watching. Verified the anchor-preserving math against synthetic data: pruning correctly drops the finished item, promotes the live one to index 0, and keeps it at the identical offset.
+
 ## v5.35.1 — current
 - Channel Mode admin panel: Live View now starts muted (it autoplays on open with no fresh user gesture behind it, so audible autoplay would likely just get blocked anyway -- native controls are visible to unmute with one click) and moved to sit directly above the Queue list on both mobile and desktop, replacing the two-column layout that read as misplaced/cramped on desktop.
 - The queue now clears finished videos: when the admin's own Live View plays a queue item through to the end, that item is removed from the queue (regular viewers can't do this -- no Firestore write access -- so it only happens while an admin has Live View open and playing). Turns the queue into a draining one-shot playlist rather than a forever-loop, for admins who want that.
