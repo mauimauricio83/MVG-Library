@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.35.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.35.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6712,6 +6712,23 @@
     renderAdminChannelQueue();
   }
 
+  // Removes exactly the item that the Live View player just told us (via a
+  // real onEnded event) finished playing, and restarts the clock from right
+  // now for whatever's left -- deliberately NOT going through
+  // pruneFinishedChannelItems()'s anchor-math re-derivation here, because
+  // that can lag behind an actual onEnded by several seconds (buffering,
+  // ads, or the resolved `duration` estimate being a touch off from the
+  // real playback length), which made the previous version feel stuck
+  // until the periodic tick eventually caught up. A real onEnded is ground
+  // truth: this exact item is done, right now, full stop.
+  function removeJustFinishedChannelItem(item) {
+    var idx = adminChannelDraft.items.indexOf(item);
+    if (idx === -1) return false;
+    adminChannelDraft.items.splice(idx, 1);
+    adminChannelDraft.anchorAt = Date.now();
+    return true;
+  }
+
   function loadAdminChannelPreviewTrack(pos) {
     var ref = channelItemRef(pos.item);
     if (!ref) return;
@@ -6732,7 +6749,15 @@
       isStale: function () { return els.adminChannelView.hidden; },
       onEnded: function () {
         if (els.adminChannelView.hidden) return;
-        refreshAdminChannelQueueTick();
+        if (adminChannelPreviewKind === "queue" && adminChannelPreviewItem &&
+            removeJustFinishedChannelItem(adminChannelPreviewItem)) {
+          saveChannelDoc();
+          renderAdminChannelQueue();
+        } else {
+          // Not a queue item (e.g. a scheduledInsert just ended) -- fall
+          // back to the anchor-derived catch-all.
+          refreshAdminChannelQueueTick();
+        }
         resyncAdminChannelPreview();
       },
       onError: function () { if (!els.adminChannelView.hidden) resyncAdminChannelPreview(); },
