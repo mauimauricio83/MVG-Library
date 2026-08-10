@@ -312,6 +312,19 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Channel Mode -- the shared, synchronized "TV channel" queue everyone
+    // watching Channel Mode sees the same position in (see TV Mode's 4th tab
+    // in app.js). A single doc, not a growing collection: `items` is the
+    // whole DJ-deck queue (admin insert/remove/reorder), `anchorAt` is the
+    // fixed reference timestamp every client's schedule math is computed
+    // from. Public read (every visitor needs it to compute playback
+    // position), admin-only write.
+    match /channel/{id} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Moderation flags for the message board. Readable by anyone so a
     // muted/banned visitor's own client can show why posting is blocked
     // (enforcement itself happens server-side via the /messages rule above,

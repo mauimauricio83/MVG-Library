@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.32.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.33.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -173,6 +173,8 @@
     playlistRenameBtn: document.getElementById("playlistRenameBtn"),
     playlistDeleteBtn: document.getElementById("playlistDeleteBtn"),
     tvCustomList: document.getElementById("tvCustomList"),
+    tvChannelPane: document.getElementById("tvChannelPane"),
+    tvChannelStatus: document.getElementById("tvChannelStatus"),
     addPlaylistPopover: document.getElementById("addPlaylistPopover"),
     addPlaylistList: document.getElementById("addPlaylistList"),
     addPlaylistClose: document.getElementById("addPlaylistClose"),
@@ -281,6 +283,21 @@
     adminBlogPublishBtn: document.getElementById("adminBlogPublishBtn"),
     adminBlogCancelBtn: document.getElementById("adminBlogCancelBtn"),
     adminBlogFormStatus: document.getElementById("adminBlogFormStatus"),
+    adminGoChannelBtn: document.getElementById("adminGoChannelBtn"),
+    adminChannelView: document.getElementById("adminChannelView"),
+    adminChannelBackBtn: document.getElementById("adminChannelBackBtn"),
+    adminChannelRestartBtn: document.getElementById("adminChannelRestartBtn"),
+    adminChannelStatus: document.getElementById("adminChannelStatus"),
+    adminChannelModeOrdered: document.getElementById("adminChannelModeOrdered"),
+    adminChannelModeShuffled: document.getElementById("adminChannelModeShuffled"),
+    adminChannelReshuffleBtn: document.getElementById("adminChannelReshuffleBtn"),
+    adminChannelVideoSearch: document.getElementById("adminChannelVideoSearch"),
+    adminChannelVideoResults: document.getElementById("adminChannelVideoResults"),
+    adminChannelPlaylistSelect: document.getElementById("adminChannelPlaylistSelect"),
+    adminChannelAddPlaylistBtn: document.getElementById("adminChannelAddPlaylistBtn"),
+    adminChannelQueueCount: document.getElementById("adminChannelQueueCount"),
+    adminChannelQueueDuration: document.getElementById("adminChannelQueueDuration"),
+    adminChannelQueueList: document.getElementById("adminChannelQueueList"),
     submitFormBtn: document.getElementById("submitFormBtn"),
     submitVideoLinkHint: document.getElementById("submitVideoLinkHint"),
     submitFormStatus: document.getElementById("submitFormStatus"),
@@ -781,6 +798,19 @@
     // picking a Genre/Era value or closing TV Mode.
     tvCustomPool: null,
     tvCustomPlaylistId: null,
+    // Channel Mode -- the shared, synchronized queue (TV Mode's 4th tab).
+    // doc mirrors the `channel/current` Firestore doc verbatim once loaded;
+    // everything else here is local playback/session bookkeeping, not
+    // synced state itself (every client derives its own position from
+    // doc.anchorAt + doc.items, see computeChannelPosition()).
+    channel: {
+      doc: null,           // { items:[{rowNum,duration,addedAt}], mode, shuffleSeed, anchorAt }, null until first loaded
+      unsub: null,         // live listener while Channel tab is active
+      resyncTimer: null,
+      tuned: false,        // true once actively playing in Channel mode
+      currentOrder: null,  // the (possibly shuffled) item array the currently-loaded track came from
+      currentIndex: -1
+    },
     // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
     selectedPlaylistId: null,
     isAdmin: false,
@@ -3610,6 +3640,7 @@
   }
 
   function teardownTV() {
+    teardownChannelMode();
     state.tv.active = false;
     state.tv.started = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -3890,13 +3921,24 @@
     els.tvGenreGrid.hidden = state.tvActiveTab !== "genre";
     els.tvYearDial.hidden = state.tvActiveTab !== "era";
     els.tvCustomPane.hidden = state.tvActiveTab !== "custom";
+    els.tvChannelPane.hidden = state.tvActiveTab !== "channel";
   }
 
   els.tvFilterTabs.addEventListener("click", function (e) {
     var tab = e.target.closest(".tv-filter-tab");
     if (!tab) return;
+    var wasChannel = state.tvActiveTab === "channel";
+    var nowChannel = tab.getAttribute("data-tab") === "channel";
     state.tvActiveTab = tab.getAttribute("data-tab");
     updateTVFilterTabUI();
+    if (nowChannel) {
+      tuneChannelMode();
+    } else if (wasChannel) {
+      // Leaving the shared channel for a regular filter tab -- back to the
+      // normal armed/static "tap to play" flow, same as any other tab pick.
+      teardownChannelMode();
+      armTV();
+    }
   });
 
   function enterTVFilterMode() {
@@ -4319,6 +4361,246 @@
       state.tv.index = 0;
     }
     loadTVTrack(state.tv.queue[state.tv.index]);
+  }
+
+  // ---- Channel Mode -------------------------------------------------------
+  // TV Mode's 4th tab: a single shared, synchronized "channel" every visitor
+  // watching it sees the same position in, driven entirely by client-side
+  // time math against one Firestore doc (`channel/current`) -- no server
+  // pushing anything, no Cloud Function advancing an index. Every client
+  // independently computes "what's on right now" from a fixed anchor
+  // timestamp plus each queue item's cached duration:
+  //   elapsed = (now - anchorAt) mod totalDuration
+  // then walks the cumulative durations to find which item that falls in
+  // and how far into it. Playback then just chains forward via the video
+  // player's own onEnded (see loadChannelTrackAt), with a periodic
+  // wall-clock resync as a safety net against drift (buffering stalls,
+  // background-tab throttling, joining mid-video). Editing the queue
+  // (admin's DJ-deck panel) doesn't need to notify anyone -- every tuned-in
+  // client is listening to the doc and recomputes/rejumps automatically.
+  var CHANNEL_RESYNC_INTERVAL_MS = 20000;
+  var CHANNEL_DRIFT_TOLERANCE_SEC = 3;
+
+  // mulberry32 -- tiny deterministic PRNG so "Shuffled" mode's order is
+  // identical across every client given the same shuffleSeed, unlike
+  // Math.random()-based shuffle() used elsewhere (TV Mode's regular pool
+  // shuffle is intentionally per-viewer-random; Channel Mode's can't be).
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seededShuffle(arr, seed) {
+    var rand = mulberry32(seed || 0);
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(rand() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  // Playable = has a resolvable row with a video ref AND a known duration
+  // (unresolved-duration items are skipped from scheduling rather than
+  // breaking the whole channel -- see resolveItemDuration() in the admin
+  // panel, which is what fills `duration` in for newly-added items).
+  function channelPlayOrder(doc) {
+    if (!doc || !doc.items || !doc.items.length) return [];
+    var playable = doc.items.filter(function (it) {
+      if (!it.duration || it.duration <= 0) return false;
+      var row = findRowByNum(it.rowNum);
+      return row && hasVideo(row);
+    });
+    return doc.mode === "shuffled" ? seededShuffle(playable, doc.shuffleSeed || 0) : playable;
+  }
+
+  function computeChannelPosition(doc) {
+    var order = channelPlayOrder(doc);
+    if (!order.length || !doc.anchorAt) return null;
+    var total = order.reduce(function (s, it) { return s + it.duration; }, 0);
+    if (total <= 0) return null;
+    var anchorMs = doc.anchorAt.toMillis ? doc.anchorAt.toMillis() : doc.anchorAt;
+    var elapsed = ((Date.now() - anchorMs) / 1000) % total;
+    if (elapsed < 0) elapsed += total;
+    var acc = 0;
+    for (var i = 0; i < order.length; i++) {
+      if (elapsed < acc + order[i].duration) return { order: order, index: i, offsetSec: elapsed - acc };
+      acc += order[i].duration;
+    }
+    return { order: order, index: 0, offsetSec: 0 };
+  }
+
+  function updateTVChannelStatus(text) {
+    if (els.tvChannelStatus) els.tvChannelStatus.textContent = text;
+  }
+
+  function clearChannelResyncTimer() {
+    if (state.channel.resyncTimer) { clearInterval(state.channel.resyncTimer); state.channel.resyncTimer = null; }
+  }
+
+  // Loads the item at `order[index]` starting at `offsetSec` into the
+  // existing TV player shell, then chains to the next queue item on
+  // natural end -- same provider-reuse logic as loadTVTrack, just with an
+  // extra post-ready seek and a different "what happens next" hook.
+  function loadChannelTrackAt(order, index, offsetSec) {
+    var item = order[index];
+    var row = findRowByNum(item.rowNum);
+    if (!row) { advanceChannelTrack(); return; }
+    var ref = getRowVideoRef(row);
+    if (!ref) { advanceChannelTrack(); return; }
+    updateTVTrackDetails(row);
+    state.channel.currentOrder = order;
+    state.channel.currentIndex = index;
+    var nextItem = order[(index + 1) % order.length];
+    var nextRow = nextItem ? findRowByNum(nextItem.rowNum) : null;
+    updateTVChannelStatus("🔴 You're tuned into the Channel" +
+      (nextRow ? " — up next: " + (nextRow.artist ? nextRow.artist + " — " : "") + (nextRow.song || "") : ""));
+
+    function seekOnceReady(player, provider) {
+      if (provider === "youtube") {
+        try { if (offsetSec > 0.5) player.seekTo(offsetSec, true); } catch (e) {}
+      } else if (provider === "vimeo" && player.setCurrentTime) {
+        if (offsetSec > 0.5) player.setCurrentTime(offsetSec).catch(function () {});
+      }
+    }
+
+    if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "youtube" && state.tv.player.loadVideoById) {
+      state.tv.player.loadVideoById(ref.id, offsetSec);
+      return;
+    }
+    if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "vimeo" && state.tv.player.loadVideo) {
+      state.tv.player.loadVideo(ref.id).then(function () {
+        seekOnceReady(state.tv.player, "vimeo");
+        state.tv.player.play();
+      }).catch(function () { if (state.tv.active) advanceChannelTrack(); });
+      return;
+    }
+
+    if (state.tv.player && state.tv.player.destroy) {
+      try { state.tv.player.destroy(); } catch (e) {}
+    }
+    state.tv.player = null;
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
+    setInterlaceHz("tv", state.tv.interlaceHz);
+    createVideoPlayer("tvPlayerTarget", ref, {
+      autoplay: true,
+      controls: !state.tv.crop,
+      isStale: function () { return !state.tv.active || state.tvActiveTab !== "channel"; },
+      onEnded: function () { if (state.tv.active && state.tvActiveTab === "channel") advanceChannelTrack(); },
+      onError: function () { if (state.tv.active && state.tvActiveTab === "channel") advanceChannelTrack(); },
+      onReady: function (player) {
+        state.tv.player = player;
+        state.tv.playerProvider = ref.provider;
+        seekOnceReady(player, ref.provider);
+      }
+    });
+  }
+
+  // Natural end-of-track advance -- just steps to the next item in the same
+  // (already-shuffled-if-applicable) order, no reshuffling on wrap. Keeping
+  // the order fixed between admin-triggered reshuffles is what lets clients
+  // that joined at different times stay on the same page, not just the same
+  // video-within-a-loop.
+  function advanceChannelTrack() {
+    var order = state.channel.currentOrder || [];
+    if (!order.length) return;
+    var next = (state.channel.currentIndex + 1) % order.length;
+    loadChannelTrackAt(order, next, 0);
+  }
+
+  // Wall-clock safety net -- re-derives where the channel "should" be right
+  // now and corrects if this client has drifted (a different video entirely,
+  // or the same video but off by more than a few seconds). Also fires
+  // whenever the Firestore doc itself changes, so an admin inserting/
+  // removing/reordering while people are tuned in takes effect immediately
+  // rather than only on their next natural track-end.
+  function resyncChannelIfNeeded() {
+    if (state.tvActiveTab !== "channel") return;
+    if (!state.channel.doc) {
+      updateTVChannelStatus("Nothing in the Channel queue yet.");
+      return;
+    }
+    var pos = computeChannelPosition(state.channel.doc);
+    if (!pos) {
+      updateTVChannelStatus("Nothing in the Channel queue yet.");
+      return;
+    }
+    var sameTrack = state.channel.currentOrder === pos.order || (
+      state.channel.currentOrder && state.channel.currentOrder[state.channel.currentIndex] &&
+      pos.order[pos.index] && state.channel.currentOrder[state.channel.currentIndex].rowNum === pos.order[pos.index].rowNum
+    );
+    if (!sameTrack || state.channel.currentIndex !== pos.index) {
+      loadChannelTrackAt(pos.order, pos.index, pos.offsetSec);
+      return;
+    }
+    // Same track -- just check drift against actual playback position.
+    // YouTube's getCurrentTime() is synchronous; Vimeo's returns a Promise.
+    if (!state.tv.player || !state.tv.player.getCurrentTime) return;
+    if (state.tv.playerProvider === "vimeo") {
+      state.tv.player.getCurrentTime().then(function (current) {
+        if (typeof current === "number" && Math.abs(current - pos.offsetSec) > CHANNEL_DRIFT_TOLERANCE_SEC && state.tv.player.setCurrentTime) {
+          state.tv.player.setCurrentTime(pos.offsetSec).catch(function () {});
+        }
+      }).catch(function () {});
+      return;
+    }
+    try {
+      var current = state.tv.player.getCurrentTime();
+      if (typeof current === "number" && Math.abs(current - pos.offsetSec) > CHANNEL_DRIFT_TOLERANCE_SEC) {
+        state.tv.player.seekTo(pos.offsetSec, true);
+      }
+    } catch (e) {}
+  }
+
+  function subscribeChannelDoc() {
+    if (state.channel.unsub) return;
+    state.channel.unsub = db.collection("channel").doc("current").onSnapshot(function (doc) {
+      state.channel.doc = doc.exists ? doc.data() : null;
+      if (state.tvActiveTab === "channel") resyncChannelIfNeeded();
+    }, function (err) {
+      console.error("Channel doc listener failed:", err);
+      updateTVChannelStatus("Couldn't load the Channel right now.");
+    });
+  }
+
+  function teardownChannelMode() {
+    clearChannelResyncTimer();
+    if (state.channel.unsub) { state.channel.unsub(); state.channel.unsub = null; }
+    state.channel.tuned = false;
+    state.channel.currentOrder = null;
+    state.channel.currentIndex = -1;
+  }
+
+  // Entry point for the Channel tab -- bypasses TV Mode's usual armed/
+  // static "tap to play" screen entirely, since there's nothing to arm: you
+  // tune in to whatever's already playing, like a real TV channel.
+  function tuneChannelMode() {
+    teardownTV();
+    state.tv.active = true;
+    state.tv.started = true;
+    state.channel.tuned = true;
+    ensureTVShell();
+    updateTVChannelStatus("Tuning in…");
+    els.tvReportLink.hidden = false;
+    els.tvFavBtn.hidden = false;
+    els.tvPlaylistBtn.hidden = false;
+    els.tvCropBtn.hidden = false;
+    els.tvMirrorBtn.hidden = !state.isAdmin;
+    els.tvInterlaceBtn.hidden = !state.isAdmin;
+    els.tvInfoBtn.hidden = false;
+    els.tvPowerSwitch.hidden = true; // no pause on a shared channel -- always on
+    els.tvSkipBtn.hidden = true;     // skipping would only diverge this viewer from everyone else
+
+    subscribeChannelDoc();
+    if (state.channel.doc) resyncChannelIfNeeded();
+    clearChannelResyncTimer();
+    state.channel.resyncTimer = setInterval(resyncChannelIfNeeded, CHANNEL_RESYNC_INTERVAL_MS);
   }
 
   // Keeps TV Mode "live" while it's open -- without this, changing a filter
@@ -5833,6 +6115,7 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -5843,6 +6126,7 @@
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
+    els.adminChannelView.hidden = true;
     els.adminBlogListView.hidden = false;
   }
 
@@ -5852,6 +6136,7 @@
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminVerificationsView.hidden = true;
+    els.adminChannelView.hidden = true;
     els.adminSuggestionsView.hidden = false;
   }
 
@@ -5861,7 +6146,19 @@
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
+    els.adminChannelView.hidden = true;
     els.adminVerificationsView.hidden = false;
+  }
+
+  function showAdminChannelView() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = false;
   }
 
   function goAdminSuggestions() {
@@ -6213,6 +6510,313 @@
         els.adminBlogListStatus.hidden = false;
       });
     }
+  });
+
+  // ---- Channel Mode admin (DJ deck) ---------------------------------------
+  // Edits `channel/current` directly (no separate draft/publish step --
+  // every mutation auto-saves) so changes take effect live for anyone
+  // already tuned in, DJ-deck style. See computeChannelPosition() /
+  // tuneChannelMode() near the rest of TV Mode for the viewer side.
+  var adminChannelDraft = null;
+
+  function channelDocRef() {
+    return db.collection("channel").doc("current");
+  }
+
+  function formatDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    var mm = h ? String(m).padStart(2, "0") : String(m);
+    var ss = String(s).padStart(2, "0");
+    return h ? (h + ":" + mm + ":" + ss) : (mm + ":" + ss);
+  }
+
+  function goAdminChannel() {
+    showAdminChannelView();
+    return loadChannelAdmin();
+  }
+
+  function finishLoadChannelAdmin() {
+    els.adminChannelModeOrdered.checked = adminChannelDraft.mode !== "shuffled";
+    els.adminChannelModeShuffled.checked = adminChannelDraft.mode === "shuffled";
+    els.adminChannelReshuffleBtn.hidden = adminChannelDraft.mode !== "shuffled";
+    populateAdminChannelPlaylistSelect();
+    renderAdminChannelQueue();
+    els.adminChannelStatus.hidden = true;
+    resolveMissingChannelDurations();
+  }
+
+  function loadChannelAdmin() {
+    els.adminChannelStatus.textContent = "Loading…";
+    els.adminChannelStatus.className = "admin-status";
+    els.adminChannelStatus.hidden = false;
+    return channelDocRef().get().then(function (doc) {
+      if (doc.exists) {
+        adminChannelDraft = doc.data();
+        if (!adminChannelDraft.items) adminChannelDraft.items = [];
+        if (!adminChannelDraft.mode) adminChannelDraft.mode = "ordered";
+        finishLoadChannelAdmin();
+        return;
+      }
+      // First-ever use -- create the doc with a fresh anchor, then read it
+      // back so the local copy holds a real resolved Timestamp rather than
+      // an unresolved serverTimestamp() sentinel, which would otherwise
+      // silently reset the anchor to "now" again on the next unrelated
+      // save (add a video, reorder, etc).
+      var fresh = {
+        items: [], mode: "ordered", shuffleSeed: 0,
+        anchorAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      return channelDocRef().set(fresh).then(function () { return channelDocRef().get(); }).then(function (doc2) {
+        adminChannelDraft = doc2.data();
+        finishLoadChannelAdmin();
+      });
+    }).catch(function (err) {
+      console.error("Loading channel failed:", err);
+      els.adminChannelStatus.textContent = "Couldn't load the Channel: " + err.message;
+      els.adminChannelStatus.className = "admin-status is-error";
+    });
+  }
+
+  function saveChannelDoc() {
+    adminChannelDraft.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    return channelDocRef().set(adminChannelDraft).catch(function (err) {
+      console.error("Saving channel failed:", err);
+      els.adminChannelStatus.textContent = "Save failed: " + err.message;
+      els.adminChannelStatus.className = "admin-status is-error";
+      els.adminChannelStatus.hidden = false;
+    });
+  }
+
+  function populateAdminChannelPlaylistSelect() {
+    var playlists = loadPlaylists();
+    if (!playlists.length) {
+      els.adminChannelPlaylistSelect.innerHTML = '<option value="">No playlists yet</option>';
+      els.adminChannelPlaylistSelect.disabled = true;
+      return;
+    }
+    els.adminChannelPlaylistSelect.disabled = false;
+    els.adminChannelPlaylistSelect.innerHTML = playlists.map(function (p) {
+      return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + " (" + p.rowNums.length + ")</option>";
+    }).join("");
+  }
+
+  function renderAdminChannelQueue() {
+    var items = adminChannelDraft.items;
+    els.adminChannelQueueCount.textContent = String(items.length);
+    var total = items.reduce(function (s, it) { return s + (it.duration || 0); }, 0);
+    els.adminChannelQueueDuration.textContent = formatDuration(total);
+    if (!items.length) {
+      els.adminChannelQueueList.innerHTML = '<p class="admin-empty">Queue is empty -- search for a video or add a playlist below.</p>';
+      return;
+    }
+    els.adminChannelQueueList.innerHTML = items.map(function (it, i) {
+      var row = findRowByNum(it.rowNum);
+      var title = row ? (escapeHtml(row.artist) + " — " + escapeHtml(row.song)) : ("#" + escapeHtml(it.rowNum) + " (not found)");
+      var dur = it.duration ? formatDuration(it.duration) : "resolving duration…";
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + (i + 1) + ". " + title + "</div>" +
+            '<div class="admin-row-sub">' + dur + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-channel-action="up" data-index="' + i + '"' + (i === 0 ? " disabled" : "") + ">&uarr;</button>" +
+            '<button type="button" class="admin-row-btn" data-channel-action="down" data-index="' + i + '"' + (i === items.length - 1 ? " disabled" : "") + ">&darr;</button>" +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-channel-action="remove" data-index="' + i + '">Remove</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function renderAdminChannelVideoResults() {
+    var query = els.adminChannelVideoSearch.value.trim().toLowerCase();
+    if (!query) { els.adminChannelVideoResults.innerHTML = ""; return; }
+    var rows = state.rows.filter(function (r) {
+      return hasVideo(r) && (r.artist + " " + r.song + " " + (r.director || "")).toLowerCase().indexOf(query) !== -1;
+    }).slice(0, 25);
+    if (!rows.length) { els.adminChannelVideoResults.innerHTML = '<p class="admin-empty">No matches.</p>'; return; }
+    els.adminChannelVideoResults.innerHTML = rows.map(function (r) {
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(r.artist) + " — " + escapeHtml(r.song) + "</div>" +
+            '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-channel-action="add-video" data-rownum="' + escapeHtml(r.rowNum) + '">Add to end</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function addRowToChannelQueue(rowNum) {
+    var row = findRowByNum(rowNum);
+    if (!row || !hasVideo(row)) return;
+    adminChannelDraft.items.push({ rowNum: String(rowNum), duration: 0, addedAt: Date.now() });
+    renderAdminChannelQueue();
+    saveChannelDoc();
+    resolveMissingChannelDurations();
+  }
+
+  function addPlaylistToChannelQueue(playlistId) {
+    var playlist = findPlaylist(playlistId);
+    if (!playlist) return;
+    var added = 0;
+    playlist.rowNums.forEach(function (rn) {
+      var row = findRowByNum(rn);
+      if (row && hasVideo(row)) {
+        adminChannelDraft.items.push({ rowNum: String(rn), duration: 0, addedAt: Date.now() });
+        added++;
+      }
+    });
+    if (!added) return;
+    renderAdminChannelQueue();
+    saveChannelDoc();
+    resolveMissingChannelDurations();
+  }
+
+  function moveChannelItem(index, dir) {
+    var items = adminChannelDraft.items;
+    var target = index + dir;
+    if (target < 0 || target >= items.length) return;
+    var tmp = items[index]; items[index] = items[target]; items[target] = tmp;
+    renderAdminChannelQueue();
+    saveChannelDoc();
+  }
+
+  function removeChannelItem(index) {
+    adminChannelDraft.items.splice(index, 1);
+    renderAdminChannelQueue();
+    saveChannelDoc();
+  }
+
+  // No duration data exists anywhere in the catalog today, so it's fetched
+  // once per video the first time it's added to the Channel queue and
+  // cached on the queue item itself (not written back to the `videos` doc
+  // -- keeps this self-contained rather than touching the main catalog
+  // schema for a Channel-only need). Vimeo's oEmbed conveniently returns
+  // duration directly; YouTube's doesn't, so that branch briefly loads a
+  // real (hidden, silent, no-autoplay) player just long enough to read
+  // getDuration() off it, then tears it down.
+  function resolveDurationForRow(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(0);
+    if (ref.provider === "vimeo") {
+      return fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id))
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) { return (data && data.duration) || 0; })
+        .catch(function () { return 0; });
+    }
+    return new Promise(function (resolve) {
+      var hiddenId = "channelDurationProbe";
+      var existing = document.getElementById(hiddenId);
+      if (existing) existing.remove();
+      var div = document.createElement("div");
+      div.id = hiddenId;
+      div.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px;";
+      document.body.appendChild(div);
+      var settled = false;
+      var probePlayer = null;
+      function finish(sec) {
+        if (settled) return;
+        settled = true;
+        try { if (probePlayer && probePlayer.destroy) probePlayer.destroy(); } catch (e) {}
+        div.remove();
+        resolve(sec || 0);
+      }
+      createVideoPlayer(hiddenId, ref, {
+        autoplay: false,
+        controls: false,
+        isStale: function () { return settled; },
+        onError: function () { finish(0); },
+        onReady: function (player) {
+          probePlayer = player;
+          var attempts = 0;
+          (function poll() {
+            var d = 0;
+            try { d = player.getDuration(); } catch (e) {}
+            if (d > 0 || attempts >= 8) { finish(d); return; }
+            attempts++;
+            setTimeout(poll, 250);
+          })();
+        }
+      });
+      setTimeout(function () { finish(0); }, 6000); // hard cap so a stuck probe can't hang the admin UI
+    });
+  }
+
+  function resolveMissingChannelDurations() {
+    var missing = adminChannelDraft.items.filter(function (it) { return !it.duration; });
+    if (!missing.length) return;
+    var i = 0;
+    function next() {
+      if (i >= missing.length) { renderAdminChannelQueue(); saveChannelDoc(); return; }
+      var item = missing[i++];
+      var row = findRowByNum(item.rowNum);
+      if (!row) { next(); return; }
+      resolveDurationForRow(row).then(function (sec) {
+        item.duration = sec;
+        renderAdminChannelQueue();
+        next();
+      });
+    }
+    next();
+  }
+
+  els.adminGoChannelBtn.addEventListener("click", goAdminChannel);
+  els.adminChannelBackBtn.addEventListener("click", showAdminLanding);
+
+  els.adminChannelVideoSearch.addEventListener("input", renderAdminChannelVideoResults);
+
+  els.adminChannelVideoResults.addEventListener("click", function (e) {
+    var btn = e.target.closest('[data-channel-action="add-video"]');
+    if (!btn) return;
+    addRowToChannelQueue(btn.getAttribute("data-rownum"));
+  });
+
+  els.adminChannelAddPlaylistBtn.addEventListener("click", function () {
+    addPlaylistToChannelQueue(els.adminChannelPlaylistSelect.value);
+  });
+
+  els.adminChannelQueueList.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-channel-action]");
+    if (!btn) return;
+    var index = parseInt(btn.getAttribute("data-index"), 10);
+    var action = btn.getAttribute("data-channel-action");
+    if (action === "up") moveChannelItem(index, -1);
+    else if (action === "down") moveChannelItem(index, 1);
+    else if (action === "remove") removeChannelItem(index);
+  });
+
+  els.adminChannelModeOrdered.addEventListener("change", function () {
+    if (!els.adminChannelModeOrdered.checked) return;
+    adminChannelDraft.mode = "ordered";
+    els.adminChannelReshuffleBtn.hidden = true;
+    saveChannelDoc();
+  });
+  els.adminChannelModeShuffled.addEventListener("change", function () {
+    if (!els.adminChannelModeShuffled.checked) return;
+    adminChannelDraft.mode = "shuffled";
+    if (!adminChannelDraft.shuffleSeed) adminChannelDraft.shuffleSeed = Math.floor(Math.random() * 1e9);
+    els.adminChannelReshuffleBtn.hidden = false;
+    saveChannelDoc();
+  });
+  els.adminChannelReshuffleBtn.addEventListener("click", function () {
+    adminChannelDraft.shuffleSeed = Math.floor(Math.random() * 1e9);
+    saveChannelDoc();
+  });
+  els.adminChannelRestartBtn.addEventListener("click", function () {
+    if (!window.confirm("Restart the Channel from the top of the queue for everyone currently watching?")) return;
+    adminChannelDraft.anchorAt = firebase.firestore.FieldValue.serverTimestamp();
+    saveChannelDoc().then(function () { return channelDocRef().get(); }).then(function (doc) {
+      adminChannelDraft.anchorAt = doc.data().anchorAt;
+    });
   });
 
   // ---- WYSIWYG toolbar ---------------------------------------------------
@@ -6568,6 +7172,7 @@
     els.adminLandingView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
+    els.adminChannelView.hidden = true;
     els.adminListView.hidden = false;
   }
 

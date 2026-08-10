@@ -285,10 +285,14 @@
       <div class="tv-custom-pane" id="tvCustomPane" hidden>
         <div class="tv-custom-list" id="tvCustomList"></div>
       </div>
+      <div class="tv-channel-pane" id="tvChannelPane" hidden>
+        <p class="tv-channel-status" id="tvChannelStatus">Tuning in…</p>
+      </div>
       <div class="tv-filter-tabs" id="tvFilterTabs" hidden>
         <button type="button" class="tv-filter-tab" data-tab="genre">Genre</button>
         <button type="button" class="tv-filter-tab" data-tab="era">Era</button>
         <button type="button" class="tv-filter-tab" data-tab="custom">Custom</button>
+        <button type="button" class="tv-filter-tab" data-tab="channel">📻 Channel</button>
       </div>
     </div>
   </div>
@@ -644,6 +648,7 @@
           <button type="button" class="admin-row-btn" id="adminGoSuggestionsBtn">Edit Suggestions<span class="profile-requests-badge" id="adminSuggestionsBadge" hidden>0</span></button>
           <button type="button" class="admin-row-btn" id="adminGoVerificationsBtn">Verification Requests<span class="profile-requests-badge" id="adminVerificationsBadge" hidden>0</span></button>
           <button type="button" class="admin-row-btn" id="adminGoBlogBtn">Blog Posts</button>
+          <button type="button" class="admin-row-btn" id="adminGoChannelBtn">Channel Mode</button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -678,6 +683,35 @@
         </div>
         <p class="admin-status" id="adminBlogListStatus" hidden></p>
         <div class="admin-entries-list" id="adminBlogList"></div>
+      </div>
+
+      <div id="adminChannelView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminChannelBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Channel Mode</h2>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn" id="adminChannelRestartBtn">Restart Channel Now</button>
+          </div>
+        </div>
+        <p class="admin-bulk-hint">The shared queue everyone watching TV Mode's Channel tab sees in sync. Add videos or whole playlists, reorder with the arrows, and changes apply live to anyone already tuned in.</p>
+        <p class="admin-status" id="adminChannelStatus" hidden></p>
+
+        <div class="admin-channel-mode-row">
+          <label><input type="radio" name="adminChannelMode" value="ordered" id="adminChannelModeOrdered"> Ordered</label>
+          <label><input type="radio" name="adminChannelMode" value="shuffled" id="adminChannelModeShuffled"> Shuffled</label>
+          <button type="button" class="admin-row-btn" id="adminChannelReshuffleBtn" hidden>Reshuffle</button>
+        </div>
+
+        <input type="search" id="adminChannelVideoSearch" class="admin-search" placeholder="Search artist, song, or director to add…">
+        <div class="admin-entries-list" id="adminChannelVideoResults"></div>
+
+        <div class="admin-channel-add-row">
+          <select id="adminChannelPlaylistSelect" class="filter-select" aria-label="Choose a playlist to add"></select>
+          <button type="button" class="admin-row-btn" id="adminChannelAddPlaylistBtn">Add Playlist to Queue</button>
+        </div>
+
+        <h3 class="admin-channel-queue-title">Queue (<span id="adminChannelQueueCount">0</span> videos, <span id="adminChannelQueueDuration">0:00</span> total)</h3>
+        <div class="admin-entries-list" id="adminChannelQueueList"></div>
       </div>
 
       <div id="adminListView" hidden>

@@ -2305,6 +2305,26 @@ body.is-searching #discoverSection {
   font-size: 0.85rem;
 }
 
+/* Channel Mode's tab pane -- unlike Genre/Era/Custom there's no picker UI
+   here at all, just a status line (tuneChannelMode()/resyncChannelIfNeeded()
+   in app.js keep it updated with what's playing/up next). Selecting the tab
+   tunes in immediately, same visual slot as the other tabs' content. */
+.tv-channel-pane:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 0 100%;
+  min-height: 120px;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.tv-channel-status {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 /* Reddit-style horizontal list: thumbnail left, text (title/artist/
    description, in-house preferred, YouTube's own as fallback -- see
    resultDescription() in app.js) right. Deliberately not a thumbnail
@@ -4466,6 +4486,41 @@ body.is-searching #discoverSection {
 
 .admin-landing-actions .admin-row-btn {
   padding: 12px 14px;
+}
+
+/* Channel Mode's DJ-deck admin panel -- reuses .admin-row/.admin-search/
+   .admin-entries-list for the queue and search-results lists (same look as
+   Manage Entries/Blog Posts), just a couple of small layout bits unique to
+   this view: the mode radios sitting inline, and the playlist picker row. */
+.admin-channel-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 0;
+  font-size: 0.88rem;
+}
+
+.admin-channel-mode-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.admin-channel-add-row {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.admin-channel-add-row .filter-select {
+  flex: 1 1 auto;
+}
+
+.admin-channel-queue-title {
+  margin: 20px 0 8px;
+  font-size: 0.92rem;
+  color: var(--text-muted);
 }
 
 .admin-bulk-hint {
