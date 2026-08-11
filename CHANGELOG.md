@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.36.1 — current
+- The top bar now carries the same purple radial-glow language as land.html's title card, rescaled for a thin persistent bar instead of a full page -- a single glow centered on the search bar, fading to plain background at both the logo and the icons. Built with `color-mix(in srgb, var(--accent) …%, transparent)` rather than land.html's hardcoded purple, so it stays theme-correct in both light and dark mode and follows `--accent` automatically if that's ever changed. Applies everywhere `.top-bar` is used (index.html, and blog/support/privacy via site-nav.js) since it's one shared class. Verified in both themes.
+
 ## v5.36.0 — current
 - Channel Mode: a brief static/tuning flash now plays over the video every time the channel switches tracks (reuses the same noise texture as the "channel ready" armed screen), instead of a hard cut. **Fixed a real bug while building it**: the flash was appended into `.video-embed-frame` right before that same function sometimes rebuilds the frame's innerHTML (provider switch/first load), wiping the flash out instantly -- deferred the flash to the next tick so it always survives.
 - Channel Mode now has a live comments panel for whatever's currently airing, reusing the exact same per-video `comments` collection/rules the regular video lightbox uses. Comments posted since the current airing began show "🔴 Xm Ys into this airing" instead of a plain relative time. Ad-hoc inserted links (no catalog rowNum) show a note instead, since there's nothing to thread comments off of.

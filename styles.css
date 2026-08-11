@@ -191,6 +191,13 @@ html, body {
    shows it as a plain left-to-right row (hamburger leftmost); the mobile
    media query below re-centers the logo/title and pulls the hamburger out
    to an absolute top-right position instead. */
+/* Same purple radial-glow language as land.html's title-card background,
+   rescaled for a thin persistent bar instead of a full page -- a single
+   glow centered in the bar, plain --bg at both edges (logo side and
+   icons side) so it reads as a spotlight on the middle, not a tint on the
+   logo. Built off var(--accent) via color-mix() rather than hardcoded
+   purple like land.html (which is always dark, theme-independent) so this
+   stays correct in both light and dark theme and if --accent ever changes. */
 .top-bar {
   position: sticky;
   top: 0;
@@ -199,7 +206,9 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  background: var(--bg);
+  background:
+    radial-gradient(ellipse 45% 320% at 50% 50%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 80%),
+    var(--bg);
   border-bottom: 1px solid var(--border);
 }
 
