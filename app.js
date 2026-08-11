@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.36.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.36.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 

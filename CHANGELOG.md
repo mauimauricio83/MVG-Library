@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.36.2 — current
+- Light theme's top bar is now a flat lavender (`var(--accent-soft)`, the same tint light theme already uses for hover states) instead of the purple gradient -- the glow read fine against dark theme's near-black background but looked more like an uneven smudge against light theme's near-white one. Dark theme keeps the gradient from v5.36.1 unchanged.
+
 ## v5.36.1 — current
 - The top bar now carries the same purple radial-glow language as land.html's title card, rescaled for a thin persistent bar instead of a full page -- a single glow centered on the search bar, fading to plain background at both the logo and the icons. Built with `color-mix(in srgb, var(--accent) …%, transparent)` rather than land.html's hardcoded purple, so it stays theme-correct in both light and dark mode and follows `--accent` automatically if that's ever changed. Applies everywhere `.top-bar` is used (index.html, and blog/support/privacy via site-nav.js) since it's one shared class. Verified in both themes.
 

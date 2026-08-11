@@ -212,6 +212,17 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 
+/* Light theme: a flat lavender instead of the glow -- the same soft tint
+   --accent-soft already uses for hover states there, so it stays a
+   deliberate design choice rather than a new one-off color. The glow
+   reads fine against dark theme's near-black bg but looked more like an
+   uneven smudge against light theme's near-white bg, so light theme gets
+   its own simpler treatment instead of trying to make one gradient work
+   for both. */
+:root[data-theme="light"] .top-bar {
+  background: var(--accent-soft);
+}
+
 .top-bar-actions {
   display: flex;
   align-items: center;
