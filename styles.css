@@ -2306,23 +2306,39 @@ body.is-searching #discoverSection {
 }
 
 /* Channel Mode's tab pane -- unlike Genre/Era/Custom there's no picker UI
-   here at all, just a status line (tuneChannelMode()/resyncChannelIfNeeded()
-   in app.js keep it updated with what's playing/up next). Selecting the tab
-   tunes in immediately, same visual slot as the other tabs' content. */
+   here, just a status line (tuneChannelMode()/resyncChannelIfNeeded() in
+   app.js keep it updated with what's playing/up next) and a live comments
+   thread for whatever's currently airing. Selecting the tab tunes in
+   immediately, same visual slot as the other tabs' content. */
 .tv-channel-pane:not([hidden]) {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   flex: 1 0 100%;
   min-height: 120px;
-  text-align: center;
   padding: 0 12px;
 }
 
 .tv-channel-status {
-  margin: 0;
+  margin: 0 0 10px;
   color: var(--text);
   font-size: 0.9rem;
+  text-align: center;
+}
+
+.tv-channel-comments {
+  width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.tv-channel-comments .lightbox-comments {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.tv-channel-comments .comment-empty {
+  text-align: center;
 }
 
 /* Reddit-style horizontal list: thumbnail left, text (title/artist/
@@ -2636,6 +2652,31 @@ body.is-searching #discoverSection {
 .tv-static-play-icon {
   font-size: 1.5rem;
   margin-left: 4px; /* optically center the ▶ glyph, which has its own left-side bearing */
+}
+
+/* Brief static/tuning flash shown over the player whenever Channel Mode
+   switches tracks (see loadChannelTrackAt() in app.js) -- reuses the same
+   noise texture as the "channel ready" armed screen above, just as a
+   short overlay instead of a standing state, so a channel change reads
+   as tuning to a new station rather than a hard cut. */
+.tv-tuning-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #000;
+  overflow: hidden;
+  pointer-events: none;
+  animation: tv-tuning-flash-fade 0.55s ease forwards;
+}
+
+.tv-tuning-flash .tv-static-noise {
+  inset: -10%;
+}
+
+@keyframes tv-tuning-flash-fade {
+  0% { opacity: 1; }
+  65% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .tv-static-hint {

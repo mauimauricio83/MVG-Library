@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.35.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.36.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -175,6 +175,7 @@
     tvCustomList: document.getElementById("tvCustomList"),
     tvChannelPane: document.getElementById("tvChannelPane"),
     tvChannelStatus: document.getElementById("tvChannelStatus"),
+    tvChannelComments: document.getElementById("tvChannelComments"),
     addPlaylistPopover: document.getElementById("addPlaylistPopover"),
     addPlaylistList: document.getElementById("addPlaylistList"),
     addPlaylistClose: document.getElementById("addPlaylistClose"),
@@ -821,7 +822,9 @@
       currentKind: null,   // "queue" | "insert" -- what's currently loaded
       currentOrder: null,  // the (possibly shuffled) item array the currently-loaded track came from ("queue" kind)
       currentIndex: -1,
-      currentInsertVideoId: null // set when currentKind is "insert"
+      currentInsertVideoId: null, // set when currentKind is "insert"
+      currentTrackStartedAt: null, // wall-clock ms this specific airing began -- for "X into this airing" comment timestamps
+      commentsUnsub: null
     },
     // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
     selectedPlaylistId: null,
@@ -1943,7 +1946,7 @@
   var latestStrip = createMediaStrip(els.latestStrip);
   var featuredStrip = createMediaStrip(els.featuredStrip);
   var favoritesStrip = createMediaStrip(els.favoritesStrip, {
-    emptyMessage: "Videos you favorite will show up here.",
+    emptyMessage: "Nothing favorited yet — hit the ♡ on anything that hits different.",
     showDescription: true
   });
 
@@ -2057,7 +2060,7 @@
   // listing every playlist, and a detail strip (reusing createMediaStrip(),
   // same as Favorites) for whichever one's selected.
   var playlistDetailStrip = createMediaStrip(els.playlistDetail, {
-    emptyMessage: "This playlist is empty. Add videos via the + button on any video's page.",
+    emptyMessage: "Empty playlist, waiting for its first track — the + button on any video will do it.",
     showDescription: true
   });
 
@@ -4051,7 +4054,7 @@
   }
 
   function emptyTVMarkup() {
-    return '<div class="video-embed-hint"><p>No videos match the current filters. Adjust the filters below to find something to play.</p></div>';
+    return '<div class="video-embed-hint"><p>Static on every channel — nothing matches those filters. Loosen one up below and try again.</p></div>';
   }
 
   // The "channel ready" screen shown once a track is armed but before the
@@ -4514,6 +4517,67 @@
     if (state.channel.resyncTimer) { clearInterval(state.channel.resyncTimer); state.channel.resyncTimer = null; }
   }
 
+  // ---- Live favicon + tab title (Channel Mode) -----------------------------
+  // Pulses a small "on air" dot onto the tab's actual favicon (canvas-
+  // composited over the real site icon, not swapped for a generic dot) so
+  // a backgrounded tab still signals "something's playing" -- plus a
+  // blinking 🔴 title prefix for the same reason. Both revert the instant
+  // Channel Mode is left.
+  var faviconPulseTimer = null;
+  var faviconBaseImg = null;
+  var faviconBright = true;
+  var DEFAULT_FAVICON_HREF = "icons/icon-192.png";
+
+  function faviconLinkEl() {
+    return document.querySelector('link[rel="icon"]');
+  }
+
+  function drawLiveFaviconFrame(bright) {
+    var size = 48;
+    var canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(faviconBaseImg, 0, 0, size, size);
+    var r = size * 0.19, cx = size - r - 2, cy = size - r - 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = bright ? "#ff2d2d" : "#7a0000";
+    ctx.fill();
+    ctx.lineWidth = size * 0.05;
+    ctx.strokeStyle = "#000";
+    ctx.stroke();
+    return canvas.toDataURL("image/png");
+  }
+
+  function tickLiveFavicon() {
+    var link = faviconLinkEl();
+    if (!link || !faviconBaseImg) return;
+    faviconBright = !faviconBright;
+    link.href = drawLiveFaviconFrame(faviconBright);
+    document.title = (faviconBright ? "🔴 " : "⚫ ") + "LIVE — " + DEFAULT_TITLE;
+  }
+
+  function startLiveFavicon() {
+    var link = faviconLinkEl();
+    if (!link || faviconPulseTimer) return;
+    function begin() {
+      faviconPulseTimer = setInterval(tickLiveFavicon, 900);
+      tickLiveFavicon();
+    }
+    if (faviconBaseImg) { begin(); return; }
+    var img = new Image();
+    img.onload = function () { faviconBaseImg = img; begin(); };
+    img.src = DEFAULT_FAVICON_HREF;
+  }
+
+  function stopLiveFavicon() {
+    if (faviconPulseTimer) { clearInterval(faviconPulseTimer); faviconPulseTimer = null; }
+    var link = faviconLinkEl();
+    if (link) link.href = DEFAULT_FAVICON_HREF;
+    document.title = DEFAULT_TITLE;
+  }
+
   // Shows Report/Favorite/Playlist/admin-edit/Info for a real catalog row;
   // an ad-hoc inserted link has none of that (no rowNum to act on), so it
   // just gets a plain title in the info panel and those controls hidden.
@@ -4530,6 +4594,147 @@
     els.tvInfoPanel.innerHTML = '<h3 class="tv-info-title">' + escapeHtml(item.title || "(untitled)") + "</h3>";
   }
 
+  // ---- Channel Mode comments -----------------------------------------------
+  // Reuses the exact same `comments` collection/rules per-video comments
+  // already use (keyed by rowNum) -- Channel Mode is just another place a
+  // video with a catalog rowNum can be watched from, not a separate
+  // comment thread. Ad-hoc inserted links (no rowNum) have nowhere to key
+  // a thread off of, so they just show a note instead.
+  function tvChannelCommentsHtml(rowNum) {
+    var composer = currentUser
+      ? '<form class="comment-form" id="tvChannelCommentForm" data-rownum="' + escapeHtml(rowNum) + '">' +
+          '<textarea id="tvChannelCommentInput" rows="2" maxlength="1000" placeholder="Add a comment…" required></textarea>' +
+          '<button type="submit" class="submit-form-btn">Post</button>' +
+        "</form>"
+      : '<p class="comment-signin-note"><button type="button" class="submit-form-btn" id="tvChannelCommentSignInBtn">Sign in with Google</button> to leave a comment.</p>';
+    return '<div class="lightbox-comments">' +
+      '<h3 class="lightbox-comments-title">Comments</h3>' +
+      composer +
+      '<div class="comment-list" id="tvChannelCommentList"><p class="comment-empty">Loading comments…</p></div>' +
+    "</div>";
+  }
+
+  // Comments posted since the current airing began show how far into it
+  // they landed instead of a plain relative time -- ordinary
+  // formatMsgBoardTime() for anything older (comments left outside Channel
+  // Mode, or from a previous airing of the same video).
+  function formatChannelCommentTime(date, airingStartedAt) {
+    if (airingStartedAt && date.getTime() >= airingStartedAt) {
+      return "🔴 " + formatDuration((date.getTime() - airingStartedAt) / 1000) + " into this airing";
+    }
+    return formatMsgBoardTime(date);
+  }
+
+  function renderTVChannelCommentList(docs, airingStartedAt) {
+    var listEl = document.getElementById("tvChannelCommentList");
+    if (!listEl) return; // switched tracks/tabs while this snapshot was in flight
+    if (!docs.length) {
+      listEl.innerHTML = '<p class="comment-empty">No comments yet — be the first.</p>';
+      return;
+    }
+    listEl.innerHTML = docs.map(function (doc) {
+      var d = doc.data();
+      var when = d.createdAt && d.createdAt.toDate ? formatChannelCommentTime(d.createdAt.toDate(), airingStartedAt) : "";
+      var deleteBtn = state.isAdmin
+        ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">' + ICON_TRASH + "</button>"
+        : "";
+      return '<div class="comment-item">' +
+        '<div class="comment-item-meta">' +
+          '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
+          '<span class="comment-item-time">' + escapeHtml(when) + "</span>" +
+          deleteBtn +
+        "</div>" +
+        '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
+      "</div>";
+    }).join("");
+  }
+
+  function startTVChannelCommentsListener(rowNum, airingStartedAt) {
+    if (state.channel.commentsUnsub) { state.channel.commentsUnsub(); state.channel.commentsUnsub = null; }
+    state.channel.commentsUnsub = db.collection("comments").where("rowNum", "==", rowNum).orderBy("createdAt", "asc").limit(200)
+      .onSnapshot(function (snap) {
+        renderTVChannelCommentList(snap.docs, airingStartedAt);
+      }, function (err) {
+        console.error("Channel comments listener failed:", err);
+        var listEl = document.getElementById("tvChannelCommentList");
+        if (listEl) listEl.innerHTML = '<p class="comment-empty">Couldn\'t load comments.</p>';
+      });
+  }
+
+  function stopTVChannelComments() {
+    if (state.channel.commentsUnsub) { state.channel.commentsUnsub(); state.channel.commentsUnsub = null; }
+  }
+
+  // Called every time Channel Mode's now-playing item changes -- swaps the
+  // comment thread to match, or shows a note for ad-hoc links with no
+  // rowNum to thread comments off of.
+  function updateTVChannelComments(item, airingStartedAt) {
+    if (!els.tvChannelComments) return;
+    stopTVChannelComments();
+    if (!item.rowNum) {
+      els.tvChannelComments.innerHTML = '<p class="comment-empty">Comments aren\'t available for inserted links.</p>';
+      return;
+    }
+    els.tvChannelComments.innerHTML = tvChannelCommentsHtml(item.rowNum);
+    startTVChannelCommentsListener(item.rowNum, airingStartedAt);
+  }
+
+  els.tvModal.addEventListener("click", function (e) {
+    if (e.target.closest("#tvChannelCommentSignInBtn")) {
+      auth.signInWithPopup(googleProvider).catch(function (err) {
+        console.error("Sign-in failed:", err);
+      });
+      return;
+    }
+    var deleteBtn = e.target.closest("#tvChannelComments .comment-delete-btn");
+    if (deleteBtn) {
+      if (!window.confirm("Delete this comment?")) return;
+      db.collection("comments").doc(deleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+        console.error("Deleting comment failed:", err);
+        alert("Couldn't delete that comment -- please try again.");
+      });
+    }
+  });
+
+  els.tvModal.addEventListener("submit", function (e) {
+    var form = e.target.closest("#tvChannelCommentForm");
+    if (!form) return;
+    e.preventDefault();
+    if (!currentUser) return;
+    var input = document.getElementById("tvChannelCommentInput");
+    var text = input.value.trim();
+    if (!text) return;
+    var btn = form.querySelector("button");
+    btn.disabled = true;
+    db.collection("comments").add({
+      rowNum: form.getAttribute("data-rownum"),
+      text: text,
+      authorUid: currentUser.uid,
+      authorName: currentUser.displayName || currentUser.email || "Anonymous",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      input.value = "";
+    }).catch(function (err) {
+      console.error("Posting comment failed:", err);
+      alert("Couldn't post that comment -- please try again.");
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  });
+
+  // A brief static/tuning flash over the player -- see the .tv-tuning-flash
+  // CSS comment for why (reuses the "channel ready" noise texture as a
+  // transition instead of a standing state).
+  function showChannelTuningFlash() {
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    if (!frame) return;
+    var flash = document.createElement("div");
+    flash.className = "tv-tuning-flash";
+    flash.innerHTML = '<div class="tv-static-noise"></div>';
+    frame.appendChild(flash);
+    setTimeout(function () { flash.remove(); }, 600);
+  }
+
   // Loads `pos.item` (from computeChannelPosition() -- either a regular
   // queue entry or an active scheduledInsert) starting at `pos.offsetSec`
   // into the existing TV player shell, then chains to whatever's next on
@@ -4543,7 +4748,14 @@
       return;
     }
     var offsetSec = pos.offsetSec;
+    // Deferred a tick -- this function may still rebuild
+    // .video-embed-frame's innerHTML further down (provider switch/first
+    // load), which would otherwise wipe out the flash the instant it's
+    // appended since both happen in this same synchronous call.
+    setTimeout(showChannelTuningFlash, 0);
     updateTVChannelTrackDetails(item);
+    state.channel.currentTrackStartedAt = Date.now() - offsetSec * 1000;
+    updateTVChannelComments(item, state.channel.currentTrackStartedAt);
     state.channel.currentKind = pos.kind;
     if (pos.kind === "queue") {
       state.channel.currentOrder = pos.order;
@@ -4627,12 +4839,12 @@
   function resyncChannelIfNeeded() {
     if (state.tvActiveTab !== "channel") return;
     if (!state.channel.doc) {
-      updateTVChannelStatus("Nothing in the Channel queue yet.");
+      updateTVChannelStatus("📺 Dead air — nothing queued on the Channel yet.");
       return;
     }
     var pos = computeChannelPosition(state.channel.doc);
     if (!pos) {
-      updateTVChannelStatus("Nothing in the Channel queue yet.");
+      updateTVChannelStatus("📺 Dead air — nothing queued on the Channel yet.");
       return;
     }
     var sameTrack = pos.kind === "insert"
@@ -4676,12 +4888,15 @@
 
   function teardownChannelMode() {
     clearChannelResyncTimer();
+    stopTVChannelComments();
+    stopLiveFavicon();
     if (state.channel.unsub) { state.channel.unsub(); state.channel.unsub = null; }
     state.channel.tuned = false;
     state.channel.currentKind = null;
     state.channel.currentOrder = null;
     state.channel.currentIndex = -1;
     state.channel.currentInsertVideoId = null;
+    state.channel.currentTrackStartedAt = null;
   }
 
   // Entry point for the Channel tab -- bypasses TV Mode's usual armed/
@@ -4708,6 +4923,7 @@
     if (state.channel.doc) resyncChannelIfNeeded();
     clearChannelResyncTimer();
     state.channel.resyncTimer = setInterval(resyncChannelIfNeeded, CHANNEL_RESYNC_INTERVAL_MS);
+    startLiveFavicon();
   }
 
   // Keeps TV Mode "live" while it's open -- without this, changing a filter
@@ -8800,11 +9016,11 @@
 
     if (!filtered.length) {
       if (hasActiveFilters()) {
-        els.results.innerHTML = '<div class="empty-state">No entries match the current filters' +
-          (state.query ? ' for "' + escapeHtml(state.query) + '"' : "") + '.<br>' +
+        els.results.innerHTML = '<div class="empty-state">Nothing turned up' +
+          (state.query ? ' for "' + escapeHtml(state.query) + '"' : "") + ' with those filters on.<br>' +
           '<button type="button" class="clear-filters-btn">Clear filters</button></div>';
       } else {
-        els.results.innerHTML = '<div class="empty-state">No entries match your search.</div>';
+        els.results.innerHTML = '<div class="empty-state">Nothing turned up. Double-check the spelling, or try just the artist or song on its own.</div>';
       }
       els.jumpBottom.hidden = true;
       return;
