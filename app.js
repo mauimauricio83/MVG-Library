@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.37.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.38.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -872,8 +872,8 @@
     BO: "Bolivia", BA: "Bosnia and Herzegovina", BW: "Botswana", BR: "Brazil", BN: "Brunei",
     BG: "Bulgaria", BF: "Burkina Faso", BI: "Burundi", CV: "Cabo Verde", KH: "Cambodia",
     CM: "Cameroon", CA: "Canada", CF: "Central African Republic", TD: "Chad", CL: "Chile",
-    CN: "China", CO: "Colombia", KM: "Comoros", CG: "Congo", CD: "Congo",
-    CR: "Costa Rica", HR: "Croatia", CU: "Cuba", CY: "Cyprus", CZ: "Czechia",
+    CN: "China", CO: "Colombia", KM: "Comoros", CG: "Congo-Brazzaville", CD: "Congo-Kinshasa",
+    CR: "Costa Rica", CI: "Côte d'Ivoire", HR: "Croatia", CU: "Cuba", CY: "Cyprus", CZ: "Czechia",
     DK: "Denmark", DJ: "Djibouti", DM: "Dominica", DO: "Dominican Republic", EC: "Ecuador",
     EG: "Egypt", SV: "El Salvador", GQ: "Equatorial Guinea", ER: "Eritrea", EE: "Estonia",
     SZ: "Eswatini", ET: "Ethiopia", FJ: "Fiji", FI: "Finland", FR: "France",
@@ -912,7 +912,9 @@
     uk: "United Kingdom", "u.k.": "United Kingdom", england: "United Kingdom",
     "south korea": "South Korea", korea: "South Korea", "republic of korea": "South Korea",
     "russian federation": "Russia", holland: "Netherlands", uae: "United Arab Emirates",
-    "czech republic": "Czechia"
+    "czech republic": "Czechia", "ivory coast": "Côte d'Ivoire", "cote d'ivoire": "Côte d'Ivoire",
+    "republic of the congo": "Congo-Brazzaville", "democratic republic of the congo": "Congo-Kinshasa",
+    "dr congo": "Congo-Kinshasa", drc: "Congo-Kinshasa", burma: "Myanmar"
   };
 
   var COUNTRY_NAME_SET = (function () {
@@ -5708,7 +5710,15 @@
     els.submitGenre.innerHTML = '<option value="">Choose…</option>' +
       genres.map(function (g) { return '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + "</option>"; }).join("");
 
-    var countries = uniqueSorted(function (r) { return r.country ? [normalizeCountry(r.country)] : []; });
+    // Unlike categories/genres above, countries deliberately does NOT derive
+    // from what's already in the catalog -- a country with zero entries so
+    // far (e.g. Myanmar) still needs to be pickable by the very first
+    // submitter tagging it. Uses the full COUNTRY_CODE_TO_NAME reference
+    // list instead, same one normalizeCountry() maps free-text input onto.
+    var countries = Object.keys(COUNTRY_CODE_TO_NAME)
+      .map(function (code) { return COUNTRY_CODE_TO_NAME[code]; })
+      .filter(function (name, i, arr) { return arr.indexOf(name) === i; })
+      .sort(function (a, b) { return a.localeCompare(b); });
     els.submitCountry.innerHTML = '<option value="">Choose…</option>' +
       countries.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"; }).join("");
 

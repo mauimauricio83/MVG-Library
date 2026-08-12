@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.38.0 — current
+- **Fixed a real bug**: the Country dropdown on the submission form was derived only from countries already tagged on existing catalog entries, so a legitimate country with zero entries so far (Myanmar was the reported case) had no way to be selected by the very first person submitting one. Switched it (and the admin form's matching fast-fill dropdown) to the full 197-country reference list already used elsewhere for normalizing free-text country input, instead of a catalog-derived subset. Also added the one country actually missing from that reference list (Côte d'Ivoire), disambiguated "Congo" into "Congo-Brazzaville" / "Congo-Kinshasa" (both DRC and Republic of the Congo were previously showing as an indistinguishable duplicate "Congo" option), and added a few more free-text aliases (Burma, Ivory Coast, DRC, etc.) so submissions using those names still normalize correctly.
+
 ## v5.37.1 — current
 - Welcome gate polish, per feedback on the first pass: the three feature boxes (Customize/Build/Connect) are now larger with a visible card background/border instead of bare text, and the ad banner got `position:relative; z-index:1` so it always paints above the drifting thumbnail field -- the thumbfield is a positioned (`position:absolute`) element, which per CSS stacking rules paints above later non-positioned siblings regardless of DOM order, so without an explicit stacking context of its own the ad could end up visually underneath it.
 
