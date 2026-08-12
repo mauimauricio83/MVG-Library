@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.39.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.39.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -381,6 +381,7 @@
     adminFormTitle: document.getElementById("adminFormTitle"),
     adminFormCancelBtn: document.getElementById("adminFormCancelBtn"),
     adminFormSaveBtn: document.getElementById("adminFormSaveBtn"),
+    adminYoutubeSearchBtn: document.getElementById("adminYoutubeSearchBtn"),
     adminFormStatus: document.getElementById("adminFormStatus"),
     adminBulkBtn: document.getElementById("adminBulkBtn"),
     adminBulkView: document.getElementById("adminBulkView"),
@@ -8744,6 +8745,17 @@
   els.adminGoAddBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminForm(null); });
   els.adminAddBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminForm(null); });
   els.adminFormCancelBtn.addEventListener("click", returnFromAdminSubview);
+
+  // Opens a YouTube search in a new tab for whatever Artist/Song is
+  // currently typed into the form -- lets an admin re-find a video (e.g.
+  // one flagged broken by the Data Health scan) without leaving the entry
+  // they're editing to go search manually.
+  els.adminYoutubeSearchBtn.addEventListener("click", function () {
+    var artist = els.adminForm.elements.artist.value.trim();
+    var song = els.adminForm.elements.song.value.trim();
+    var query = (artist + " " + song).trim() + " music video";
+    window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), "_blank", "noopener");
+  });
 
   function runAdminPublish(statusEl) {
     statusEl.textContent = "Publishing snapshot…";

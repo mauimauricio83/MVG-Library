@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.39.1 — current
+- The admin Add/Edit Entry form now has a "Search YouTube for this video" button right below the YouTube Link field, opening a new tab pre-searched with the form's current Artist + Song (plus "music video"). Meant to pair with the Data Health broken-link scan -- re-finding a video that's since moved or been re-uploaded no longer means leaving the entry to search manually.
+
 ## v5.39.0 — current
 - New: a "Data Health" section in the admin panel, giving admins visibility into catalog data quality that there was previously no way to check. Three reports: **Duplicate Videos** (entries sharing the exact same YouTube/Vimeo video ID -- computed instantly from the loaded catalog, no false positives from legitimate covers/remixes since it's an exact ID match, not fuzzy artist/song matching), **Missing Video Link** (entries with no recognized YouTube/Vimeo URL at all -- also instant), and **Broken Links** (a manual, stoppable scan that checks every entry's video ID against YouTube's/Vimeo's own public oEmbed endpoint -- the same lightweight technique already used for Vimeo thumbnails -- to catch videos that have since been removed, made private, or had embedding disabled). Every flagged entry gets the same Edit/Delete buttons as Manage Entries, so an admin can act on a finding immediately without leaving the view.
 
