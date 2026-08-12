@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.42.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.42.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -170,6 +170,9 @@
     headerAccount: document.getElementById("headerAccount"),
     headerAvatar: document.getElementById("headerAvatar"),
     headerUserName: document.getElementById("headerUserName"),
+    settingsAccountRow: document.getElementById("settingsAccountRow"),
+    settingsAccountHint: document.getElementById("settingsAccountHint"),
+    settingsSignOutBtn: document.getElementById("settingsSignOutBtn"),
     sidebarHomeBtn: document.getElementById("sidebarHomeBtn"),
     topBarHomeLink: document.getElementById("topBarHomeLink"),
     sidebarTVBtn: document.getElementById("sidebarTVBtn"),
@@ -9772,6 +9775,10 @@
   els.signOutBtn.addEventListener("click", function () {
     auth.signOut();
   });
+  els.settingsSignOutBtn.addEventListener("click", function () {
+    auth.signOut();
+    closeSettingsModal();
+  });
 
   // ---- First-visit welcome gate --------------------------------------------
   // Shown once per browser to a signed-out visitor -- see the HTML comment
@@ -9808,6 +9815,8 @@
     els.signInBtn.hidden = !!user;
     els.topBarSignInBtn.hidden = !!user;
     els.headerAccount.hidden = !user;
+    els.settingsAccountRow.hidden = !user;
+    els.settingsAccountHint.textContent = user ? "Signed in as " + (user.displayName || user.email || "…") : "";
     if (user) {
       els.headerAvatar.src = user.photoURL || "";
       els.headerUserName.textContent = user.displayName || user.email || "";

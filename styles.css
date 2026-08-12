@@ -5372,6 +5372,15 @@ body.is-searching #discoverSection {
   border-top: 1px solid var(--border);
 }
 
+/* Author styles always beat the browser's UA [hidden]{display:none} rule
+   regardless of source order -- same gotcha as .header-icon-btn[hidden] /
+   .submit-form[hidden] elsewhere. Without this, #settingsAccountRow (hidden
+   by default until signed in) would render as an empty flex row before
+   sign-in instead of actually disappearing. */
+.settings-row[hidden] {
+  display: none;
+}
+
 .settings-row-label {
   font-size: 0.88rem;
   font-weight: 600;

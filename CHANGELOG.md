@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.42.1 — current
+- Settings now has an Account row with a Sign out button, shown only while signed in. The only sign-out control before this lived in the desktop sidebar's account area; Settings is reachable the same way from every viewport via the top bar's gear icon, so this covers the gap for anyone who couldn't find it there. **Fixed a real `[hidden]`-cascade bug caught while building it**: `.settings-row` sets `display:flex` unconditionally, which silently beats the browser's default `[hidden]{display:none}` rule -- without an explicit `.settings-row[hidden]{display:none}` override, the new row would have rendered as an empty flex row before sign-in instead of actually disappearing.
+
 ## v5.42.0 — current
 - Save & Next in the Fill Missing Links queue now auto-triggers "Auto-Fill Top Result" for whatever entry comes up next (when the API key is configured), instead of requiring a click every single time. Still just drops a suggestion into the field/preview -- nothing saves without a human hitting Save & Next again, same as clicking the button manually. A stale in-flight search (if the queue moves on again before the previous lookup returns) is discarded rather than filling in the wrong entry.
 

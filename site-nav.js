@@ -141,7 +141,7 @@
   // reproduced statically here. SITE_VERSION isn't read from app.js (no
   // shared module system, no build step), so bump it by hand alongside
   // APP_VERSION in app.js when that changes.
-  var SITE_VERSION = "5.42.0";
+  var SITE_VERSION = "5.42.1";
   var FOOTER_HTML =
     '<footer class="app-footer">' +
       '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
