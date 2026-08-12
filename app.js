@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.41.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.42.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -8760,7 +8760,7 @@
     });
   }
 
-  els.adminFillLinksAutoFillBtn.addEventListener("click", function () {
+  function triggerFillLinksAutoFill() {
     var row = state.adminFillLinksQueue[0];
     if (!row || !YOUTUBE_SEARCH_API_KEY) return;
     var query = (row.artist + " " + row.song).trim() + " music video";
@@ -8768,6 +8768,10 @@
     els.adminFillLinksAutoFillNote.hidden = true;
     els.adminFillLinksError.hidden = true;
     fetchYouTubeTopResult(query).then(function (result) {
+      // The queue may have moved on (Skip/Delete/another Save) while this
+      // request was in flight -- discard a now-stale result rather than
+      // filling in the wrong entry's field.
+      if (state.adminFillLinksQueue[0] !== row) return;
       if (!result) {
         els.adminFillLinksError.textContent = "No YouTube results for that search.";
         els.adminFillLinksError.hidden = false;
@@ -8778,13 +8782,16 @@
       els.adminFillLinksAutoFillNote.hidden = false;
       updateFillLinksPreview();
     }).catch(function (err) {
+      if (state.adminFillLinksQueue[0] !== row) return;
       console.error("YouTube auto-fill search failed:", err);
       els.adminFillLinksError.textContent = err.message;
       els.adminFillLinksError.hidden = false;
     }).finally(function () {
       els.adminFillLinksAutoFillBtn.disabled = false;
     });
-  });
+  }
+
+  els.adminFillLinksAutoFillBtn.addEventListener("click", triggerFillLinksAutoFill);
 
   els.adminGoFillLinksBtn.addEventListener("click", goAdminFillLinks);
   els.adminFillLinksBackBtn.addEventListener("click", function () {
@@ -8865,6 +8872,11 @@
       els.adminFillLinksStatus.className = "admin-status";
       els.adminFillLinksStatus.hidden = false;
       renderFillLinksCard();
+      // Save & Next queues up the next entry's top result automatically --
+      // still just a suggestion sitting in the field/preview, not saved on
+      // its own, so the human-confirms-before-saving guarantee holds either
+      // way. No-ops if the key isn't configured (button stays hidden then).
+      triggerFillLinksAutoFill();
     }).catch(function (err) {
       console.error("Fill Links save failed:", err);
       els.adminFillLinksError.textContent = "Save failed: " + err.message;

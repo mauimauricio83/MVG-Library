@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.42.0 — current
+- Save & Next in the Fill Missing Links queue now auto-triggers "Auto-Fill Top Result" for whatever entry comes up next (when the API key is configured), instead of requiring a click every single time. Still just drops a suggestion into the field/preview -- nothing saves without a human hitting Save & Next again, same as clicking the button manually. A stale in-flight search (if the queue moves on again before the previous lookup returns) is discarded rather than filling in the wrong entry.
+
 ## v5.41.1 — current
 - `YOUTUBE_SEARCH_API_KEY` is now set, turning on the Fill Missing Links queue's "Auto-Fill Top Result" button (shipped hidden-until-configured in v5.41.0). Referrer-restricted in Google Cloud Console the same way as recommended when the feature was built.
 
