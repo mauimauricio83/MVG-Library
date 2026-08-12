@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.36.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.37.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -148,6 +148,10 @@
     blogLatestExtra: document.getElementById("blogLatestExtra"),
     appFooter: document.getElementById("appFooter"),
     signInBtn: document.getElementById("signInBtn"),
+    welcomeGate: document.getElementById("welcomeGate"),
+    welcomeGoogleBtn: document.getElementById("welcomeGoogleBtn"),
+    welcomeGuestBtn: document.getElementById("welcomeGuestBtn"),
+    welcomeGateThumbfield: document.getElementById("welcomeGateThumbfield"),
     topBarSignInBtn: document.getElementById("topBarSignInBtn"),
     signOutBtn: document.getElementById("signOutBtn"),
     headerAccount: document.getElementById("headerAccount"),
@@ -1479,6 +1483,42 @@
     applyDeepLinkFromHash();
     applyFavoritesShareFromHash();
     updateStripRowHeightVar();
+    startWelcomeThumbField();
+  }
+
+  // Video thumbnails drifting outward from center behind the welcome
+  // gate's buttons -- see .welcome-gate-thumb/@keyframes welcome-thumb-fly
+  // in styles.css for the actual animation, this just picks the videos and
+  // sets each one's random trajectory. Waits for the catalog rather than
+  // running at page-load time. Two independent things race to populate
+  // this (the catalog finishing load vs. the gate actually being shown,
+  // via the first auth callback) and either order is possible, so this is
+  // called from both places and guarded to build the field only once --
+  // deliberately NOT gated on the gate's current visibility, since
+  // finishLoad() can genuinely run before that first auth callback lands.
+  var welcomeThumbFieldBuilt = false;
+  function startWelcomeThumbField() {
+    if (welcomeThumbFieldBuilt || !state.rows.length || !els.welcomeGateThumbfield) return;
+    var candidates = state.rows.filter(hasVideo);
+    if (!candidates.length) return;
+    welcomeThumbFieldBuilt = true;
+    var pool = shuffle(candidates).slice(0, 16);
+    var maxDist = Math.max(window.innerWidth, window.innerHeight) * 0.75;
+    var html = pool.map(function (row) {
+      var src = getRowThumbUrl(row);
+      if (!src) return "";
+      var angle = Math.random() * Math.PI * 2;
+      var dist = maxDist * (0.6 + Math.random() * 0.4);
+      var tx = Math.cos(angle) * dist;
+      var ty = Math.sin(angle) * dist;
+      var w = 90 + Math.random() * 90;
+      var dur = 6 + Math.random() * 6;
+      var delay = -Math.random() * dur; // negative = starts mid-flight, not all launching from center at once
+      return '<img class="welcome-gate-thumb" src="' + escapeHtml(src) + '" alt="" loading="lazy" style="' +
+        "--tx:" + tx.toFixed(0) + "px; --ty:" + ty.toFixed(0) + "px; --w:" + w.toFixed(0) + "px; " +
+        "--dur:" + dur.toFixed(2) + "s; --delay:" + delay.toFixed(2) + "s;" + '">';
+    }).join("");
+    els.welcomeGateThumbfield.innerHTML = html;
   }
 
   window.addEventListener("resize", function () {
@@ -9186,7 +9226,37 @@
     auth.signOut();
   });
 
+  // ---- First-visit welcome gate --------------------------------------------
+  // Shown once per browser to a signed-out visitor -- see the HTML comment
+  // above #welcomeGate for the full reasoning. `welcomeGateChecked` makes
+  // sure this only gets decided on auth's FIRST callback, not on every
+  // later change (e.g. someone signing out mid-session shouldn't suddenly
+  // get the gate back).
+  var WELCOME_SEEN_KEY = "mvg-welcome-seen";
+  var welcomeGateChecked = false;
+
+  function dismissWelcomeGate() {
+    els.welcomeGate.hidden = true;
+    try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch (e) {}
+  }
+
+  els.welcomeGoogleBtn.addEventListener("click", function () {
+    auth.signInWithPopup(googleProvider).then(function () {
+      dismissWelcomeGate();
+    }).catch(function (err) {
+      console.error("Sign-in failed:", err);
+    });
+  });
+
+  els.welcomeGuestBtn.addEventListener("click", dismissWelcomeGate);
+
   auth.onAuthStateChanged(function (user) {
+    if (!welcomeGateChecked) {
+      welcomeGateChecked = true;
+      var alreadySeen = true;
+      try { alreadySeen = !!localStorage.getItem(WELCOME_SEEN_KEY); } catch (e) {}
+      if (!user && !alreadySeen) { els.welcomeGate.hidden = false; startWelcomeThumbField(); }
+    }
     currentUser = user;
     els.signInBtn.hidden = !!user;
     els.topBarSignInBtn.hidden = !!user;
