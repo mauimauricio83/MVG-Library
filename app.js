@@ -61,7 +61,7 @@
   // units/day; search.list costs 100 units/call, so ~100 lookups/day before
   // it 403s for the rest of the day (no auto-billing past that -- Google
   // requires a manual quota-increase request, not a pay-per-call bump).
-  var YOUTUBE_SEARCH_API_KEY = "";
+  var YOUTUBE_SEARCH_API_KEY = "AIzaSyBCjFAxZEVXdDWC_HLQnZCV0ihXW-B2eBk";
   var googleProvider = new firebase.auth.GoogleAuthProvider();
   var currentUser = null;
 
