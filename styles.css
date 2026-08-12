@@ -4677,6 +4677,22 @@ body.is-searching #discoverSection {
   font-size: 0.9rem;
 }
 
+.admin-dupe-group {
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.admin-dupe-group-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
 .admin-row {
   display: flex;
   align-items: center;

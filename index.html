@@ -692,6 +692,7 @@
           <button type="button" class="admin-row-btn" id="adminGoVerificationsBtn">Verification Requests<span class="profile-requests-badge" id="adminVerificationsBadge" hidden>0</span></button>
           <button type="button" class="admin-row-btn" id="adminGoBlogBtn">Blog Posts</button>
           <button type="button" class="admin-row-btn" id="adminGoChannelBtn">Channel Mode</button>
+          <button type="button" class="admin-row-btn" id="adminGoDataToolsBtn">Data Health</button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -785,6 +786,31 @@
 
         <h3 class="admin-channel-queue-title">Queue (<span id="adminChannelQueueCount">0</span> videos, <span id="adminChannelQueueDuration">0:00</span> total)</h3>
         <div class="admin-entries-list" id="adminChannelQueueList"></div>
+      </div>
+
+      <div id="adminDataToolsView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminDataToolsBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Data Health</h2>
+        </div>
+        <p class="admin-bulk-hint">Duplicates are grouped by matching YouTube/Vimeo video ID and computed instantly from the loaded catalog. Broken links require an active scan -- each entry's video ID is checked against YouTube/Vimeo's own oEmbed endpoint, which reports if the video's been removed, made private, or had embedding disabled.</p>
+        <p class="admin-status" id="adminDataToolsStatus" hidden></p>
+
+        <h3 class="admin-channel-queue-title">Duplicate Videos (<span id="adminDupeCount">0</span>)</h3>
+        <div class="admin-entries-list" id="adminDupeList"></div>
+
+        <h3 class="admin-channel-queue-title">Missing Video Link (<span id="adminNoVideoCount">0</span>)</h3>
+        <div class="admin-entries-list" id="adminNoVideoList"></div>
+
+        <div class="admin-toolbar">
+          <h3 class="admin-channel-queue-title">Broken Links (<span id="adminBrokenCount">0</span>)</h3>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn" id="adminScanBrokenBtn">Scan for Broken Links</button>
+            <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminScanStopBtn" hidden>Stop Scan</button>
+          </div>
+        </div>
+        <p class="admin-bulk-hint" id="adminScanProgress" hidden></p>
+        <div class="admin-entries-list" id="adminBrokenList"></div>
       </div>
 
       <div id="adminListView" hidden>

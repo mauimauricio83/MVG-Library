@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.38.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.39.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -291,6 +291,19 @@
     adminGoChannelBtn: document.getElementById("adminGoChannelBtn"),
     adminChannelView: document.getElementById("adminChannelView"),
     adminChannelBackBtn: document.getElementById("adminChannelBackBtn"),
+    adminGoDataToolsBtn: document.getElementById("adminGoDataToolsBtn"),
+    adminDataToolsView: document.getElementById("adminDataToolsView"),
+    adminDataToolsBackBtn: document.getElementById("adminDataToolsBackBtn"),
+    adminDataToolsStatus: document.getElementById("adminDataToolsStatus"),
+    adminDupeCount: document.getElementById("adminDupeCount"),
+    adminDupeList: document.getElementById("adminDupeList"),
+    adminNoVideoCount: document.getElementById("adminNoVideoCount"),
+    adminNoVideoList: document.getElementById("adminNoVideoList"),
+    adminBrokenCount: document.getElementById("adminBrokenCount"),
+    adminBrokenList: document.getElementById("adminBrokenList"),
+    adminScanBrokenBtn: document.getElementById("adminScanBrokenBtn"),
+    adminScanStopBtn: document.getElementById("adminScanStopBtn"),
+    adminScanProgress: document.getElementById("adminScanProgress"),
     adminChannelRestartBtn: document.getElementById("adminChannelRestartBtn"),
     adminChannelStatus: document.getElementById("adminChannelStatus"),
     adminChannelModeOrdered: document.getElementById("adminChannelModeOrdered"),
@@ -834,6 +847,11 @@
     selectedPlaylistId: null,
     isAdmin: false,
     adminRows: [],
+    // Rows the most recent Data Health broken-link scan flagged -- kept
+    // separate from adminRows itself so a delete elsewhere (Manage Entries,
+    // the lightbox) can prune a row out of this list too instead of it
+    // lingering until the next full rescan.
+    adminBrokenRows: [],
     adminBulkParsed: [],
     // { feature, spotlight } of the row currently loaded into the admin
     // edit form, or null when adding new -- captured at load time so the
@@ -6491,6 +6509,7 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -6502,6 +6521,7 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminBlogListView.hidden = false;
   }
 
@@ -6512,6 +6532,7 @@
     els.adminBulkView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminSuggestionsView.hidden = false;
   }
 
@@ -6522,6 +6543,7 @@
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminVerificationsView.hidden = false;
   }
 
@@ -6533,7 +6555,20 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminChannelView.hidden = false;
+  }
+
+  function showAdminDataToolsView() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = false;
   }
 
   function goAdminSuggestions() {
@@ -7925,6 +7960,7 @@
   // Entries was never loaded.
   function returnFromAdminSubview() {
     if (state.adminReturnView === "list") showAdminList();
+    else if (state.adminReturnView === "dataTools") showAdminDataToolsView();
     else showAdminLanding();
   }
 
@@ -7933,6 +7969,7 @@
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminListView.hidden = false;
   }
 
@@ -7986,6 +8023,7 @@
     els.adminLandingView.hidden = true;
     els.adminListView.hidden = true;
     els.adminBulkView.hidden = true;
+    els.adminDataToolsView.hidden = true;
     els.adminForm.hidden = false;
     els.adminForm.scrollTop = 0;
     els.adminFormStatus.hidden = true;
@@ -8443,6 +8481,29 @@
     });
   }
 
+  // Shared by the Manage Entries list and every Data Health list below --
+  // same row markup, same Edit/Delete buttons, all handled by the one
+  // delegated data-admin-action click listener on els.adminModal.
+  function adminRowHtml(r) {
+    var badges = "";
+    if (r.feature) badges += '<span class="admin-badge">Feature</span>';
+    if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
+    if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
+    if (r.backdoor) badges += '<span class="admin-badge admin-badge-backdoor">Backdoor</span>';
+    return (
+      '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
+        '<div class="admin-row-main">' +
+          '<div class="admin-row-title">' + escapeHtml(r.artist) + ' — ' + escapeHtml(r.song) + '</div>' +
+          '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + '</div>' +
+        '</div>' +
+        '<div class="admin-row-actions">' +
+          '<button type="button" class="admin-row-btn" data-admin-action="edit" data-rownum="' + r.rowNum + '">Edit</button>' +
+          '<button type="button" class="admin-row-btn admin-row-btn-danger" data-admin-action="delete" data-rownum="' + r.rowNum + '">Delete</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   function renderAdminEntries() {
     var query = els.adminSearchInput.value.trim().toLowerCase();
     var rows = state.adminRows.filter(function (r) {
@@ -8457,26 +8518,154 @@
       return;
     }
 
-    els.adminEntriesList.innerHTML = rows.map(function (r) {
-      var badges = "";
-      if (r.feature) badges += '<span class="admin-badge">Feature</span>';
-      if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
-      if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
-      if (r.backdoor) badges += '<span class="admin-badge admin-badge-backdoor">Backdoor</span>';
-      return (
-        '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
-          '<div class="admin-row-main">' +
-            '<div class="admin-row-title">' + escapeHtml(r.artist) + ' — ' + escapeHtml(r.song) + '</div>' +
-            '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + '</div>' +
-          '</div>' +
-          '<div class="admin-row-actions">' +
-            '<button type="button" class="admin-row-btn" data-admin-action="edit" data-rownum="' + r.rowNum + '">Edit</button>' +
-            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-admin-action="delete" data-rownum="' + r.rowNum + '">Delete</button>' +
-          '</div>' +
-        '</div>'
-      );
-    }).join("");
+    els.adminEntriesList.innerHTML = rows.map(adminRowHtml).join("");
   }
+
+  // ---- Data Health: duplicate videos, missing links, broken links ------
+  // All three read off state.adminRows (the same full-catalog snapshot
+  // Manage Entries loads), so opening Data Health always (re)loads it fresh
+  // via loadAdminEntries() rather than assuming it's already populated.
+
+  // Two rows pointing at the same YouTube/Vimeo video ID -- almost always
+  // an accidental double-submission/double-import rather than a real
+  // distinct entry, so grouped by exact ID match (not fuzzy artist/song
+  // matching, which would flag legitimate covers/remixes as false positives).
+  function findDuplicateVideoGroups(rows) {
+    var byKey = {};
+    rows.forEach(function (r) {
+      var ref = getRowVideoRef(r);
+      if (!ref) return;
+      var key = ref.provider + ":" + ref.id;
+      (byKey[key] = byKey[key] || []).push(r);
+    });
+    return Object.keys(byKey)
+      .map(function (k) { return byKey[k]; })
+      .filter(function (group) { return group.length > 1; })
+      .sort(function (a, b) { return b.length - a.length; });
+  }
+
+  function renderAdminDataToolsInstant() {
+    var dupeGroups = findDuplicateVideoGroups(state.adminRows);
+    els.adminDupeCount.textContent = dupeGroups.length;
+    els.adminDupeList.innerHTML = dupeGroups.length
+      ? dupeGroups.map(function (group) {
+          var ref = getRowVideoRef(group[0]);
+          return (
+            '<div class="admin-dupe-group">' +
+              '<div class="admin-dupe-group-label">Same ' + ref.provider + ' video, ' + group.length + " entries</div>" +
+              group.map(adminRowHtml).join("") +
+            "</div>"
+          );
+        }).join("")
+      : '<p class="admin-empty">No duplicate videos found.</p>';
+
+    var noVideoRows = state.adminRows.filter(function (r) { return !hasVideo(r); });
+    els.adminNoVideoCount.textContent = noVideoRows.length;
+    els.adminNoVideoList.innerHTML = noVideoRows.length
+      ? noVideoRows.map(adminRowHtml).join("")
+      : '<p class="admin-empty">Every entry has a recognized YouTube or Vimeo link.</p>';
+  }
+
+  function goAdminDataTools() {
+    state.adminReturnView = "dataTools";
+    els.adminBrokenList.innerHTML = "";
+    els.adminBrokenCount.textContent = "0";
+    els.adminScanProgress.hidden = true;
+    els.adminScanStopBtn.hidden = true;
+    els.adminScanBrokenBtn.hidden = false;
+    els.adminScanBrokenBtn.disabled = false;
+    showAdminDataToolsView();
+    els.adminDataToolsStatus.textContent = "Loading catalog…";
+    els.adminDataToolsStatus.className = "admin-status";
+    els.adminDataToolsStatus.hidden = false;
+    return db.collection("videos").get().then(function (snap) {
+      state.adminRows = snap.docs.map(function (doc) { return doc.data(); });
+      els.adminDataToolsStatus.hidden = true;
+      renderAdminDataToolsInstant();
+    }).catch(function (err) {
+      console.error("Data Health load failed:", err);
+      els.adminDataToolsStatus.textContent = "Couldn't load entries: " + err.message;
+      els.adminDataToolsStatus.className = "admin-status is-error";
+    });
+  }
+
+  // Lightweight existence/embeddability check via each provider's own
+  // public oEmbed endpoint -- same one already used for Vimeo thumbnails
+  // (fetchVimeoThumbnail()) -- instead of spinning up a real IFrame/Vimeo
+  // player per row (what the Channel Mode duration resolver does), since a
+  // full-catalog scan means checking thousands of rows and a bare HTTP
+  // request is far cheaper than a player instance. A non-ok response means
+  // the video's been removed, made private, or had embedding disabled by
+  // its owner. Network hiccups resolve as "ok" rather than "broken" --
+  // a flaky connection shouldn't get an entry misreported and possibly
+  // deleted by mistake.
+  function checkRowLinkOk(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(true);
+    var oembedUrl = ref.provider === "youtube"
+      ? "https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + ref.id)
+      : "https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id);
+    return fetch(oembedUrl).then(function (res) { return res.ok; }).catch(function () { return true; });
+  }
+
+  var DATA_TOOLS_SCAN_CONCURRENCY = 8;
+  var adminScanStopped = false;
+
+  function renderAdminBroken() {
+    els.adminBrokenCount.textContent = state.adminBrokenRows.length;
+    els.adminBrokenList.innerHTML = state.adminBrokenRows.length
+      ? state.adminBrokenRows.map(adminRowHtml).join("")
+      : '<p class="admin-empty">No broken links found yet.</p>';
+  }
+
+  function scanForBrokenLinks() {
+    var candidates = state.adminRows.filter(hasVideo);
+    if (!candidates.length) return;
+    adminScanStopped = false;
+    state.adminBrokenRows = [];
+    var total = candidates.length;
+    var checked = 0;
+    var nextIndex = 0;
+
+    els.adminScanBrokenBtn.hidden = true;
+    els.adminScanStopBtn.hidden = false;
+    els.adminScanProgress.hidden = false;
+
+    function reportProgress() {
+      els.adminScanProgress.textContent = "Checked " + checked + " / " + total + " -- " + state.adminBrokenRows.length + " broken so far…";
+    }
+
+    function worker() {
+      if (adminScanStopped || nextIndex >= candidates.length) return Promise.resolve();
+      var row = candidates[nextIndex++];
+      return checkRowLinkOk(row).then(function (ok) {
+        checked++;
+        if (!ok) { state.adminBrokenRows.push(row); renderAdminBroken(); }
+        reportProgress();
+        return worker();
+      });
+    }
+
+    reportProgress();
+    renderAdminBroken();
+    var pool = [];
+    for (var i = 0; i < DATA_TOOLS_SCAN_CONCURRENCY; i++) pool.push(worker());
+    Promise.all(pool).then(function () {
+      els.adminScanStopBtn.hidden = true;
+      els.adminScanBrokenBtn.hidden = false;
+      els.adminScanProgress.textContent = (adminScanStopped ? "Stopped after " : "Finished -- ") +
+        "checking " + checked + " / " + total + ". " + state.adminBrokenRows.length + " broken link" + (state.adminBrokenRows.length === 1 ? "" : "s") + " found.";
+    });
+  }
+
+  els.adminGoDataToolsBtn.addEventListener("click", goAdminDataTools);
+  els.adminDataToolsBackBtn.addEventListener("click", showAdminLanding);
+  els.adminScanBrokenBtn.addEventListener("click", scanForBrokenLinks);
+  els.adminScanStopBtn.addEventListener("click", function () {
+    adminScanStopped = true;
+    els.adminScanStopBtn.hidden = true;
+    els.adminScanBrokenBtn.hidden = false;
+  });
 
   els.openAdminBtn.addEventListener("click", openAdminModal);
 
@@ -8496,19 +8685,32 @@
       var row = findAdminRowByNum(rowNum);
       var label = row ? row.artist + " — " + row.song : "entry #" + rowNum;
       if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+      var inDataTools = !els.adminDataToolsView.hidden;
+      var reportStatus = inDataTools
+        ? function (text, isError) {
+            els.adminDataToolsStatus.textContent = text;
+            els.adminDataToolsStatus.className = "admin-status" + (isError ? " is-error" : "");
+            els.adminDataToolsStatus.hidden = !text;
+          }
+        : setAdminStatus;
       db.collection("videos").doc(rowNum).delete().then(function () {
         removeAdminRowLocal(rowNum);
         renderAdminEntries();
-        setAdminStatus('Deleted "' + label + '". Publishing…');
+        if (inDataTools) {
+          renderAdminDataToolsInstant();
+          state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
+          renderAdminBroken();
+        }
+        reportStatus('Deleted "' + label + '". Publishing…');
         return publishSnapshot().then(function (result) {
-          setAdminStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
+          reportStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
         }).catch(function (err) {
           console.error("Publish failed:", err);
-          setAdminStatus('Deleted "' + label + '". (Publish failed: ' + err.message + " -- use the Publish button to retry.)", true);
+          reportStatus('Deleted "' + label + '". (Publish failed: ' + err.message + " -- use the Publish button to retry.)", true);
         });
       }).catch(function (err) {
         console.error("Admin delete failed:", err);
-        setAdminStatus("Delete failed: " + err.message, true);
+        reportStatus("Delete failed: " + err.message, true);
       });
     }
   });
@@ -8666,6 +8868,21 @@
           renderAdminEntries();
           setAdminStatus(label + " Publishing…");
           publishPromise.then(setAdminStatus);
+        } else if (state.adminReturnView === "dataTools") {
+          upsertAdminRowLocal(rowNum, doc);
+          // The edit may have fixed the flagged link -- drop it from the
+          // broken list rather than leaving a stale entry until the next
+          // full rescan re-confirms it either way.
+          state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
+          showAdminDataToolsView();
+          renderAdminDataToolsInstant();
+          renderAdminBroken();
+          els.adminDataToolsStatus.textContent = label + " Publishing…";
+          els.adminDataToolsStatus.className = "admin-status";
+          els.adminDataToolsStatus.hidden = false;
+          publishPromise.then(function (text) {
+            els.adminDataToolsStatus.textContent = text;
+          });
         } else {
           upsertAdminRowLocal(rowNum, doc);
           showAdminLanding();
