@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.40.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.41.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -49,6 +49,19 @@
   firebase.initializeApp(firebaseConfig);
   var auth = firebase.auth();
   var db = firebase.firestore();
+
+  // Powers the Fill Missing Links queue's optional "Auto-Fill Top Result"
+  // button (search.list against the real YouTube Data API v3, not just
+  // oEmbed lookup/validation like the rest of the site uses). Blank by
+  // default -- the button stays hidden until this is set. To enable: create
+  // a Google Cloud project, enable "YouTube Data API v3", create an API key,
+  // and restrict it (HTTP referrers) to this site's origin(s) before pasting
+  // it in here -- same "safe to be public once restricted" model as
+  // firebaseConfig.apiKey above, Firebase's own key. Free quota is 10,000
+  // units/day; search.list costs 100 units/call, so ~100 lookups/day before
+  // it 403s for the rest of the day (no auto-billing past that -- Google
+  // requires a manual quota-increase request, not a pay-per-call bump).
+  var YOUTUBE_SEARCH_API_KEY = "";
   var googleProvider = new firebase.auth.GoogleAuthProvider();
   var currentUser = null;
 
@@ -314,6 +327,9 @@
     adminFillLinksTitle: document.getElementById("adminFillLinksTitle"),
     adminFillLinksSub: document.getElementById("adminFillLinksSub"),
     adminFillLinksSearchBtn: document.getElementById("adminFillLinksSearchBtn"),
+    adminFillLinksAutoFillBtn: document.getElementById("adminFillLinksAutoFillBtn"),
+    adminFillLinksAutoFillNote: document.getElementById("adminFillLinksAutoFillNote"),
+    adminFillLinksPreview: document.getElementById("adminFillLinksPreview"),
     adminFillLinksInput: document.getElementById("adminFillLinksInput"),
     adminFillLinksError: document.getElementById("adminFillLinksError"),
     adminFillLinksSaveBtn: document.getElementById("adminFillLinksSaveBtn"),
@@ -8645,6 +8661,7 @@
     state.adminReturnView = "dataTools";
     state.adminFillLinksQueue = state.adminRows.filter(function (r) { return !hasVideo(r); });
     state.adminFillLinksFilledCount = 0;
+    els.adminFillLinksAutoFillBtn.hidden = !YOUTUBE_SEARCH_API_KEY;
     showAdminFillLinksView();
     renderFillLinksCard();
   }
@@ -8653,6 +8670,8 @@
     els.adminFillLinksRemaining.textContent = state.adminFillLinksQueue.length;
     els.adminFillLinksInput.value = "";
     els.adminFillLinksError.hidden = true;
+    els.adminFillLinksAutoFillNote.hidden = true;
+    teardownFillLinksPreview();
 
     if (!state.adminFillLinksQueue.length) {
       els.adminFillLinksCard.hidden = true;
@@ -8670,6 +8689,102 @@
       (row.category ? " · " + row.category : "");
     els.adminFillLinksInput.focus();
   }
+
+  // ---- Fill Links: live preview player -----------------------------------
+  // Same free createVideoPlayer() wrapper used everywhere else on the site
+  // (lightbox, TV Mode, Channel Mode's admin Live View) -- just pointed at
+  // whatever's currently in the paste field, so there's no API cost here,
+  // only the auto-fill search below actually calls a metered endpoint.
+  var adminFillLinksPreviewPlayer = null;
+  var adminFillLinksPreviewDebounce = null;
+
+  function teardownFillLinksPreview() {
+    if (adminFillLinksPreviewDebounce) { clearTimeout(adminFillLinksPreviewDebounce); adminFillLinksPreviewDebounce = null; }
+    if (adminFillLinksPreviewPlayer && adminFillLinksPreviewPlayer.destroy) {
+      try { adminFillLinksPreviewPlayer.destroy(); } catch (e) {}
+    }
+    adminFillLinksPreviewPlayer = null;
+    els.adminFillLinksPreview.hidden = true;
+    els.adminFillLinksPreview.innerHTML = "";
+  }
+
+  function updateFillLinksPreview() {
+    if (adminFillLinksPreviewPlayer && adminFillLinksPreviewPlayer.destroy) {
+      try { adminFillLinksPreviewPlayer.destroy(); } catch (e) {}
+    }
+    adminFillLinksPreviewPlayer = null;
+    var url = els.adminFillLinksInput.value.trim();
+    var ytId = extractYouTubeId(url);
+    var vimeoId = !ytId ? extractVimeoId(url) : null;
+    if (!ytId && !vimeoId) {
+      els.adminFillLinksPreview.hidden = true;
+      els.adminFillLinksPreview.innerHTML = "";
+      return;
+    }
+    els.adminFillLinksPreview.hidden = false;
+    // YT.Player/Vimeo.Player each consume+replace their target element, so
+    // a fresh inner div is needed every time rather than reusing one --
+    // same pattern the lightbox and Channel Mode rebuild their own target
+    // divs with on every track change.
+    els.adminFillLinksPreview.innerHTML = '<div id="adminFillLinksPreviewTarget"></div>';
+    var ref = ytId ? { provider: "youtube", id: ytId } : { provider: "vimeo", id: vimeoId };
+    createVideoPlayer("adminFillLinksPreviewTarget", ref, {
+      isStale: function () { return els.adminFillLinksInput.value.trim() !== url; },
+      onReady: function (player) { adminFillLinksPreviewPlayer = player; }
+    });
+  }
+
+  els.adminFillLinksInput.addEventListener("input", function () {
+    if (adminFillLinksPreviewDebounce) clearTimeout(adminFillLinksPreviewDebounce);
+    adminFillLinksPreviewDebounce = setTimeout(updateFillLinksPreview, 600);
+  });
+
+  // ---- Fill Links: optional auto-fill via the real YouTube search API ----
+  // Only reachable when YOUTUBE_SEARCH_API_KEY is set (see its comment near
+  // firebaseConfig) -- the button itself stays hidden otherwise. Drops the
+  // top result straight into the paste field and previews it immediately;
+  // still requires a human Save & Next to confirm it's actually correct.
+  function fetchYouTubeTopResult(query) {
+    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&type=video&q=" +
+      encodeURIComponent(query) + "&key=" + encodeURIComponent(YOUTUBE_SEARCH_API_KEY);
+    return fetch(url).then(function (res) {
+      if (!res.ok) return res.json().then(function (body) {
+        var reason = body && body.error && body.error.errors && body.error.errors[0] && body.error.errors[0].reason;
+        throw new Error(reason === "quotaExceeded" ? "Daily search quota used up -- try again tomorrow, or keep using Search + paste." : "YouTube search failed (" + res.status + ").");
+      });
+      return res.json();
+    }).then(function (data) {
+      var item = data.items && data.items[0];
+      if (!item) return null;
+      return { videoId: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle };
+    });
+  }
+
+  els.adminFillLinksAutoFillBtn.addEventListener("click", function () {
+    var row = state.adminFillLinksQueue[0];
+    if (!row || !YOUTUBE_SEARCH_API_KEY) return;
+    var query = (row.artist + " " + row.song).trim() + " music video";
+    els.adminFillLinksAutoFillBtn.disabled = true;
+    els.adminFillLinksAutoFillNote.hidden = true;
+    els.adminFillLinksError.hidden = true;
+    fetchYouTubeTopResult(query).then(function (result) {
+      if (!result) {
+        els.adminFillLinksError.textContent = "No YouTube results for that search.";
+        els.adminFillLinksError.hidden = false;
+        return;
+      }
+      els.adminFillLinksInput.value = "https://www.youtube.com/watch?v=" + result.videoId;
+      els.adminFillLinksAutoFillNote.textContent = 'Top result: "' + result.title + '" -- ' + result.channel + ". Check the preview below before saving.";
+      els.adminFillLinksAutoFillNote.hidden = false;
+      updateFillLinksPreview();
+    }).catch(function (err) {
+      console.error("YouTube auto-fill search failed:", err);
+      els.adminFillLinksError.textContent = err.message;
+      els.adminFillLinksError.hidden = false;
+    }).finally(function () {
+      els.adminFillLinksAutoFillBtn.disabled = false;
+    });
+  });
 
   els.adminGoFillLinksBtn.addEventListener("click", goAdminFillLinks);
   els.adminFillLinksBackBtn.addEventListener("click", function () {

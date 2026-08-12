@@ -832,9 +832,14 @@
         <div class="admin-fill-links-card" id="adminFillLinksCard">
           <div class="admin-fill-links-title" id="adminFillLinksTitle"></div>
           <div class="admin-fill-links-sub" id="adminFillLinksSub"></div>
-          <button type="button" class="admin-row-btn" id="adminFillLinksSearchBtn">Search YouTube for this video</button>
+          <div class="admin-fill-links-actions">
+            <button type="button" class="admin-row-btn" id="adminFillLinksSearchBtn">Search YouTube for this video</button>
+            <button type="button" class="admin-row-btn" id="adminFillLinksAutoFillBtn" hidden>Auto-Fill Top Result</button>
+          </div>
+          <p class="admin-bulk-hint" id="adminFillLinksAutoFillNote" hidden></p>
           <input type="url" id="adminFillLinksInput" class="admin-search" placeholder="Paste the YouTube or Vimeo link here…">
           <p class="admin-status is-error" id="adminFillLinksError" hidden></p>
+          <div class="admin-channel-preview-box" id="adminFillLinksPreview" hidden></div>
           <div class="admin-fill-links-actions">
             <button type="button" class="submit-form-btn" id="adminFillLinksSaveBtn">Save &amp; Next</button>
             <button type="button" class="admin-row-btn" id="adminFillLinksSkipBtn">Skip</button>
