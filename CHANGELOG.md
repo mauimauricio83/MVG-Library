@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.41.1 — current
+- `YOUTUBE_SEARCH_API_KEY` is now set, turning on the Fill Missing Links queue's "Auto-Fill Top Result" button (shipped hidden-until-configured in v5.41.0). Referrer-restricted in Google Cloud Console the same way as recommended when the feature was built.
+
 ## v5.41.0 — current
 - Fill Missing Links now shows a live preview player -- paste any YouTube/Vimeo link into the field and a small embedded player (the same free `createVideoPlayer()` wrapper used everywhere else on the site) renders below it after a short pause in typing, so you can confirm it's the right video before hitting Save & Next. No cost, no API key, since it's just embedding whatever's already in the field.
 - Added an optional "Auto-Fill Top Result" button that calls the real YouTube Data API v3 search endpoint and drops its top hit straight into the field (plus the preview above, and a note showing the result's title/channel to sanity-check against). Off by default -- stays hidden until `YOUTUBE_SEARCH_API_KEY` is set in `app.js`, since it needs a real Google Cloud API key (same "safe to expose once referrer-restricted" model as the existing Firebase key) and draws down a free 10,000-unit/day quota at 100 units per search (~100 lookups/day before it needs to wait for the next day, not a paid overage). Still requires a human Save & Next either way -- YouTube's top result for an artist+song query is often a lyric video or fan upload, not the official one.
