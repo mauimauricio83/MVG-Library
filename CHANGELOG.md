@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.36.3 — current
+- **Fixed a real bug**: the PWA "any"-purpose icons (`icon-192.png`, `icon-512.png` -- used for the browser favicon, apple-touch-icon, in-app header logo, and the PWA install/splash icon) had an alpha channel with a transparent margin around the circular logo instead of filling the canvas edge-to-edge. Platforms/launchers that don't composite transparent PNG regions properly (common on Android install flows) render that as a mismatched black border -- exactly what showed up as "the old blue one with a black border" on an already-installed copy. Regenerated both from the maskable icon's already-correct art (solid opaque purple square, zero alpha, wordmark centered) instead of the old circle-on-transparency version, so there's no ambiguous region left for any platform to get wrong. `icon-512-maskable.png` itself was already correct and is unchanged.
+
 ## v5.36.2 — current
 - Light theme's top bar is now a flat lavender (`var(--accent-soft)`, the same tint light theme already uses for hover states) instead of the purple gradient -- the glow read fine against dark theme's near-black background but looked more like an uneven smudge against light theme's near-white one. Dark theme keeps the gradient from v5.36.1 unchanged.
 
