@@ -799,7 +799,12 @@
         <h3 class="admin-channel-queue-title">Duplicate Videos (<span id="adminDupeCount">0</span>)</h3>
         <div class="admin-entries-list" id="adminDupeList"></div>
 
-        <h3 class="admin-channel-queue-title">Missing Video Link (<span id="adminNoVideoCount">0</span>)</h3>
+        <div class="admin-toolbar">
+          <h3 class="admin-channel-queue-title">Missing Video Link (<span id="adminNoVideoCount">0</span>)</h3>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn" id="adminGoFillLinksBtn" hidden>Fill In Missing Links</button>
+          </div>
+        </div>
         <div class="admin-entries-list" id="adminNoVideoList"></div>
 
         <div class="admin-toolbar">
@@ -811,6 +816,32 @@
         </div>
         <p class="admin-bulk-hint" id="adminScanProgress" hidden></p>
         <div class="admin-entries-list" id="adminBrokenList"></div>
+      </div>
+
+      <div id="adminFillLinksView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminFillLinksBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Fill Missing Links (<span id="adminFillLinksRemaining">0</span> left)</h2>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn" id="adminFillLinksPublishBtn">Publish Now</button>
+          </div>
+        </div>
+        <p class="admin-bulk-hint">Saves write straight to the database but don't go live until you click Publish -- unlike the regular Add/Edit form, this queue doesn't auto-publish after every single save, since re-publishing the whole catalog snapshot hundreds of times in one sitting would be wasteful. Publish once when you're done, or anytime along the way.</p>
+        <p class="admin-status" id="adminFillLinksStatus" hidden></p>
+
+        <div class="admin-fill-links-card" id="adminFillLinksCard">
+          <div class="admin-fill-links-title" id="adminFillLinksTitle"></div>
+          <div class="admin-fill-links-sub" id="adminFillLinksSub"></div>
+          <button type="button" class="admin-row-btn" id="adminFillLinksSearchBtn">Search YouTube for this video</button>
+          <input type="url" id="adminFillLinksInput" class="admin-search" placeholder="Paste the YouTube or Vimeo link here…">
+          <p class="admin-status is-error" id="adminFillLinksError" hidden></p>
+          <div class="admin-fill-links-actions">
+            <button type="button" class="submit-form-btn" id="adminFillLinksSaveBtn">Save &amp; Next</button>
+            <button type="button" class="admin-row-btn" id="adminFillLinksSkipBtn">Skip</button>
+            <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminFillLinksDeleteBtn">Delete Entry</button>
+          </div>
+        </div>
+        <p class="admin-empty" id="adminFillLinksDone" hidden>No entries left in this queue.</p>
       </div>
 
       <div id="adminListView" hidden>

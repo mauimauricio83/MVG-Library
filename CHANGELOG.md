@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.40.0 — current
+- New: a "Fill In Missing Links" queue in Data Health, for working through the ~1,000 entries with no recognized YouTube/Vimeo link. Deliberately not automated matching -- there's no free bulk YouTube search API, and auto-attaching a best-guess result risked silently pairing the wrong video with an entry. Instead it's a fast one-at-a-time review: shows Artist/Song/Director/Year/Category, one click opens a YouTube search pre-filled with Artist + Song, paste the correct link back in and hit Save & Next to auto-advance (or Skip to rotate the entry to the back of the queue, or Delete Entry if nothing findable exists). Saves write straight to Firestore but don't auto-publish per entry like the regular Add/Edit form does -- re-publishing the full ~13k-doc catalog snapshot after every single paste would be wasteful over a queue this size -- there's a Publish Now button to go live whenever, and a reminder in the queue's hint text about the different behavior.
+
 ## v5.39.1 — current
 - The admin Add/Edit Entry form now has a "Search YouTube for this video" button right below the YouTube Link field, opening a new tab pre-searched with the form's current Artist + Song (plus "music video"). Meant to pair with the Data Health broken-link scan -- re-finding a video that's since moved or been re-uploaded no longer means leaving the entry to search manually.
 

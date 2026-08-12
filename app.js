@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.39.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.40.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -304,6 +304,22 @@
     adminScanBrokenBtn: document.getElementById("adminScanBrokenBtn"),
     adminScanStopBtn: document.getElementById("adminScanStopBtn"),
     adminScanProgress: document.getElementById("adminScanProgress"),
+    adminGoFillLinksBtn: document.getElementById("adminGoFillLinksBtn"),
+    adminFillLinksView: document.getElementById("adminFillLinksView"),
+    adminFillLinksBackBtn: document.getElementById("adminFillLinksBackBtn"),
+    adminFillLinksRemaining: document.getElementById("adminFillLinksRemaining"),
+    adminFillLinksPublishBtn: document.getElementById("adminFillLinksPublishBtn"),
+    adminFillLinksStatus: document.getElementById("adminFillLinksStatus"),
+    adminFillLinksCard: document.getElementById("adminFillLinksCard"),
+    adminFillLinksTitle: document.getElementById("adminFillLinksTitle"),
+    adminFillLinksSub: document.getElementById("adminFillLinksSub"),
+    adminFillLinksSearchBtn: document.getElementById("adminFillLinksSearchBtn"),
+    adminFillLinksInput: document.getElementById("adminFillLinksInput"),
+    adminFillLinksError: document.getElementById("adminFillLinksError"),
+    adminFillLinksSaveBtn: document.getElementById("adminFillLinksSaveBtn"),
+    adminFillLinksSkipBtn: document.getElementById("adminFillLinksSkipBtn"),
+    adminFillLinksDeleteBtn: document.getElementById("adminFillLinksDeleteBtn"),
+    adminFillLinksDone: document.getElementById("adminFillLinksDone"),
     adminChannelRestartBtn: document.getElementById("adminChannelRestartBtn"),
     adminChannelStatus: document.getElementById("adminChannelStatus"),
     adminChannelModeOrdered: document.getElementById("adminChannelModeOrdered"),
@@ -853,6 +869,12 @@
     // the lightbox) can prune a row out of this list too instead of it
     // lingering until the next full rescan.
     adminBrokenRows: [],
+    // The Fill Missing Links queue -- rows still needing a video link,
+    // shifted off the front one at a time. Skip rotates a row to the back
+    // instead of dropping it, so it comes back around later in the same
+    // session rather than being lost until the next visit.
+    adminFillLinksQueue: [],
+    adminFillLinksFilledCount: 0,
     adminBulkParsed: [],
     // { feature, spotlight } of the row currently loaded into the admin
     // edit form, or null when adding new -- captured at load time so the
@@ -6511,6 +6533,7 @@
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -6523,6 +6546,7 @@
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminBlogListView.hidden = false;
   }
 
@@ -6534,6 +6558,7 @@
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminSuggestionsView.hidden = false;
   }
 
@@ -6545,6 +6570,7 @@
     els.adminSuggestionsView.hidden = true;
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminVerificationsView.hidden = false;
   }
 
@@ -6557,6 +6583,7 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminChannelView.hidden = false;
   }
 
@@ -6569,7 +6596,21 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminDataToolsView.hidden = false;
+  }
+
+  function showAdminFillLinksView() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = false;
   }
 
   function goAdminSuggestions() {
@@ -7971,6 +8012,7 @@
     els.adminBulkView.hidden = true;
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminListView.hidden = false;
   }
 
@@ -8025,6 +8067,7 @@
     els.adminListView.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
     els.adminForm.hidden = false;
     els.adminForm.scrollTop = 0;
     els.adminFormStatus.hidden = true;
@@ -8565,6 +8608,7 @@
     els.adminNoVideoList.innerHTML = noVideoRows.length
       ? noVideoRows.map(adminRowHtml).join("")
       : '<p class="admin-empty">Every entry has a recognized YouTube or Vimeo link.</p>';
+    els.adminGoFillLinksBtn.hidden = !noVideoRows.length;
   }
 
   function goAdminDataTools() {
@@ -8589,6 +8633,143 @@
       els.adminDataToolsStatus.className = "admin-status is-error";
     });
   }
+
+  // ---- Fill Missing Links queue -----------------------------------------
+  // A fast, one-at-a-time review flow for the Missing Video Link rows --
+  // deliberately NOT automated matching (no YouTube Data API key, no risk
+  // of silently attaching the wrong video to an entry). Search opens a new
+  // tab pre-queried with the entry's Artist + Song; the admin pastes back
+  // whichever result is actually correct.
+
+  function goAdminFillLinks() {
+    state.adminReturnView = "dataTools";
+    state.adminFillLinksQueue = state.adminRows.filter(function (r) { return !hasVideo(r); });
+    state.adminFillLinksFilledCount = 0;
+    showAdminFillLinksView();
+    renderFillLinksCard();
+  }
+
+  function renderFillLinksCard() {
+    els.adminFillLinksRemaining.textContent = state.adminFillLinksQueue.length;
+    els.adminFillLinksInput.value = "";
+    els.adminFillLinksError.hidden = true;
+
+    if (!state.adminFillLinksQueue.length) {
+      els.adminFillLinksCard.hidden = true;
+      els.adminFillLinksDone.hidden = false;
+      return;
+    }
+    els.adminFillLinksCard.hidden = false;
+    els.adminFillLinksDone.hidden = true;
+
+    var row = state.adminFillLinksQueue[0];
+    els.adminFillLinksTitle.textContent = row.artist + " — " + row.song;
+    els.adminFillLinksSub.textContent = "#" + row.rowNum +
+      (row.director ? " · " + row.director : "") +
+      (row.year ? " · " + row.year : "") +
+      (row.category ? " · " + row.category : "");
+    els.adminFillLinksInput.focus();
+  }
+
+  els.adminGoFillLinksBtn.addEventListener("click", goAdminFillLinks);
+  els.adminFillLinksBackBtn.addEventListener("click", function () {
+    showAdminDataToolsView();
+    renderAdminDataToolsInstant();
+  });
+
+  els.adminFillLinksSearchBtn.addEventListener("click", function () {
+    var row = state.adminFillLinksQueue[0];
+    if (!row) return;
+    var query = (row.artist + " " + row.song).trim() + " music video";
+    window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), "_blank", "noopener");
+  });
+
+  els.adminFillLinksSkipBtn.addEventListener("click", function () {
+    if (!state.adminFillLinksQueue.length) return;
+    // Rotate to the back rather than dropping it -- comes back around
+    // later in the same session instead of being lost until next visit.
+    state.adminFillLinksQueue.push(state.adminFillLinksQueue.shift());
+    renderFillLinksCard();
+  });
+
+  els.adminFillLinksDeleteBtn.addEventListener("click", function () {
+    var row = state.adminFillLinksQueue[0];
+    if (!row) return;
+    var label = row.artist + " — " + row.song;
+    if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+    db.collection("videos").doc(row.rowNum).delete().then(function () {
+      removeAdminRowLocal(row.rowNum);
+      state.adminFillLinksQueue.shift();
+      state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== row.rowNum; });
+      renderFillLinksCard();
+      els.adminFillLinksStatus.textContent = 'Deleted "' + label + '". Not yet published -- use Publish Now when you\'re done.';
+      els.adminFillLinksStatus.className = "admin-status";
+      els.adminFillLinksStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Admin delete failed:", err);
+      els.adminFillLinksStatus.textContent = "Delete failed: " + err.message;
+      els.adminFillLinksStatus.className = "admin-status is-error";
+      els.adminFillLinksStatus.hidden = false;
+    });
+  });
+
+  function saveFillLinksEntry() {
+    var row = state.adminFillLinksQueue[0];
+    if (!row) return;
+    var url = els.adminFillLinksInput.value.trim();
+    var ytId = extractYouTubeId(url);
+    var vimeoId = !ytId ? extractVimeoId(url) : null;
+    if (!ytId && !vimeoId) {
+      els.adminFillLinksError.textContent = "That doesn't look like a YouTube or Vimeo link.";
+      els.adminFillLinksError.hidden = false;
+      return;
+    }
+
+    els.adminFillLinksSaveBtn.disabled = true;
+    var doc = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    var thumbPromise = Promise.resolve();
+    if (ytId) {
+      doc.youtube = url;
+    } else {
+      doc.vimeo = url;
+      thumbPromise = fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) doc.vimeoThumb = thumb; });
+    }
+
+    thumbPromise.then(function () {
+      return db.collection("videos").doc(row.rowNum).set(doc, { merge: true });
+    }).then(function () {
+      // Not upsertAdminRowLocal() -- that replaces the whole cached row from
+      // a complete doc object (what the Add/Edit form always has); here
+      // `doc` is a deliberately partial patch, so merge the new fields
+      // directly onto the existing cached row instead.
+      var cached = findAdminRowByNum(row.rowNum);
+      if (cached) { cached.youtube = doc.youtube || cached.youtube; cached.vimeo = doc.vimeo || cached.vimeo; if (doc.vimeoThumb) cached.vimeoThumb = doc.vimeoThumb; }
+      state.adminFillLinksQueue.shift();
+      state.adminFillLinksFilledCount++;
+      els.adminFillLinksStatus.textContent = "Filled " + state.adminFillLinksFilledCount + " so far this session. Not yet published -- use Publish Now when you're done.";
+      els.adminFillLinksStatus.className = "admin-status";
+      els.adminFillLinksStatus.hidden = false;
+      renderFillLinksCard();
+    }).catch(function (err) {
+      console.error("Fill Links save failed:", err);
+      els.adminFillLinksError.textContent = "Save failed: " + err.message;
+      els.adminFillLinksError.hidden = false;
+    }).finally(function () {
+      els.adminFillLinksSaveBtn.disabled = false;
+    });
+  }
+
+  els.adminFillLinksSaveBtn.addEventListener("click", saveFillLinksEntry);
+  els.adminFillLinksInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); saveFillLinksEntry(); }
+  });
+
+  els.adminFillLinksPublishBtn.addEventListener("click", function () {
+    els.adminFillLinksPublishBtn.disabled = true;
+    runAdminPublish(els.adminFillLinksStatus).then(function () {
+      els.adminFillLinksPublishBtn.disabled = false;
+    });
+  });
 
   // Lightweight existence/embeddability check via each provider's own
   // public oEmbed endpoint -- same one already used for Vimeo thumbnails

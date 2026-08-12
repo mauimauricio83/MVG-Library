@@ -4677,6 +4677,32 @@ body.is-searching #discoverSection {
   font-size: 0.9rem;
 }
 
+.admin-fill-links-card {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-fill-links-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.admin-fill-links-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-fill-links-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .admin-dupe-group {
   margin-bottom: 14px;
   padding: 8px 10px;
