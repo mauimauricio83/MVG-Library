@@ -3878,6 +3878,7 @@ body.is-searching #discoverSection {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   transition: max-width 0.15s ease;
 }
@@ -3917,6 +3918,8 @@ body.is-searching #discoverSection {
 .lightbox-title-actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
   padding-top: 2px;
@@ -5947,6 +5950,23 @@ body.is-searching #discoverSection {
 
   .lightbox-widen-btn {
     display: none;
+  }
+
+  /* .lightbox-title-actions can carry up to ~9 buttons at once for an
+     admin (Edit/Delete/Favorite/Playlist/Widen/4:3/Mirror/Interlace/Report
+     issue/Suggest an edit) -- flex-wrap keeps them from forcing horizontal
+     overflow on the whole panel, but staying side-by-side with the title
+     at mobile widths still crowds both onto one cramped line. Stacking the
+     title above the actions row reads far cleaner once it's already
+     wrapping to 2-3 lines of its own. */
+  .lightbox-title-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .lightbox-title-actions {
+    justify-content: flex-start;
   }
 
   .media-strip {

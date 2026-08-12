@@ -46,6 +46,10 @@ async function main() {
   const snap = await db.collection("videos").get();
   const rows = snap.docs.map((doc) => {
     const d = doc.data();
+    // Deliberately whitelisted, not spread (`...d`) -- keeps admin-only
+    // fields like d.submitterEmail out of the public snapshot even if
+    // Firestore ever gains one. Mirror any field added here in the client
+    // publishSnapshot() in app.js too.
     return {
       rowNum: d.rowNum || "",
       artist: d.artist || "",

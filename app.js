@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.42.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.43.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -8063,6 +8063,7 @@
   function upsertAdminRowLocal(rowNum, fields) {
     var plain = {
       rowNum: rowNum, artist: fields.artist, song: fields.song, director: fields.director,
+      submitterEmail: fields.submitterEmail,
       category: fields.category, youtube: fields.youtube, vimeo: fields.vimeo, vimeoThumb: fields.vimeoThumb,
       mvg: fields.mvg, year: fields.year,
       releaseDate: fields.releaseDate, studio: fields.studio, producer: fields.producer,
@@ -8097,7 +8098,7 @@
     var f = els.adminForm;
     f.elements.rowNum.value = row ? row.rowNum : "";
     if (row) {
-      ["artist", "song", "director", "category", "youtube", "vimeo", "mvg", "year", "releaseDate",
+      ["artist", "song", "director", "submitterEmail", "category", "youtube", "vimeo", "mvg", "year", "releaseDate",
         "studio", "producer", "dp", "editor", "choreographer", "country", "description"].forEach(function (key) {
         if (f.elements[key]) f.elements[key].value = row[key] || "";
       });
@@ -8235,6 +8236,12 @@
     artist: ["artist"],
     song: ["song title", "song"],
     director: ["director"],
+    // Guessing at the exact header the Submissions-intake Google Apps
+    // Script writes for the submit form's "Your email" field, since that
+    // script lives outside this repo -- covers the likely spellings, but
+    // verify against the actual sheet header on the next real bulk import
+    // and add the real one here if it doesn't match any of these.
+    submitterEmail: ["email", "email address", "your email", "submitter email"],
     category: ["category"],
     youtube: ["youtube link", "youtube"],
     vimeo: ["vimeo link", "vimeo"],
@@ -8317,6 +8324,7 @@
       artist: pickAlias(norm, BULK_FIELD_ALIASES.artist),
       song: pickAlias(norm, BULK_FIELD_ALIASES.song),
       director: pickAlias(norm, BULK_FIELD_ALIASES.director),
+      submitterEmail: pickAlias(norm, BULK_FIELD_ALIASES.submitterEmail),
       category: pickAlias(norm, BULK_FIELD_ALIASES.category),
       youtube: pickAlias(norm, BULK_FIELD_ALIASES.youtube),
       vimeo: pickAlias(norm, BULK_FIELD_ALIASES.vimeo),
@@ -9119,6 +9127,12 @@
         artist: field("artist"),
         song: field("song"),
         director: field("director"),
+        // Admin-only -- deliberately excluded from publishSnapshot()/
+        // scripts/publish-snapshot.js so it never lands in the public
+        // catalog/snapshot.json. Firestore's own `videos` collection is
+        // already admin-only read/write per firestore.rules, so this is
+        // never exposed even to a visitor querying Firestore directly.
+        submitterEmail: field("submitterEmail"),
         category: field("category"),
         youtube: field("youtube"),
         vimeo: field("vimeo"),
