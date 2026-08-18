@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.48.1 — current
+- **Fixed a real bug in the previous Spotlight resize**: matched it against `.media-strip-card`'s 140px *base* rule, which turns out to be essentially a dead fallback on real desktop -- `#latestStrip`/`#featuredStrip`/`#favoritesStrip` all get overridden to a much bigger `minmax(290px, 1fr)` grid at `@media (min-width: 641px)` (see the "gallery-style sections on desktop" comment in styles.css), which is what Latest Submissions actually renders at. Spotlight now uses that exact same grid formula instead, so its cards are pixel-identical to Latest's, not the smaller 140px strip size.
+
 ## v5.48.0 — current
 - Voting reworked (again, still never deployed) to be repeatable -- the same person can now vote for the same video more than once, ties into the original "vote by giving a dollar" idea where more dollars later means more votes for that pick. Replaced the single overwritten `votes/{uid}` doc with an append-only `voteEvents` log, so the Cloud Function can maintain a real per-video **Top voter** (whoever's voted most for that specific video) and **Latest vote** (most recent voter), shown on both Viewer's Choice cards and the Vote modal's leaderboard.
 - New Settings toggle, "Show my name on videos I vote for" -- **off by default**. A vote always counts either way; only whether your name can appear as a video's top/latest voter is affected. Decided client-side at the moment you vote (not retroactive), so switching it doesn't change who's already been credited on past votes.

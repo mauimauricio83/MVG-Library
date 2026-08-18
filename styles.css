@@ -3470,6 +3470,18 @@ body.is-searching #discoverSection {
   gap: 16px;
 }
 
+/* Matches #latestStrip's own desktop grid (see the @media(min-width:641px)
+   block below) exactly -- same minmax/gap -- rather than the horizontal
+   scroll strip's 140px card width, which is what visually undersized
+   Spotlight next to Latest Submissions before this. */
+@media (min-width: 641px) {
+  .spotlight-sidebar-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 24px;
+  }
+}
+
 .spotlight-card {
   cursor: pointer;
   border: 1px solid var(--border);
@@ -3477,17 +3489,6 @@ body.is-searching #discoverSection {
   overflow: hidden;
   background: var(--bg);
   transition: box-shadow 0.15s ease;
-}
-
-/* Same fixed width as .media-strip-card (Latest Submissions etc.) --
-   thumbnails don't need their own rule since .spotlight-card-thumb is
-   already width:100% of this. Scoped to Spotlight's own container, not
-   the bare .spotlight-card class -- Discover reuses that class inside its
-   own 3-column .discover-grid and needs to keep filling each grid track,
-   not shrink to a fixed width. */
-.spotlight-sidebar-cards .spotlight-card {
-  flex: 0 0 auto;
-  width: 140px;
 }
 
 .spotlight-card:hover {
