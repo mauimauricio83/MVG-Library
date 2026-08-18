@@ -339,5 +339,35 @@ service cloud.firestore {
       allow write: if request.auth != null &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+
+    // "Video of the Week" vote rounds -- admin picks 5 videos (snapshotted
+    // onto the round doc itself, artist/song/thumb, since the public site
+    // can't read the admin-only `videos` collection directly), visitors
+    // vote for one while `active` is true. `tally` is maintained ONLY by
+    // the Cloud Function (functions/index.js, onVoteWritten) reacting to
+    // vote writes below -- never trust a client-supplied tally, which is
+    // why it isn't part of the public write path at all. Currently free
+    // (no payment gate); the plan is to eventually require a confirmed
+    // Stripe payment before a vote write is accepted, which only needs a
+    // change to the votes create/update rule below, not the read model.
+    match /voteRounds/{roundId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+      // Doc ID == uid enforces one vote per person per round; overwriting
+      // it (update) is how "change your vote" works while still active.
+      // Voting is blocked once the round's own `active` flips false.
+      match /votes/{uid} {
+        allow read: if request.auth != null &&
+          (request.auth.uid == uid ||
+            exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+        allow create, update: if request.auth != null && request.auth.uid == uid &&
+          get(/databases/$(database)/documents/voteRounds/$(roundId)).data.active == true &&
+          request.resource.data.rowNum is string &&
+          request.resource.data.rowNum.size() > 0;
+        allow delete: if false;
+      }
+    }
   }
 }

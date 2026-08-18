@@ -150,6 +150,10 @@
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9Z"/></svg></span>
       <span class="header-links-label">Favorites</span>
     </button>
+    <button type="button" class="submit-link header-account-btn" id="openVoteBtn" data-nav-mode="watch">
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/></svg></span>
+      <span class="header-links-label">Vote</span>
+    </button>
     <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarPlaylistsBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
       <span class="header-links-label">Playlists</span>
@@ -693,6 +697,7 @@
           <button type="button" class="admin-row-btn" id="adminGoBlogBtn">Blog Posts</button>
           <button type="button" class="admin-row-btn" id="adminGoChannelBtn">Channel Mode</button>
           <button type="button" class="admin-row-btn" id="adminGoDataToolsBtn">Data Health</button>
+          <button type="button" class="admin-row-btn" id="adminGoVoteRoundsBtn">Vote Rounds</button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -847,6 +852,32 @@
           </div>
         </div>
         <p class="admin-empty" id="adminFillLinksDone" hidden>No entries left in this queue.</p>
+      </div>
+
+      <div id="adminVoteRoundsView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminVoteRoundsBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Vote Rounds</h2>
+        </div>
+        <p class="admin-bulk-hint">Pick 5 videos and open a round -- visitors vote for their favorite from the Vote button on the site. Tallies stay hidden from the public until you close the round and reveal the winner. Currently free to vote; no payment is collected.</p>
+        <p class="admin-status" id="adminVoteRoundsStatus" hidden></p>
+
+        <div id="adminVoteRoundActive" hidden>
+          <h3 class="admin-channel-queue-title">Current Round</h3>
+          <div class="admin-entries-list" id="adminVoteRoundActiveList"></div>
+          <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminCloseVoteRoundBtn">Close Round &amp; Reveal Winner</button>
+        </div>
+
+        <div id="adminVoteRoundBuilder">
+          <h3 class="admin-channel-queue-title">Start a New Round (<span id="adminVoteRoundPickCount">0</span> / 5 picked)</h3>
+          <div class="admin-entries-list" id="adminVoteRoundPicked"></div>
+          <input type="search" id="adminVoteRoundSearch" class="admin-search" placeholder="Search artist, song, or director to add…">
+          <div class="admin-entries-list" id="adminVoteRoundResults"></div>
+          <button type="button" class="admin-row-btn" id="adminStartVoteRoundBtn" disabled>Start Round</button>
+        </div>
+
+        <h3 class="admin-channel-queue-title">Past Rounds</h3>
+        <div class="admin-entries-list" id="adminVoteRoundHistory"></div>
       </div>
 
       <div id="adminListView" hidden>
@@ -1029,6 +1060,23 @@
         <button type="button" class="settings-action-btn" id="shareFavoritesBtn">Get link</button>
       </div>
       <p class="settings-status" id="settingsStatus" hidden></p>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="voteModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel vote-panel" role="dialog" aria-modal="true" aria-label="Vote for your favorite">
+    <button type="button" class="lightbox-close" id="voteClose" aria-label="Close">&times;</button>
+    <div class="vote-body">
+      <h2 class="vote-title" id="voteModalTitle">Video of the Week</h2>
+      <p class="vote-hint" id="voteModalHint"></p>
+      <p class="settings-status" id="voteStatus" hidden></p>
+      <div class="vote-grid" id="voteGrid"></div>
+      <div class="vote-signin-prompt" id="voteSignInPrompt" hidden>
+        <p>Sign in to vote.</p>
+        <button type="button" class="submit-form-btn" id="voteSignInBtn">Sign in with Google</button>
+      </div>
     </div>
   </div>
 </div>
