@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.46.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.47.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -156,6 +156,9 @@
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
+    viewersChoiceSection: document.getElementById("viewersChoiceSection"),
+    viewersChoiceTop2: document.getElementById("viewersChoiceTop2"),
+    viewersChoiceRest: document.getElementById("viewersChoiceRest"),
     blogLatestSidebar: document.getElementById("blogLatestSidebar"),
     blogLatestCards: document.getElementById("blogLatestCards"),
     blogLatestExtra: document.getElementById("blogLatestExtra"),
@@ -488,7 +491,7 @@
     if (row.backdoor) return false;
     return true;
   }
-  var SPOTLIGHT_COUNT = 6; // desktop grid shows all 6; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
+  var SPOTLIGHT_COUNT = 5; // desktop shows all 5; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
 
   var YEAR_NONE = "__no-year__";
   var GENRE_NONE = "__no-genre__";
@@ -1558,6 +1561,7 @@
     renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
+    startViewersChoice();
     renderDiscoverSection(state.rows);
     render();
     applyDeepLinkFromHash();
@@ -3392,6 +3396,63 @@
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
     els.spotlightSidebar.style.top = (headerHeight + 12) + "px";
   }
+
+  // ---- Viewer's Choice: top 5 by vote count, live from videoVotes -------
+  // Sits above everything else on Home. #1/#2 get the bigger side-by-side
+  // treatment, #3-5 a row underneath. Reads straight from videoVotes
+  // (public, no auth needed) rather than needing the catalog loaded first --
+  // each doc already carries its own artist/song/thumb snapshot (see
+  // functions/index.js). Fails quiet (just stays hidden) rather than
+  // showing an error on the homepage if firestore.rules/the Cloud Function
+  // haven't been deployed yet, or if genuinely nobody's voted yet.
+  var viewersChoiceUnsub = null;
+
+  function viewersChoiceCardHtml(v, rank) {
+    return (
+      '<div class="viewers-choice-card" data-rownum="' + escapeHtml(v.id) + '">' +
+        '<div class="viewers-choice-thumb">' +
+          (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
+          '<span class="viewers-choice-rank">#' + rank + "</span>" +
+        "</div>" +
+        '<div class="viewers-choice-info">' +
+          '<div class="viewers-choice-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+          '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderViewersChoice(entries) {
+    if (!entries.length) {
+      els.viewersChoiceSection.hidden = true;
+      return;
+    }
+    els.viewersChoiceSection.hidden = false;
+    els.viewersChoiceTop2.innerHTML = entries.slice(0, 2).map(function (v, i) {
+      return viewersChoiceCardHtml(v, i + 1);
+    }).join("");
+    els.viewersChoiceRest.innerHTML = entries.slice(2, 5).map(function (v, i) {
+      return viewersChoiceCardHtml(v, i + 3);
+    }).join("");
+  }
+
+  function startViewersChoice() {
+    if (viewersChoiceUnsub) return;
+    viewersChoiceUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(5)
+      .onSnapshot(function (snap) {
+        renderViewersChoice(snap.docs.map(function (doc) { return Object.assign({ id: doc.id }, doc.data()); }));
+      }, function (err) {
+        console.error("Viewer's Choice load failed:", err);
+        els.viewersChoiceSection.hidden = true;
+      });
+  }
+
+  els.viewersChoiceSection.addEventListener("click", function (e) {
+    var card = e.target.closest(".viewers-choice-card");
+    if (!card) return;
+    var row = findRowByNum(card.getAttribute("data-rownum"));
+    if (row) openLightbox(row);
+  });
 
   // ---- Discover: unbounded randomized browsing (see the HTML comment
   // above #discoverSection) -- not curated like Spotlight/Featured, just a

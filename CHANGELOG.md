@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.47.0 — current
+- New "Viewer's Choice" section at the top of Home, above Spotlight -- the top 5 videos by vote count, #1/#2 side by side, #3-5 in a row below. Reads live from `videoVotes` (public, no auth needed); stays hidden until there's at least one real vote, and fails quiet rather than showing an error if the vote backend isn't deployed yet. Ranked strictly by all-time vote count for now -- see the CHANGELOG-adjacent discussion on ranking decay for the plan there.
+- Spotlight reduced from 6 videos to 5, and its thumbnails now match Latest Submissions' size (140px fixed width) instead of stretching to fill a 3-column grid -- was noticeably larger than every other strip on the page for no real reason.
+
 ## v5.46.0 — current
 - Every video's lightbox now has its own one-click Vote button (next to Favorite), instead of needing to open the Vote modal and search for the video by name. Signed out, clicking it triggers Google sign-in first, then casts the vote automatically once that succeeds. Both this button and the Vote modal's search results write to the exact same single vote per person, so whichever was used last is simply the current pick -- nothing to reconcile between the two entry points, and the button's state (plain "Vote" vs. active "Voted ✓") now stays live-updated everywhere via one global subscription started at sign-in, not just while the Vote modal happens to be open. Same deploy status as before -- still needs `firebase deploy --only firestore:rules` and the Cloud Function deploy before any of this actually writes anywhere.
 
