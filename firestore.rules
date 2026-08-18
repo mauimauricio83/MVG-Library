@@ -342,31 +342,47 @@ service cloud.firestore {
 
     // Open "vote for your favorite video" -- any catalog entry is eligible,
     // not a curated shortlist (an earlier admin-picks-5-per-round design was
-    // replaced with this before ever going live). One vote per signed-in
-    // person, changeable anytime (doc ID == uid enforces "at most one").
-    // videoVotes/{rowNum} (the public tally) is written ONLY by the Cloud
-    // Function (functions/index.js, onVoteWritten) reacting to writes here
-    // -- allow write: if false below means even an admin can't touch it
-    // from the client, only the Function's Admin SDK access can (Admin SDK
-    // always bypasses rules regardless of what they say). Currently free
-    // (no payment gate); a future paid tier would only need a change to
-    // the create/update rule below, not the read model or the Function.
-    match /votes/{uid} {
-      allow read: if request.auth != null &&
-        (request.auth.uid == uid ||
-          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-      allow create, update: if request.auth != null && request.auth.uid == uid &&
+    // replaced with this before ever going live), and votes are repeatable
+    // -- the same person can vote for the same video more than once (an
+    // even earlier one-vote-total-per-person design was replaced with this
+    // too, again before going live) -- ties into the original "vote by
+    // giving a dollar" idea, where more dollars later means more votes.
+    // Each vote is one immutable, append-only event; nothing reads this
+    // collection back except the Cloud Function (functions/index.js,
+    // onVoteEventCreated) -- every public-facing number (videoVotes'
+    // count/topVoter/latestVoter) is a value IT denormalizes from here, so
+    // the client never needs a broad read of raw vote history. displayName
+    // is only included if the voter opted in (see users/{uid}.showVoterName
+    // below) -- decided client-side at cast time, not enforced here, since
+    // there's nothing sensitive about the name itself once someone's
+    // chosen to attach it, only about whether they chose to.
+    match /voteEvents/{id} {
+      allow read: if false;
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
         request.resource.data.rowNum is string &&
         request.resource.data.rowNum.size() > 0;
-      allow delete: if false;
+      allow update, delete: if false;
     }
 
-    // Public per-video vote counts (plus an artist/song/thumb snapshot so
-    // the leaderboard can render without the public site needing to read
-    // the admin-only `videos` collection). World-readable, client-writable
-    // by no one -- see the comment on /votes above.
+    // Public per-video vote standings -- count, plus an artist/song/thumb
+    // snapshot (so the leaderboard/Viewer's Choice can render without the
+    // public site needing to read the admin-only `videos` collection), plus
+    // topVoter/latestVoter (each {displayName, count} or {displayName,
+    // votedAt} -- omitted entirely if nobody who's voted has opted into
+    // showing their name). World-readable, client-writable by no one -- see
+    // the comment on /voteEvents above.
     match /videoVotes/{rowNum} {
       allow read: if true;
+      allow write: if false;
+    }
+
+    // Per-(video, voter) running total -- how the Function decides who's
+    // currently "top voter" for a given video without needing a query
+    // (compares this doc's new count against videoVotes/{rowNum}.topVoter.
+    // count and overwrites if higher). Not read by the client at all.
+    match /voterTallies/{id} {
+      allow read: if false;
       allow write: if false;
     }
   }

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.47.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.48.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -64,6 +64,10 @@
   var YOUTUBE_SEARCH_API_KEY = "AIzaSyBCjFAxZEVXdDWC_HLQnZCV0ihXW-B2eBk";
   var googleProvider = new firebase.auth.GoogleAuthProvider();
   var currentUser = null;
+  // Opt-in: whether to attach this person's display name to a vote (see
+  // voteEvents/topVoter/latestVoter) -- off by default, loaded from
+  // users/{uid}.showVoterName in syncFromFirestore(), toggled in Settings.
+  var showVoterName = false;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
   // Entry IDs read directly from the form's own field definitions.
@@ -354,8 +358,6 @@
     voteStatus: document.getElementById("voteStatus"),
     voteSignInPrompt: document.getElementById("voteSignInPrompt"),
     voteSignInBtn: document.getElementById("voteSignInBtn"),
-    voteCurrentPick: document.getElementById("voteCurrentPick"),
-    voteCurrentPickCard: document.getElementById("voteCurrentPickCard"),
     voteSearchInput: document.getElementById("voteSearchInput"),
     voteSearchResults: document.getElementById("voteSearchResults"),
     voteLeaderboard: document.getElementById("voteLeaderboard"),
@@ -456,6 +458,8 @@
     favoritesSyncNote: document.getElementById("favoritesSyncNote"),
     clearFavoritesBtn: document.getElementById("clearFavoritesBtn"),
     shareFavoritesBtn: document.getElementById("shareFavoritesBtn"),
+    voterNameRow: document.getElementById("voterNameRow"),
+    voterNameToggle: document.getElementById("voterNameToggle"),
     autoplayToggle: document.getElementById("autoplayToggle"),
     themeToggle: document.getElementById("themeToggle"),
     settingsStatus: document.getElementById("settingsStatus")
@@ -1327,6 +1331,8 @@
       var remoteFavorites = Array.isArray(remote.favorites) ? remote.favorites : [];
       var remoteRecent = Array.isArray(remote.recentlyViewed) ? remote.recentlyViewed : [];
       var remotePlaylists = Array.isArray(remote.playlists) ? remote.playlists : [];
+      showVoterName = !!remote.showVoterName;
+      applyVoterNameToggle();
       var localFavorites = loadFavorites();
       var localRecent = loadRecentlyViewed();
       var localPlaylists = loadPlaylists();
@@ -3417,6 +3423,8 @@
         '<div class="viewers-choice-info">' +
           '<div class="viewers-choice-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
           '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
+          voterLineHtml("Top voter", v.topVoter) +
+          voterLineHtml("Latest vote", v.latestVoter) +
         "</div>" +
       "</div>"
     );
@@ -6493,10 +6501,28 @@
     applyAutoplayToggle(on);
   });
 
+  function applyVoterNameToggle() {
+    Array.prototype.forEach.call(els.voterNameToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-vote-name-choice") === "on") === showVoterName);
+    });
+  }
+
+  els.voterNameToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn || !currentUser) return;
+    showVoterName = btn.getAttribute("data-vote-name-choice") === "on";
+    applyVoterNameToggle();
+    db.collection("users").doc(currentUser.uid).set({ showVoterName: showVoterName }, { merge: true }).catch(function (err) {
+      console.error("Saving vote-name preference failed:", err);
+    });
+  });
+
   function openSettingsModal() {
     els.settingsSyncNote.hidden = !currentUser;
     els.favoritesSyncNote.hidden = !currentUser;
     els.settingsStatus.hidden = true;
+    els.voterNameRow.hidden = !currentUser;
+    applyVoterNameToggle();
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     applyAutoplayToggle(loadAutoplayPref());
@@ -6515,71 +6541,50 @@
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
 
   // ---- Vote modal (public) ------------------------------------------------
-  // Open to any catalog video, not an admin-curated shortlist (an earlier
-  // picks-5-per-round design was replaced with this before ever going
-  // live) -- search, pick a favorite, change it anytime. Free right now --
-  // casting a vote is just a Firestore write, no payment involved yet.
-  var voteUserVoteUnsub = null;
+  // Open to any catalog video, not an admin-curated shortlist, and votes
+  // are repeatable -- the same person can vote for the same video more
+  // than once (ties into the original "vote by giving a dollar" idea,
+  // where more dollars later means more votes for that pick). Two earlier
+  // designs -- admin-picks-5-per-round, then one-vote-total-per-person --
+  // were both replaced with this before either went live. Free right now
+  // -- casting a vote is just a Firestore write, no payment involved yet.
   var voteLeaderboardUnsub = null;
-  var currentUserVote = null; // { rowNum, artist, song, thumb } or null
 
-  function renderVoteCurrentPick() {
-    if (!currentUser || !currentUserVote) {
-      els.voteCurrentPick.hidden = true;
-      return;
-    }
-    els.voteCurrentPick.hidden = false;
-    els.voteCurrentPickCard.innerHTML =
-      '<div class="admin-row">' +
-        '<div class="admin-row-main">' +
-          '<div class="admin-row-title">' + escapeHtml(currentUserVote.artist) + " — " + escapeHtml(currentUserVote.song) + "</div>" +
-        "</div>" +
-      "</div>";
-  }
-
-  // Subscribed globally (from auth.onAuthStateChanged, not just while the
-  // Vote modal happens to be open) so the lightbox's own Vote button below
-  // always reflects the right state too, not only the modal's.
-  function subscribeCurrentUserVote() {
-    if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
-    currentUserVote = null;
-    renderVoteCurrentPick();
-    updateLightboxVoteBtn();
-    if (!currentUser) return;
-    voteUserVoteUnsub = db.collection("votes").doc(currentUser.uid).onSnapshot(function (doc) {
-      currentUserVote = doc.exists ? doc.data() : null;
-      renderVoteCurrentPick();
-      renderVoteSearchResults();
-      updateLightboxVoteBtn();
-    });
-  }
-
+  // Each click writes a new, immutable voteEvents doc (never overwrites
+  // one) -- functions/index.js is what turns a stream of these into
+  // videoVotes' count/topVoter/latestVoter. displayName is only attached
+  // if the voter has opted in (Settings -> "Show my name on videos I vote
+  // for") -- omitted entirely otherwise, so an opted-out vote still counts
+  // toward every number but never surfaces a name anywhere.
   function castVote(row) {
-    return db.collection("votes").doc(currentUser.uid).set({
+    var doc = {
+      uid: currentUser.uid,
       rowNum: row.rowNum,
       artist: row.artist || "",
       song: row.song || "",
       thumb: getRowThumbUrl(row) || "",
       votedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    if (showVoterName) doc.displayName = currentUser.displayName || currentUser.email || "Someone";
+    return db.collection("voteEvents").add(doc);
   }
 
-  // Quick one-click vote right from a video's own lightbox -- casting a
-  // vote here (or from the Vote modal's search results) both write the
-  // same single votes/{uid} doc, so whichever was used last is simply the
-  // current vote; there's nothing to reconcile between the two entry points.
+  // Quick one-click vote right from a video's own lightbox -- same
+  // castVote() as the Vote modal's search results. Briefly flashes
+  // "Voted!" for feedback since there's no persistent on/off state to
+  // reflect anymore (a vote here doesn't replace any previous one).
   function lightboxVoteBtnHtml(row) {
-    var isPicked = currentUserVote && currentUserVote.rowNum === row.rowNum;
-    return '<button type="button" class="lightbox-vote-btn' + (isPicked ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Vote for this video" aria-label="Vote for this video">' + (isPicked ? "Voted ✓" : "Vote") + "</button>";
+    return '<button type="button" class="lightbox-vote-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Vote for this video" aria-label="Vote for this video">Vote</button>';
   }
 
-  function updateLightboxVoteBtn() {
-    if (els.lightbox.hidden) return;
-    var btn = els.lightboxContent.querySelector(".lightbox-vote-btn");
-    if (!btn) return;
-    var isPicked = currentUserVote && currentUserVote.rowNum === btn.getAttribute("data-rownum");
-    btn.classList.toggle("is-active", !!isPicked);
-    btn.textContent = isPicked ? "Voted ✓" : "Vote";
+  function flashVoteBtn(btn) {
+    var original = btn.textContent;
+    btn.textContent = "Voted!";
+    btn.classList.add("is-active");
+    setTimeout(function () {
+      btn.textContent = original;
+      btn.classList.remove("is-active");
+    }, 1200);
   }
 
   function renderVoteSearchResults() {
@@ -6590,7 +6595,6 @@
     }).slice(0, 25);
     if (!rows.length) { els.voteSearchResults.innerHTML = '<p class="admin-empty">No matches.</p>'; return; }
     els.voteSearchResults.innerHTML = rows.map(function (r) {
-      var isPicked = currentUserVote && currentUserVote.rowNum === r.rowNum;
       return (
         '<div class="admin-row">' +
           '<div class="admin-row-main">' +
@@ -6598,11 +6602,16 @@
             '<div class="admin-row-sub">' + (r.director ? escapeHtml(r.director) : "") + "</div>" +
           "</div>" +
           '<div class="admin-row-actions">' +
-            '<button type="button" class="admin-row-btn' + (isPicked ? " vote-card-btn is-picked" : "") + '" data-vote-cast="' + escapeHtml(r.rowNum) + '"' + (!currentUser ? " disabled" : "") + ">" + (isPicked ? "Voted ✓" : "Vote") + "</button>" +
+            '<button type="button" class="admin-row-btn" data-vote-cast="' + escapeHtml(r.rowNum) + '"' + (!currentUser ? " disabled" : "") + ">Vote</button>" +
           "</div>" +
         "</div>"
       );
     }).join("");
+  }
+
+  function voterLineHtml(label, voter) {
+    if (!voter || !voter.displayName) return "";
+    return '<div class="viewers-choice-voter">' + label + ": " + escapeHtml(voter.displayName) + (voter.count ? " (" + voter.count + ")" : "") + "</div>";
   }
 
   function renderVoteLeaderboard(rows) {
@@ -6613,6 +6622,8 @@
           '<div class="admin-row-main">' +
             '<div class="admin-row-title">#' + (i + 1) + " -- " + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
             '<div class="admin-row-sub">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
+            voterLineHtml("Top voter", v.topVoter) +
+            voterLineHtml("Latest vote", v.latestVoter) +
           "</div>" +
         "</div>"
       );
@@ -6627,7 +6638,6 @@
     els.voteSearchInput.value = "";
     els.voteSearchResults.innerHTML = "";
     els.voteSignInPrompt.hidden = !!currentUser;
-    renderVoteCurrentPick();
     if (voteLeaderboardUnsub) voteLeaderboardUnsub();
     voteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(10)
       .onSnapshot(function (snap) {
@@ -6667,7 +6677,9 @@
     var row = findRowByNum(castBtn.getAttribute("data-vote-cast"));
     if (!row) return;
     castBtn.disabled = true;
-    castVote(row).catch(function (err) {
+    castVote(row).then(function () {
+      flashVoteBtn(castBtn);
+    }).catch(function (err) {
       console.error("Vote failed:", err);
       els.voteStatus.textContent = "Vote failed: " + err.message;
       els.voteStatus.className = "settings-status is-error";
@@ -9199,6 +9211,8 @@
           '<div class="admin-row-main">' +
             '<div class="admin-row-title">#' + (i + 1) + " -- " + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
             '<div class="admin-row-sub">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
+            voterLineHtml("Top voter", v.topVoter) +
+            voterLineHtml("Latest vote", v.latestVoter) +
           "</div>" +
         "</div>"
       );
@@ -9712,6 +9726,8 @@
       var afterSignIn = currentUser ? Promise.resolve() : auth.signInWithPopup(googleProvider);
       afterSignIn.then(function () {
         return castVote(voteRow);
+      }).then(function () {
+        flashVoteBtn(voteBtn);
       }).catch(function (err) {
         console.error("Vote failed:", err);
       }).finally(function () {
@@ -10167,7 +10183,6 @@
     els.headerAccount.hidden = !user;
     els.settingsAccountRow.hidden = !user;
     els.settingsAccountHint.textContent = user ? "Signed in as " + (user.displayName || user.email || "…") : "";
-    subscribeCurrentUserVote();
     if (user) {
       els.headerAvatar.src = user.photoURL || "";
       els.headerUserName.textContent = user.displayName || user.email || "";
@@ -10190,6 +10205,7 @@
       state.isAdmin = false;
       els.openAdminBtn.hidden = true;
       els.topBarAdminBtn.hidden = true;
+      showVoterName = false;
     }
     watchMsgBoardOwnStatus();
     updateProfilesAuthUI();

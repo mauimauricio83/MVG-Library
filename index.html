@@ -1049,6 +1049,16 @@
         </div>
         <button type="button" class="settings-action-btn" id="shareFavoritesBtn">Get link</button>
       </div>
+      <div class="settings-row" id="voterNameRow" hidden>
+        <div>
+          <div class="settings-row-label">Show my name on videos I vote for</div>
+          <div class="settings-row-hint">Off by default. When on, your name can appear as a video's top or latest voter.</div>
+        </div>
+        <div class="settings-theme-toggle" id="voterNameToggle" role="group" aria-label="Show voter name">
+          <button type="button" class="settings-theme-btn" data-vote-name-choice="off">Off</button>
+          <button type="button" class="settings-theme-btn" data-vote-name-choice="on">On</button>
+        </div>
+      </div>
       <p class="settings-status" id="settingsStatus" hidden></p>
     </div>
   </div>
@@ -1060,17 +1070,12 @@
     <button type="button" class="lightbox-close" id="voteClose" aria-label="Close">&times;</button>
     <div class="vote-body">
       <h2 class="vote-title">Vote for your favorite</h2>
-      <p class="vote-hint" id="voteModalHint">Search the catalog and pick any video -- you can change your vote anytime.</p>
+      <p class="vote-hint" id="voteModalHint">Search the catalog and vote for as many videos, as many times, as you like.</p>
       <p class="settings-status" id="voteStatus" hidden></p>
 
       <div class="vote-signin-prompt" id="voteSignInPrompt" hidden>
         <p>Sign in to vote.</p>
         <button type="button" class="submit-form-btn" id="voteSignInBtn">Sign in with Google</button>
-      </div>
-
-      <div class="vote-current-pick" id="voteCurrentPick" hidden>
-        <div class="vote-current-pick-label">Your vote</div>
-        <div class="admin-entries-list" id="voteCurrentPickCard"></div>
       </div>
 
       <input type="search" id="voteSearchInput" class="admin-search" placeholder="Search artist, song, or director…">

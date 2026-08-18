@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.48.0 — current
+- Voting reworked (again, still never deployed) to be repeatable -- the same person can now vote for the same video more than once, ties into the original "vote by giving a dollar" idea where more dollars later means more votes for that pick. Replaced the single overwritten `votes/{uid}` doc with an append-only `voteEvents` log, so the Cloud Function can maintain a real per-video **Top voter** (whoever's voted most for that specific video) and **Latest vote** (most recent voter), shown on both Viewer's Choice cards and the Vote modal's leaderboard.
+- New Settings toggle, "Show my name on videos I vote for" -- **off by default**. A vote always counts either way; only whether your name can appear as a video's top/latest voter is affected. Decided client-side at the moment you vote (not retroactive), so switching it doesn't change who's already been credited on past votes.
+- Same deploy status as every vote-related change so far -- still needs `firebase deploy --only firestore:rules` and the Cloud Function deploy (`cd functions && npm install && firebase deploy --only functions`) before any of this is live. `functions/index.js` changed enough (new trigger name, new collections) that a prior partial/failed deploy attempt won't just pick this up automatically -- redeploy functions after pulling this.
+
 ## v5.47.0 — current
 - New "Viewer's Choice" section at the top of Home, above Spotlight -- the top 5 videos by vote count, #1/#2 side by side, #3-5 in a row below. Reads live from `videoVotes` (public, no auth needed); stays hidden until there's at least one real vote, and fails quiet rather than showing an error if the vote backend isn't deployed yet. Ranked strictly by all-time vote count for now -- see the CHANGELOG-adjacent discussion on ranking decay for the plan there.
 - Spotlight reduced from 6 videos to 5, and its thumbnails now match Latest Submissions' size (140px fixed width) instead of stretching to fill a 3-column grid -- was noticeably larger than every other strip on the page for no real reason.

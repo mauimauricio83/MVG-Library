@@ -3454,6 +3454,16 @@ body.is-searching #discoverSection {
   color: var(--text-muted);
 }
 
+/* Shared by Viewer's Choice cards and the Vote modal's leaderboard --
+   omitted entirely when nobody who voted opted into showing their name
+   (see users/{uid}.showVoterName), so this is genuinely absent, not just
+   empty, most of the time. */
+.viewers-choice-voter {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
 .spotlight-sidebar-cards {
   display: flex;
   flex-wrap: wrap;
@@ -4665,52 +4675,10 @@ body.is-searching #discoverSection {
   font-size: 0.9rem;
 }
 
-.vote-current-pick {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-}
-
-.vote-current-pick[hidden] {
-  display: none;
-}
-
-.vote-current-pick-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
 .vote-leaderboard-title {
   margin: 20px 0 4px;
   font-size: 0.95rem;
   color: var(--text);
-}
-
-.vote-card-btn {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.vote-card-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.vote-card-btn.is-picked {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
 }
 
 .vote-signin-prompt {
