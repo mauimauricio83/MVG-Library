@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.44.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.45.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -343,25 +343,19 @@
     adminVoteRoundsView: document.getElementById("adminVoteRoundsView"),
     adminVoteRoundsBackBtn: document.getElementById("adminVoteRoundsBackBtn"),
     adminVoteRoundsStatus: document.getElementById("adminVoteRoundsStatus"),
-    adminVoteRoundActive: document.getElementById("adminVoteRoundActive"),
-    adminVoteRoundActiveList: document.getElementById("adminVoteRoundActiveList"),
-    adminCloseVoteRoundBtn: document.getElementById("adminCloseVoteRoundBtn"),
-    adminVoteRoundBuilder: document.getElementById("adminVoteRoundBuilder"),
-    adminVoteRoundPickCount: document.getElementById("adminVoteRoundPickCount"),
-    adminVoteRoundPicked: document.getElementById("adminVoteRoundPicked"),
-    adminVoteRoundSearch: document.getElementById("adminVoteRoundSearch"),
-    adminVoteRoundResults: document.getElementById("adminVoteRoundResults"),
-    adminStartVoteRoundBtn: document.getElementById("adminStartVoteRoundBtn"),
     adminVoteRoundHistory: document.getElementById("adminVoteRoundHistory"),
     openVoteBtn: document.getElementById("openVoteBtn"),
     voteModal: document.getElementById("voteModal"),
     voteClose: document.getElementById("voteClose"),
-    voteModalTitle: document.getElementById("voteModalTitle"),
     voteModalHint: document.getElementById("voteModalHint"),
     voteStatus: document.getElementById("voteStatus"),
-    voteGrid: document.getElementById("voteGrid"),
     voteSignInPrompt: document.getElementById("voteSignInPrompt"),
     voteSignInBtn: document.getElementById("voteSignInBtn"),
+    voteCurrentPick: document.getElementById("voteCurrentPick"),
+    voteCurrentPickCard: document.getElementById("voteCurrentPickCard"),
+    voteSearchInput: document.getElementById("voteSearchInput"),
+    voteSearchResults: document.getElementById("voteSearchResults"),
+    voteLeaderboard: document.getElementById("voteLeaderboard"),
     adminChannelRestartBtn: document.getElementById("adminChannelRestartBtn"),
     adminChannelStatus: document.getElementById("adminChannelStatus"),
     adminChannelModeOrdered: document.getElementById("adminChannelModeOrdered"),
@@ -6459,67 +6453,75 @@
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
 
   // ---- Vote modal (public) ------------------------------------------------
-  // Shows whatever the most recent vote round is -- while it's active,
-  // 5 vote buttons and no counts (kept hidden from everyone, including the
-  // voter, until the admin closes the round -- see renderAdminVoteRoundActive()
-  // and the "hidden until closed" design call this was built around); once
-  // closed, the full tally and winner. Free right now -- casting a vote is
-  // just a Firestore write, no payment involved yet.
-  var voteRoundUnsub = null;
+  // Open to any catalog video, not an admin-curated shortlist (an earlier
+  // picks-5-per-round design was replaced with this before ever going
+  // live) -- search, pick a favorite, change it anytime. Free right now --
+  // casting a vote is just a Firestore write, no payment involved yet.
   var voteUserVoteUnsub = null;
-  var currentVoteRound = null;
-  var currentUserVoteRowNum = null;
+  var voteLeaderboardUnsub = null;
+  var currentUserVote = null; // { rowNum, artist, song, thumb } or null
 
-  function renderVoteGrid() {
-    if (!currentVoteRound) {
-      els.voteModalHint.textContent = "No round is open right now -- check back soon.";
-      els.voteGrid.innerHTML = "";
-      els.voteSignInPrompt.hidden = true;
+  function renderVoteCurrentPick() {
+    if (!currentUser || !currentUserVote) {
+      els.voteCurrentPick.hidden = true;
       return;
     }
-    var isActive = !!currentVoteRound.active;
-    var tally = currentVoteRound.tally || {};
-    els.voteModalHint.textContent = isActive
-      ? "Pick your favorite -- you can change your vote until the round closes."
-      : "This round is closed -- here's how it went.";
+    els.voteCurrentPick.hidden = false;
+    els.voteCurrentPickCard.innerHTML =
+      '<div class="admin-row">' +
+        '<div class="admin-row-main">' +
+          '<div class="admin-row-title">' + escapeHtml(currentUserVote.artist) + " — " + escapeHtml(currentUserVote.song) + "</div>" +
+        "</div>" +
+      "</div>";
+  }
 
-    var videos = currentVoteRound.videos.slice();
-    if (!isActive) {
-      videos.sort(function (a, b) { return (tally[b.rowNum] || 0) - (tally[a.rowNum] || 0); });
-    }
+  function subscribeCurrentUserVote() {
+    if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
+    currentUserVote = null;
+    renderVoteCurrentPick();
+    if (!currentUser) return;
+    voteUserVoteUnsub = db.collection("votes").doc(currentUser.uid).onSnapshot(function (doc) {
+      currentUserVote = doc.exists ? doc.data() : null;
+      renderVoteCurrentPick();
+      renderVoteSearchResults();
+    });
+  }
 
-    els.voteGrid.innerHTML = videos.map(function (v, i) {
-      var isPicked = isActive && currentUserVoteRowNum === v.rowNum;
-      var isWinner = !isActive && i === 0;
-      var countHtml = !isActive
-        ? '<div class="vote-card-count">' + (tally[v.rowNum] || 0) + " vote" + ((tally[v.rowNum] || 0) === 1 ? "" : "s") + (isWinner ? " · Winner" : "") + "</div>"
-        : "";
+  function renderVoteSearchResults() {
+    var query = els.voteSearchInput.value.trim().toLowerCase();
+    if (!query) { els.voteSearchResults.innerHTML = ""; return; }
+    var rows = state.rows.filter(function (r) {
+      return hasVideo(r) && (r.artist + " " + r.song + " " + (r.director || "")).toLowerCase().indexOf(query) !== -1;
+    }).slice(0, 25);
+    if (!rows.length) { els.voteSearchResults.innerHTML = '<p class="admin-empty">No matches.</p>'; return; }
+    els.voteSearchResults.innerHTML = rows.map(function (r) {
+      var isPicked = currentUserVote && currentUserVote.rowNum === r.rowNum;
       return (
-        '<div class="vote-card' + (isPicked ? " is-picked" : "") + (isWinner ? " is-winner" : "") + '">' +
-          '<button type="button" class="vote-card-thumb" data-vote-preview="' + escapeHtml(v.rowNum) + '" aria-label="Preview ' + escapeHtml(v.song) + '">' +
-            (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
-          "</button>" +
-          '<div class="vote-card-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
-          countHtml +
-          (isActive
-            ? '<button type="button" class="vote-card-btn' + (isPicked ? " is-picked" : "") + '" data-vote-cast="' + escapeHtml(v.rowNum) + '"' + (!currentUser ? " disabled" : "") + ">" + (isPicked ? "Voted ✓" : "Vote") + "</button>"
-            : "") +
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(r.artist) + " — " + escapeHtml(r.song) + "</div>" +
+            '<div class="admin-row-sub">' + (r.director ? escapeHtml(r.director) : "") + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn' + (isPicked ? " vote-card-btn is-picked" : "") + '" data-vote-cast="' + escapeHtml(r.rowNum) + '"' + (!currentUser ? " disabled" : "") + ">" + (isPicked ? "Voted ✓" : "Vote") + "</button>" +
+          "</div>" +
         "</div>"
       );
     }).join("");
-
-    els.voteSignInPrompt.hidden = !isActive || !!currentUser;
   }
 
-  function subscribeCurrentUserVote(roundId) {
-    if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
-    currentUserVoteRowNum = null;
-    if (!currentUser) return;
-    voteUserVoteUnsub = db.collection("voteRounds").doc(roundId).collection("votes").doc(currentUser.uid)
-      .onSnapshot(function (doc) {
-        currentUserVoteRowNum = doc.exists ? doc.data().rowNum : null;
-        renderVoteGrid();
-      });
+  function renderVoteLeaderboard(rows) {
+    if (!rows.length) { els.voteLeaderboard.innerHTML = '<p class="admin-empty">No votes yet -- be the first.</p>'; return; }
+    els.voteLeaderboard.innerHTML = rows.map(function (v, i) {
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">#' + (i + 1) + " -- " + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+            '<div class="admin-row-sub">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
   }
 
   function openVoteModal() {
@@ -6527,16 +6529,16 @@
     lockBodyScroll();
     pushModalHistory();
     els.voteStatus.hidden = true;
-    if (voteRoundUnsub) voteRoundUnsub();
-    voteRoundUnsub = db.collection("voteRounds").orderBy("createdAt", "desc").limit(1)
+    els.voteSearchInput.value = "";
+    els.voteSearchResults.innerHTML = "";
+    els.voteSignInPrompt.hidden = !!currentUser;
+    subscribeCurrentUserVote();
+    if (voteLeaderboardUnsub) voteLeaderboardUnsub();
+    voteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(10)
       .onSnapshot(function (snap) {
-        var doc = snap.docs[0];
-        currentVoteRound = doc ? Object.assign({ id: doc.id }, doc.data()) : null;
-        renderVoteGrid();
-        subscribeCurrentUserVote(currentVoteRound ? currentVoteRound.id : null);
+        renderVoteLeaderboard(snap.docs.map(function (doc) { return doc.data(); }));
       }, function (err) {
-        console.error("Vote round load failed:", err);
-        els.voteModalHint.textContent = "";
+        console.error("Vote leaderboard load failed:", err);
         els.voteStatus.textContent = "Couldn't load voting right now.";
         els.voteStatus.className = "settings-status is-error";
         els.voteStatus.hidden = false;
@@ -6547,8 +6549,8 @@
     if (els.voteModal.hidden) return;
     els.voteModal.hidden = true;
     unlockBodyScroll();
-    if (voteRoundUnsub) { voteRoundUnsub(); voteRoundUnsub = null; }
     if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
+    if (voteLeaderboardUnsub) { voteLeaderboardUnsub(); voteLeaderboardUnsub = null; }
   }
 
   els.openVoteBtn.addEventListener("click", openVoteModal);
@@ -6563,28 +6565,28 @@
     });
   });
 
-  els.voteGrid.addEventListener("click", function (e) {
-    var previewBtn = e.target.closest("[data-vote-preview]");
-    if (previewBtn) {
-      var row = findRowByNum(previewBtn.getAttribute("data-vote-preview"));
-      if (row) openLightbox(row);
-      return;
-    }
+  els.voteSearchInput.addEventListener("input", renderVoteSearchResults);
+
+  els.voteSearchResults.addEventListener("click", function (e) {
     var castBtn = e.target.closest("[data-vote-cast]");
-    if (castBtn && !castBtn.disabled && currentUser && currentVoteRound && currentVoteRound.active) {
-      var rowNum = castBtn.getAttribute("data-vote-cast");
-      castBtn.disabled = true;
-      db.collection("voteRounds").doc(currentVoteRound.id).collection("votes").doc(currentUser.uid)
-        .set({ rowNum: rowNum, votedAt: firebase.firestore.FieldValue.serverTimestamp() })
-        .catch(function (err) {
-          console.error("Vote failed:", err);
-          els.voteStatus.textContent = "Vote failed: " + err.message;
-          els.voteStatus.className = "settings-status is-error";
-          els.voteStatus.hidden = false;
-        }).finally(function () {
-          castBtn.disabled = false;
-        });
-    }
+    if (!castBtn || castBtn.disabled || !currentUser) return;
+    var row = findRowByNum(castBtn.getAttribute("data-vote-cast"));
+    if (!row) return;
+    castBtn.disabled = true;
+    db.collection("votes").doc(currentUser.uid).set({
+      rowNum: row.rowNum,
+      artist: row.artist || "",
+      song: row.song || "",
+      thumb: getRowThumbUrl(row) || "",
+      votedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function (err) {
+      console.error("Vote failed:", err);
+      els.voteStatus.textContent = "Vote failed: " + err.message;
+      els.voteStatus.className = "settings-status is-error";
+      els.voteStatus.hidden = false;
+    }).finally(function () {
+      castBtn.disabled = false;
+    });
   });
 
   els.settingsModal.addEventListener("click", function (e) {
@@ -9085,138 +9087,30 @@
     });
   });
 
-  // ---- Vote Rounds -------------------------------------------------------
-  // "Vote for your favorite video of the week" -- admin picks 5, visitors
-  // vote for one (see the public Vote modal further down). Free for now, no
-  // payment collected; the plan is to eventually gate a vote behind a
-  // confirmed Stripe payment, which only touches firestore.rules' votes
-  // create/update rule, not this admin UI or the public read model.
+  // ---- Vote leaderboard (admin, read-only) --------------------------------
+  // Voting is open to any catalog video (not an admin-curated shortlist --
+  // an earlier picks-5-per-round design was replaced with this before ever
+  // going live), so there's no round to manage here anymore. Just the live
+  // standings, for deciding what's actually worth featuring on Instagram.
   //
-  // Deliberately NOT deployed yet -- both firestore.rules (the voteRounds/
-  // votes rules) and functions/index.js (the tally-maintaining Cloud
+  // Deliberately NOT deployed yet -- both firestore.rules (the votes/
+  // videoVotes rules) and functions/index.js (the counter-maintaining Cloud
   // Function) need a manual `firebase deploy` before any of this actually
-  // works against the live project. See the CHANGELOG entry for this
-  // feature for the exact commands.
-  var adminVoteRoundPicked = [];
-  var adminActiveVoteRound = null; // { id, ...doc } or null
-  var adminVoteRoundHistoryRounds = [];
-  var adminVoteRoundsUnsub = null;
+  // works against the live project. See the CHANGELOG entry for the exact
+  // commands.
+  var adminVoteLeaderboardUnsub = null;
 
-  function voteRoundVideoSnapshot(row) {
-    var ref = getRowVideoRef(row);
-    return {
-      rowNum: row.rowNum,
-      artist: row.artist || "",
-      song: row.song || "",
-      thumb: getRowThumbUrl(row) || "",
-      provider: ref ? ref.provider : "",
-      videoId: ref ? ref.id : ""
-    };
-  }
-
-  function renderAdminVoteRoundBuilder() {
-    els.adminVoteRoundPickCount.textContent = adminVoteRoundPicked.length;
-    els.adminStartVoteRoundBtn.disabled = adminVoteRoundPicked.length !== 5;
-    els.adminVoteRoundPicked.innerHTML = adminVoteRoundPicked.length
-      ? adminVoteRoundPicked.map(function (v) {
-          return (
-            '<div class="admin-row">' +
-              '<div class="admin-row-main">' +
-                '<div class="admin-row-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
-                '<div class="admin-row-sub">#' + escapeHtml(v.rowNum) + "</div>" +
-              "</div>" +
-              '<div class="admin-row-actions">' +
-                '<button type="button" class="admin-row-btn admin-row-btn-danger" data-vote-pick-remove="' + escapeHtml(v.rowNum) + '">Remove</button>' +
-              "</div>" +
-            "</div>"
-          );
-        }).join("")
-      : '<p class="admin-empty">Search below and add 5 videos.</p>';
-  }
-
-  function renderAdminVoteRoundResults() {
-    var query = els.adminVoteRoundSearch.value.trim().toLowerCase();
-    if (!query) { els.adminVoteRoundResults.innerHTML = ""; return; }
-    var pickedNums = adminVoteRoundPicked.map(function (v) { return v.rowNum; });
-    var rows = state.rows.filter(function (r) {
-      return hasVideo(r) && pickedNums.indexOf(r.rowNum) === -1 &&
-        (r.artist + " " + r.song + " " + (r.director || "")).toLowerCase().indexOf(query) !== -1;
-    }).slice(0, 25);
-    if (!rows.length) { els.adminVoteRoundResults.innerHTML = '<p class="admin-empty">No matches.</p>'; return; }
-    els.adminVoteRoundResults.innerHTML = rows.map(function (r) {
-      return (
-        '<div class="admin-row">' +
-          '<div class="admin-row-main">' +
-            '<div class="admin-row-title">' + escapeHtml(r.artist) + " — " + escapeHtml(r.song) + "</div>" +
-            '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + "</div>" +
-          "</div>" +
-          '<div class="admin-row-actions">' +
-            '<button type="button" class="admin-row-btn" data-vote-pick-add="' + escapeHtml(r.rowNum) + '"' + (adminVoteRoundPicked.length >= 5 ? " disabled" : "") + ">Add</button>" +
-          "</div>" +
-        "</div>"
-      );
-    }).join("");
-  }
-
-  els.adminVoteRoundSearch.addEventListener("input", renderAdminVoteRoundResults);
-
-  els.adminVoteRoundResults.addEventListener("click", function (e) {
-    var btn = e.target.closest("[data-vote-pick-add]");
-    if (!btn || adminVoteRoundPicked.length >= 5) return;
-    var row = findRowByNum(btn.getAttribute("data-vote-pick-add"));
-    if (!row) return;
-    adminVoteRoundPicked.push(voteRoundVideoSnapshot(row));
-    renderAdminVoteRoundBuilder();
-    renderAdminVoteRoundResults();
-  });
-
-  els.adminVoteRoundPicked.addEventListener("click", function (e) {
-    var btn = e.target.closest("[data-vote-pick-remove]");
-    if (!btn) return;
-    var rowNum = btn.getAttribute("data-vote-pick-remove");
-    adminVoteRoundPicked = adminVoteRoundPicked.filter(function (v) { return v.rowNum !== rowNum; });
-    renderAdminVoteRoundBuilder();
-    renderAdminVoteRoundResults();
-  });
-
-  function renderAdminVoteRoundActive() {
-    if (!adminActiveVoteRound) {
-      els.adminVoteRoundActive.hidden = true;
-      els.adminVoteRoundBuilder.hidden = false;
+  function renderAdminVoteLeaderboard(rows) {
+    if (!rows.length) {
+      els.adminVoteRoundHistory.innerHTML = '<p class="admin-empty">No votes yet.</p>';
       return;
     }
-    els.adminVoteRoundActive.hidden = false;
-    els.adminVoteRoundBuilder.hidden = true;
-    var tally = adminActiveVoteRound.tally || {};
-    els.adminVoteRoundActiveList.innerHTML = adminActiveVoteRound.videos.map(function (v) {
+    els.adminVoteRoundHistory.innerHTML = rows.map(function (v, i) {
       return (
         '<div class="admin-row">' +
           '<div class="admin-row-main">' +
-            '<div class="admin-row-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
-            '<div class="admin-row-sub">#' + escapeHtml(v.rowNum) + " · " + (tally[v.rowNum] || 0) + " vote" + ((tally[v.rowNum] || 0) === 1 ? "" : "s") + " so far (hidden from the public until closed)</div>" +
-          "</div>" +
-        "</div>"
-      );
-    }).join("");
-  }
-
-  function renderAdminVoteRoundHistory() {
-    if (!adminVoteRoundHistoryRounds.length) {
-      els.adminVoteRoundHistory.innerHTML = '<p class="admin-empty">No closed rounds yet.</p>';
-      return;
-    }
-    els.adminVoteRoundHistory.innerHTML = adminVoteRoundHistoryRounds.map(function (round) {
-      var tally = round.tally || {};
-      var winner = round.videos.slice().sort(function (a, b) { return (tally[b.rowNum] || 0) - (tally[a.rowNum] || 0); })[0];
-      var totalVotes = round.videos.reduce(function (sum, v) { return sum + (tally[v.rowNum] || 0); }, 0);
-      var breakdown = round.videos.map(function (v) {
-        return escapeHtml(v.artist) + " — " + escapeHtml(v.song) + ": " + (tally[v.rowNum] || 0);
-      }).join(" · ");
-      return (
-        '<div class="admin-row">' +
-          '<div class="admin-row-main">' +
-            '<div class="admin-row-title">Winner: ' + escapeHtml(winner.artist) + " — " + escapeHtml(winner.song) + "</div>" +
-            '<div class="admin-row-sub">' + totalVotes + " total votes · " + breakdown + "</div>" +
+            '<div class="admin-row-title">#' + (i + 1) + " -- " + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+            '<div class="admin-row-sub">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
           "</div>" +
         "</div>"
       );
@@ -9225,77 +9119,26 @@
 
   function goAdminVoteRounds() {
     state.adminReturnView = "landing";
-    adminVoteRoundPicked = [];
-    els.adminVoteRoundSearch.value = "";
-    els.adminVoteRoundResults.innerHTML = "";
-    renderAdminVoteRoundBuilder();
     showAdminVoteRoundsView();
     els.adminVoteRoundsStatus.textContent = "Loading…";
     els.adminVoteRoundsStatus.className = "admin-status";
     els.adminVoteRoundsStatus.hidden = false;
-    if (adminVoteRoundsUnsub) adminVoteRoundsUnsub();
-    adminVoteRoundsUnsub = db.collection("voteRounds").orderBy("createdAt", "desc").limit(21)
+    if (adminVoteLeaderboardUnsub) adminVoteLeaderboardUnsub();
+    adminVoteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(25)
       .onSnapshot(function (snap) {
         els.adminVoteRoundsStatus.hidden = true;
-        var rounds = snap.docs.map(function (doc) { return Object.assign({ id: doc.id }, doc.data()); });
-        adminActiveVoteRound = rounds.filter(function (r) { return r.active; })[0] || null;
-        adminVoteRoundHistoryRounds = rounds.filter(function (r) { return !r.active; });
-        renderAdminVoteRoundActive();
-        renderAdminVoteRoundHistory();
+        renderAdminVoteLeaderboard(snap.docs.map(function (doc) { return doc.data(); }));
       }, function (err) {
-        console.error("Vote rounds load failed:", err);
-        els.adminVoteRoundsStatus.textContent = "Couldn't load: " + err.message + " -- has firestore.rules been deployed with the voteRounds rules yet?";
+        console.error("Vote leaderboard load failed:", err);
+        els.adminVoteRoundsStatus.textContent = "Couldn't load: " + err.message + " -- has firestore.rules been deployed with the votes/videoVotes rules yet?";
         els.adminVoteRoundsStatus.className = "admin-status is-error";
       });
   }
 
   els.adminGoVoteRoundsBtn.addEventListener("click", goAdminVoteRounds);
   els.adminVoteRoundsBackBtn.addEventListener("click", function () {
-    if (adminVoteRoundsUnsub) { adminVoteRoundsUnsub(); adminVoteRoundsUnsub = null; }
+    if (adminVoteLeaderboardUnsub) { adminVoteLeaderboardUnsub(); adminVoteLeaderboardUnsub = null; }
     showAdminLanding();
-  });
-
-  els.adminStartVoteRoundBtn.addEventListener("click", function () {
-    if (adminVoteRoundPicked.length !== 5) return;
-    els.adminStartVoteRoundBtn.disabled = true;
-    var tally = {};
-    adminVoteRoundPicked.forEach(function (v) { tally[v.rowNum] = 0; });
-    db.collection("voteRounds").add({
-      videos: adminVoteRoundPicked,
-      tally: tally,
-      active: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function () {
-      adminVoteRoundPicked = [];
-      renderAdminVoteRoundBuilder();
-      els.adminVoteRoundsStatus.textContent = "Round started.";
-      els.adminVoteRoundsStatus.className = "admin-status";
-      els.adminVoteRoundsStatus.hidden = false;
-    }).catch(function (err) {
-      console.error("Start vote round failed:", err);
-      els.adminVoteRoundsStatus.textContent = "Couldn't start round: " + err.message;
-      els.adminVoteRoundsStatus.className = "admin-status is-error";
-      els.adminVoteRoundsStatus.hidden = false;
-    }).finally(function () {
-      els.adminStartVoteRoundBtn.disabled = false;
-    });
-  });
-
-  els.adminCloseVoteRoundBtn.addEventListener("click", function () {
-    if (!adminActiveVoteRound) return;
-    if (!window.confirm("Close this round and reveal the winner to everyone?")) return;
-    els.adminCloseVoteRoundBtn.disabled = true;
-    db.collection("voteRounds").doc(adminActiveVoteRound.id).update({
-      active: false,
-      closedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(function (err) {
-      console.error("Close vote round failed:", err);
-      els.adminVoteRoundsStatus.textContent = "Couldn't close round: " + err.message;
-      els.adminVoteRoundsStatus.className = "admin-status is-error";
-      els.adminVoteRoundsStatus.hidden = false;
-    }).finally(function () {
-      els.adminCloseVoteRoundBtn.disabled = false;
-    });
   });
 
   // Lightweight existence/embeddability check via each provider's own

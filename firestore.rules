@@ -340,34 +340,34 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // "Video of the Week" vote rounds -- admin picks 5 videos (snapshotted
-    // onto the round doc itself, artist/song/thumb, since the public site
-    // can't read the admin-only `videos` collection directly), visitors
-    // vote for one while `active` is true. `tally` is maintained ONLY by
-    // the Cloud Function (functions/index.js, onVoteWritten) reacting to
-    // vote writes below -- never trust a client-supplied tally, which is
-    // why it isn't part of the public write path at all. Currently free
-    // (no payment gate); the plan is to eventually require a confirmed
-    // Stripe payment before a vote write is accepted, which only needs a
-    // change to the votes create/update rule below, not the read model.
-    match /voteRounds/{roundId} {
-      allow read: if true;
-      allow write: if request.auth != null &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    // Open "vote for your favorite video" -- any catalog entry is eligible,
+    // not a curated shortlist (an earlier admin-picks-5-per-round design was
+    // replaced with this before ever going live). One vote per signed-in
+    // person, changeable anytime (doc ID == uid enforces "at most one").
+    // videoVotes/{rowNum} (the public tally) is written ONLY by the Cloud
+    // Function (functions/index.js, onVoteWritten) reacting to writes here
+    // -- allow write: if false below means even an admin can't touch it
+    // from the client, only the Function's Admin SDK access can (Admin SDK
+    // always bypasses rules regardless of what they say). Currently free
+    // (no payment gate); a future paid tier would only need a change to
+    // the create/update rule below, not the read model or the Function.
+    match /votes/{uid} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.rowNum is string &&
+        request.resource.data.rowNum.size() > 0;
+      allow delete: if false;
+    }
 
-      // Doc ID == uid enforces one vote per person per round; overwriting
-      // it (update) is how "change your vote" works while still active.
-      // Voting is blocked once the round's own `active` flips false.
-      match /votes/{uid} {
-        allow read: if request.auth != null &&
-          (request.auth.uid == uid ||
-            exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-        allow create, update: if request.auth != null && request.auth.uid == uid &&
-          get(/databases/$(database)/documents/voteRounds/$(roundId)).data.active == true &&
-          request.resource.data.rowNum is string &&
-          request.resource.data.rowNum.size() > 0;
-        allow delete: if false;
-      }
+    // Public per-video vote counts (plus an artist/song/thumb snapshot so
+    // the leaderboard can render without the public site needing to read
+    // the admin-only `videos` collection). World-readable, client-writable
+    // by no one -- see the comment on /votes above.
+    match /videoVotes/{rowNum} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

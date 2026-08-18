@@ -857,26 +857,10 @@
       <div id="adminVoteRoundsView" hidden>
         <div class="admin-toolbar">
           <button type="button" class="admin-row-btn" id="adminVoteRoundsBackBtn">&larr; Back</button>
-          <h2 class="recent-title">Vote Rounds</h2>
+          <h2 class="recent-title">Vote Leaderboard</h2>
         </div>
-        <p class="admin-bulk-hint">Pick 5 videos and open a round -- visitors vote for their favorite from the Vote button on the site. Tallies stay hidden from the public until you close the round and reveal the winner. Currently free to vote; no payment is collected.</p>
+        <p class="admin-bulk-hint">Voting is open to any catalog video from the Vote button on the site -- there's no round to manage here, just the live standings, for deciding what's worth featuring on Instagram. Currently free to vote; no payment is collected.</p>
         <p class="admin-status" id="adminVoteRoundsStatus" hidden></p>
-
-        <div id="adminVoteRoundActive" hidden>
-          <h3 class="admin-channel-queue-title">Current Round</h3>
-          <div class="admin-entries-list" id="adminVoteRoundActiveList"></div>
-          <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminCloseVoteRoundBtn">Close Round &amp; Reveal Winner</button>
-        </div>
-
-        <div id="adminVoteRoundBuilder">
-          <h3 class="admin-channel-queue-title">Start a New Round (<span id="adminVoteRoundPickCount">0</span> / 5 picked)</h3>
-          <div class="admin-entries-list" id="adminVoteRoundPicked"></div>
-          <input type="search" id="adminVoteRoundSearch" class="admin-search" placeholder="Search artist, song, or director to add…">
-          <div class="admin-entries-list" id="adminVoteRoundResults"></div>
-          <button type="button" class="admin-row-btn" id="adminStartVoteRoundBtn" disabled>Start Round</button>
-        </div>
-
-        <h3 class="admin-channel-queue-title">Past Rounds</h3>
         <div class="admin-entries-list" id="adminVoteRoundHistory"></div>
       </div>
 
@@ -1069,14 +1053,25 @@
   <div class="lightbox-panel vote-panel" role="dialog" aria-modal="true" aria-label="Vote for your favorite">
     <button type="button" class="lightbox-close" id="voteClose" aria-label="Close">&times;</button>
     <div class="vote-body">
-      <h2 class="vote-title" id="voteModalTitle">Video of the Week</h2>
-      <p class="vote-hint" id="voteModalHint"></p>
+      <h2 class="vote-title">Vote for your favorite</h2>
+      <p class="vote-hint" id="voteModalHint">Search the catalog and pick any video -- you can change your vote anytime.</p>
       <p class="settings-status" id="voteStatus" hidden></p>
-      <div class="vote-grid" id="voteGrid"></div>
+
       <div class="vote-signin-prompt" id="voteSignInPrompt" hidden>
         <p>Sign in to vote.</p>
         <button type="button" class="submit-form-btn" id="voteSignInBtn">Sign in with Google</button>
       </div>
+
+      <div class="vote-current-pick" id="voteCurrentPick" hidden>
+        <div class="vote-current-pick-label">Your vote</div>
+        <div class="admin-entries-list" id="voteCurrentPickCard"></div>
+      </div>
+
+      <input type="search" id="voteSearchInput" class="admin-search" placeholder="Search artist, song, or director…">
+      <div class="admin-entries-list" id="voteSearchResults"></div>
+
+      <h3 class="vote-leaderboard-title">Top Videos</h3>
+      <div class="admin-entries-list" id="voteLeaderboard"></div>
     </div>
   </div>
 </div>
