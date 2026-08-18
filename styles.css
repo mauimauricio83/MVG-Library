@@ -3992,6 +3992,33 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
+/* Same pill look as .lightbox-crop-btn -- casts this entry as the
+   signed-in visitor's one catalog-wide vote (see the Vote modal). */
+.lightbox-vote-btn {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-vote-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lightbox-vote-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 /* Admin-only debug toggles -- same look as .lightbox-crop-btn. */
 .lightbox-mirror-btn,
 .lightbox-interlace-btn {

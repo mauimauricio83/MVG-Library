@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.45.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.46.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -5681,6 +5681,7 @@
       adminEditBtn +
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
+      lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
       '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
@@ -6475,16 +6476,49 @@
       "</div>";
   }
 
+  // Subscribed globally (from auth.onAuthStateChanged, not just while the
+  // Vote modal happens to be open) so the lightbox's own Vote button below
+  // always reflects the right state too, not only the modal's.
   function subscribeCurrentUserVote() {
     if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
     currentUserVote = null;
     renderVoteCurrentPick();
+    updateLightboxVoteBtn();
     if (!currentUser) return;
     voteUserVoteUnsub = db.collection("votes").doc(currentUser.uid).onSnapshot(function (doc) {
       currentUserVote = doc.exists ? doc.data() : null;
       renderVoteCurrentPick();
       renderVoteSearchResults();
+      updateLightboxVoteBtn();
     });
+  }
+
+  function castVote(row) {
+    return db.collection("votes").doc(currentUser.uid).set({
+      rowNum: row.rowNum,
+      artist: row.artist || "",
+      song: row.song || "",
+      thumb: getRowThumbUrl(row) || "",
+      votedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  // Quick one-click vote right from a video's own lightbox -- casting a
+  // vote here (or from the Vote modal's search results) both write the
+  // same single votes/{uid} doc, so whichever was used last is simply the
+  // current vote; there's nothing to reconcile between the two entry points.
+  function lightboxVoteBtnHtml(row) {
+    var isPicked = currentUserVote && currentUserVote.rowNum === row.rowNum;
+    return '<button type="button" class="lightbox-vote-btn' + (isPicked ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Vote for this video" aria-label="Vote for this video">' + (isPicked ? "Voted ✓" : "Vote") + "</button>";
+  }
+
+  function updateLightboxVoteBtn() {
+    if (els.lightbox.hidden) return;
+    var btn = els.lightboxContent.querySelector(".lightbox-vote-btn");
+    if (!btn) return;
+    var isPicked = currentUserVote && currentUserVote.rowNum === btn.getAttribute("data-rownum");
+    btn.classList.toggle("is-active", !!isPicked);
+    btn.textContent = isPicked ? "Voted ✓" : "Vote";
   }
 
   function renderVoteSearchResults() {
@@ -6532,7 +6566,7 @@
     els.voteSearchInput.value = "";
     els.voteSearchResults.innerHTML = "";
     els.voteSignInPrompt.hidden = !!currentUser;
-    subscribeCurrentUserVote();
+    renderVoteCurrentPick();
     if (voteLeaderboardUnsub) voteLeaderboardUnsub();
     voteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(10)
       .onSnapshot(function (snap) {
@@ -6549,7 +6583,6 @@
     if (els.voteModal.hidden) return;
     els.voteModal.hidden = true;
     unlockBodyScroll();
-    if (voteUserVoteUnsub) { voteUserVoteUnsub(); voteUserVoteUnsub = null; }
     if (voteLeaderboardUnsub) { voteLeaderboardUnsub(); voteLeaderboardUnsub = null; }
   }
 
@@ -6573,13 +6606,7 @@
     var row = findRowByNum(castBtn.getAttribute("data-vote-cast"));
     if (!row) return;
     castBtn.disabled = true;
-    db.collection("votes").doc(currentUser.uid).set({
-      rowNum: row.rowNum,
-      artist: row.artist || "",
-      song: row.song || "",
-      thumb: getRowThumbUrl(row) || "",
-      votedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(function (err) {
+    castVote(row).catch(function (err) {
       console.error("Vote failed:", err);
       els.voteStatus.textContent = "Vote failed: " + err.message;
       els.voteStatus.className = "settings-status is-error";
@@ -9616,6 +9643,21 @@
       renderFavoritesStrip(state.rows);
       return;
     }
+    var voteBtn = e.target.closest(".lightbox-vote-btn");
+    if (voteBtn) {
+      var voteRow = findRowByNum(voteBtn.getAttribute("data-rownum"));
+      if (!voteRow) return;
+      voteBtn.disabled = true;
+      var afterSignIn = currentUser ? Promise.resolve() : auth.signInWithPopup(googleProvider);
+      afterSignIn.then(function () {
+        return castVote(voteRow);
+      }).catch(function (err) {
+        console.error("Vote failed:", err);
+      }).finally(function () {
+        voteBtn.disabled = false;
+      });
+      return;
+    }
     var playlistBtn = e.target.closest(".lightbox-playlist-btn");
     if (playlistBtn) {
       openAddToPlaylistPopover(playlistBtn.getAttribute("data-rownum"), playlistBtn);
@@ -10064,6 +10106,7 @@
     els.headerAccount.hidden = !user;
     els.settingsAccountRow.hidden = !user;
     els.settingsAccountHint.textContent = user ? "Signed in as " + (user.displayName || user.email || "…") : "";
+    subscribeCurrentUserVote();
     if (user) {
       els.headerAvatar.src = user.photoURL || "";
       els.headerUserName.textContent = user.displayName || user.email || "";
