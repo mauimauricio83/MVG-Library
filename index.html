@@ -119,9 +119,7 @@
     </button>
   </div>
   <div class="top-bar-actions">
-    <button type="button" class="header-icon-btn header-icon-btn--vote" id="topBarVoteBtn" aria-label="Vote" title="Vote">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/></svg>
-    </button>
+    <button type="button" class="media-vote-btn top-bar-vote-btn" id="topBarVoteBtn" aria-label="Vote" title="Vote">Vote</button>
     <button type="button" class="header-icon-btn" id="topBarSettingsBtn" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
     </button>
@@ -353,6 +351,13 @@
     <div class="spotlight-sidebar-title">Maui's Picks</div>
     <div class="spotlight-sidebar-cards" id="spotlightCards"></div>
   </aside>
+
+  <!-- Zero or more additional "{name}'s Picks" sections, one per active
+       entry in EXTRA_PICK_CURATORS (app.js) that actually has picks in
+       the data (see renderExtraPicksSections()) -- built dynamically
+       since the curator count isn't fixed, unlike Maui's Picks above.
+       Empty/no-op today since that array starts empty. -->
+  <div id="extraPicksSections"></div>
 
   <aside class="blog-latest-sidebar" id="blogLatestSidebar" hidden>
     <div class="spotlight-sidebar-title">News</div>

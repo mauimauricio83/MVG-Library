@@ -541,17 +541,14 @@ html, body {
   display: none;
 }
 
-/* Top-bar Vote icon -- same light-blue/black treatment as every other
-   Vote button on the site (.media-vote-btn/.lightbox-vote-btn), just a
-   filled circle behind the icon instead of a pill around text. */
-.header-icon-btn--vote {
-  background: var(--brand-lightblue);
-  border-radius: 50%;
-  color: #000;
-}
-
-.header-icon-btn--vote:hover {
-  filter: brightness(0.92);
+/* Top-bar Vote button -- text, not an icon (explicit request: same
+   "Vote" pill everywhere else, not a trophy glyph). .media-vote-btn is
+   the shared light-blue/black base; this modifier just sizes it to sit
+   comfortably among the 32px-tall icon buttons on either side. */
+.top-bar-vote-btn {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 0.85rem;
 }
 
 .header-icon-btn svg {
@@ -4174,20 +4171,20 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
-/* Same pill shape as .lightbox-crop-btn -- casts this entry as a vote
-   (see the Vote modal). Light-blue/black/bold like every other Vote
-   button on the site now (.media-vote-btn), not the neutral pill look
-   the rest of this toolbar row uses. */
+/* Light-blue/black/bold like every other Vote button on the site
+   (.media-vote-btn), not the neutral pill look the rest of this toolbar
+   row uses -- and deliberately bigger/bolder than its siblings so it
+   stands out as the one action here with a real consequence. */
 .lightbox-vote-btn {
   flex: 0 0 auto;
-  height: 26px;
-  padding: 0 9px;
+  height: 34px;
+  padding: 0 16px;
   border-radius: 999px;
   border: none;
   background: var(--brand-lightblue);
   color: #000;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
   line-height: 1;
   cursor: pointer;
 }

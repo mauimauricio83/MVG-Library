@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.54.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.55.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -194,6 +194,7 @@
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
+    extraPicksSections: document.getElementById("extraPicksSections"),
     viewersChoiceSection: document.getElementById("viewersChoiceSection"),
     viewersChoiceTop2: document.getElementById("viewersChoiceTop2"),
     viewersChoiceRest: document.getElementById("viewersChoiceRest"),
@@ -1640,6 +1641,7 @@
     renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
+    renderExtraPicksSections(state.rows);
     startViewersChoice();
     renderDiscoverSection(state.rows);
     render();
@@ -1735,6 +1737,18 @@
     return out.filter(function (g) { if (seen[g]) return false; seen[g] = true; return true; });
   }
 
+  // "Picks By" column: a comma/pipe-separated list of curator ids (e.g.
+  // "maui|jane"), each one matched against EXTRA_PICK_CURATORS' id field
+  // below to decide which additional "{name}'s Picks" sidebar section(s)
+  // (if any -- see renderExtraPicksSections()) a video shows up in.
+  // Independent of the existing single-curator "Spotlight" column/Maui's
+  // Picks, which is unaffected.
+  function parsePicksBy(raw) {
+    return raw
+      ? raw.split(/[|,]/).map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean)
+      : [];
+  }
+
   function cleanRows(rawRows) {
     return rawRows
       .map(function (row) {
@@ -1762,6 +1776,7 @@
           feature: /^(true|yes|y|1|x)$/i.test(get(row, "Feature")),
           spotlight: /^(true|yes|y|1|x)$/i.test(get(row, "Spotlight")),
           sponsored: /^(true|yes|y|1|x)$/i.test(get(row, "Sponsored")),
+          picksBy: parsePicksBy(get(row, "Picks By")),
           // Precomputed once so search doesn't re-lowercase/concatenate these
           // on every keystroke across 12,000+ rows. Covers the named-person/
           // crew fields plus the description writeup, so things like "blue,"
@@ -3450,28 +3465,7 @@
       return;
     }
 
-    els.spotlightCards.innerHTML = picks.map(function (row) {
-      var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
-      var thumb = videoThumbImgHtml(row, thumbAlt);
-      var artistLine = row.artist || "";
-      if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
-      var descLine = row.description
-        ? '<div class="spotlight-card-excerpt">' + escapeHtml(row.description) + "</div>"
-        : "";
-      var sponsoredBadge = row.sponsored
-        ? '<span class="sponsored-badge">Sponsored</span>'
-        : "";
-      return (
-        '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-          '<div class="spotlight-card-thumb">' + thumb + sponsoredBadge + "</div>" +
-          '<div class="spotlight-card-info">' +
-            '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
-            '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
-            descLine +
-          "</div>" +
-        "</div>"
-      );
-    }).join("");
+    els.spotlightCards.innerHTML = picks.map(spotlightCardHtml).join("");
 
     els.spotlightSidebar.hidden = false;
     positionSpotlightSidebar();
@@ -3481,6 +3475,74 @@
     var headerHeight = els.controls ? els.controls.getBoundingClientRect().height : 0;
     els.spotlightSidebar.style.top = (headerHeight + 12) + "px";
   }
+
+  // Shared by Maui's Picks and any EXTRA_PICK_CURATORS section below --
+  // same card shape either way, just a different filter over state.rows.
+  function spotlightCardHtml(row) {
+    var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+    var thumb = videoThumbImgHtml(row, thumbAlt);
+    var artistLine = row.artist || "";
+    if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
+    var descLine = row.description
+      ? '<div class="spotlight-card-excerpt">' + escapeHtml(row.description) + "</div>"
+      : "";
+    var sponsoredBadge = row.sponsored
+      ? '<span class="sponsored-badge">Sponsored</span>'
+      : "";
+    return (
+      '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
+        '<div class="spotlight-card-thumb">' + thumb + sponsoredBadge + mediaVoteBtnHtml(row.rowNum, "media-vote-btn--overlay") + "</div>" +
+        '<div class="spotlight-card-info">' +
+          '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+          '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
+          descLine +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  // Scaffold for additional admin-curated picks sections beyond Maui's
+  // Picks -- deliberately starts empty, so this renders nothing and is a
+  // complete no-op today. To activate one: add an entry here (id must be
+  // lowercase, matching parsePicksBy()'s normalization) and put that same
+  // id in the "Picks By" column (comma/pipe-separated, so a video can
+  // belong to more than one curator's picks) for whichever rows should
+  // appear in it. The section then shows up automatically -- no other
+  // code change, no redeploy of anything but this one-line config edit.
+  // Example: { id: "jane", label: "Jane's Picks" }
+  var EXTRA_PICK_CURATORS = [];
+
+  function renderExtraPicksSections(rows) {
+    if (!EXTRA_PICK_CURATORS.length) { els.extraPicksSections.innerHTML = ""; return; }
+    els.extraPicksSections.innerHTML = EXTRA_PICK_CURATORS.map(function (curator) {
+      var picks = rows
+        .filter(function (r) { return r.picksBy.indexOf(curator.id) !== -1; })
+        .sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); })
+        .slice(0, SPOTLIGHT_COUNT);
+      if (!picks.length) return "";
+      return (
+        '<aside class="spotlight-sidebar" data-curator="' + escapeHtml(curator.id) + '">' +
+          '<div class="spotlight-sidebar-title">' + escapeHtml(curator.label) + "</div>" +
+          '<div class="spotlight-sidebar-cards">' + picks.map(spotlightCardHtml).join("") + "</div>" +
+        "</aside>"
+      );
+    }).join("");
+  }
+
+  // Delegated once on the shared container rather than per generated
+  // <aside> -- innerHTML gets fully replaced on every render, which would
+  // otherwise mean re-binding listeners on elements that no longer exist.
+  els.extraPicksSections.addEventListener("click", function (e) {
+    var voteBtn = e.target.closest(".media-vote-btn");
+    if (voteBtn) {
+      voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
+      return;
+    }
+    var card = e.target.closest(".spotlight-card");
+    if (!card) return;
+    var row = findRowByNum(card.getAttribute("data-row"));
+    if (row) openLightbox(row);
+  });
 
   // ---- Viewer's Choice: top 5 by vote count, live from videoVotes -------
   // Sits above everything else on Home. #1/#2 get the bigger side-by-side
@@ -3698,6 +3760,11 @@
   }
 
   els.spotlightCards.addEventListener("click", function (e) {
+    var voteBtn = e.target.closest(".media-vote-btn");
+    if (voteBtn) {
+      voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
+      return;
+    }
     var card = e.target.closest(".spotlight-card");
     if (!card) return;
     var row = findRowByNum(card.getAttribute("data-row"));
@@ -8608,6 +8675,7 @@
     renderRecentList(state.rows);
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
+    renderExtraPicksSections(state.rows);
     renderDiscoverSection(state.rows);
     render();
   }

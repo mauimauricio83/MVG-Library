@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.55.0 — current
+- Top-bar Vote button is text ("Vote", light-blue/black pill) instead of a trophy icon -- same treatment as every other Vote button on the site now.
+- Added the same bottom-right overlay Vote button to Maui's Picks cards.
+- Lightbox Vote button made noticeably bigger and bolder (34px tall, 0.9rem/800-weight text, up from 26px/0.68rem/700) so it reads as the one action in that row with a real consequence.
+- New scaffold for additional admin-curated picks sections beyond Maui's Picks: a "Picks By" sheet column (`parsePicksBy()`, comma/pipe-separated curator ids) plus an `EXTRA_PICK_CURATORS` config array in app.js (starts empty) and a `renderExtraPicksSections()` that builds a "{name}'s Picks" section per curator with actual picks. Fully wired but a complete no-op today since the array is empty -- adding one entry there (plus matching "Picks By" values in the sheet) is the only step needed to make a section appear, no other code change.
+
 ## v5.54.2 — current
 - Refined the Vote button placements: Latest Submissions goes back to a bottom-right overlay on the thumbnail; Viewer's Choice sits inline on the same line as the title, right-aligned (`mediaVoteBtnHtml()` now takes an optional modifier class so the two placements share one base style -- `.media-vote-btn--overlay` for the overlay case).
 - Lightbox Vote button recolored to the same light-blue/black as every other Vote button on the site (was the neutral pill look shared with Crop/Widen).
