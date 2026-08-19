@@ -26,10 +26,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Unchanged -- each signed-in user reads/writes only their own favorites/
-    // recently-viewed doc.
+    // Each signed-in user reads/writes only their own favorites/recently-
+    // viewed/username doc -- PLUS an admin override, needed for the
+    // "Reset Username" moderation action (see Username Moderation in the
+    // admin panel), which clears a stranger's users/{uid}.username.
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null &&
+        (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
     // Username claim registry -- doc ID is the lowercased username, so
@@ -42,18 +46,57 @@ service cloud.firestore {
     // `get` is public so the client can check availability and so a vote's
     // displayed username can be trusted to be exactly what it claims to
     // be; `list` is off so nobody can enumerate every claimed username in
-    // one query.
+    // one query. Reserved names (see reservedUsernames below) can't be
+    // self-claimed by a regular signed-in user, but an admin can still
+    // claim one -- for handing a reserved handle to a specific person
+    // later, an admin sets it through the normal Settings UI while signed
+    // in as that admin account.
     match /usernames/{usernameKey} {
       allow get: if true;
       allow list: if false;
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid &&
         usernameKey.size() >= 3 && usernameKey.size() <= 30 &&
-        usernameKey.matches('^[a-z0-9_]+$');
+        usernameKey.matches('^[a-z0-9_]+$') &&
+        (!exists(/databases/$(database)/documents/reservedUsernames/$(usernameKey)) ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
       allow update: if request.auth != null &&
         resource.data.uid == request.auth.uid &&
         request.resource.data.uid == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      // Own claim, or an admin resetting someone else's (see users/{uid}
+      // above -- the same "Reset Username" action deletes both).
+      allow delete: if request.auth != null &&
+        (resource.data.uid == request.auth.uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // Names Maui's holding onto for himself/friends "down the line" --
+    // doc ID is the lowercased name, same key shape as usernames/ above,
+    // presence alone is what blocks self-service claiming (see the
+    // usernames/ create rule). Admin-managed from the Username Moderation
+    // admin view; public read so the client can show a clean "this
+    // username is reserved" error instead of a raw permission-denied one.
+    match /reservedUsernames/{usernameKey} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Usernames functions/index.js's onUsernameWritten flagged as possibly
+    // offensive (a short, deliberately non-exhaustive substring wordlist
+    // -- see the Function for the actual list and its limitations) --
+    // admin-only review queue, written ONLY by the Function's Admin SDK
+    // access (mirrors the videoVotes/voterTallies pattern: allow write: if
+    // false blocks every client write regardless of role, Admin SDK
+    // bypasses rules entirely). An admin dismisses one (decided it's
+    // fine) by deleting it directly; "Reset Username" deletes it as a
+    // side effect of freeing the underlying claim.
+    match /flaggedUsernames/{usernameKey} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create, update: if false;
     }
 
     // Opt-in public mirror of just the favorites list (not recentlyViewed,

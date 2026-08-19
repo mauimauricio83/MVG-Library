@@ -705,6 +705,7 @@
           <button type="button" class="admin-row-btn" id="adminGoDataToolsBtn">Data Health</button>
           <button type="button" class="admin-row-btn" id="adminGoVoteRoundsBtn">Vote Rounds</button>
           <button type="button" class="admin-row-btn" id="adminGoGraphicsBtn">Social Graphics</button>
+          <button type="button" class="admin-row-btn" id="adminGoUsernamesBtn">Username Moderation<span class="profile-requests-badge" id="adminFlaggedUsernamesBadge" hidden>0</span></button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -887,6 +888,26 @@
           <img id="adminGraphicsPreviewImg" alt="Generated graphic preview">
           <a class="admin-row-btn" id="adminGraphicsDownloadBtn" download="graphic.png">Download PNG</a>
         </div>
+      </div>
+
+      <div id="adminUsernamesView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminUsernamesBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Username Moderation</h2>
+        </div>
+        <p class="admin-status" id="adminUsernamesStatus" hidden></p>
+
+        <h3 class="admin-channel-queue-title">Flagged Usernames (<span id="adminFlaggedCount">0</span>)</h3>
+        <p class="admin-bulk-hint">Auto-flagged by a basic wordlist check when claimed -- not exhaustive, just a first pass. Reset clears the username from that account and frees it up; Dismiss just clears the flag if it's actually fine.</p>
+        <div class="admin-entries-list" id="adminFlaggedList"></div>
+
+        <h3 class="admin-channel-queue-title">Reserved Usernames (<span id="adminReservedCount">0</span>)</h3>
+        <p class="admin-bulk-hint">Blocks self-service claiming of these names -- you can still assign one to yourself or a specific account by signing in as an admin and setting it in Settings.</p>
+        <div class="admin-channel-add-row">
+          <input type="text" id="adminReservedInput" class="admin-search" placeholder="Add a reserved username…">
+          <button type="button" class="admin-row-btn" id="adminReservedAddBtn">Add</button>
+        </div>
+        <div class="admin-entries-list" id="adminReservedList"></div>
       </div>
 
       <div id="adminListView" hidden>

@@ -2,6 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.51.0 — current
+- Case-insensitive username collisions ("maui" vs "MAUI") were already blocked as of v5.50.1's uniqueness enforcement -- confirmed, no change needed there.
+- Username max length now explicitly matches Instagram's (30 characters) -- was already the limit in practice, now documented as a deliberate match rather than a coincidence.
+- New: **flagged usernames**. `functions/index.js` gained a second trigger, `onUsernameWritten`, checking every claimed username against a short (deliberately non-exhaustive, easily extended) wordlist; a match lands in a new admin-only "Username Moderation" view for review -- a flag never blocks or auto-removes anything, an admin always makes the actual call (Reset clears it from that account and frees the name; Dismiss just clears the flag). A landing-page badge shows the current flagged count, same pattern as the existing Suggestions/Verifications badges.
+- New: **reserved usernames**. Admin-managed list (same Username Moderation view) blocking self-service claiming of specific names -- for names Maui's holding for himself/friends "down the line." An admin can still assign a reserved name to a specific account by signing in as an admin and setting it in Settings; the pre-check that blocks everyone else is skipped for admins.
+- Needs both a rules AND a functions redeploy this time (`firebase deploy --only firestore:rules` and `--only functions`) -- new collections (`reservedUsernames`, `flaggedUsernames`) and a second Cloud Function trigger.
+
 ## v5.50.1 — current
 - Usernames are now enforced unique (case-insensitive) -- the trade-off flagged in v5.50.0 turned out not to be worth carrying. New `usernames/{lowercasedName}` claim-registry collection; claiming or renaming one runs inside a client-side transaction (same pattern as `reserveRowNums()`'s rowNum reservation) so two people racing to grab the same name can't both succeed -- whichever commits first wins, the other cleanly gets "That username's taken." Also now validated to 3-30 characters, letters/numbers/underscore only. A rename releases the old claim in the same transaction, so it's immediately available to someone else rather than staying orphaned.
 

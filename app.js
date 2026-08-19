@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.50.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.51.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -367,6 +367,17 @@
     adminGraphicsPreview: document.getElementById("adminGraphicsPreview"),
     adminGraphicsPreviewImg: document.getElementById("adminGraphicsPreviewImg"),
     adminGraphicsDownloadBtn: document.getElementById("adminGraphicsDownloadBtn"),
+    adminGoUsernamesBtn: document.getElementById("adminGoUsernamesBtn"),
+    adminFlaggedUsernamesBadge: document.getElementById("adminFlaggedUsernamesBadge"),
+    adminUsernamesView: document.getElementById("adminUsernamesView"),
+    adminUsernamesBackBtn: document.getElementById("adminUsernamesBackBtn"),
+    adminUsernamesStatus: document.getElementById("adminUsernamesStatus"),
+    adminFlaggedCount: document.getElementById("adminFlaggedCount"),
+    adminFlaggedList: document.getElementById("adminFlaggedList"),
+    adminReservedCount: document.getElementById("adminReservedCount"),
+    adminReservedInput: document.getElementById("adminReservedInput"),
+    adminReservedAddBtn: document.getElementById("adminReservedAddBtn"),
+    adminReservedList: document.getElementById("adminReservedList"),
     openVoteBtn: document.getElementById("openVoteBtn"),
     voteModal: document.getElementById("voteModal"),
     voteClose: document.getElementById("voteClose"),
@@ -6581,14 +6592,26 @@
       ]).then(function () { currentUsername = trimmed; });
     }
 
-    return db.runTransaction(function (tx) {
-      return tx.get(newRef).then(function (newDoc) {
-        if (newDoc.exists && newDoc.data().uid !== currentUser.uid) {
-          throw new Error("That username's taken -- try another.");
-        }
-        tx.set(newRef, { uid: currentUser.uid, display: trimmed });
-        if (oldKey) tx.delete(db.collection("usernames").doc(oldKey));
-        tx.set(userRef, { username: trimmed }, { merge: true });
+    // Client-side pre-check purely for a clean error message -- the real
+    // enforcement is firestore.rules' usernames/{key} create rule (an
+    // admin can still claim a reserved one, that rule allows it; this
+    // pre-check would otherwise block an admin's own attempt too, so it's
+    // skipped for admins).
+    var reservedCheck = state.isAdmin
+      ? Promise.resolve(null)
+      : db.collection("reservedUsernames").doc(key).get();
+
+    return reservedCheck.then(function (reservedDoc) {
+      if (reservedDoc && reservedDoc.exists) throw new Error("That username is reserved.");
+      return db.runTransaction(function (tx) {
+        return tx.get(newRef).then(function (newDoc) {
+          if (newDoc.exists && newDoc.data().uid !== currentUser.uid) {
+            throw new Error("That username's taken -- try another.");
+          }
+          tx.set(newRef, { uid: currentUser.uid, display: trimmed });
+          if (oldKey) tx.delete(db.collection("usernames").doc(oldKey));
+          tx.set(userRef, { username: trimmed }, { merge: true });
+        });
       });
     }).then(function () { currentUsername = trimmed; });
   }
@@ -6944,6 +6967,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -6959,6 +6983,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminBlogListView.hidden = false;
   }
 
@@ -6973,6 +6998,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminSuggestionsView.hidden = false;
   }
 
@@ -6987,6 +7013,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminVerificationsView.hidden = false;
   }
 
@@ -7002,6 +7029,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminChannelView.hidden = false;
   }
 
@@ -7017,6 +7045,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminDataToolsView.hidden = false;
   }
 
@@ -7032,6 +7061,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminFillLinksView.hidden = false;
   }
 
@@ -7062,6 +7092,22 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = false;
+  }
+
+  function showAdminUsernamesView() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
+    els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = false;
   }
 
   function goAdminSuggestions() {
@@ -8466,6 +8512,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminListView.hidden = false;
   }
 
@@ -8524,6 +8571,7 @@
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
+    els.adminUsernamesView.hidden = true;
     els.adminForm.hidden = false;
     els.adminForm.scrollTop = 0;
     els.adminFormStatus.hidden = true;
@@ -9783,6 +9831,139 @@
     }, "maui-picks.png");
   });
 
+  // ---- Username Moderation ------------------------------------------------
+  // Two independent live lists: flaggedUsernames (Function-maintained, see
+  // onUsernameWritten in functions/index.js -- a basic wordlist match,
+  // first-pass only) and reservedUsernames (fully admin-managed here,
+  // blocks self-service claiming in the usernames/{key} create rule).
+  var adminFlaggedUnsub = null;
+  var adminReservedUnsub = null;
+
+  function adminUsernameStatus(text, isError) {
+    els.adminUsernamesStatus.textContent = text;
+    els.adminUsernamesStatus.className = "admin-status" + (isError ? " is-error" : "");
+    els.adminUsernamesStatus.hidden = !text;
+  }
+
+  function renderAdminFlaggedList(rows) {
+    els.adminFlaggedCount.textContent = rows.length;
+    els.adminFlaggedList.innerHTML = rows.length
+      ? rows.map(function (r) {
+          return (
+            '<div class="admin-row">' +
+              '<div class="admin-row-main">' +
+                '<div class="admin-row-title">' + escapeHtml(r.display) + "</div>" +
+                '<div class="admin-row-sub">uid: ' + escapeHtml(r.uid) + "</div>" +
+              "</div>" +
+              '<div class="admin-row-actions">' +
+                '<button type="button" class="admin-row-btn" data-flag-dismiss="' + escapeHtml(r.key) + '">Dismiss</button>' +
+                '<button type="button" class="admin-row-btn admin-row-btn-danger" data-flag-reset="' + escapeHtml(r.key) + '" data-uid="' + escapeHtml(r.uid) + '">Reset</button>' +
+              "</div>" +
+            "</div>"
+          );
+        }).join("")
+      : '<p class="admin-empty">Nothing currently flagged.</p>';
+  }
+
+  function renderAdminReservedList(rows) {
+    els.adminReservedCount.textContent = rows.length;
+    els.adminReservedList.innerHTML = rows.length
+      ? rows.map(function (r) {
+          return (
+            '<div class="admin-row">' +
+              '<div class="admin-row-main"><div class="admin-row-title">' + escapeHtml(r.key) + "</div></div>" +
+              '<div class="admin-row-actions">' +
+                '<button type="button" class="admin-row-btn admin-row-btn-danger" data-reserved-remove="' + escapeHtml(r.key) + '">Remove</button>' +
+              "</div>" +
+            "</div>"
+          );
+        }).join("")
+      : '<p class="admin-empty">None reserved yet.</p>';
+  }
+
+  function goAdminUsernames() {
+    state.adminReturnView = "landing";
+    showAdminUsernamesView();
+    adminUsernameStatus("");
+    if (adminFlaggedUnsub) adminFlaggedUnsub();
+    adminFlaggedUnsub = db.collection("flaggedUsernames").onSnapshot(function (snap) {
+      renderAdminFlaggedList(snap.docs.map(function (doc) { return Object.assign({ key: doc.id }, doc.data()); }));
+    }, function (err) {
+      console.error("Flagged usernames load failed:", err);
+      adminUsernameStatus("Couldn't load flagged usernames: " + err.message, true);
+    });
+    if (adminReservedUnsub) adminReservedUnsub();
+    adminReservedUnsub = db.collection("reservedUsernames").onSnapshot(function (snap) {
+      renderAdminReservedList(snap.docs.map(function (doc) { return { key: doc.id }; }).sort(function (a, b) { return a.key.localeCompare(b.key); }));
+    }, function (err) {
+      console.error("Reserved usernames load failed:", err);
+      adminUsernameStatus("Couldn't load reserved usernames: " + err.message, true);
+    });
+  }
+
+  els.adminGoUsernamesBtn.addEventListener("click", goAdminUsernames);
+  els.adminUsernamesBackBtn.addEventListener("click", function () {
+    if (adminFlaggedUnsub) { adminFlaggedUnsub(); adminFlaggedUnsub = null; }
+    if (adminReservedUnsub) { adminReservedUnsub(); adminReservedUnsub = null; }
+    showAdminLanding();
+  });
+
+  els.adminReservedAddBtn.addEventListener("click", function () {
+    var raw = els.adminReservedInput.value.trim();
+    if (!raw) return;
+    var key = raw.toLowerCase();
+    if (!/^[a-z0-9_]{3,30}$/.test(key)) {
+      adminUsernameStatus("3-30 characters, letters/numbers/underscore only.", true);
+      return;
+    }
+    els.adminReservedAddBtn.disabled = true;
+    db.collection("reservedUsernames").doc(key).set({ addedAt: firebase.firestore.FieldValue.serverTimestamp() }).then(function () {
+      els.adminReservedInput.value = "";
+      adminUsernameStatus("");
+    }).catch(function (err) {
+      console.error("Reserving username failed:", err);
+      adminUsernameStatus("Couldn't reserve: " + err.message, true);
+    }).finally(function () {
+      els.adminReservedAddBtn.disabled = false;
+    });
+  });
+
+  els.adminReservedList.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-reserved-remove]");
+    if (!btn) return;
+    db.collection("reservedUsernames").doc(btn.getAttribute("data-reserved-remove")).delete().catch(function (err) {
+      console.error("Un-reserving username failed:", err);
+      adminUsernameStatus("Couldn't remove: " + err.message, true);
+    });
+  });
+
+  els.adminFlaggedList.addEventListener("click", function (e) {
+    var dismissBtn = e.target.closest("[data-flag-dismiss]");
+    if (dismissBtn) {
+      db.collection("flaggedUsernames").doc(dismissBtn.getAttribute("data-flag-dismiss")).delete().catch(function (err) {
+        console.error("Dismissing flag failed:", err);
+        adminUsernameStatus("Couldn't dismiss: " + err.message, true);
+      });
+      return;
+    }
+    var resetBtn = e.target.closest("[data-flag-reset]");
+    if (resetBtn) {
+      var key = resetBtn.getAttribute("data-flag-reset");
+      var uid = resetBtn.getAttribute("data-uid");
+      if (!window.confirm("Reset this username? The account loses it immediately and can pick a new one.")) return;
+      resetBtn.disabled = true;
+      Promise.all([
+        db.collection("usernames").doc(key).delete(),
+        db.collection("users").doc(uid).set({ username: firebase.firestore.FieldValue.delete() }, { merge: true })
+      ]).catch(function (err) {
+        console.error("Resetting username failed:", err);
+        adminUsernameStatus("Couldn't reset: " + err.message, true);
+      }).finally(function () {
+        resetBtn.disabled = false;
+      });
+    }
+  });
+
   // Lightweight existence/embeddability check via each provider's own
   // public oEmbed endpoint -- same one already used for Vimeo thumbnails
   // (fetchVimeoThumbnail()) -- instead of spinning up a real IFrame/Vimeo
@@ -9927,6 +10108,9 @@
     }).catch(function () {});
     db.collection("verificationRequests").where("status", "==", "pending").get().then(function (snap) {
       updateAdminBadge(els.adminVerificationsBadge, snap.size);
+    }).catch(function () {});
+    db.collection("flaggedUsernames").get().then(function (snap) {
+      updateAdminBadge(els.adminFlaggedUsernamesBadge, snap.size);
     }).catch(function () {});
   }
 

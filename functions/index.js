@@ -25,7 +25,7 @@
 
 "use strict";
 
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
@@ -68,5 +68,45 @@ exports.onVoteEventCreated = onDocumentCreated("voteEvents/{id}", async (event) 
     }
 
     tx.set(videoVotesRef, patch, { merge: true });
+  });
+});
+
+// Deliberately short and NOT exhaustive -- catches the clearest, most
+// common cases as a first pass for admin review, not a guarantee nothing
+// slips through. Plain substring match (case-insensitive), so it has the
+// usual false-positive risk of that approach (e.g. a name that happens to
+// contain one of these as a sub-string of an innocuous word) -- acceptable
+// here since a match only ever creates a review-queue entry, never blocks
+// or auto-removes anything; an admin always makes the actual call. Extend
+// this array directly if more terms need catching.
+const FLAGGED_USERNAME_TERMS = [
+  "fuck", "shit", "bitch", "asshole", "bastard", "cunt", "whore", "slut",
+  "nigger", "nigga", "faggot", "retard", "rape"
+];
+
+function containsFlaggedTerm(name) {
+  const lower = name.toLowerCase();
+  return FLAGGED_USERNAME_TERMS.some(function (term) { return lower.indexOf(term) !== -1; });
+}
+
+// Reacts to every write under usernames/{key} (create on a fresh claim,
+// update on a re-claim after a rename, delete on release) and keeps
+// flaggedUsernames/{key} in sync -- present only while the underlying
+// claim both still exists AND still matches the wordlist, so a renamed-
+// or reset-away-from flagged name doesn't linger in the review queue.
+exports.onUsernameWritten = onDocumentWritten("usernames/{usernameKey}", async (event) => {
+  const key = event.params.usernameKey;
+  const after = event.data.after.exists ? event.data.after.data() : null;
+  const flagRef = db.collection("flaggedUsernames").doc(key);
+
+  if (!after || !containsFlaggedTerm(after.display || key)) {
+    await flagRef.delete().catch(() => {});
+    return;
+  }
+
+  await flagRef.set({
+    uid: after.uid,
+    display: after.display || key,
+    flaggedAt: FieldValue.serverTimestamp()
   });
 });
