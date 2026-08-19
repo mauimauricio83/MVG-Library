@@ -5703,6 +5703,28 @@ body.is-searching #discoverSection {
   font-size: 0.85rem;
 }
 
+/* On mobile the label above can wrap to 3-4 lines (see .settings-row-hint),
+   leaving the username input+Save button too little width on the same
+   line -- they were clipping off the right edge of the screen. Wrapping
+   .settings-row lets that group drop to its own full-width line instead,
+   with the input flexing to fill it rather than staying a fixed 140px. */
+@media (max-width: 640px) {
+  .settings-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-username-field,
+  .settings-wallet-buttons {
+    width: 100%;
+  }
+
+  .settings-username-field input {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+}
+
 .username-modal-actions {
   display: flex;
   align-items: center;

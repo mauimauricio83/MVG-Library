@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.57.1 — current
+- Fix: the Username field in Settings clipped its Save button off the right edge of the screen on mobile, since the input+button group stayed on the same line as the (often 3-4 line, on mobile) label/hint instead of wrapping. `.settings-row` now wraps under 640px, with the username input flexing to fill the full-width line it drops to instead of staying a fixed 140px.
+
 ## v5.57.0 — current
 - New default playlists, seeded once for every browser/account the first time the catalog loads: Michel Gondry, Chris Cunningham, Spike Jonze, Mark Romanek, Jonathan Glazer, Anton Corbijn, Stephane Sednaoui, Hype Williams, Joseph Kahn, Mark Pellington, Marc Webb, Floria Sigismondi, David Fincher, Jonas Akerlund, Hammer and Tongs, Marty Callner. Built from real catalog matches (reuses the same director-name normalizer `findCatalogCreditsForProfile()` already used for Connect-mode profile matching, so "Gondry, Michel" and "Michel Gondry" both match) -- a director with zero catalog entries just doesn't get a playlist rather than seeding an empty one. Fully regular playlists once created: same rowNums-array shape as anything a visitor builds themselves, freely renamable/deletable, and gone for good if deleted since the one-time seed flag (`mvg-default-playlists-seeded`) never re-fires.
 
