@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.48.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.49.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -351,6 +351,16 @@
     adminVoteRoundsBackBtn: document.getElementById("adminVoteRoundsBackBtn"),
     adminVoteRoundsStatus: document.getElementById("adminVoteRoundsStatus"),
     adminVoteRoundHistory: document.getElementById("adminVoteRoundHistory"),
+    adminGoGraphicsBtn: document.getElementById("adminGoGraphicsBtn"),
+    adminGraphicsView: document.getElementById("adminGraphicsView"),
+    adminGraphicsBackBtn: document.getElementById("adminGraphicsBackBtn"),
+    adminGraphicTopVotedBtn: document.getElementById("adminGraphicTopVotedBtn"),
+    adminGraphicLatestBtn: document.getElementById("adminGraphicLatestBtn"),
+    adminGraphicMauisPicksBtn: document.getElementById("adminGraphicMauisPicksBtn"),
+    adminGraphicsStatus: document.getElementById("adminGraphicsStatus"),
+    adminGraphicsPreview: document.getElementById("adminGraphicsPreview"),
+    adminGraphicsPreviewImg: document.getElementById("adminGraphicsPreviewImg"),
+    adminGraphicsDownloadBtn: document.getElementById("adminGraphicsDownloadBtn"),
     openVoteBtn: document.getElementById("openVoteBtn"),
     voteModal: document.getElementById("voteModal"),
     voteClose: document.getElementById("voteClose"),
@@ -6809,6 +6819,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminLandingView.hidden = false;
   }
 
@@ -6823,6 +6834,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminBlogListView.hidden = false;
   }
 
@@ -6836,6 +6848,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminSuggestionsView.hidden = false;
   }
 
@@ -6849,6 +6862,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminVerificationsView.hidden = false;
   }
 
@@ -6863,6 +6877,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminChannelView.hidden = false;
   }
 
@@ -6877,6 +6892,7 @@
     els.adminChannelView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminDataToolsView.hidden = false;
   }
 
@@ -6891,6 +6907,7 @@
     els.adminChannelView.hidden = true;
     els.adminDataToolsView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminFillLinksView.hidden = false;
   }
 
@@ -6906,6 +6923,21 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = false;
+  }
+
+  function showAdminGraphicsView() {
+    els.adminLandingView.hidden = true;
+    els.adminListView.hidden = true;
+    els.adminForm.hidden = true;
+    els.adminBulkView.hidden = true;
+    els.adminSuggestionsView.hidden = true;
+    els.adminVerificationsView.hidden = true;
+    els.adminBlogListView.hidden = true;
+    els.adminChannelView.hidden = true;
+    els.adminDataToolsView.hidden = true;
+    els.adminFillLinksView.hidden = true;
+    els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = false;
   }
 
   function goAdminSuggestions() {
@@ -8309,6 +8341,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminListView.hidden = false;
   }
 
@@ -8366,6 +8399,7 @@
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
+    els.adminGraphicsView.hidden = true;
     els.adminForm.hidden = false;
     els.adminForm.scrollTop = 0;
     els.adminFormStatus.hidden = true;
@@ -8836,7 +8870,7 @@
   function adminRowHtml(r) {
     var badges = "";
     if (r.feature) badges += '<span class="admin-badge">Feature</span>';
-    if (r.spotlight) badges += '<span class="admin-badge">Spotlight</span>';
+    if (r.spotlight) badges += '<span class="admin-badge">Maui\'s Picks</span>';
     if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
     if (r.backdoor) badges += '<span class="admin-badge admin-badge-backdoor">Backdoor</span>';
     return (
@@ -9241,6 +9275,324 @@
   els.adminVoteRoundsBackBtn.addEventListener("click", function () {
     if (adminVoteLeaderboardUnsub) { adminVoteLeaderboardUnsub(); adminVoteLeaderboardUnsub = null; }
     showAdminLanding();
+  });
+
+  // ---- Social Graphics: auto-generated 1080x1350 Instagram-ready images --
+  // Pure client-side canvas rendering, no backend -- same black/purple
+  // gradient as land.html's title card, redrawn with canvas gradients
+  // since CSS radial-gradient() has no canvas equivalent. Thumbnails are
+  // drawn cross-origin via crossOrigin="anonymous"; verified in-browser
+  // that both i.ytimg.com and i.vimeocdn.com send the CORS headers needed
+  // for canvas export (no server-side proxy required). A thumbnail that
+  // fails to load for any reason is skipped with a plain placeholder block
+  // instead of failing the whole graphic.
+  var GRAPHIC_W = 1080;
+  var GRAPHIC_H = 1350;
+  var currentGraphicBlobUrl = null;
+
+  function loadImageCrossOrigin(url) {
+    return new Promise(function (resolve) {
+      if (!url) { resolve(null); return; }
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { resolve(null); };
+      img.src = url;
+    });
+  }
+
+  // Canvas silently falls back to a default font if asked to draw text
+  // before a webfont has actually finished loading/parsing -- this is the
+  // guard against that (Archivo Black is already loaded site-wide via the
+  // Google Fonts <link> in index.html, just not guaranteed ready yet).
+  function ensureGraphicFontsReady() {
+    return Promise.all([
+      document.fonts.load('900 62px "Archivo Black"'),
+      document.fonts.load('900 22px "Archivo Black"')
+    ]).then(function () { return document.fonts.ready; }).catch(function () {});
+  }
+
+  function drawGraphicBackground(ctx) {
+    ctx.fillStyle = "#0d0b12";
+    ctx.fillRect(0, 0, GRAPHIC_W, GRAPHIC_H);
+
+    function ellipticalGlow(cx, cy, rx, ry, color) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(rx, ry);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      g.addColorStop(0, color);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(-1, -1, 2, 2);
+      ctx.restore();
+    }
+
+    // Same two glows/values as .welcome-gate's background in styles.css.
+    ellipticalGlow(GRAPHIC_W * 0.85, GRAPHIC_H * 0.95, GRAPHIC_W * 0.7, GRAPHIC_H * 0.6, "rgba(74, 13, 143, 0.5)");
+    ellipticalGlow(GRAPHIC_W * 0.5, GRAPHIC_H * 0.08, GRAPHIC_W * 0.9, GRAPHIC_H * 0.7, "rgba(168, 85, 247, 0.35)");
+  }
+
+  function drawGraphicHeader(ctx, title, subtitle) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f5e300";
+    ctx.font = '900 62px "Archivo Black", sans-serif';
+    ctx.shadowColor = "rgba(245, 227, 0, 0.35)";
+    ctx.shadowBlur = 30;
+    ctx.fillText(title, GRAPHIC_W / 2, 130);
+    ctx.shadowBlur = 0;
+    if (subtitle) {
+      ctx.fillStyle = "#d8d3e0";
+      ctx.font = "28px -apple-system, sans-serif";
+      ctx.fillText(subtitle, GRAPHIC_W / 2, 172);
+    }
+  }
+
+  function drawGraphicFooter(ctx) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#6f6a7c";
+    ctx.font = "24px -apple-system, sans-serif";
+    ctx.fillText("themusicvideoguy.com", GRAPHIC_W / 2, GRAPHIC_H - 36);
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawThumbOrPlaceholder(ctx, img, x, y, w, h) {
+    roundRectPath(ctx, x, y, w, h, 10);
+    ctx.save();
+    ctx.clip();
+    if (img) {
+      // Cover-fit crop, same idea as CSS object-fit:cover.
+      var srcRatio = img.width / img.height;
+      var dstRatio = w / h;
+      var sx, sy, sw, sh;
+      if (srcRatio > dstRatio) {
+        sh = img.height;
+        sw = sh * dstRatio;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+      } else {
+        sw = img.width;
+        sh = sw / dstRatio;
+        sx = 0;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    } else {
+      ctx.fillStyle = "#1b1b1e";
+      ctx.fillRect(x, y, w, h);
+    }
+    ctx.restore();
+  }
+
+  function truncateToWidth(ctx, text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    var truncated = text;
+    while (truncated.length > 1 && ctx.measureText(truncated + "…").width > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    return truncated + "…";
+  }
+
+  // Vertical countdown list -- used for both Top 5 This Week and Maui's
+  // Picks, which only differ in title/data source.
+  function renderListGraphic(title, subtitle, items) {
+    return ensureGraphicFontsReady().then(function () {
+      return Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); }));
+    }).then(function (images) {
+      var canvas = document.createElement("canvas");
+      canvas.width = GRAPHIC_W;
+      canvas.height = GRAPHIC_H;
+      var ctx = canvas.getContext("2d");
+      drawGraphicBackground(ctx);
+      drawGraphicHeader(ctx, title, subtitle);
+
+      var top = 230;
+      var bottom = GRAPHIC_H - 90;
+      var rowGap = 24;
+      var rowH = (bottom - top - rowGap * (items.length - 1)) / items.length;
+      var thumbW = rowH * 16 / 9;
+      var leftMargin = 70;
+      var textX = leftMargin + thumbW + 28;
+      var textMaxWidth = GRAPHIC_W - textX - 60;
+
+      items.forEach(function (it, i) {
+        var y = top + i * (rowH + rowGap);
+        drawThumbOrPlaceholder(ctx, images[i], leftMargin, y, thumbW, rowH);
+
+        ctx.beginPath();
+        ctx.arc(leftMargin + 24, y + 24, 22, 0, Math.PI * 2);
+        ctx.fillStyle = "#a855f7";
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.font = '900 22px "Archivo Black", sans-serif';
+        ctx.fillText(String(i + 1), leftMargin + 24, y + 31);
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f1f0f3";
+        ctx.font = "600 30px -apple-system, sans-serif";
+        var line1 = it.artist + " — " + it.song;
+        ctx.fillText(truncateToWidth(ctx, line1, textMaxWidth), textX, y + rowH / 2 - 4);
+
+        if (it.detail) {
+          ctx.fillStyle = "#a5a5ad";
+          ctx.font = "22px -apple-system, sans-serif";
+          ctx.fillText(truncateToWidth(ctx, it.detail, textMaxWidth), textX, y + rowH / 2 + 28);
+        }
+      });
+
+      drawGraphicFooter(ctx);
+      return canvas;
+    });
+  }
+
+  // 2-column grid -- used for 10 Latest Submissions.
+  function renderGridGraphic(title, subtitle, items) {
+    return ensureGraphicFontsReady().then(function () {
+      return Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); }));
+    }).then(function (images) {
+      var canvas = document.createElement("canvas");
+      canvas.width = GRAPHIC_W;
+      canvas.height = GRAPHIC_H;
+      var ctx = canvas.getContext("2d");
+      drawGraphicBackground(ctx);
+      drawGraphicHeader(ctx, title, subtitle);
+
+      var cols = 2;
+      var rows = Math.ceil(items.length / cols);
+      var top = 220;
+      var bottom = GRAPHIC_H - 80;
+      var sideMargin = 60;
+      var colGap = 24;
+      var rowGap = 20;
+      var colW = (GRAPHIC_W - sideMargin * 2 - colGap * (cols - 1)) / cols;
+      var rowH = (bottom - top - rowGap * (rows - 1)) / rows;
+      var thumbH = rowH - 46;
+
+      items.forEach(function (it, i) {
+        var col = i % cols;
+        var row = Math.floor(i / cols);
+        var x = sideMargin + col * (colW + colGap);
+        var y = top + row * (rowH + rowGap);
+
+        drawThumbOrPlaceholder(ctx, images[i], x, y, colW, thumbH);
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f1f0f3";
+        ctx.font = "600 21px -apple-system, sans-serif";
+        var label = it.artist + " — " + it.song;
+        ctx.fillText(truncateToWidth(ctx, label, colW), x, y + thumbH + 28);
+      });
+
+      drawGraphicFooter(ctx);
+      return canvas;
+    });
+  }
+
+  function getGraphicItemsFromRows(rows) {
+    return rows.map(function (r) {
+      return {
+        artist: r.artist || "",
+        song: r.song || "",
+        thumb: getRowThumbUrl(r) || "",
+        detail: r.director ? "Dir. " + r.director : ""
+      };
+    });
+  }
+
+  function fetchTopVotedGraphicItems() {
+    return db.collection("videoVotes").orderBy("count", "desc").limit(5).get().then(function (snap) {
+      return snap.docs.map(function (doc) {
+        var d = doc.data();
+        var count = d.count || 0;
+        return { artist: d.artist || "", song: d.song || "", thumb: d.thumb || "", detail: count + " vote" + (count === 1 ? "" : "s") };
+      });
+    });
+  }
+
+  function getMauisPicksGraphicItems() {
+    var picks = state.rows
+      .filter(function (r) { return r.spotlight; })
+      .sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); })
+      .slice(0, SPOTLIGHT_COUNT);
+    return getGraphicItemsFromRows(picks);
+  }
+
+  function getLatestGraphicItems() {
+    return getGraphicItemsFromRows(latestPool.slice(0, 10));
+  }
+
+  function showGraphicCanvas(canvas, filename) {
+    if (currentGraphicBlobUrl) { URL.revokeObjectURL(currentGraphicBlobUrl); currentGraphicBlobUrl = null; }
+    canvas.toBlob(function (blob) {
+      currentGraphicBlobUrl = URL.createObjectURL(blob);
+      els.adminGraphicsPreviewImg.src = currentGraphicBlobUrl;
+      els.adminGraphicsDownloadBtn.href = currentGraphicBlobUrl;
+      els.adminGraphicsDownloadBtn.setAttribute("download", filename);
+      els.adminGraphicsPreview.hidden = false;
+    }, "image/png");
+  }
+
+  function runGraphicGeneration(promiseFactory, filename) {
+    var buttons = [els.adminGraphicTopVotedBtn, els.adminGraphicLatestBtn, els.adminGraphicMauisPicksBtn];
+    buttons.forEach(function (b) { b.disabled = true; });
+    els.adminGraphicsPreview.hidden = true;
+    els.adminGraphicsStatus.textContent = "Generating…";
+    els.adminGraphicsStatus.className = "admin-status";
+    els.adminGraphicsStatus.hidden = false;
+    promiseFactory().then(function (canvas) {
+      showGraphicCanvas(canvas, filename);
+      els.adminGraphicsStatus.hidden = true;
+    }).catch(function (err) {
+      console.error("Graphic generation failed:", err);
+      els.adminGraphicsStatus.textContent = "Couldn't generate: " + err.message;
+      els.adminGraphicsStatus.className = "admin-status is-error";
+    }).finally(function () {
+      buttons.forEach(function (b) { b.disabled = false; });
+    });
+  }
+
+  els.adminGoGraphicsBtn.addEventListener("click", function () {
+    state.adminReturnView = "landing";
+    showAdminGraphicsView();
+    els.adminGraphicsPreview.hidden = true;
+    els.adminGraphicsStatus.hidden = true;
+  });
+
+  els.adminGraphicsBackBtn.addEventListener("click", showAdminLanding);
+
+  els.adminGraphicTopVotedBtn.addEventListener("click", function () {
+    runGraphicGeneration(function () {
+      return fetchTopVotedGraphicItems().then(function (items) {
+        if (!items.length) return Promise.reject(new Error("No votes yet."));
+        return renderListGraphic("TOP 5 THIS WEEK", "Viewer's Choice", items);
+      });
+    }, "top-5-this-week.png");
+  });
+
+  els.adminGraphicLatestBtn.addEventListener("click", function () {
+    runGraphicGeneration(function () {
+      var items = getLatestGraphicItems();
+      if (!items.length) return Promise.reject(new Error("No submissions loaded yet."));
+      return renderGridGraphic("LATEST SUBMISSIONS", "10 fresh adds to the library", items);
+    }, "latest-submissions.png");
+  });
+
+  els.adminGraphicMauisPicksBtn.addEventListener("click", function () {
+    runGraphicGeneration(function () {
+      var items = getMauisPicksGraphicItems();
+      if (!items.length) return Promise.reject(new Error("No Maui's Picks set yet."));
+      return renderListGraphic("MAUI'S PICKS", "This week's picks", items);
+    }, "maui-picks.png");
   });
 
   // Lightweight existence/embeddability check via each provider's own

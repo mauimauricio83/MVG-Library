@@ -351,7 +351,7 @@
   </section>
 
   <aside class="spotlight-sidebar" id="spotlightSidebar" hidden>
-    <div class="spotlight-sidebar-title">Spotlight</div>
+    <div class="spotlight-sidebar-title">Maui's Picks</div>
     <div class="spotlight-sidebar-cards" id="spotlightCards"></div>
   </aside>
 
@@ -704,6 +704,7 @@
           <button type="button" class="admin-row-btn" id="adminGoChannelBtn">Channel Mode</button>
           <button type="button" class="admin-row-btn" id="adminGoDataToolsBtn">Data Health</button>
           <button type="button" class="admin-row-btn" id="adminGoVoteRoundsBtn">Vote Rounds</button>
+          <button type="button" class="admin-row-btn" id="adminGoGraphicsBtn">Social Graphics</button>
         </div>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -870,6 +871,24 @@
         <div class="admin-entries-list" id="adminVoteRoundHistory"></div>
       </div>
 
+      <div id="adminGraphicsView" hidden>
+        <div class="admin-toolbar">
+          <button type="button" class="admin-row-btn" id="adminGraphicsBackBtn">&larr; Back</button>
+          <h2 class="recent-title">Social Graphics</h2>
+        </div>
+        <p class="admin-bulk-hint">1080x1350 images, ready to post -- same black/purple gradient as the landing page. Pick one, wait for it to render, then download.</p>
+        <div class="admin-graphics-actions">
+          <button type="button" class="admin-row-btn" id="adminGraphicTopVotedBtn">Top 5 This Week</button>
+          <button type="button" class="admin-row-btn" id="adminGraphicLatestBtn">10 Latest Submissions</button>
+          <button type="button" class="admin-row-btn" id="adminGraphicMauisPicksBtn">Maui's Picks</button>
+        </div>
+        <p class="admin-status" id="adminGraphicsStatus" hidden></p>
+        <div class="admin-graphics-preview" id="adminGraphicsPreview" hidden>
+          <img id="adminGraphicsPreviewImg" alt="Generated graphic preview">
+          <a class="admin-row-btn" id="adminGraphicsDownloadBtn" download="graphic.png">Download PNG</a>
+        </div>
+      </div>
+
       <div id="adminListView" hidden>
         <div class="admin-toolbar">
           <button type="button" class="admin-row-btn" id="adminBackBtn">&larr; Back</button>
@@ -965,7 +984,7 @@
           <textarea name="description" rows="3"></textarea>
         </label>
         <label class="admin-form-checkbox"><input type="checkbox" name="feature"> Feature</label>
-        <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Spotlight</label>
+        <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Maui's Picks</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="sponsored"> Sponsored</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="backdoor"> Backdoor import <span class="submit-optional">(excluded from Latest Submissions / word cloud -- for research/backfill entries, not real submissions)</span></label>
 

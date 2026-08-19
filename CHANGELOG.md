@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.49.0 — current
+- Renamed "Spotlight" to "Maui's Picks" everywhere a visitor or admin actually sees it (section title, the admin form's checkbox, the Manage Entries badge). Internal class names/field names (`spotlight`, `.spotlight-card`, etc.) deliberately left alone -- purely a display-label change, not a data model one.
+- New admin "Social Graphics" section: auto-generates 1080x1350 (Instagram portrait) images for **Top 5 This Week** (Viewer's Choice), **10 Latest Submissions** (2-column grid), and **Maui's Picks** -- same black/purple gradient as the landing page's title card. Pure client-side `<canvas>` rendering, no backend involved; verified in-browser that both YouTube's and Vimeo's thumbnail CDNs send the CORS headers needed to draw them onto a canvas and still export it (a thumbnail that fails to load for any reason is skipped with a plain placeholder block rather than failing the whole graphic). Pick one, wait for it to render, then download the PNG straight from the admin panel.
+
 ## v5.48.1 — current
 - **Fixed a real bug in the previous Spotlight resize**: matched it against `.media-strip-card`'s 140px *base* rule, which turns out to be essentially a dead fallback on real desktop -- `#latestStrip`/`#featuredStrip`/`#favoritesStrip` all get overridden to a much bigger `minmax(290px, 1fr)` grid at `@media (min-width: 641px)` (see the "gallery-style sections on desktop" comment in styles.css), which is what Latest Submissions actually renders at. Spotlight now uses that exact same grid formula instead, so its cards are pixel-identical to Latest's, not the smaller 140px strip size.
 
