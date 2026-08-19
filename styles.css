@@ -3377,6 +3377,10 @@ body.is-searching #discoverSection {
   color: var(--brand-yellow);
 }
 
+.viewers-choice-title-main {
+  font-size: 1.5rem;
+}
+
 .viewers-choice-section {
   margin-bottom: 28px;
 }
@@ -3426,15 +3430,19 @@ body.is-searching #discoverSection {
   object-fit: cover;
 }
 
+/* width/height/font-size come inline per-card (see
+   VIEWERS_CHOICE_RANK_SIZES in app.js -- biggest at #1, same idea as the
+   Top 5 This Week graphic's progressive sizing). */
 .viewers-choice-rank {
   position: absolute;
   top: 8px;
   left: 8px;
-  padding: 2px 9px;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-size: 0.72rem;
   font-weight: 800;
 }
 
@@ -3446,6 +3454,11 @@ body.is-searching #discoverSection {
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.35;
+}
+
+.viewers-choice-title.is-top {
+  font-size: 1.05rem;
+  color: var(--brand-yellow);
 }
 
 .viewers-choice-count {

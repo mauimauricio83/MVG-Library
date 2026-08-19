@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.51.1 — current
+- Viewer's Choice homepage section: its own title is now visibly bigger (1.5rem) without touching Maui's Picks/News, which share the same base title class -- added a section-scoped size-only modifier instead of changing the shared one. Rank badges now scale progressively from #1 (biggest) down to #5 (smallest), same idea as the Top 5 This Week graphic's sizing. #1's title text is yellow, matching the graphic. Removed the badges' outer ring (a `box-shadow` meant to separate the badge from the thumbnail underneath it) after it read as an unwanted black/dark stroke against the thumbnail.
+
 ## v5.51.0 — current
 - Case-insensitive username collisions ("maui" vs "MAUI") were already blocked as of v5.50.1's uniqueness enforcement -- confirmed, no change needed there.
 - Username max length now explicitly matches Instagram's (30 characters) -- was already the limit in practice, now documented as a deliberate match rather than a coincidence.

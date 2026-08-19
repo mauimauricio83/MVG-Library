@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.51.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.51.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -3453,15 +3453,29 @@
   // haven't been deployed yet, or if genuinely nobody's voted yet.
   var viewersChoiceUnsub = null;
 
+  // Rank badge diameter/font-size, biggest at #1 -- same progressive-size
+  // idea as the Top 5 This Week graphic (see LIST_GRAPHIC_ROW_WEIGHTS),
+  // just as concrete pixel sizes here instead of a proportional split,
+  // since these are small fixed-layout badges, not a scaled canvas.
+  var VIEWERS_CHOICE_RANK_SIZES = [
+    { badge: 44, font: 20 },
+    { badge: 36, font: 17 },
+    { badge: 30, font: 14 },
+    { badge: 26, font: 13 },
+    { badge: 22, font: 12 }
+  ];
+
   function viewersChoiceCardHtml(v, rank) {
+    var isTop = rank === 1;
+    var size = VIEWERS_CHOICE_RANK_SIZES[rank - 1] || VIEWERS_CHOICE_RANK_SIZES[VIEWERS_CHOICE_RANK_SIZES.length - 1];
     return (
       '<div class="viewers-choice-card" data-rownum="' + escapeHtml(v.id) + '">' +
         '<div class="viewers-choice-thumb">' +
           (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
-          '<span class="viewers-choice-rank">#' + rank + "</span>" +
+          '<span class="viewers-choice-rank" style="width:' + size.badge + 'px;height:' + size.badge + 'px;font-size:' + size.font + 'px;">#' + rank + "</span>" +
         "</div>" +
         '<div class="viewers-choice-info">' +
-          '<div class="viewers-choice-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+          '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
           '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
           voterLineHtml("Top voter", v.topVoter) +
           voterLineHtml("Latest vote", v.latestVoter) +
