@@ -541,6 +541,19 @@ html, body {
   display: none;
 }
 
+/* Top-bar Vote icon -- same light-blue/black treatment as every other
+   Vote button on the site (.media-vote-btn/.lightbox-vote-btn), just a
+   filled circle behind the icon instead of a pill around text. */
+.header-icon-btn--vote {
+  background: var(--brand-lightblue);
+  border-radius: 50%;
+  color: #000;
+}
+
+.header-icon-btn--vote:hover {
+  filter: brightness(0.92);
+}
+
 .header-icon-btn svg {
   width: 20px;
   height: 20px;
@@ -1788,15 +1801,16 @@ html, body {
   object-fit: cover;
 }
 
-/* One-click Vote button in the title/description area below a
-   thumbnail -- Viewer's Choice and Latest Submissions cards (see
-   mediaVoteBtnHtml() in app.js; NOT Featured/Favorites, which don't pass
-   opts.showVoteButton to createMediaStrip()). Deliberately not overlaid
-   on the thumbnail image itself. Same light-blue/black/bold as requested
-   to echo the MVG logo's "G" -- see --brand-lightblue above. */
+/* One-click Vote button -- Viewer's Choice and Latest Submissions cards
+   (see mediaVoteBtnHtml() in app.js; NOT Featured/Favorites, which don't
+   pass opts.showVoteButton to createMediaStrip()). Light-blue/black/bold
+   to echo the MVG logo's "G" -- see --brand-lightblue above. Base class
+   is the inline placement Viewer's Choice uses (same line as the title,
+   see .viewers-choice-title-row); Latest Submissions adds the --overlay
+   modifier to pin it to the thumbnail's bottom-right corner instead. */
 .media-vote-btn {
+  flex: 0 0 auto;
   display: inline-block;
-  margin-top: 4px;
   border: none;
   border-radius: 999px;
   padding: 3px 10px;
@@ -1806,6 +1820,13 @@ html, body {
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.media-vote-btn--overlay {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
 }
 
 .media-vote-btn:hover {
@@ -3488,7 +3509,18 @@ body.is-searching #discoverSection {
   padding: 10px 12px 12px;
 }
 
+.viewers-choice-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .viewers-choice-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.35;
@@ -4142,16 +4174,18 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
-/* Same pill look as .lightbox-crop-btn -- casts this entry as the
-   signed-in visitor's one catalog-wide vote (see the Vote modal). */
+/* Same pill shape as .lightbox-crop-btn -- casts this entry as a vote
+   (see the Vote modal). Light-blue/black/bold like every other Vote
+   button on the site now (.media-vote-btn), not the neutral pill look
+   the rest of this toolbar row uses. */
 .lightbox-vote-btn {
   flex: 0 0 auto;
   height: 26px;
   padding: 0 9px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
+  border: none;
+  background: var(--brand-lightblue);
+  color: #000;
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
@@ -4159,14 +4193,11 @@ body.is-searching #discoverSection {
 }
 
 .lightbox-vote-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  filter: brightness(0.92);
 }
 
 .lightbox-vote-btn.is-active {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
+  filter: brightness(0.85);
 }
 
 /* Admin-only debug toggles -- same look as .lightbox-crop-btn. */

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.54.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.54.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2136,13 +2136,12 @@
             var sponsoredBadge = row.sponsored
               ? '<span class="sponsored-badge">Sponsored</span>'
               : "";
-            var voteBtn = opts.showVoteButton ? mediaVoteBtnHtml(row.rowNum) : "";
+            var voteBtn = opts.showVoteButton ? mediaVoteBtnHtml(row.rowNum, "media-vote-btn--overlay") : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
-                voteBtn +
                 descLine +
               "</div>"
             );
@@ -3515,8 +3514,10 @@
           '<span class="viewers-choice-rank" style="width:' + size.badge + 'px;height:' + size.badge + 'px;font-size:' + size.font + 'px;">#' + rank + "</span>" +
         "</div>" +
         '<div class="viewers-choice-info">' +
-          '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
-          mediaVoteBtnHtml(v.id) +
+          '<div class="viewers-choice-title-row">' +
+            '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+            mediaVoteBtnHtml(v.id) +
+          "</div>" +
           '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
           voterLineHtml("Top voter", v.topVoter) +
         "</div>" +
@@ -6870,9 +6871,13 @@
 
   // Same light-blue/black/bold treatment on both Viewer's Choice and
   // Latest Submissions thumbnails (see .media-vote-btn in styles.css) --
-  // a shared markup generator so both call sites stay in sync.
-  function mediaVoteBtnHtml(rowNum) {
-    return '<button type="button" class="media-vote-btn" data-vote-rownum="' + escapeHtml(rowNum) + '" title="Vote for this video" aria-label="Vote for this video">Vote</button>';
+  // a shared markup generator so both call sites stay in sync. The two
+  // placements differ though: Latest Submissions overlays it on the
+  // thumbnail's bottom-right corner (extraClass "media-vote-btn--overlay"),
+  // Viewer's Choice sits it inline on the title's own line instead.
+  function mediaVoteBtnHtml(rowNum, extraClass) {
+    var cls = "media-vote-btn" + (extraClass ? " " + extraClass : "");
+    return '<button type="button" class="' + cls + '" data-vote-rownum="' + escapeHtml(rowNum) + '" title="Vote for this video" aria-label="Vote for this video">Vote</button>';
   }
 
   function renderVoteSearchResults() {

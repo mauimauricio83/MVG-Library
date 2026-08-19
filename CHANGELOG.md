@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.54.2 — current
+- Refined the Vote button placements: Latest Submissions goes back to a bottom-right overlay on the thumbnail; Viewer's Choice sits inline on the same line as the title, right-aligned (`mediaVoteBtnHtml()` now takes an optional modifier class so the two placements share one base style -- `.media-vote-btn--overlay` for the overlay case).
+- Lightbox Vote button recolored to the same light-blue/black as every other Vote button on the site (was the neutral pill look shared with Crop/Widen).
+- Top-bar Vote icon recolored to a light-blue circle with a black icon, matching the same treatment.
+- Moved the Vote Credits buy-buttons row to the top of the Vote modal, above the search bar (was at the bottom, after the Top Videos leaderboard).
+
 ## v5.54.1 — current
 - Moved the new thumbnail Vote button off the thumbnail image itself and into the title/description area below it, on both Viewer's Choice and Latest Submissions cards.
 - Viewer's Choice cards no longer show "Latest vote" -- Top voter only.

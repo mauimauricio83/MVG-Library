@@ -119,7 +119,7 @@
     </button>
   </div>
   <div class="top-bar-actions">
-    <button type="button" class="header-icon-btn" id="topBarVoteBtn" aria-label="Vote" title="Vote">
+    <button type="button" class="header-icon-btn header-icon-btn--vote" id="topBarVoteBtn" aria-label="Vote" title="Vote">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/></svg>
     </button>
     <button type="button" class="header-icon-btn" id="topBarSettingsBtn" aria-label="Settings" title="Settings">
@@ -1137,18 +1137,6 @@
     <div class="vote-body">
       <h2 class="vote-title">Vote for your favorite</h2>
       <p class="vote-hint" id="voteModalHint">Search the catalog and vote for as many videos, as many times, as you like.</p>
-      <p class="settings-status" id="voteStatus" hidden></p>
-
-      <div class="vote-signin-prompt" id="voteSignInPrompt" hidden>
-        <p>Sign in to vote.</p>
-        <button type="button" class="submit-form-btn" id="voteSignInBtn">Sign in with Google</button>
-      </div>
-
-      <input type="search" id="voteSearchInput" class="admin-search" placeholder="Search artist, song, or director…">
-      <div class="admin-entries-list" id="voteSearchResults"></div>
-
-      <h3 class="vote-leaderboard-title">Top Videos</h3>
-      <div class="admin-entries-list" id="voteLeaderboard"></div>
 
       <div class="settings-row settings-row-wallet" id="voteCreditsRow" hidden>
         <div>
@@ -1161,6 +1149,19 @@
           <button type="button" class="settings-action-btn" data-wallet-bundle="superfan">+30 -- $20</button>
         </div>
       </div>
+
+      <p class="settings-status" id="voteStatus" hidden></p>
+
+      <div class="vote-signin-prompt" id="voteSignInPrompt" hidden>
+        <p>Sign in to vote.</p>
+        <button type="button" class="submit-form-btn" id="voteSignInBtn">Sign in with Google</button>
+      </div>
+
+      <input type="search" id="voteSearchInput" class="admin-search" placeholder="Search artist, song, or director…">
+      <div class="admin-entries-list" id="voteSearchResults"></div>
+
+      <h3 class="vote-leaderboard-title">Top Videos</h3>
+      <div class="admin-entries-list" id="voteLeaderboard"></div>
     </div>
   </div>
 </div>
