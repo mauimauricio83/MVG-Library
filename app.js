@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.53.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.54.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -84,7 +84,7 @@
   // (see createWalletCheckout's successUrl in functions/index.js -- there's
   // no redirect on cancel, only on payment) -- the query param is
   // stripped immediately so a refresh doesn't re-show the message, and
-  // openSettingsModal() surfaces it the first time Settings opens after
+  // openVoteModal() surfaces it the first time the Vote modal opens after
   // redirect (auto-triggered below, right after auth.onAuthStateChanged
   // resolves).
   var walletPurchaseResult = null;
@@ -406,7 +406,7 @@
     adminReservedInput: document.getElementById("adminReservedInput"),
     adminReservedAddBtn: document.getElementById("adminReservedAddBtn"),
     adminReservedList: document.getElementById("adminReservedList"),
-    openVoteBtn: document.getElementById("openVoteBtn"),
+    topBarVoteBtn: document.getElementById("topBarVoteBtn"),
     voteModal: document.getElementById("voteModal"),
     voteClose: document.getElementById("voteClose"),
     voteModalHint: document.getElementById("voteModalHint"),
@@ -2098,6 +2098,11 @@
     }
 
     track.addEventListener("click", function (e) {
+      var voteBtn = e.target.closest(".media-vote-btn");
+      if (voteBtn) {
+        voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
+        return;
+      }
       var card = e.target.closest(".media-strip-card");
       if (!card) return;
       var row = findRowByNum(card.getAttribute("data-row"));
@@ -2131,9 +2136,10 @@
             var sponsoredBadge = row.sponsored
               ? '<span class="sponsored-badge">Sponsored</span>'
               : "";
+            var voteBtn = opts.showVoteButton ? mediaVoteBtnHtml(row.rowNum) : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
                 descLine +
@@ -2146,7 +2152,7 @@
     };
   }
 
-  var latestStrip = createMediaStrip(els.latestStrip);
+  var latestStrip = createMediaStrip(els.latestStrip, { showVoteButton: true });
   var featuredStrip = createMediaStrip(els.featuredStrip);
   var favoritesStrip = createMediaStrip(els.favoritesStrip, {
     emptyMessage: "Nothing favorited yet — hit the ♡ on anything that hits different.",
@@ -3506,6 +3512,7 @@
         '<div class="viewers-choice-thumb">' +
           (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
           '<span class="viewers-choice-rank" style="width:' + size.badge + 'px;height:' + size.badge + 'px;font-size:' + size.font + 'px;">#' + rank + "</span>" +
+          mediaVoteBtnHtml(v.id) +
         "</div>" +
         '<div class="viewers-choice-info">' +
           '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
@@ -3543,6 +3550,11 @@
   }
 
   els.viewersChoiceSection.addEventListener("click", function (e) {
+    var voteBtn = e.target.closest(".media-vote-btn");
+    if (voteBtn) {
+      voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
+      return;
+    }
     var card = e.target.closest(".viewers-choice-card");
     if (!card) return;
     var row = findRowByNum(card.getAttribute("data-rownum"));
@@ -6628,7 +6640,7 @@
     var bundle = btn.getAttribute("data-wallet-bundle");
     var buttons = els.walletBuyButtons.querySelectorAll("button");
     Array.prototype.forEach.call(buttons, function (b) { b.disabled = true; });
-    els.settingsStatus.hidden = true;
+    els.voteStatus.hidden = true;
     var baseUrl = location.origin + location.pathname;
     functionsClient.httpsCallable("createWalletCheckout")({
       bundle: bundle,
@@ -6645,9 +6657,9 @@
       window.top.location.href = result.data.url;
     }).catch(function (err) {
       console.error("Starting checkout failed:", err);
-      els.settingsStatus.textContent = "Couldn't start checkout: " + err.message;
-      els.settingsStatus.className = "settings-status is-error";
-      els.settingsStatus.hidden = false;
+      els.voteStatus.textContent = "Couldn't start checkout: " + err.message;
+      els.voteStatus.className = "settings-status is-error";
+      els.voteStatus.hidden = false;
       Array.prototype.forEach.call(buttons, function (b) { b.disabled = false; });
     });
   });
@@ -6769,27 +6781,8 @@
     els.settingsStatus.hidden = true;
     els.voterNameRow.hidden = !currentUser;
     els.usernameRow.hidden = !currentUser;
-    els.voteCreditsRow.hidden = !currentUser;
     applyVoterNameToggle();
     applyUsernameSettingsField();
-    applyVoteCreditsField();
-    if (walletPurchaseResult === "success") {
-      els.settingsStatus.textContent = "Payment received -- your vote credits will appear shortly.";
-      els.settingsStatus.className = "settings-status";
-      els.settingsStatus.hidden = false;
-    }
-    walletPurchaseResult = null;
-    // Live for as long as Settings stays open so a webhook-applied credit
-    // (see lemonSqueezyWebhook in functions/index.js) shows up here
-    // without needing a reload -- syncFromFirestore() itself only ever
-    // does a one-time read, on sign-in.
-    if (currentUser && !voteCreditsUnsub) {
-      voteCreditsUnsub = db.collection("users").doc(currentUser.uid).onSnapshot(function (doc) {
-        var remote = doc.exists ? doc.data() : {};
-        voteCredits = typeof remote.voteCredits === "number" ? remote.voteCredits : 0;
-        applyVoteCreditsField();
-      });
-    }
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     applyAutoplayToggle(loadAutoplayPref());
@@ -6803,7 +6796,6 @@
     if (els.settingsModal.hidden) return;
     els.settingsModal.hidden = true;
     unlockBodyScroll();
-    if (voteCreditsUnsub) { voteCreditsUnsub(); voteCreditsUnsub = null; }
   }
 
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
@@ -6853,6 +6845,34 @@
       btn.textContent = original;
       btn.classList.remove("is-active");
     }, 1200);
+  }
+
+  // Shared by every one-click Vote button that isn't the Vote modal's own
+  // search results (lightbox, Viewer's Choice cards, Latest Submissions
+  // cards) -- prompts sign-in first if needed, same as the lightbox
+  // button always did, so a signed-out visitor can still vote in one
+  // click instead of hitting a dead end.
+  function voteForRowNum(rowNum, btn) {
+    var row = findRowByNum(rowNum);
+    if (!row) return;
+    btn.disabled = true;
+    var afterSignIn = currentUser ? Promise.resolve() : auth.signInWithPopup(googleProvider);
+    afterSignIn.then(function () {
+      return castVote(row);
+    }).then(function () {
+      flashVoteBtn(btn);
+    }).catch(function (err) {
+      console.error("Vote failed:", err);
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  }
+
+  // Same light-blue/black/bold treatment on both Viewer's Choice and
+  // Latest Submissions thumbnails (see .media-vote-btn in styles.css) --
+  // a shared markup generator so both call sites stay in sync.
+  function mediaVoteBtnHtml(rowNum) {
+    return '<button type="button" class="media-vote-btn" data-vote-rownum="' + escapeHtml(rowNum) + '" title="Vote for this video" aria-label="Vote for this video">Vote</button>';
   }
 
   function renderVoteSearchResults() {
@@ -6916,6 +6936,26 @@
         els.voteStatus.className = "settings-status is-error";
         els.voteStatus.hidden = false;
       });
+
+    els.voteCreditsRow.hidden = !currentUser;
+    applyVoteCreditsField();
+    if (walletPurchaseResult === "success") {
+      els.voteStatus.textContent = "Payment received -- your vote credits will appear shortly.";
+      els.voteStatus.className = "settings-status";
+      els.voteStatus.hidden = false;
+    }
+    walletPurchaseResult = null;
+    // Live for as long as the Vote modal stays open so a webhook-applied
+    // credit (see lemonSqueezyWebhook in functions/index.js) shows up
+    // here without needing a reload -- syncFromFirestore() itself only
+    // ever does a one-time read, on sign-in.
+    if (currentUser && !voteCreditsUnsub) {
+      voteCreditsUnsub = db.collection("users").doc(currentUser.uid).onSnapshot(function (doc) {
+        var remote = doc.exists ? doc.data() : {};
+        voteCredits = typeof remote.voteCredits === "number" ? remote.voteCredits : 0;
+        applyVoteCreditsField();
+      });
+    }
   }
 
   function closeVoteModal() {
@@ -6923,9 +6963,10 @@
     els.voteModal.hidden = true;
     unlockBodyScroll();
     if (voteLeaderboardUnsub) { voteLeaderboardUnsub(); voteLeaderboardUnsub = null; }
+    if (voteCreditsUnsub) { voteCreditsUnsub(); voteCreditsUnsub = null; }
   }
 
-  els.openVoteBtn.addEventListener("click", openVoteModal);
+  els.topBarVoteBtn.addEventListener("click", openVoteModal);
   els.voteClose.addEventListener("click", closeVoteModal);
   els.voteModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeVoteModal();
@@ -10555,19 +10596,7 @@
     }
     var voteBtn = e.target.closest(".lightbox-vote-btn");
     if (voteBtn) {
-      var voteRow = findRowByNum(voteBtn.getAttribute("data-rownum"));
-      if (!voteRow) return;
-      voteBtn.disabled = true;
-      var afterSignIn = currentUser ? Promise.resolve() : auth.signInWithPopup(googleProvider);
-      afterSignIn.then(function () {
-        return castVote(voteRow);
-      }).then(function () {
-        flashVoteBtn(voteBtn);
-      }).catch(function (err) {
-        console.error("Vote failed:", err);
-      }).finally(function () {
-        voteBtn.disabled = false;
-      });
+      voteForRowNum(voteBtn.getAttribute("data-rownum"), voteBtn);
       return;
     }
     var playlistBtn = e.target.closest(".lightbox-playlist-btn");
@@ -11048,7 +11077,7 @@
     watchMsgBoardOwnStatus();
     updateProfilesAuthUI();
     refreshNotificationBadge();
-    if (walletPurchaseResult) openSettingsModal();
+    if (walletPurchaseResult) openVoteModal();
   });
 
   fetchData();

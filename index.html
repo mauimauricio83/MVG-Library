@@ -119,6 +119,9 @@
     </button>
   </div>
   <div class="top-bar-actions">
+    <button type="button" class="header-icon-btn" id="topBarVoteBtn" aria-label="Vote" title="Vote">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/></svg>
+    </button>
     <button type="button" class="header-icon-btn" id="topBarSettingsBtn" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
     </button>
@@ -149,10 +152,6 @@
     <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarFavoritesBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9Z"/></svg></span>
       <span class="header-links-label">Favorites</span>
-    </button>
-    <button type="button" class="submit-link header-account-btn" id="openVoteBtn" data-nav-mode="watch">
-      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/></svg></span>
-      <span class="header-links-label">Vote</span>
     </button>
     <button type="button" class="submit-link header-account-btn sidebar-page-link" id="sidebarPlaylistsBtn" data-nav-mode="watch">
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
@@ -1099,17 +1098,6 @@
           <button type="button" class="settings-action-btn" id="usernameSaveBtn">Save</button>
         </div>
       </div>
-      <div class="settings-row settings-row-wallet" id="voteCreditsRow" hidden>
-        <div>
-          <div class="settings-row-label">Vote Credits</div>
-          <div class="settings-row-hint">Balance: <span id="voteCreditsBalance">0</span> credit(s). Voting is free right now -- credits aren't required yet.</div>
-        </div>
-        <div class="settings-wallet-buttons" id="walletBuyButtons">
-          <button type="button" class="settings-action-btn" data-wallet-bundle="starter">+5 -- $5</button>
-          <button type="button" class="settings-action-btn" data-wallet-bundle="popular">+12 -- $10</button>
-          <button type="button" class="settings-action-btn" data-wallet-bundle="superfan">+30 -- $20</button>
-        </div>
-      </div>
       <div class="settings-row" id="voterNameRow" hidden>
         <div>
           <div class="settings-row-label">Show my name on videos I vote for</div>
@@ -1161,6 +1149,18 @@
 
       <h3 class="vote-leaderboard-title">Top Videos</h3>
       <div class="admin-entries-list" id="voteLeaderboard"></div>
+
+      <div class="settings-row settings-row-wallet" id="voteCreditsRow" hidden>
+        <div>
+          <div class="settings-row-label">Vote Credits</div>
+          <div class="settings-row-hint">Balance: <span id="voteCreditsBalance">0</span> credit(s). Voting is free right now -- credits aren't required yet.</div>
+        </div>
+        <div class="settings-wallet-buttons" id="walletBuyButtons">
+          <button type="button" class="settings-action-btn" data-wallet-bundle="starter">+5 -- $5</button>
+          <button type="button" class="settings-action-btn" data-wallet-bundle="popular">+12 -- $10</button>
+          <button type="button" class="settings-action-btn" data-wallet-bundle="superfan">+30 -- $20</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

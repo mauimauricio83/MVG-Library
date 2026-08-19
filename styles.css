@@ -36,6 +36,11 @@
   --tag-docu: #92660f;
   --tag-docu-bg: #faf1de;
   --brand-yellow: #a68900;
+  /* The "G" in the MVG logo -- used as a button background with fixed
+     black text on top, so (unlike --brand-yellow, a text color that needs
+     contrast against a variable page background) this one constant value
+     works the same in both themes; no light/dark duplication needed. */
+  --brand-lightblue: #4fe6ee;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(20, 20, 30, 0.04), 0 1px 8px rgba(20, 20, 30, 0.03);
 }
@@ -1781,6 +1786,42 @@ html, body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* One-click Vote button overlaid on a thumbnail -- Viewer's Choice and
+   Latest Submissions cards (see mediaVoteBtnHtml() in app.js; NOT
+   Featured/Favorites, which don't pass opts.showVoteButton to
+   createMediaStrip()). Bottom-right so it never collides with the
+   top-left rank badge (Viewer's Choice) or sponsored badge (Latest
+   Submissions). Same light-blue/black/bold as requested to echo the
+   MVG logo's "G" -- see --brand-lightblue above. */
+.media-vote-btn {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--brand-lightblue);
+  color: #000;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.media-vote-btn:hover {
+  filter: brightness(0.92);
+}
+
+.media-vote-btn.is-active {
+  filter: brightness(0.85);
+}
+
+.media-vote-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .media-strip-song {

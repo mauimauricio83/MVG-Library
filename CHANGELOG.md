@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.54.0 — current
+- Added a one-click **Vote** button directly on Viewer's Choice and Latest Submissions thumbnails (bottom-right, light-blue/black/bold to echo the MVG logo's "G" -- new `--brand-lightblue` CSS variable). Featured/Favorites intentionally don't get one -- `createMediaStrip()` gained an opt-in `showVoteButton` flag, only passed for Latest Submissions. Shares the same sign-in-then-vote flow the lightbox's Vote button already had (new `voteForRowNum()` helper factors that logic out so all three call sites -- lightbox, Viewer's Choice, Latest Submissions -- stay in sync instead of duplicating it).
+- Moved the **Vote** nav link from the left sidebar into a new icon-only button in the top bar, to the left of Settings (`topBarVoteBtn`) -- matches the icon-only pattern Settings/Admin/Sign-in already use there. No longer in the sidebar at all.
+- Moved the **Vote Credits** buy-buttons row from the Settings modal into the Vote modal, at the bottom (after the Top Videos leaderboard) -- makes more sense living next to voting itself. All the wallet-balance live-listener/status-message logic moved from `openSettingsModal()`/`closeSettingsModal()` to `openVoteModal()`/`closeVoteModal()` accordingly; no id/behavior changes otherwise.
+
 ## v5.53.0 — current
 - Swapped the vote-credit wallet's payment backend from Stripe to **Lemon Squeezy** -- Stripe doesn't support Philippines-registered merchant accounts, so onboarding was a dead end. Lemon Squeezy is a Merchant of Record (no US entity needed, settles to a PH bank/Wise/Payoneer) with broader international card support (including Amex) than the PH-specific gateways (PayMongo/Xendit), which matters since most of the audience is non-Filipino.
   - `functions/index.js`: `createWalletCheckout` now calls the Lemon Squeezy Checkout API (bound to a pre-created Product Variant per bundle, not a dynamic price the way Stripe's price_data was) instead of Stripe; `stripeWebhook` is replaced by `lemonSqueezyWebhook`, verifying Lemon Squeezy's HMAC-SHA256 `X-Signature` instead of Stripe's signature scheme, crediting `voteCredits` on a paid `order_created` event.
