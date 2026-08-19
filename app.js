@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.49.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.49.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9348,11 +9348,11 @@
     }
   }
 
-  function drawGraphicFooter(ctx) {
+  function drawGraphicFooter(ctx, text) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#6f6a7c";
     ctx.font = "24px -apple-system, sans-serif";
-    ctx.fillText("themusicvideoguy.com", GRAPHIC_W / 2, GRAPHIC_H - 36);
+    ctx.fillText(text || "themusicvideoguy.com", GRAPHIC_W / 2, GRAPHIC_H - 36);
   }
 
   function roundRectPath(ctx, x, y, w, h, r) {
@@ -9404,7 +9404,7 @@
 
   // Vertical countdown list -- used for both Top 5 This Week and Maui's
   // Picks, which only differ in title/data source.
-  function renderListGraphic(title, subtitle, items) {
+  function renderListGraphic(title, subtitle, items, footerText) {
     return ensureGraphicFontsReady().then(function () {
       return Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); }));
     }).then(function (images) {
@@ -9450,7 +9450,7 @@
         }
       });
 
-      drawGraphicFooter(ctx);
+      drawGraphicFooter(ctx, footerText);
       return canvas;
     });
   }
@@ -9574,7 +9574,7 @@
     runGraphicGeneration(function () {
       return fetchTopVotedGraphicItems().then(function (items) {
         if (!items.length) return Promise.reject(new Error("No votes yet."));
-        return renderListGraphic("TOP 5 THIS WEEK", "Viewer's Choice", items);
+        return renderListGraphic("TOP 5 THIS WEEK", "Viewer's Choice", items, "Vote! Visit themusicvideoguy.com (link in bio!)");
       });
     }, "top-5-this-week.png");
   });

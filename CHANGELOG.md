@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.49.1 — current
+- The Top 5 This Week graphic's footer now reads "Vote! Visit themusicvideoguy.com (link in bio!)" instead of the plain site URL the other two graphics still use -- a real call-to-action on the one graphic that's actually about voting. Verified it fits the 1080px canvas width with room to spare (renders at ~479px, centered).
+
 ## v5.49.0 — current
 - Renamed "Spotlight" to "Maui's Picks" everywhere a visitor or admin actually sees it (section title, the admin form's checkbox, the Manage Entries badge). Internal class names/field names (`spotlight`, `.spotlight-card`, etc.) deliberately left alone -- purely a display-label change, not a data model one.
 - New admin "Social Graphics" section: auto-generates 1080x1350 (Instagram portrait) images for **Top 5 This Week** (Viewer's Choice), **10 Latest Submissions** (2-column grid), and **Maui's Picks** -- same black/purple gradient as the landing page's title card. Pure client-side `<canvas>` rendering, no backend involved; verified in-browser that both YouTube's and Vimeo's thumbnail CDNs send the CORS headers needed to draw them onto a canvas and still export it (a thumbnail that fails to load for any reason is skipped with a plain placeholder block rather than failing the whole graphic). Pick one, wait for it to render, then download the PNG straight from the admin panel.
