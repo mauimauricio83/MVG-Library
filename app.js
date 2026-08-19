@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.54.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.54.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -2139,9 +2139,10 @@
             var voteBtn = opts.showVoteButton ? mediaVoteBtnHtml(row.rowNum) : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
+                voteBtn +
                 descLine +
               "</div>"
             );
@@ -3512,13 +3513,12 @@
         '<div class="viewers-choice-thumb">' +
           (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
           '<span class="viewers-choice-rank" style="width:' + size.badge + 'px;height:' + size.badge + 'px;font-size:' + size.font + 'px;">#' + rank + "</span>" +
-          mediaVoteBtnHtml(v.id) +
         "</div>" +
         '<div class="viewers-choice-info">' +
           '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+          mediaVoteBtnHtml(v.id) +
           '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
           voterLineHtml("Top voter", v.topVoter) +
-          voterLineHtml("Latest vote", v.latestVoter) +
         "</div>" +
       "</div>"
     );

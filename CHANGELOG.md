@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.54.1 — current
+- Moved the new thumbnail Vote button off the thumbnail image itself and into the title/description area below it, on both Viewer's Choice and Latest Submissions cards.
+- Viewer's Choice cards no longer show "Latest vote" -- Top voter only.
+
 ## v5.54.0 — current
 - Added a one-click **Vote** button directly on Viewer's Choice and Latest Submissions thumbnails (bottom-right, light-blue/black/bold to echo the MVG logo's "G" -- new `--brand-lightblue` CSS variable). Featured/Favorites intentionally don't get one -- `createMediaStrip()` gained an opt-in `showVoteButton` flag, only passed for Latest Submissions. Shares the same sign-in-then-vote flow the lightbox's Vote button already had (new `voteForRowNum()` helper factors that logic out so all three call sites -- lightbox, Viewer's Choice, Latest Submissions -- stay in sync instead of duplicating it).
 - Moved the **Vote** nav link from the left sidebar into a new icon-only button in the top bar, to the left of Settings (`topBarVoteBtn`) -- matches the icon-only pattern Settings/Admin/Sign-in already use there. No longer in the sidebar at all.

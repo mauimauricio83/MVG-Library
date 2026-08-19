@@ -1788,21 +1788,18 @@ html, body {
   object-fit: cover;
 }
 
-/* One-click Vote button overlaid on a thumbnail -- Viewer's Choice and
-   Latest Submissions cards (see mediaVoteBtnHtml() in app.js; NOT
-   Featured/Favorites, which don't pass opts.showVoteButton to
-   createMediaStrip()). Bottom-right so it never collides with the
-   top-left rank badge (Viewer's Choice) or sponsored badge (Latest
-   Submissions). Same light-blue/black/bold as requested to echo the
-   MVG logo's "G" -- see --brand-lightblue above. */
+/* One-click Vote button in the title/description area below a
+   thumbnail -- Viewer's Choice and Latest Submissions cards (see
+   mediaVoteBtnHtml() in app.js; NOT Featured/Favorites, which don't pass
+   opts.showVoteButton to createMediaStrip()). Deliberately not overlaid
+   on the thumbnail image itself. Same light-blue/black/bold as requested
+   to echo the MVG logo's "G" -- see --brand-lightblue above. */
 .media-vote-btn {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  z-index: 1;
+  display: inline-block;
+  margin-top: 4px;
   border: none;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   background: var(--brand-lightblue);
   color: #000;
   font: inherit;
