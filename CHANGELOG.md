@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.52.1 — current
+- Fix: buying vote credits redirected nowhere -- Stripe Checkout refuses to render inside an iframe (an anti-clickjacking measure on Stripe's own end), and themusicvideoguy.com embeds this app in one. `window.location.href = ...` was only ever navigating the iframe; switched to `window.top.location.href`, the one target browsers always allow setting cross-origin even though they block reading it, so it breaks out to the real tab regardless of whether the page is framed or standalone.
+
 ## v5.52.0 — current
 - New backend scaffolding for a future **prepaid vote-credit wallet** ($1 = 1 vote credit, bought in bundles so a Stripe charge doesn't fire on every single vote). Voting stays completely free right now -- nothing here is wired into the live voting flow yet.
   - `functions/index.js`: `createWalletCheckout` (Stripe Checkout session for a bundle), `stripeWebhook` (credits `users/{uid}.voteCredits` on `checkout.session.completed`, idempotent via a `walletTransactions` doc keyed by Stripe session ID), `castVoteWithCredit` (the future paid-vote path -- checks balance, decrements it, writes the same `voteEvents` shape `castVote()` does today, all in one transaction).

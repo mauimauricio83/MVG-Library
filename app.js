@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.52.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.52.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6631,7 +6631,15 @@
       successUrl: baseUrl + "?walletPurchase=success",
       cancelUrl: baseUrl + "?walletPurchase=cancel"
     }).then(function (result) {
-      window.location.href = result.data.url;
+      // themusicvideoguy.com embeds this app in an iframe, and Stripe
+      // Checkout refuses to render inside one (a deliberate anti-
+      // clickjacking measure on Stripe's end) -- window.top.location is
+      // the one navigation target that's always allowed cross-origin
+      // (browsers permit *setting* it even though they block *reading*
+      // it), so this breaks out to the real top-level tab regardless of
+      // whether the page is framed or standalone. When standalone,
+      // window.top === window, so this is a no-op difference.
+      window.top.location.href = result.data.url;
     }).catch(function (err) {
       console.error("Starting checkout failed:", err);
       els.settingsStatus.textContent = "Couldn't start checkout: " + err.message;
