@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.52.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.53.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -80,12 +80,13 @@
   // the balance shown in Settings.
   var voteCredits = 0;
   var voteCreditsUnsub = null;
-  // Stripe redirects back to this page after Checkout (see
-  // createWalletCheckout's successUrl/cancelUrl in functions/index.js) --
-  // the query param is stripped immediately so a refresh doesn't re-show
-  // the message, and openSettingsModal() surfaces it the first time
-  // Settings opens after redirect (auto-triggered below, right after
-  // auth.onAuthStateChanged resolves).
+  // Lemon Squeezy redirects back to this page after a successful Checkout
+  // (see createWalletCheckout's successUrl in functions/index.js -- there's
+  // no redirect on cancel, only on payment) -- the query param is
+  // stripped immediately so a refresh doesn't re-show the message, and
+  // openSettingsModal() surfaces it the first time Settings opens after
+  // redirect (auto-triggered below, right after auth.onAuthStateChanged
+  // resolves).
   var walletPurchaseResult = null;
   (function () {
     var params = new URLSearchParams(location.search);
@@ -6611,13 +6612,16 @@
     els.voteCreditsBalance.textContent = voteCredits;
   }
 
-  // Sends the user to Stripe Checkout for the chosen bundle (see
+  // Sends the user to Lemon Squeezy Checkout for the chosen bundle (see
   // WALLET_BUNDLES in functions/index.js -- price/credit amounts are
-  // decided server-side, the client only picks a bundle id). Stripe
-  // redirects back to this same page afterward (see the walletPurchase
-  // handling near auth.onAuthStateChanged below); the actual credit isn't
-  // applied by that redirect -- stripeWebhook does it asynchronously once
-  // Stripe confirms payment.
+  // decided server-side, the client only picks a bundle id). Lemon
+  // Squeezy has no cancel_url concept the way Stripe Checkout did --
+  // closing the checkout without paying just does nothing, no redirect
+  // back here. Successful payment does redirect back (see the
+  // walletPurchase handling near auth.onAuthStateChanged below); the
+  // actual credit isn't applied by that redirect though -- the
+  // lemonSqueezyWebhook Function does it asynchronously once Lemon
+  // Squeezy confirms payment.
   els.walletBuyButtons.addEventListener("click", function (e) {
     var btn = e.target.closest("[data-wallet-bundle]");
     if (!btn || !currentUser) return;
@@ -6628,17 +6632,16 @@
     var baseUrl = location.origin + location.pathname;
     functionsClient.httpsCallable("createWalletCheckout")({
       bundle: bundle,
-      successUrl: baseUrl + "?walletPurchase=success",
-      cancelUrl: baseUrl + "?walletPurchase=cancel"
+      successUrl: baseUrl + "?walletPurchase=success"
     }).then(function (result) {
-      // themusicvideoguy.com embeds this app in an iframe, and Stripe
-      // Checkout refuses to render inside one (a deliberate anti-
-      // clickjacking measure on Stripe's end) -- window.top.location is
-      // the one navigation target that's always allowed cross-origin
-      // (browsers permit *setting* it even though they block *reading*
-      // it), so this breaks out to the real top-level tab regardless of
-      // whether the page is framed or standalone. When standalone,
-      // window.top === window, so this is a no-op difference.
+      // themusicvideoguy.com embeds this app in an iframe, and hosted
+      // checkout pages generally refuse to render inside one (a common
+      // anti-clickjacking measure) -- window.top.location is the one
+      // navigation target that's always allowed cross-origin (browsers
+      // permit *setting* it even though they block *reading* it), so
+      // this breaks out to the real top-level tab regardless of whether
+      // the page is framed or standalone. When standalone, window.top
+      // === window, so this is a no-op difference.
       window.top.location.href = result.data.url;
     }).catch(function (err) {
       console.error("Starting checkout failed:", err);
@@ -6774,16 +6777,12 @@
       els.settingsStatus.textContent = "Payment received -- your vote credits will appear shortly.";
       els.settingsStatus.className = "settings-status";
       els.settingsStatus.hidden = false;
-    } else if (walletPurchaseResult === "cancel") {
-      els.settingsStatus.textContent = "Checkout canceled -- no charge made.";
-      els.settingsStatus.className = "settings-status is-error";
-      els.settingsStatus.hidden = false;
     }
     walletPurchaseResult = null;
     // Live for as long as Settings stays open so a webhook-applied credit
-    // (see stripeWebhook in functions/index.js) shows up here without
-    // needing a reload -- syncFromFirestore() itself only ever does a
-    // one-time read, on sign-in.
+    // (see lemonSqueezyWebhook in functions/index.js) shows up here
+    // without needing a reload -- syncFromFirestore() itself only ever
+    // does a one-time read, on sign-in.
     if (currentUser && !voteCreditsUnsub) {
       voteCreditsUnsub = db.collection("users").doc(currentUser.uid).onSnapshot(function (doc) {
         var remote = doc.exists ? doc.data() : {};

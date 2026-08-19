@@ -30,7 +30,7 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-const Stripe = require("stripe");
+const crypto = require("crypto");
 
 initializeApp();
 const db = getFirestore();
@@ -114,45 +114,58 @@ exports.onUsernameWritten = onDocumentWritten("usernames/{usernameKey}", async (
   });
 });
 
-// ---- Prepaid vote credits (Stripe) -----------------------------------
+// ---- Prepaid vote credits (Lemon Squeezy) -----------------------------
 // Voting is free today (see onVoteEventCreated above -- the client writes
 // voteEvents/{id} directly, no payment involved). This block is the
 // backend half of a future pay-per-vote model: buy a bundle of $1 "vote
-// credits" once via Stripe Checkout, then spend them one at a time with
-// no repeated card charge/re-auth per vote. Nothing here is wired into
-// the live site yet -- app.js's castVote() is untouched, and none of
-// these Functions are called from anywhere in the client yet. Turning it
-// on later is a client change (call castVoteWithCredit instead of
-// writing voteEvents directly) plus deploying this file and the updated
-// firestore.rules.
+// credits" once via a hosted checkout, then spend them one at a time
+// with no repeated card charge/re-auth per vote. Nothing here is wired
+// into the live site yet -- app.js's castVote() is untouched, and none
+// of these Functions are called from anywhere in the client yet.
+//
+// Uses Lemon Squeezy, not Stripe -- Stripe doesn't support Philippines-
+// registered merchant accounts, so it was a dead end. Lemon Squeezy is a
+// Merchant of Record (it legally resells on your behalf), which means no
+// US entity is required and it settles payouts to a PH bank/Wise/
+// Payoneer. Trade-off: since it's an MoR, it binds a checkout to one
+// specific pre-created product Variant rather than a dynamic price the
+// way Stripe's price_data did, so each bundle below needs its own
+// Product+Variant created first in the Lemon Squeezy Dashboard.
 //
 // Requires two Firebase Functions secrets, set once via:
-//   firebase functions:secrets:set STRIPE_SECRET_KEY
-//   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
-// STRIPE_WEBHOOK_SECRET comes from the Stripe Dashboard once a webhook
-// endpoint is created pointing at this deployed stripeWebhook's URL,
-// subscribed to the checkout.session.completed event.
+//   firebase functions:secrets:set LEMONSQUEEZY_API_KEY
+//   firebase functions:secrets:set LEMONSQUEEZY_WEBHOOK_SECRET
+// LEMONSQUEEZY_API_KEY: Dashboard -> Settings -> API -> create an API key.
+// LEMONSQUEEZY_WEBHOOK_SECRET: the signing secret shown when creating a
+// webhook (Dashboard -> Settings -> Webhooks) pointed at this deployed
+// lemonSqueezyWebhook's URL, subscribed to the order_created event.
 
-const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
-const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+const lemonSqueezyApiKey = defineSecret("LEMONSQUEEZY_API_KEY");
+const lemonSqueezyWebhookSecret = defineSecret("LEMONSQUEEZY_WEBHOOK_SECRET");
 
-// Server-defined on purpose -- a client can only ever pick a bundle ID,
-// never the price or credit count, so there's no way to tamper with a
-// Checkout Session's amount from the browser. Tune freely; nothing else
-// depends on these specific numbers.
+// Not secret (just Lemon Squeezy catalog IDs, not credentials), but each
+// REPLACE_ placeholder below must be filled in with the real store ID
+// and each bundle's real variant ID -- Dashboard -> Products -> a
+// product's variant -- before this actually works. A checkout attempt
+// against a placeholder ID will fail with a Lemon Squeezy API error, not
+// silently misbehave.
+const LEMONSQUEEZY_STORE_ID = "REPLACE_WITH_STORE_ID";
+
 const WALLET_BUNDLES = {
-  starter: { credits: 5, amountCents: 500, label: "5 vote credits" },
-  popular: { credits: 12, amountCents: 1000, label: "12 vote credits" },
-  superfan: { credits: 30, amountCents: 2000, label: "30 vote credits" }
+  starter: { credits: 5, variantId: "REPLACE_WITH_STARTER_VARIANT_ID", label: "5 vote credits" },
+  popular: { credits: 12, variantId: "REPLACE_WITH_POPULAR_VARIANT_ID", label: "12 vote credits" },
+  superfan: { credits: 30, variantId: "REPLACE_WITH_SUPERFAN_VARIANT_ID", label: "30 vote credits" }
 };
 
 // Called from the client (e.g. an "Add vote credits" button) with
-// { bundle: "starter" | "popular" | "superfan", successUrl, cancelUrl }.
-// Returns { url } -- redirect the browser there to open Stripe Checkout.
-// The purchasing uid and credit count travel in the session's metadata,
-// not in anything the client controls past bundle selection, so
-// stripeWebhook below can trust them once Stripe's signature checks out.
-exports.createWalletCheckout = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+// { bundle: "starter" | "popular" | "superfan", successUrl }. Returns
+// { url } -- redirect the browser there to open the hosted checkout.
+// The purchasing uid and credit count travel in the checkout's custom
+// data, not in anything the client controls past bundle selection, so
+// lemonSqueezyWebhook below can trust them once its signature checks out.
+// Unlike Stripe Checkout, Lemon Squeezy has no separate cancel_url --
+// closing the checkout without paying just does nothing, no redirect.
+exports.createWalletCheckout = onCall({ secrets: [lemonSqueezyApiKey] }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
 
   const bundleId = request.data && request.data.bundle;
@@ -160,72 +173,91 @@ exports.createWalletCheckout = onCall({ secrets: [stripeSecretKey] }, async (req
   if (!bundle) throw new HttpsError("invalid-argument", "Unknown bundle.");
 
   const successUrl = request.data.successUrl;
-  const cancelUrl = request.data.cancelUrl;
-  if (typeof successUrl !== "string" || typeof cancelUrl !== "string") {
-    throw new HttpsError("invalid-argument", "Missing successUrl/cancelUrl.");
+  if (typeof successUrl !== "string") {
+    throw new HttpsError("invalid-argument", "Missing successUrl.");
   }
 
-  const stripe = new Stripe(stripeSecretKey.value());
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card"],
-    line_items: [{
-      price_data: {
-        currency: "usd",
-        product_data: { name: bundle.label },
-        unit_amount: bundle.amountCents
-      },
-      quantity: 1
-    }],
-    metadata: {
-      uid: request.auth.uid,
-      bundleId: bundleId,
-      credits: String(bundle.credits)
+  const res = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
+    method: "POST",
+    headers: {
+      "Accept": "application/vnd.api+json",
+      "Content-Type": "application/vnd.api+json",
+      "Authorization": "Bearer " + lemonSqueezyApiKey.value()
     },
-    success_url: successUrl,
-    cancel_url: cancelUrl
+    body: JSON.stringify({
+      data: {
+        type: "checkouts",
+        attributes: {
+          checkout_data: {
+            email: request.auth.token.email || undefined,
+            custom: {
+              uid: request.auth.uid,
+              bundleId: bundleId,
+              credits: String(bundle.credits)
+            }
+          },
+          product_options: { redirect_url: successUrl }
+        },
+        relationships: {
+          store: { data: { type: "stores", id: LEMONSQUEEZY_STORE_ID } },
+          variant: { data: { type: "variants", id: bundle.variantId } }
+        }
+      }
+    })
   });
 
-  return { url: session.url };
+  const json = await res.json();
+  if (!res.ok) {
+    throw new HttpsError("internal", "Lemon Squeezy checkout failed: " + JSON.stringify(json.errors || json));
+  }
+
+  return { url: json.data.attributes.url };
 });
 
-// Stripe webhook target (plain HTTPS endpoint, not onCall -- Stripe
-// itself is the caller, not a signed-in site user). Verifies the
-// signature before trusting anything in the payload. On
-// checkout.session.completed, credits the buyer's users/{uid}.voteCredits
-// and logs a walletTransactions entry keyed by the Stripe session ID,
-// which doubles as an idempotency guard -- Stripe can and does redeliver
-// the same event, and re-running this must not double-credit.
-exports.stripeWebhook = onRequest(
-  { secrets: [stripeSecretKey, stripeWebhookSecret] },
+// Lemon Squeezy webhook target (plain HTTPS endpoint, not onCall --
+// Lemon Squeezy itself is the caller, not a signed-in site user).
+// Verifies the HMAC-SHA256 signature against the raw request body before
+// trusting anything in the payload. On a paid order_created event,
+// credits the buyer's users/{uid}.voteCredits and logs a
+// walletTransactions entry keyed by the Lemon Squeezy order ID, which
+// doubles as an idempotency guard -- webhooks can and do get redelivered,
+// and re-running this must not double-credit.
+exports.lemonSqueezyWebhook = onRequest(
+  { secrets: [lemonSqueezyWebhookSecret] },
   async (req, res) => {
-    const stripe = new Stripe(stripeSecretKey.value());
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.rawBody,
-        req.headers["stripe-signature"],
-        stripeWebhookSecret.value()
-      );
-    } catch (err) {
-      res.status(400).send("Webhook signature verification failed: " + err.message);
+    const signature = req.get("X-Signature");
+    if (!signature) {
+      res.status(400).send("Missing X-Signature header");
       return;
     }
 
-    if (event.type !== "checkout.session.completed") {
+    const hmac = crypto.createHmac("sha256", lemonSqueezyWebhookSecret.value());
+    const digest = Buffer.from(hmac.update(req.rawBody).digest("hex"), "utf8");
+    const signatureBuffer = Buffer.from(signature, "utf8");
+    if (digest.length !== signatureBuffer.length || !crypto.timingSafeEqual(digest, signatureBuffer)) {
+      res.status(401).send("Invalid signature");
+      return;
+    }
+
+    const payload = JSON.parse(req.rawBody.toString("utf8"));
+    const eventName = req.get("X-Event-Name") || (payload.meta && payload.meta.event_name);
+    if (eventName !== "order_created") {
       res.status(200).send("ignored");
       return;
     }
 
-    const session = event.data.object;
-    const uid = session.metadata && session.metadata.uid;
-    const credits = parseInt(session.metadata && session.metadata.credits, 10);
-    if (!uid || !credits) {
-      res.status(200).send("missing metadata");
+    const order = payload.data.attributes;
+    const customData = payload.meta.custom_data || {};
+    const uid = customData.uid;
+    const credits = parseInt(customData.credits, 10);
+    const orderId = payload.data.id;
+
+    if (order.status !== "paid" || !uid || !credits) {
+      res.status(200).send("skipped");
       return;
     }
 
-    const txnRef = db.collection("walletTransactions").doc(session.id);
+    const txnRef = db.collection("walletTransactions").doc("ls_" + orderId);
     await db.runTransaction(async (tx) => {
       const existing = await tx.get(txnRef);
       if (existing.exists) return;
@@ -234,8 +266,8 @@ exports.stripeWebhook = onRequest(
         uid: uid,
         type: "purchase",
         credits: credits,
-        amountCents: session.amount_total,
-        stripeSessionId: session.id,
+        amountCents: order.total,
+        lemonSqueezyOrderId: orderId,
         createdAt: FieldValue.serverTimestamp()
       });
       tx.set(db.collection("users").doc(uid), {

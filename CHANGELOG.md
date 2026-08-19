@@ -2,6 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.53.0 — current
+- Swapped the vote-credit wallet's payment backend from Stripe to **Lemon Squeezy** -- Stripe doesn't support Philippines-registered merchant accounts, so onboarding was a dead end. Lemon Squeezy is a Merchant of Record (no US entity needed, settles to a PH bank/Wise/Payoneer) with broader international card support (including Amex) than the PH-specific gateways (PayMongo/Xendit), which matters since most of the audience is non-Filipino.
+  - `functions/index.js`: `createWalletCheckout` now calls the Lemon Squeezy Checkout API (bound to a pre-created Product Variant per bundle, not a dynamic price the way Stripe's price_data was) instead of Stripe; `stripeWebhook` is replaced by `lemonSqueezyWebhook`, verifying Lemon Squeezy's HMAC-SHA256 `X-Signature` instead of Stripe's signature scheme, crediting `voteCredits` on a paid `order_created` event.
+  - Dropped the `stripe` npm dependency entirely -- Lemon Squeezy's API is plain REST/JSON, no SDK needed (uses Node 20's built-in `fetch`).
+  - `WALLET_BUNDLES` in `functions/index.js` still has placeholder variant IDs (`REPLACE_WITH_...`) -- each bundle needs its own Product+Variant created in the Lemon Squeezy Dashboard first, then the real IDs filled in before this works.
+  - `app.js`'s buy-button flow no longer sends a `cancelUrl` -- Lemon Squeezy Checkout has no cancel-redirect concept the way Stripe did (closing without paying just does nothing).
+  - Needs new secrets (`LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_WEBHOOK_SECRET`) in place of the old Stripe ones, then `firebase deploy --only functions` -- the deploy will also prompt to delete the now-unused `stripeWebhook` function, which is expected.
+
 ## v5.52.1 — current
 - Fix: buying vote credits redirected nowhere -- Stripe Checkout refuses to render inside an iframe (an anti-clickjacking measure on Stripe's own end), and themusicvideoguy.com embeds this app in one. `window.location.href = ...` was only ever navigating the iframe; switched to `window.top.location.href`, the one target browsers always allow setting cross-origin even though they block reading it, so it breaks out to the real tab regardless of whether the page is framed or standalone.
 
