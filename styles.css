@@ -3130,6 +3130,7 @@ body.is-searching #discoverSection {
 
 .tv-fav-btn,
 .tv-info-btn,
+.tv-widen-btn,
 .tv-playlist-btn {
   flex: 0 0 auto;
   width: 28px;
@@ -3154,7 +3155,8 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
-.tv-info-btn:hover {
+.tv-info-btn:hover,
+.tv-widen-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -3189,33 +3191,11 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
-/* Admin-only debug toggles -- same look as .tv-crop-btn. */
-.tv-mirror-btn,
-.tv-interlace-btn {
-  flex: 0 0 auto;
+/* .media-vote-btn is the shared light-blue/black base; this just sizes
+   it to match the rest of TV Mode's 28px-tall toggle row. */
+.tv-vote-btn {
   height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tv-mirror-btn:hover,
-.tv-interlace-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.tv-mirror-btn.is-active,
-.tv-interlace-btn.is-active {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
+  font-size: 0.68rem;
 }
 
 .tv-admin-edit-btn,

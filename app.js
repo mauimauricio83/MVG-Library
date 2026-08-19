@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.55.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.56.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -163,6 +163,8 @@
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
     tvAdminDeleteBtn: document.getElementById("tvAdminDeleteBtn"),
     tvFavBtn: document.getElementById("tvFavBtn"),
+    tvVoteBtn: document.getElementById("tvVoteBtn"),
+    tvWidenBtn: document.getElementById("tvWidenBtn"),
     tvInfoBtn: document.getElementById("tvInfoBtn"),
     tvInfoPanel: document.getElementById("tvInfoPanel"),
     tvFilterTabs: document.getElementById("tvFilterTabs"),
@@ -173,6 +175,7 @@
     lightbox: document.getElementById("lightbox"),
     lightboxPanel: document.querySelector(".lightbox-panel"),
     lightboxContent: document.getElementById("lightboxContent"),
+    tvPanel: document.querySelector("#tvModal .lightbox-panel"),
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
     favoritesStrip: document.getElementById("favoritesStrip"),
@@ -223,8 +226,6 @@
     savePlaylistBtn: document.getElementById("savePlaylistBtn"),
     tvPlaylistBtn: document.getElementById("tvPlaylistBtn"),
     tvCropBtn: document.getElementById("tvCropBtn"),
-    tvMirrorBtn: document.getElementById("tvMirrorBtn"),
-    tvInterlaceBtn: document.getElementById("tvInterlaceBtn"),
     playlistsPage: document.getElementById("playlistsPage"),
     playlistsChipRow: document.getElementById("playlistsChipRow"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
@@ -910,6 +911,7 @@
   var LIGHTBOX_SIZE_KEY = "mvg-lightbox-size";
   var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
   var TV_CROP_KEY = "mvg-tv-crop";
+  var TV_SIZE_KEY = "mvg-tv-size";
 
   var state = {
     rows: [],
@@ -938,7 +940,7 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), mirror: false, interlaceHz: 0 },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref() },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -948,7 +950,7 @@
     homeYearBeforeTV: "",
     homeGenreBeforeTV: "",
     homeMvgOnlyBeforeTV: false,
-    tvActiveTab: "genre",
+    tvActiveTab: "era",
     tvYearGranularity: "eras",
     // Set when a playlist is picked on TV Mode's Custom tab -- while set,
     // armTV()/refreshTVPoolIfActive() draw from this instead of
@@ -1147,6 +1149,24 @@
   function saveTVCropPref(isCropped) {
     try {
       localStorage.setItem(TV_CROP_KEY, isCropped ? "1" : "0");
+    } catch (e) {}
+  }
+
+  // Same widen/shrink toggle the video-detail lightbox has (see
+  // loadLightboxSizePref() above and .lightbox-panel.size-large in
+  // styles.css, which this reuses -- TV Mode's own panel is the same
+  // .lightbox-panel shape). Defaults to large, matching the lightbox.
+  function loadTVSizePref() {
+    try {
+      return localStorage.getItem(TV_SIZE_KEY) === "small" ? "small" : "large";
+    } catch (e) {
+      return "large";
+    }
+  }
+
+  function saveTVSizePref(size) {
+    try {
+      localStorage.setItem(TV_SIZE_KEY, size);
     } catch (e) {}
   }
 
@@ -4023,17 +4043,14 @@
     els.tvReportLink.hidden = true;
     els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
+    els.tvVoteBtn.hidden = true;
     els.tvPlaylistBtn.hidden = true;
     els.tvCropBtn.hidden = true;
-    els.tvMirrorBtn.hidden = true;
-    els.tvInterlaceBtn.hidden = true;
+    els.tvWidenBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
     els.tvInfoPanel.hidden = true;
-    state.tv.mirror = false;
-    state.tv.interlaceHz = 0;
-    setInterlaceHz("tv", 0);
   }
 
   var tvAdController = null;
@@ -4333,7 +4350,7 @@
     els.genreTip.hidden = true;
     els.savePlaylistBtn.hidden = true; // Search-only -- nothing to "save as playlist" in TV Mode
     els.tvFilterTabs.hidden = false;
-    state.tvActiveTab = "genre";
+    state.tvActiveTab = "era";
     updateTVFilterTabUI();
     renderTVYearDial(state.rows);
     renderTVGenreGrid(state.rows);
@@ -4549,14 +4566,19 @@
   // real line count -- still scales with player height, just chosen for
   // visibility over broadcast accuracy.
   var INTERLACE_TOTAL_LINES = 162;
-  var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay", tv: "tvInterlaceOverlay" };
-  var interlaceHz = { lightbox: 0, tv: 0 };
-  var interlaceField = { lightbox: false, tv: false };
-  var interlaceLastFlip = { lightbox: 0, tv: 0 };
+  // TV Mode's own mirror/interlace debug tools were retired (removed
+  // entirely, not just hidden) -- this stays lightbox-only now. Kept
+  // keyed by an object/"which" rather than flattened to lightbox-only
+  // variables since that's a bigger, riskier refactor than this feature
+  // removal calls for.
+  var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay" };
+  var interlaceHz = { lightbox: 0 };
+  var interlaceField = { lightbox: false };
+  var interlaceLastFlip = { lightbox: 0 };
   var interlaceRAF = null;
 
-  function interlaceFrameEl(which) {
-    return which === "tv" ? els.videoBox.querySelector(".video-embed-frame") : document.getElementById("lightboxVideoFrame");
+  function interlaceFrameEl() {
+    return document.getElementById("lightboxVideoFrame");
   }
 
   function tickInterlace(now) {
@@ -4567,7 +4589,7 @@
       interlaceLastFlip[which] = now;
       interlaceField[which] = !interlaceField[which];
       var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
-      var frame = interlaceFrameEl(which);
+      var frame = interlaceFrameEl();
       if (!el || !frame) return;
       // Recomputed on every flip (not just on toggle/resize) so a crop
       // toggle, widen, or window resize between flips is picked up for
@@ -4584,7 +4606,7 @@
     var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
     if (el) el.hidden = !hz;
     if (hz && interlaceRAF == null) interlaceRAF = requestAnimationFrame(tickInterlace);
-    if (!interlaceHz.lightbox && !interlaceHz.tv && interlaceRAF != null) {
+    if (!interlaceHz.lightbox && interlaceRAF != null) {
       cancelAnimationFrame(interlaceRAF);
       interlaceRAF = null;
     }
@@ -4597,7 +4619,7 @@
     return 60;
   }
 
-  var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div><div class="video-interlace-overlay" id="tvInterlaceOverlay" hidden></div>';
+  var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div>';
   var TV_PLAYER_TARGET_HTML = '<div class="video-embed-frame">' + TV_PLAYER_TARGET_INNER_HTML + '</div>';
 
   // No title bar -- the YouTube player itself already shows the video's
@@ -4609,8 +4631,7 @@
     els.videoBox.innerHTML = TV_PLAYER_TARGET_HTML;
     state.tv.shellBuilt = true;
     applyTVCrop();
-    applyTVMirror();
-    applyTVInterlace();
+    applyTVSize();
   }
 
   // Same visual-only crop as the lightbox player's applyLightboxCrop() --
@@ -4625,16 +4646,15 @@
     els.tvCropBtn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
   }
 
-  function applyTVMirror() {
-    var frame = els.videoBox.querySelector(".video-embed-frame");
-    if (frame) frame.classList.toggle("is-mirrored", !!state.tv.mirror);
-    els.tvMirrorBtn.classList.toggle("is-active", !!state.tv.mirror);
-  }
-
-  function applyTVInterlace() {
-    setInterlaceHz("tv", state.tv.interlaceHz);
-    els.tvInterlaceBtn.classList.toggle("is-active", !!state.tv.interlaceHz);
-    els.tvInterlaceBtn.textContent = state.tv.interlaceHz ? "Interlace " + state.tv.interlaceHz + "Hz" : "Interlace";
+  // Same widen/shrink toggle as the video-detail lightbox's
+  // applyLightboxSize() -- toggles .size-large on TV Mode's own panel
+  // (els.tvPanel), which is the same .lightbox-panel shape, so it picks
+  // up that existing CSS rule for free.
+  function applyTVSize() {
+    var isLarge = state.tv.size === "large";
+    if (els.tvPanel) els.tvPanel.classList.toggle("size-large", isLarge);
+    els.tvWidenBtn.textContent = isLarge ? "⤡" : "⤢";
+    els.tvWidenBtn.title = isLarge ? "Shrink player" : "Widen player";
   }
 
   // startPaused: when set, the new track loads cued (first frame, not
@@ -4711,7 +4731,6 @@
     state.tv.player = null;
     var frame = els.videoBox.querySelector(".video-embed-frame");
     if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
-    setInterlaceHz("tv", state.tv.interlaceHz); // re-applies to the freshly rebuilt overlay div
     createVideoPlayer("tvPlayerTarget", ref, {
       autoplay: !startPaused,
       controls: !state.tv.crop,
@@ -4944,6 +4963,7 @@
     }
     els.tvReportLink.hidden = true;
     els.tvFavBtn.hidden = true;
+    els.tvVoteBtn.hidden = true;
     els.tvPlaylistBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
@@ -5153,7 +5173,6 @@
     state.tv.player = null;
     var frame = els.videoBox.querySelector(".video-embed-frame");
     if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
-    setInterlaceHz("tv", state.tv.interlaceHz);
     createVideoPlayer("tvPlayerTarget", ref, {
       autoplay: true,
       controls: !state.tv.crop,
@@ -5267,10 +5286,10 @@
     updateTVChannelStatus("Tuning in…");
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
+    els.tvVoteBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
-    els.tvMirrorBtn.hidden = !state.isAdmin;
-    els.tvInterlaceBtn.hidden = !state.isAdmin;
+    els.tvWidenBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = true; // no pause on a shared channel -- always on
     els.tvSkipBtn.hidden = true;     // skipping would only diverge this viewer from everyone else
@@ -5352,10 +5371,10 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
+    els.tvVoteBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
-    els.tvMirrorBtn.hidden = !state.isAdmin;
-    els.tvInterlaceBtn.hidden = !state.isAdmin;
+    els.tvWidenBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -5381,10 +5400,10 @@
     els.tvSkipBtn.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
+    els.tvVoteBtn.hidden = false;
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
-    els.tvMirrorBtn.hidden = !state.isAdmin;
-    els.tvInterlaceBtn.hidden = !state.isAdmin;
+    els.tvWidenBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -5447,14 +5466,16 @@
     applyTVCrop();
   });
 
-  els.tvMirrorBtn.addEventListener("click", function () {
-    state.tv.mirror = !state.tv.mirror;
-    applyTVMirror();
+  els.tvWidenBtn.addEventListener("click", function () {
+    state.tv.size = state.tv.size === "large" ? "small" : "large";
+    saveTVSizePref(state.tv.size);
+    applyTVSize();
   });
 
-  els.tvInterlaceBtn.addEventListener("click", function () {
-    state.tv.interlaceHz = nextInterlaceHz(state.tv.interlaceHz);
-    applyTVInterlace();
+  els.tvVoteBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (!row) return;
+    voteForRowNum(row.rowNum, els.tvVoteBtn);
   });
 
   // Toggles a lightweight info panel in place (title/tags/credits/

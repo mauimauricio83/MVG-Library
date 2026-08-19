@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.56.0 — current
+- TV Mode gained a Vote button (light-blue/black, same as everywhere else) and its own widen/shrink player toggle (⤢, same idea as the video-detail lightbox's -- both share the same `.lightbox-panel.size-large` CSS rule since TV Mode's panel is that same shape).
+- Removed TV Mode's Mirror and Interlace debug buttons entirely (not just hidden) -- retired `applyTVMirror()`/`applyTVInterlace()`/`state.tv.mirror`/`state.tv.interlaceHz` and the "tv" key from the shared interlace-overlay infrastructure. The video-detail lightbox's own admin-only Mirror/Interlace debug tools are untouched -- separate, still-working feature.
+- TV Mode now opens on the **Era** dial by default instead of the Genre grid (`state.tvActiveTab` default changed from `"genre"` to `"era"`).
+
 ## v5.55.0 — current
 - Top-bar Vote button is text ("Vote", light-blue/black pill) instead of a trophy icon -- same treatment as every other Vote button on the site now.
 - Added the same bottom-right overlay Vote button to Maui's Picks cards.
