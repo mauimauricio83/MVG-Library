@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.50.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.50.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6550,13 +6550,47 @@
     els.usernameInput.value = currentUsername || "";
   }
 
+  // Doc ID in the usernames/ claim registry -- lowercased, so "Maui" and
+  // "maui" collide instead of both being claimable.
+  function usernameKey(raw) {
+    return raw.trim().toLowerCase();
+  }
+
+  // Claims (or re-claims, on a rename) a username via a transaction, so two
+  // people racing to grab the same one can't both succeed -- whichever
+  // commits first wins, the other's transaction retries, sees the doc now
+  // belongs to someone else, and fails with "taken" instead of silently
+  // overwriting. Releases the previous claim (if any) in the same
+  // transaction so a renamed-away-from username becomes available again
+  // immediately, not orphaned.
   function saveUsername(rawValue) {
     var trimmed = rawValue.trim();
-    if (!trimmed) return Promise.reject(new Error("Enter a username."));
-    if (trimmed.length > 30) return Promise.reject(new Error("Keep it under 30 characters."));
-    return db.collection("users").doc(currentUser.uid).set({ username: trimmed }, { merge: true }).then(function () {
-      currentUsername = trimmed;
-    });
+    if (trimmed.length < 3 || trimmed.length > 30) return Promise.reject(new Error("Usernames are 3-30 characters."));
+    if (!/^[A-Za-z0-9_]+$/.test(trimmed)) return Promise.reject(new Error("Letters, numbers, and underscores only."));
+
+    var key = usernameKey(trimmed);
+    var oldKey = currentUsername ? usernameKey(currentUsername) : null;
+    var userRef = db.collection("users").doc(currentUser.uid);
+    var newRef = db.collection("usernames").doc(key);
+
+    if (key === oldKey) {
+      // Same handle, just a possible casing change -- no claim to move.
+      return Promise.all([
+        userRef.set({ username: trimmed }, { merge: true }),
+        newRef.set({ uid: currentUser.uid, display: trimmed }, { merge: true })
+      ]).then(function () { currentUsername = trimmed; });
+    }
+
+    return db.runTransaction(function (tx) {
+      return tx.get(newRef).then(function (newDoc) {
+        if (newDoc.exists && newDoc.data().uid !== currentUser.uid) {
+          throw new Error("That username's taken -- try another.");
+        }
+        tx.set(newRef, { uid: currentUser.uid, display: trimmed });
+        if (oldKey) tx.delete(db.collection("usernames").doc(oldKey));
+        tx.set(userRef, { username: trimmed }, { merge: true });
+      });
+    }).then(function () { currentUsername = trimmed; });
   }
 
   els.usernameSaveBtn.addEventListener("click", function () {

@@ -32,6 +32,30 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // Username claim registry -- doc ID is the lowercased username, so
+    // "Maui" and "maui" collide (case-insensitive uniqueness). Claiming/
+    // releasing one always happens inside a client-side transaction
+    // alongside the matching write to users/{uid}.username (see
+    // saveUsername() in app.js), which is what actually prevents two
+    // people racing to claim the same name -- these rules just constrain
+    // what any single operation in that transaction is allowed to do.
+    // `get` is public so the client can check availability and so a vote's
+    // displayed username can be trusted to be exactly what it claims to
+    // be; `list` is off so nobody can enumerate every claimed username in
+    // one query.
+    match /usernames/{usernameKey} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        usernameKey.size() >= 3 && usernameKey.size() <= 30 &&
+        usernameKey.matches('^[a-z0-9_]+$');
+      allow update: if request.auth != null &&
+        resource.data.uid == request.auth.uid &&
+        request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
     // Opt-in public mirror of just the favorites list (not recentlyViewed,
     // which stays private in /users) -- world-readable so a shared link
     // works for signed-out visitors, but only the owning account can

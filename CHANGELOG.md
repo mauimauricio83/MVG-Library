@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.50.1 — current
+- Usernames are now enforced unique (case-insensitive) -- the trade-off flagged in v5.50.0 turned out not to be worth carrying. New `usernames/{lowercasedName}` claim-registry collection; claiming or renaming one runs inside a client-side transaction (same pattern as `reserveRowNums()`'s rowNum reservation) so two people racing to grab the same name can't both succeed -- whichever commits first wins, the other cleanly gets "That username's taken." Also now validated to 3-30 characters, letters/numbers/underscore only. A rename releases the old claim in the same transaction, so it's immediately available to someone else rather than staying orphaned.
+
 ## v5.50.0 — current
 - Top 5 This Week graphic: #1 now gets a visibly bigger thumbnail than #2, which is bigger than #3, and so on down to #5 (was 5 equal-sized rows before). #1's title text is now yellow, and shows a "Top voter: [name]" line beneath it when that video has an opted-in top voter.
 - All three Social Graphics now carry a small MVG logo watermark in the lower-right corner (`icons/icon-512.png`, same-origin so no CORS concerns there).

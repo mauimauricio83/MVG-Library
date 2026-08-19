@@ -1071,10 +1071,10 @@
       <div class="settings-row" id="usernameRow" hidden>
         <div>
           <div class="settings-row-label">Username</div>
-          <div class="settings-row-hint">Used as your public name if you choose to show it on votes below.</div>
+          <div class="settings-row-hint">Used as your public name if you choose to show it on votes below. 3-30 characters, letters/numbers/underscore, must be unique.</div>
         </div>
         <div class="settings-username-field">
-          <input type="text" id="usernameInput" maxlength="30" placeholder="Pick a username">
+          <input type="text" id="usernameInput" minlength="3" maxlength="30" placeholder="Pick a username">
           <button type="button" class="settings-action-btn" id="usernameSaveBtn">Save</button>
         </div>
       </div>
