@@ -3508,20 +3508,35 @@ body.is-searching #discoverSection {
   color: var(--brand-yellow);
 }
 
-.viewers-choice-count {
+/* Vote count (left) and Top voter (right, when present) share one line
+   now instead of stacking -- justify-content handles the right-alignment
+   even when .viewers-choice-voter is entirely absent (nobody who voted
+   opted into showing their name, see users/{uid}.showVoterName). */
+.viewers-choice-stats-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 3px;
+}
+
+.viewers-choice-count {
   font-size: 0.78rem;
   color: var(--text-muted);
 }
 
-/* Shared by Viewer's Choice cards and the Vote modal's leaderboard --
-   omitted entirely when nobody who voted opted into showing their name
-   (see users/{uid}.showVoterName), so this is genuinely absent, not just
-   empty, most of the time. */
+/* Also used by the Vote modal's leaderboard (voterLineHtml()), stacked
+   there rather than in a flex row -- margin-top only zeroed for the
+   Viewer's Choice flex-row case below, not the base rule, so the
+   leaderboard's own line spacing is untouched. */
 .viewers-choice-voter {
   margin-top: 2px;
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.viewers-choice-stats-row .viewers-choice-voter {
+  margin-top: 0;
 }
 
 .spotlight-sidebar-cards {

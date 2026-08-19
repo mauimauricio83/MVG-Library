@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.58.0 — current
+- Viewer's Choice cards: removed the "(count)" next to the top voter's name, and moved that line up onto the same line as the vote count -- count on the left, "Top voter: NAME" right-justified. The Vote modal's own Top Videos leaderboard (which still shows both Top voter and Latest vote, with counts) is untouched -- separate rendering path, scoped CSS so the shared `.viewers-choice-voter` class's spacing there wasn't affected.
+
 ## v5.57.1 — current
 - Fix: the Username field in Settings clipped its Save button off the right edge of the screen on mobile, since the input+button group stayed on the same line as the (often 3-4 line, on mobile) label/hint instead of wrapping. `.settings-row` now wraps under 640px, with the username input flexing to fill the full-width line it drops to instead of staying a fixed 140px.
 

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.57.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.58.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -3648,8 +3648,12 @@
             '<div class="viewers-choice-title' + (isTop ? " is-top" : "") + '">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
             mediaVoteBtnHtml(v.id) +
           "</div>" +
-          '<div class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</div>" +
-          voterLineHtml("Top voter", v.topVoter) +
+          '<div class="viewers-choice-stats-row">' +
+            '<span class="viewers-choice-count">' + (v.count || 0) + " vote" + ((v.count || 0) === 1 ? "" : "s") + "</span>" +
+            (v.topVoter && v.topVoter.displayName
+              ? '<span class="viewers-choice-voter">Top voter: ' + escapeHtml(v.topVoter.displayName) + "</span>"
+              : "") +
+          "</div>" +
         "</div>" +
       "</div>"
     );
