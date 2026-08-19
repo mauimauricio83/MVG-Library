@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.56.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.57.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1325,6 +1325,53 @@
     pushToFirestore();
   }
 
+  // One-time default playlists, seeded for every browser/account the
+  // first time the catalog loads -- a starter set of well-known director
+  // filmographies, built exactly like any playlist a visitor could make
+  // themselves (same rowNums-array shape, fully theirs to rename or
+  // delete afterward -- deleting one doesn't come back, since the
+  // DEFAULT_PLAYLISTS_SEEDED_KEY flag below only ever fires this once).
+  var DEFAULT_PLAYLIST_DIRECTORS = [
+    "Michel Gondry", "Chris Cunningham", "Spike Jonze", "Mark Romanek",
+    "Jonathan Glazer", "Anton Corbijn", "Stephane Sednaoui", "Hype Williams",
+    "Joseph Kahn", "Mark Pellington", "Marc Webb", "Floria Sigismondi",
+    "David Fincher", "Jonas Akerlund", "Hammer and Tongs", "Marty Callner"
+  ];
+  var DEFAULT_PLAYLISTS_SEEDED_KEY = "mvg-default-playlists-seeded";
+
+  function seedDefaultPlaylists(rows) {
+    try {
+      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) return;
+    } catch (e) { return; }
+
+    var list = loadPlaylists();
+    var added = false;
+
+    DEFAULT_PLAYLIST_DIRECTORS.forEach(function (directorName) {
+      var target = normalizeCreditName(directorName, false);
+      // rowNum-ascending (catalog order) rather than sheet row order --
+      // reads as oldest-to-newest per director, a reasonable default for
+      // a filmography.
+      var rowNums = rows
+        .filter(function (r) { return hasVideo(r) && normalizeCreditName(r.director, true) === target; })
+        .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
+        .map(function (r) { return r.rowNum; });
+      if (!rowNums.length) return; // nothing in the catalog yet -- skip rather than seed an empty playlist
+      list.push({
+        id: generatePlaylistId(),
+        name: directorName,
+        rowNums: rowNums,
+        updatedAt: Date.now()
+      });
+      added = true;
+    });
+
+    try { localStorage.setItem(DEFAULT_PLAYLISTS_SEEDED_KEY, "1"); } catch (e) {}
+    if (!added) return;
+    savePlaylists(list);
+    pushToFirestore();
+  }
+
   // Returns the new "is in this playlist" state, mirroring toggleFavorite().
   function togglePlaylistEntry(id, rowNum) {
     var list = loadPlaylists();
@@ -1662,6 +1709,7 @@
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
     renderExtraPicksSections(state.rows);
+    seedDefaultPlaylists(state.rows);
     startViewersChoice();
     renderDiscoverSection(state.rows);
     render();

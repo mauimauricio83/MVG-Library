@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.57.0 — current
+- New default playlists, seeded once for every browser/account the first time the catalog loads: Michel Gondry, Chris Cunningham, Spike Jonze, Mark Romanek, Jonathan Glazer, Anton Corbijn, Stephane Sednaoui, Hype Williams, Joseph Kahn, Mark Pellington, Marc Webb, Floria Sigismondi, David Fincher, Jonas Akerlund, Hammer and Tongs, Marty Callner. Built from real catalog matches (reuses the same director-name normalizer `findCatalogCreditsForProfile()` already used for Connect-mode profile matching, so "Gondry, Michel" and "Michel Gondry" both match) -- a director with zero catalog entries just doesn't get a playlist rather than seeding an empty one. Fully regular playlists once created: same rowNums-array shape as anything a visitor builds themselves, freely renamable/deletable, and gone for good if deleted since the one-time seed flag (`mvg-default-playlists-seeded`) never re-fires.
+
 ## v5.56.0 — current
 - TV Mode gained a Vote button (light-blue/black, same as everywhere else) and its own widen/shrink player toggle (⤢, same idea as the video-detail lightbox's -- both share the same `.lightbox-panel.size-large` CSS rule since TV Mode's panel is that same shape).
 - Removed TV Mode's Mirror and Interlace debug buttons entirely (not just hidden) -- retired `applyTVMirror()`/`applyTVInterlace()`/`state.tv.mirror`/`state.tv.interlaceHz` and the "tv" key from the shared interlace-overlay infrastructure. The video-detail lightbox's own admin-only Mirror/Interlace debug tools are untouched -- separate, still-working feature.
