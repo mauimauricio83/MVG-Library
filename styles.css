@@ -5619,6 +5619,30 @@ body.is-searching #discoverSection {
   overflow: hidden;
 }
 
+.settings-username-field {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+.settings-username-field input {
+  width: 140px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.username-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
 .settings-theme-btn {
   border: none;
   background: var(--surface);

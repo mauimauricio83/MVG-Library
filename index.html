@@ -1068,6 +1068,16 @@
         </div>
         <button type="button" class="settings-action-btn" id="shareFavoritesBtn">Get link</button>
       </div>
+      <div class="settings-row" id="usernameRow" hidden>
+        <div>
+          <div class="settings-row-label">Username</div>
+          <div class="settings-row-hint">Used as your public name if you choose to show it on votes below.</div>
+        </div>
+        <div class="settings-username-field">
+          <input type="text" id="usernameInput" maxlength="30" placeholder="Pick a username">
+          <button type="button" class="settings-action-btn" id="usernameSaveBtn">Save</button>
+        </div>
+      </div>
       <div class="settings-row" id="voterNameRow" hidden>
         <div>
           <div class="settings-row-label">Show my name on videos I vote for</div>
@@ -1079,6 +1089,23 @@
         </div>
       </div>
       <p class="settings-status" id="settingsStatus" hidden></p>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="usernameModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Pick a username">
+    <button type="button" class="lightbox-close" id="usernameModalClose" aria-label="Close">&times;</button>
+    <div class="settings-body">
+      <h2 class="settings-title">Welcome!</h2>
+      <p class="vote-hint">Pick a username -- it's only ever shown if you choose to display your name on a vote (off by default). Change it anytime in Settings, or skip this for now.</p>
+      <input type="text" id="usernameModalInput" class="admin-search" maxlength="30" placeholder="Pick a username">
+      <p class="settings-status" id="usernameModalStatus" hidden></p>
+      <div class="username-modal-actions">
+        <button type="button" class="submit-form-btn" id="usernameModalSaveBtn">Save</button>
+        <button type="button" class="admin-row-btn" id="usernameModalSkipBtn">Skip for now</button>
+      </div>
     </div>
   </div>
 </div>

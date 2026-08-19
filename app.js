@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.49.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.50.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -68,6 +68,12 @@
   // voteEvents/topVoter/latestVoter) -- off by default, loaded from
   // users/{uid}.showVoterName in syncFromFirestore(), toggled in Settings.
   var showVoterName = false;
+  // Chosen at first sign-in (see openUsernamePromptModal(), skippable) or
+  // anytime after in Settings -- users/{uid}.username. Preferred over the
+  // raw Google account displayName when attaching a name to a vote, since
+  // it's something the person actually picked for this purpose.
+  var currentUsername = null;
+  var usernamePromptShown = false;
 
   // "Report issue" opens this Google Form pre-filled with the entry's own data.
   // Entry IDs read directly from the form's own field definitions.
@@ -470,6 +476,15 @@
     shareFavoritesBtn: document.getElementById("shareFavoritesBtn"),
     voterNameRow: document.getElementById("voterNameRow"),
     voterNameToggle: document.getElementById("voterNameToggle"),
+    usernameRow: document.getElementById("usernameRow"),
+    usernameInput: document.getElementById("usernameInput"),
+    usernameSaveBtn: document.getElementById("usernameSaveBtn"),
+    usernameModal: document.getElementById("usernameModal"),
+    usernameModalClose: document.getElementById("usernameModalClose"),
+    usernameModalInput: document.getElementById("usernameModalInput"),
+    usernameModalStatus: document.getElementById("usernameModalStatus"),
+    usernameModalSaveBtn: document.getElementById("usernameModalSaveBtn"),
+    usernameModalSkipBtn: document.getElementById("usernameModalSkipBtn"),
     autoplayToggle: document.getElementById("autoplayToggle"),
     themeToggle: document.getElementById("themeToggle"),
     settingsStatus: document.getElementById("settingsStatus")
@@ -783,6 +798,7 @@
     closeSubmitThanksModal();
     closeProfileThanksModal();
     closeSettingsModal();
+    closeUsernamePromptModal();
     closeVoteModal();
     closeRecentModal();
     closePodcastModal();
@@ -1343,6 +1359,9 @@
       var remotePlaylists = Array.isArray(remote.playlists) ? remote.playlists : [];
       showVoterName = !!remote.showVoterName;
       applyVoterNameToggle();
+      currentUsername = remote.username || null;
+      applyUsernameSettingsField();
+      if (!currentUsername) openUsernamePromptModal();
       var localFavorites = loadFavorites();
       var localRecent = loadRecentlyViewed();
       var localPlaylists = loadPlaylists();
@@ -6527,12 +6546,83 @@
     });
   });
 
+  function applyUsernameSettingsField() {
+    els.usernameInput.value = currentUsername || "";
+  }
+
+  function saveUsername(rawValue) {
+    var trimmed = rawValue.trim();
+    if (!trimmed) return Promise.reject(new Error("Enter a username."));
+    if (trimmed.length > 30) return Promise.reject(new Error("Keep it under 30 characters."));
+    return db.collection("users").doc(currentUser.uid).set({ username: trimmed }, { merge: true }).then(function () {
+      currentUsername = trimmed;
+    });
+  }
+
+  els.usernameSaveBtn.addEventListener("click", function () {
+    if (!currentUser) return;
+    els.usernameSaveBtn.disabled = true;
+    saveUsername(els.usernameInput.value).then(function () {
+      applyUsernameSettingsField();
+      els.settingsStatus.textContent = "Username saved.";
+      els.settingsStatus.className = "settings-status";
+      els.settingsStatus.hidden = false;
+    }).catch(function (err) {
+      els.settingsStatus.textContent = err.message;
+      els.settingsStatus.className = "settings-status is-error";
+      els.settingsStatus.hidden = false;
+    }).finally(function () {
+      els.usernameSaveBtn.disabled = false;
+    });
+  });
+
+  // Prompted once, right after the first sign-in that has no username yet
+  // (see syncFromFirestore()) -- skippable, and settable/changeable anytime
+  // after in Settings regardless of whether it was skipped here.
+  function openUsernamePromptModal() {
+    if (usernamePromptShown) return;
+    usernamePromptShown = true;
+    els.usernameModalInput.value = "";
+    els.usernameModalStatus.hidden = true;
+    els.usernameModal.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeUsernamePromptModal() {
+    if (els.usernameModal.hidden) return;
+    els.usernameModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.usernameModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeUsernamePromptModal();
+  });
+  els.usernameModalSkipBtn.addEventListener("click", closeUsernamePromptModal);
+
+  els.usernameModalSaveBtn.addEventListener("click", function () {
+    if (!currentUser) return;
+    els.usernameModalSaveBtn.disabled = true;
+    saveUsername(els.usernameModalInput.value).then(function () {
+      applyUsernameSettingsField();
+      closeUsernamePromptModal();
+    }).catch(function (err) {
+      els.usernameModalStatus.textContent = err.message;
+      els.usernameModalStatus.className = "settings-status is-error";
+      els.usernameModalStatus.hidden = false;
+    }).finally(function () {
+      els.usernameModalSaveBtn.disabled = false;
+    });
+  });
+
   function openSettingsModal() {
     els.settingsSyncNote.hidden = !currentUser;
     els.favoritesSyncNote.hidden = !currentUser;
     els.settingsStatus.hidden = true;
     els.voterNameRow.hidden = !currentUser;
+    els.usernameRow.hidden = !currentUser;
     applyVoterNameToggle();
+    applyUsernameSettingsField();
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     applyAutoplayToggle(loadAutoplayPref());
@@ -6575,7 +6665,7 @@
       thumb: getRowThumbUrl(row) || "",
       votedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    if (showVoterName) doc.displayName = currentUser.displayName || currentUser.email || "Someone";
+    if (showVoterName) doc.displayName = currentUsername || currentUser.displayName || currentUser.email || "Someone";
     return db.collection("voteEvents").add(doc);
   }
 
@@ -9402,12 +9492,47 @@
     return truncated + "…";
   }
 
+  // Same asset as .welcome-gate-logo (icons/icon-512.png) -- same-origin,
+  // so unlike the thumbnail CDNs this one never needed a CORS check.
+  // Cached across calls (module-level) rather than reloading it for every
+  // single graphic generated in a session.
+  var mvgLogoImagePromise = null;
+  function loadMvgLogoImage() {
+    if (!mvgLogoImagePromise) mvgLogoImagePromise = loadImageCrossOrigin("icons/icon-512.png");
+    return mvgLogoImagePromise;
+  }
+
+  // Small watermark, lower-right corner, on every graphic.
+  function drawGraphicLogo(ctx, img) {
+    if (!img) return;
+    var r = 42;
+    var cx = GRAPHIC_W - 66;
+    var cy = GRAPHIC_H - 66;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+  }
+
   // Vertical countdown list -- used for both Top 5 This Week and Maui's
-  // Picks, which only differ in title/data source.
+  // Picks, which only differ in title/data source. #1 gets the biggest
+  // thumbnail and yellow text, shrinking progressively down to #5 (only
+  // meaningful with exactly 5 items, which is what both callers pass --
+  // with any other count it still degenerates sanely, just without much
+  // of a size gradient).
+  var LIST_GRAPHIC_ROW_WEIGHTS = [1.8, 1.4, 1.1, 0.9, 0.7];
+
   function renderListGraphic(title, subtitle, items, footerText) {
     return ensureGraphicFontsReady().then(function () {
-      return Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); }));
-    }).then(function (images) {
+      return Promise.all([
+        Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); })),
+        loadMvgLogoImage()
+      ]);
+    }).then(function (results) {
+      var images = results[0];
+      var logoImg = results[1];
       var canvas = document.createElement("canvas");
       canvas.width = GRAPHIC_W;
       canvas.height = GRAPHIC_H;
@@ -9417,39 +9542,56 @@
 
       var top = 230;
       var bottom = GRAPHIC_H - 90;
-      var rowGap = 24;
-      var rowH = (bottom - top - rowGap * (items.length - 1)) / items.length;
-      var thumbW = rowH * 16 / 9;
+      var rowGap = 20;
+      var contentH = bottom - top - rowGap * (items.length - 1);
+      var weights = items.map(function (it, i) { return LIST_GRAPHIC_ROW_WEIGHTS[i] || 0.7; });
+      var weightSum = weights.reduce(function (a, b) { return a + b; }, 0);
       var leftMargin = 70;
-      var textX = leftMargin + thumbW + 28;
-      var textMaxWidth = GRAPHIC_W - textX - 60;
 
+      var y = top;
       items.forEach(function (it, i) {
-        var y = top + i * (rowH + rowGap);
+        var isTop = i === 0;
+        var rowH = contentH * weights[i] / weightSum;
+        var thumbW = rowH * 16 / 9;
+        var textX = leftMargin + thumbW + 28;
+        var textMaxWidth = GRAPHIC_W - textX - 60;
+
         drawThumbOrPlaceholder(ctx, images[i], leftMargin, y, thumbW, rowH);
 
+        var badgeR = isTop ? 28 : 22;
         ctx.beginPath();
-        ctx.arc(leftMargin + 24, y + 24, 22, 0, Math.PI * 2);
+        ctx.arc(leftMargin + badgeR + 2, y + badgeR + 2, badgeR, 0, Math.PI * 2);
         ctx.fillStyle = "#a855f7";
         ctx.fill();
         ctx.fillStyle = "#fff";
         ctx.textAlign = "center";
-        ctx.font = '900 22px "Archivo Black", sans-serif';
-        ctx.fillText(String(i + 1), leftMargin + 24, y + 31);
+        ctx.font = '900 ' + (isTop ? 28 : 22) + 'px "Archivo Black", sans-serif';
+        ctx.fillText(String(i + 1), leftMargin + badgeR + 2, y + badgeR + (isTop ? 10 : 9));
 
         ctx.textAlign = "left";
-        ctx.fillStyle = "#f1f0f3";
-        ctx.font = "600 30px -apple-system, sans-serif";
+        ctx.fillStyle = isTop ? "#f5e300" : "#f1f0f3";
+        ctx.font = (isTop ? "700 38px" : "600 30px") + " -apple-system, sans-serif";
         var line1 = it.artist + " — " + it.song;
-        ctx.fillText(truncateToWidth(ctx, line1, textMaxWidth), textX, y + rowH / 2 - 4);
+        var textY = isTop ? y + 46 : y + rowH / 2 - 4;
+        ctx.fillText(truncateToWidth(ctx, line1, textMaxWidth), textX, textY);
 
+        var detailY = isTop ? textY + 38 : y + rowH / 2 + 28;
         if (it.detail) {
           ctx.fillStyle = "#a5a5ad";
           ctx.font = "22px -apple-system, sans-serif";
-          ctx.fillText(truncateToWidth(ctx, it.detail, textMaxWidth), textX, y + rowH / 2 + 28);
+          ctx.fillText(truncateToWidth(ctx, it.detail, textMaxWidth), textX, detailY);
+          detailY += 30;
         }
+        if (isTop && it.topVoterName) {
+          ctx.fillStyle = "#c9a6fa";
+          ctx.font = "600 22px -apple-system, sans-serif";
+          ctx.fillText(truncateToWidth(ctx, "Top voter: " + it.topVoterName, textMaxWidth), textX, detailY);
+        }
+
+        y += rowH + rowGap;
       });
 
+      drawGraphicLogo(ctx, logoImg);
       drawGraphicFooter(ctx, footerText);
       return canvas;
     });
@@ -9458,8 +9600,13 @@
   // 2-column grid -- used for 10 Latest Submissions.
   function renderGridGraphic(title, subtitle, items) {
     return ensureGraphicFontsReady().then(function () {
-      return Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); }));
-    }).then(function (images) {
+      return Promise.all([
+        Promise.all(items.map(function (it) { return loadImageCrossOrigin(it.thumb); })),
+        loadMvgLogoImage()
+      ]);
+    }).then(function (results) {
+      var images = results[0];
+      var logoImg = results[1];
       var canvas = document.createElement("canvas");
       canvas.width = GRAPHIC_W;
       canvas.height = GRAPHIC_H;
@@ -9493,6 +9640,7 @@
         ctx.fillText(truncateToWidth(ctx, label, colW), x, y + thumbH + 28);
       });
 
+      drawGraphicLogo(ctx, logoImg);
       drawGraphicFooter(ctx);
       return canvas;
     });
@@ -9514,7 +9662,13 @@
       return snap.docs.map(function (doc) {
         var d = doc.data();
         var count = d.count || 0;
-        return { artist: d.artist || "", song: d.song || "", thumb: d.thumb || "", detail: count + " vote" + (count === 1 ? "" : "s") };
+        return {
+          artist: d.artist || "",
+          song: d.song || "",
+          thumb: d.thumb || "",
+          detail: count + " vote" + (count === 1 ? "" : "s"),
+          topVoterName: d.topVoter ? d.topVoter.displayName : null
+        };
       });
     });
   }
@@ -10178,6 +10332,7 @@
     var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.submitThanksModal.hidden ||
       !els.profileThanksModal.hidden ||
       !els.settingsModal.hidden ||
+      !els.usernameModal.hidden ||
       !els.voteModal.hidden ||
       !els.dmModal.hidden ||
       !els.recentModal.hidden || !els.podcastModal.hidden ||
@@ -10558,6 +10713,8 @@
       els.openAdminBtn.hidden = true;
       els.topBarAdminBtn.hidden = true;
       showVoterName = false;
+      currentUsername = null;
+      usernamePromptShown = false;
     }
     watchMsgBoardOwnStatus();
     updateProfilesAuthUI();

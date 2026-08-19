@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.50.0 — current
+- Top 5 This Week graphic: #1 now gets a visibly bigger thumbnail than #2, which is bigger than #3, and so on down to #5 (was 5 equal-sized rows before). #1's title text is now yellow, and shows a "Top voter: [name]" line beneath it when that video has an opted-in top voter.
+- All three Social Graphics now carry a small MVG logo watermark in the lower-right corner (`icons/icon-512.png`, same-origin so no CORS concerns there).
+- New: **Username**. First sign-in that doesn't have one yet prompts for it (skippable, one-time), and it's editable anytime after in Settings. Preferred over the raw Google account name when attaching a name to a vote (still gated by the existing "Show my name on videos I vote for" opt-in, off by default) -- so "Top voter"/"Latest vote"/the graphic's top-voter line show something the person actually chose, not whatever their Google account happens to be named. No uniqueness enforcement between accounts yet -- two people can pick the same username; flagged as a known trade-off, not an oversight, since it's just a display label right now, not a login handle.
+
 ## v5.49.1 — current
 - The Top 5 This Week graphic's footer now reads "Vote! Visit themusicvideoguy.com (link in bio!)" instead of the plain site URL the other two graphics still use -- a real call-to-action on the one graphic that's actually about voting. Verified it fits the 1080px canvas width with room to spare (renders at ~479px, centered).
 
