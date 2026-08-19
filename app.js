@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.58.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.59.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9718,6 +9718,9 @@
             voterLineHtml("Top voter", v.topVoter) +
             voterLineHtml("Latest vote", v.latestVoter) +
           "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn admin-row-btn-danger" data-reset-votes="' + escapeHtml(v.id) + '"' + (!v.count ? " disabled" : "") + '>Reset to 0</button>' +
+          "</div>" +
         "</div>"
       );
     }).join("");
@@ -9733,7 +9736,7 @@
     adminVoteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(25)
       .onSnapshot(function (snap) {
         els.adminVoteRoundsStatus.hidden = true;
-        renderAdminVoteLeaderboard(snap.docs.map(function (doc) { return doc.data(); }));
+        renderAdminVoteLeaderboard(snap.docs.map(function (doc) { return Object.assign({ id: doc.id }, doc.data()); }));
       }, function (err) {
         console.error("Vote leaderboard load failed:", err);
         els.adminVoteRoundsStatus.textContent = "Couldn't load: " + err.message + " -- has firestore.rules been deployed with the votes/videoVotes rules yet?";
@@ -9745,6 +9748,33 @@
   els.adminVoteRoundsBackBtn.addEventListener("click", function () {
     if (adminVoteLeaderboardUnsub) { adminVoteLeaderboardUnsub(); adminVoteLeaderboardUnsub = null; }
     showAdminLanding();
+  });
+
+  // Calls the resetVideoVotes Cloud Function (functions/index.js) --
+  // zeroes count/topVoter/latestVoter AND clears every recorded voter
+  // tally for this video, not just the visible number (see that
+  // Function's comment for why the tallies matter too). The live
+  // onSnapshot above picks up the reset automatically once it lands, no
+  // manual re-render needed here.
+  els.adminVoteRoundHistory.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-reset-votes]");
+    if (!btn) return;
+    var rowNum = btn.getAttribute("data-reset-votes");
+    var title = btn.closest(".admin-row").querySelector(".admin-row-title").textContent;
+    if (!window.confirm(
+      "Reset votes for \"" + title + "\" back to 0?\n\n" +
+      "This clears the vote count, top voter, and latest voter for this video, " +
+      "and cannot be undone. Past individual votes stay recorded internally " +
+      "but no longer count toward anything."
+    )) return;
+    btn.disabled = true;
+    functionsClient.httpsCallable("resetVideoVotes")({ rowNum: rowNum }).catch(function (err) {
+      console.error("Resetting votes failed:", err);
+      els.adminVoteRoundsStatus.textContent = "Couldn't reset votes: " + err.message;
+      els.adminVoteRoundsStatus.className = "admin-status is-error";
+      els.adminVoteRoundsStatus.hidden = false;
+      btn.disabled = false;
+    });
   });
 
   // ---- Social Graphics: auto-generated 1080x1350 Instagram-ready images --

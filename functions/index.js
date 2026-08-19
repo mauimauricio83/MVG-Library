@@ -74,6 +74,47 @@ exports.onVoteEventCreated = onDocumentCreated("voteEvents/{id}", async (event) 
   });
 });
 
+// Admin-only: zeroes out a video's public vote standing (count, topVoter,
+// latestVoter) AND deletes every voterTallies/{rowNum}_{uid} doc for it --
+// not just the visible count, so a future vote's topVoter comparison
+// (see onVoteEventCreated above, step 3) starts clean instead of
+// comparing against a stale pre-reset tally that would let a new voter's
+// very first vote look like it's "still behind" someone who's actually
+// been wiped out. Doesn't touch voteEvents -- that history stays as an
+// audit trail, it's just never replayed, so leaving it doesn't undo the
+// reset. Callable directly by the client (via firebase.functions()),
+// unlike onVoteEventCreated which only ever fires from a Firestore write
+// -- this has to check admin status itself since it isn't gated by
+// firestore.rules the way a direct client write would be.
+exports.resetVideoVotes = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const adminDoc = await db.collection("admins").doc(request.auth.uid).get();
+  if (!adminDoc.exists) throw new HttpsError("permission-denied", "Admin only.");
+
+  const rowNum = request.data && request.data.rowNum;
+  if (typeof rowNum !== "string" || !rowNum) {
+    throw new HttpsError("invalid-argument", "Missing rowNum.");
+  }
+
+  // A single batch caps out at 500 writes -- fine at today's vote
+  // volumes (a handful of unique voters per video), but a video with
+  // hundreds of distinct voters would need this chunked into multiple
+  // batches to reset cleanly. Not attempted here since nothing in the
+  // catalog is remotely close to that yet.
+  const tallySnap = await db.collection("voterTallies").where("rowNum", "==", rowNum).get();
+  const batch = db.batch();
+  tallySnap.forEach((doc) => batch.delete(doc.ref));
+  batch.set(db.collection("videoVotes").doc(rowNum), {
+    count: 0,
+    topVoter: FieldValue.delete(),
+    latestVoter: FieldValue.delete()
+  }, { merge: true });
+  await batch.commit();
+
+  return { ok: true, talliesCleared: tallySnap.size };
+});
+
 // Deliberately short and NOT exhaustive -- catches the clearest, most
 // common cases as a first pass for admin review, not a guarantee nothing
 // slips through. Plain substring match (case-insensitive), so it has the

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.59.0 — current
+- Admin's Vote Rounds view gained a "Reset to 0" button per video, with a confirm() warning before it fires. New `resetVideoVotes` Cloud Function (admin-gated) zeroes `videoVotes/{rowNum}`'s count/topVoter/latestVoter AND deletes every recorded `voterTallies` doc for that video -- not just the visible count, so a future vote's topVoter comparison starts clean instead of comparing against a stale pre-reset tally. Doesn't touch `voteEvents` history (stays as an audit trail, just never replayed). Needs `firebase deploy --only functions` before it works live.
+
 ## v5.58.0 — current
 - Viewer's Choice cards: removed the "(count)" next to the top voter's name, and moved that line up onto the same line as the vote count -- count on the left, "Top voter: NAME" right-justified. The Vote modal's own Top Videos leaderboard (which still shows both Top voter and Latest vote, with counts) is untouched -- separate rendering path, scoped CSS so the shared `.viewers-choice-voter` class's spacing there wasn't affected.
 
