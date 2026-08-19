@@ -1099,6 +1099,17 @@
           <button type="button" class="settings-action-btn" id="usernameSaveBtn">Save</button>
         </div>
       </div>
+      <div class="settings-row settings-row-wallet" id="voteCreditsRow" hidden>
+        <div>
+          <div class="settings-row-label">Vote Credits</div>
+          <div class="settings-row-hint">Balance: <span id="voteCreditsBalance">0</span> credit(s). Voting is free right now -- credits aren't required yet.</div>
+        </div>
+        <div class="settings-wallet-buttons" id="walletBuyButtons">
+          <button type="button" class="settings-action-btn" data-wallet-bundle="starter">+5 -- $5</button>
+          <button type="button" class="settings-action-btn" data-wallet-bundle="popular">+12 -- $10</button>
+          <button type="button" class="settings-action-btn" data-wallet-bundle="superfan">+30 -- $20</button>
+        </div>
+      </div>
       <div class="settings-row" id="voterNameRow" hidden>
         <div>
           <div class="settings-row-label">Show my name on videos I vote for</div>
@@ -1406,6 +1417,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

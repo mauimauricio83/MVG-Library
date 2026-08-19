@@ -5632,6 +5632,14 @@ body.is-searching #discoverSection {
   overflow: hidden;
 }
 
+.settings-wallet-buttons {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .settings-username-field {
   flex: 0 0 auto;
   display: flex;

@@ -2,6 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.52.0 — current
+- New backend scaffolding for a future **prepaid vote-credit wallet** ($1 = 1 vote credit, bought in bundles so a Stripe charge doesn't fire on every single vote). Voting stays completely free right now -- nothing here is wired into the live voting flow yet.
+  - `functions/index.js`: `createWalletCheckout` (Stripe Checkout session for a bundle), `stripeWebhook` (credits `users/{uid}.voteCredits` on `checkout.session.completed`, idempotent via a `walletTransactions` doc keyed by Stripe session ID), `castVoteWithCredit` (the future paid-vote path -- checks balance, decrements it, writes the same `voteEvents` shape `castVote()` does today, all in one transaction).
+  - `firestore.rules`: `users/{uid}.voteCredits` is now blocked from client writes (admin/Admin-SDK only); new `walletTransactions/{id}` collection, owner-or-admin read, no client write.
+  - Settings gained a "Vote Credits" row (balance + three buy buttons) that opens Stripe Checkout via `createWalletCheckout` and live-updates once the webhook credits the purchase. Hidden's not needed here since it's harmless to show a $0 balance while nothing spends it yet -- but it IS non-functional until Stripe secrets are configured (see below).
+  - Needs `npm install` in `functions/` (added the `stripe` dependency), two Functions secrets set once (`firebase functions:secrets:set STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` -- the latter from a Stripe Dashboard webhook pointed at the deployed `stripeWebhook` URL, subscribed to `checkout.session.completed`), then `firebase deploy --only functions,firestore:rules`.
+
 ## v5.51.1 — current
 - Viewer's Choice homepage section: its own title is now visibly bigger (1.5rem) without touching Maui's Picks/News, which share the same base title class -- added a section-scoped size-only modifier instead of changing the shared one. Rank badges now scale progressively from #1 (biggest) down to #5 (smallest), same idea as the Top 5 This Week graphic's sizing. #1's title text is yellow, matching the graphic. Removed the badges' outer ring (a `box-shadow` meant to separate the badge from the thumbnail underneath it) after it read as an unwanted black/dark stroke against the thumbnail.
 

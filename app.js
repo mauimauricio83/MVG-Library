@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.51.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.52.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -49,6 +49,11 @@
   firebase.initializeApp(firebaseConfig);
   var auth = firebase.auth();
   var db = firebase.firestore();
+  // Used only by the prepaid vote-credit wallet (createWalletCheckout /
+  // castVoteWithCredit in functions/index.js) -- not called anywhere yet,
+  // since voting itself is still free. See the "Vote Credits" row in
+  // Settings.
+  var functionsClient = firebase.functions();
 
   // Powers the Fill Missing Links queue's optional "Auto-Fill Top Result"
   // button (search.list against the real YouTube Data API v3, not just
@@ -68,6 +73,28 @@
   // voteEvents/topVoter/latestVoter) -- off by default, loaded from
   // users/{uid}.showVoterName in syncFromFirestore(), toggled in Settings.
   var showVoterName = false;
+  // Prepaid "vote credit" wallet balance -- see users/{uid}.voteCredits,
+  // loaded read-only in syncFromFirestore() (never written by the client;
+  // firestore.rules blocks that -- only the Functions' Admin SDK access
+  // can). Not spent anywhere yet since voting is still free; this is just
+  // the balance shown in Settings.
+  var voteCredits = 0;
+  var voteCreditsUnsub = null;
+  // Stripe redirects back to this page after Checkout (see
+  // createWalletCheckout's successUrl/cancelUrl in functions/index.js) --
+  // the query param is stripped immediately so a refresh doesn't re-show
+  // the message, and openSettingsModal() surfaces it the first time
+  // Settings opens after redirect (auto-triggered below, right after
+  // auth.onAuthStateChanged resolves).
+  var walletPurchaseResult = null;
+  (function () {
+    var params = new URLSearchParams(location.search);
+    if (!params.has("walletPurchase")) return;
+    walletPurchaseResult = params.get("walletPurchase");
+    params.delete("walletPurchase");
+    var newSearch = params.toString();
+    history.replaceState(null, "", location.pathname + (newSearch ? "?" + newSearch : "") + location.hash);
+  })();
   // Chosen at first sign-in (see openUsernamePromptModal(), skippable) or
   // anytime after in Settings -- users/{uid}.username. Preferred over the
   // raw Google account displayName when attaching a name to a vote, since
@@ -487,6 +514,9 @@
     shareFavoritesBtn: document.getElementById("shareFavoritesBtn"),
     voterNameRow: document.getElementById("voterNameRow"),
     voterNameToggle: document.getElementById("voterNameToggle"),
+    voteCreditsRow: document.getElementById("voteCreditsRow"),
+    voteCreditsBalance: document.getElementById("voteCreditsBalance"),
+    walletBuyButtons: document.getElementById("walletBuyButtons"),
     usernameRow: document.getElementById("usernameRow"),
     usernameInput: document.getElementById("usernameInput"),
     usernameSaveBtn: document.getElementById("usernameSaveBtn"),
@@ -1370,6 +1400,8 @@
       var remotePlaylists = Array.isArray(remote.playlists) ? remote.playlists : [];
       showVoterName = !!remote.showVoterName;
       applyVoterNameToggle();
+      voteCredits = typeof remote.voteCredits === "number" ? remote.voteCredits : 0;
+      applyVoteCreditsField();
       currentUsername = remote.username || null;
       applyUsernameSettingsField();
       if (!currentUsername) openUsernamePromptModal();
@@ -6575,6 +6607,40 @@
     els.usernameInput.value = currentUsername || "";
   }
 
+  function applyVoteCreditsField() {
+    els.voteCreditsBalance.textContent = voteCredits;
+  }
+
+  // Sends the user to Stripe Checkout for the chosen bundle (see
+  // WALLET_BUNDLES in functions/index.js -- price/credit amounts are
+  // decided server-side, the client only picks a bundle id). Stripe
+  // redirects back to this same page afterward (see the walletPurchase
+  // handling near auth.onAuthStateChanged below); the actual credit isn't
+  // applied by that redirect -- stripeWebhook does it asynchronously once
+  // Stripe confirms payment.
+  els.walletBuyButtons.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-wallet-bundle]");
+    if (!btn || !currentUser) return;
+    var bundle = btn.getAttribute("data-wallet-bundle");
+    var buttons = els.walletBuyButtons.querySelectorAll("button");
+    Array.prototype.forEach.call(buttons, function (b) { b.disabled = true; });
+    els.settingsStatus.hidden = true;
+    var baseUrl = location.origin + location.pathname;
+    functionsClient.httpsCallable("createWalletCheckout")({
+      bundle: bundle,
+      successUrl: baseUrl + "?walletPurchase=success",
+      cancelUrl: baseUrl + "?walletPurchase=cancel"
+    }).then(function (result) {
+      window.location.href = result.data.url;
+    }).catch(function (err) {
+      console.error("Starting checkout failed:", err);
+      els.settingsStatus.textContent = "Couldn't start checkout: " + err.message;
+      els.settingsStatus.className = "settings-status is-error";
+      els.settingsStatus.hidden = false;
+      Array.prototype.forEach.call(buttons, function (b) { b.disabled = false; });
+    });
+  });
+
   // Doc ID in the usernames/ claim registry -- lowercased, so "Maui" and
   // "maui" collide instead of both being claimable.
   function usernameKey(raw) {
@@ -6692,8 +6758,31 @@
     els.settingsStatus.hidden = true;
     els.voterNameRow.hidden = !currentUser;
     els.usernameRow.hidden = !currentUser;
+    els.voteCreditsRow.hidden = !currentUser;
     applyVoterNameToggle();
     applyUsernameSettingsField();
+    applyVoteCreditsField();
+    if (walletPurchaseResult === "success") {
+      els.settingsStatus.textContent = "Payment received -- your vote credits will appear shortly.";
+      els.settingsStatus.className = "settings-status";
+      els.settingsStatus.hidden = false;
+    } else if (walletPurchaseResult === "cancel") {
+      els.settingsStatus.textContent = "Checkout canceled -- no charge made.";
+      els.settingsStatus.className = "settings-status is-error";
+      els.settingsStatus.hidden = false;
+    }
+    walletPurchaseResult = null;
+    // Live for as long as Settings stays open so a webhook-applied credit
+    // (see stripeWebhook in functions/index.js) shows up here without
+    // needing a reload -- syncFromFirestore() itself only ever does a
+    // one-time read, on sign-in.
+    if (currentUser && !voteCreditsUnsub) {
+      voteCreditsUnsub = db.collection("users").doc(currentUser.uid).onSnapshot(function (doc) {
+        var remote = doc.exists ? doc.data() : {};
+        voteCredits = typeof remote.voteCredits === "number" ? remote.voteCredits : 0;
+        applyVoteCreditsField();
+      });
+    }
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     applyAutoplayToggle(loadAutoplayPref());
@@ -6707,6 +6796,7 @@
     if (els.settingsModal.hidden) return;
     els.settingsModal.hidden = true;
     unlockBodyScroll();
+    if (voteCreditsUnsub) { voteCreditsUnsub(); voteCreditsUnsub = null; }
   }
 
   els.openSettingsBtn.addEventListener("click", openSettingsModal);
@@ -10951,6 +11041,7 @@
     watchMsgBoardOwnStatus();
     updateProfilesAuthUI();
     refreshNotificationBadge();
+    if (walletPurchaseResult) openSettingsModal();
   });
 
   fetchData();

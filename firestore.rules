@@ -30,9 +30,20 @@ service cloud.firestore {
     // viewed/username doc -- PLUS an admin override, needed for the
     // "Reset Username" moderation action (see Username Moderation in the
     // admin panel), which clears a stranger's users/{uid}.username.
+    // voteCredits (prepaid "vote wallet" balance -- see walletTransactions
+    // and functions/index.js's createWalletCheckout/stripeWebhook/
+    // castVoteWithCredit) is carved out of the owner's normal write access:
+    // only an admin (or, in practice, the Functions' Admin SDK access,
+    // which bypasses rules entirely) may set it, since a client that could
+    // write its own balance could just give itself free votes.
     match /users/{uid} {
-      allow read, write: if request.auth != null &&
+      allow read: if request.auth != null &&
         (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow write: if request.auth != null &&
+        (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))) &&
+        (!("voteCredits" in request.resource.data) ||
           exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
@@ -450,6 +461,19 @@ service cloud.firestore {
     // count and overwrites if higher). Not read by the client at all.
     match /voterTallies/{id} {
       allow read: if false;
+      allow write: if false;
+    }
+
+    // Purchase/spend log for the prepaid vote-credit wallet (see
+    // users/{uid}.voteCredits above and functions/index.js). Written only
+    // by the Functions' Admin SDK access (bypasses rules) -- a purchase
+    // comes from stripeWebhook after verifying Stripe's signature, a spend
+    // from castVoteWithCredit's transaction. A user can read their own
+    // history; admins can read anyone's for support/dispute lookups.
+    match /walletTransactions/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.uid == request.auth.uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
       allow write: if false;
     }
   }
