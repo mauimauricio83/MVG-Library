@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.59.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.60.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -387,6 +387,11 @@
     adminVoteRoundsBackBtn: document.getElementById("adminVoteRoundsBackBtn"),
     adminVoteRoundsStatus: document.getElementById("adminVoteRoundsStatus"),
     adminVoteRoundHistory: document.getElementById("adminVoteRoundHistory"),
+    adminRetirementTopN: document.getElementById("adminRetirementTopN"),
+    adminRetirementDays: document.getElementById("adminRetirementDays"),
+    adminRunRetirementCheckBtn: document.getElementById("adminRunRetirementCheckBtn"),
+    adminRetirementStatus: document.getElementById("adminRetirementStatus"),
+    adminHallOfFameList: document.getElementById("adminHallOfFameList"),
     adminGoGraphicsBtn: document.getElementById("adminGoGraphicsBtn"),
     adminGraphicsView: document.getElementById("adminGraphicsView"),
     adminGraphicsBackBtn: document.getElementById("adminGraphicsBackBtn"),
@@ -9726,12 +9731,44 @@
     }).join("");
   }
 
+  // Display-only mirror of functions/index.js's RETIREMENT_TOP_N/
+  // RETIREMENT_DAYS -- if those constants are ever tuned once real
+  // traffic data justifies it (see VOTE_RETIREMENT_PLAN.md), update both
+  // places together.
+  var ADMIN_RETIREMENT_TOP_N = 5;
+  var ADMIN_RETIREMENT_DAYS = 14;
+  var adminHallOfFameUnsub = null;
+
+  function renderAdminHallOfFame(rows) {
+    if (!rows.length) {
+      els.adminHallOfFameList.innerHTML = '<p class="admin-empty">Nothing retired yet.</p>';
+      return;
+    }
+    els.adminHallOfFameList.innerHTML = rows.map(function (v) {
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(v.artist) + " — " + escapeHtml(v.song) + "</div>" +
+            '<div class="admin-row-sub">Retired at ' + (v.finalCount || 0) + " vote" + ((v.finalCount || 0) === 1 ? "" : "s") + "</div>" +
+            voterLineHtml("Top voter", v.topVoter) +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-unretire-video="' + escapeHtml(v.id) + '">Un-retire</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
   function goAdminVoteRounds() {
     state.adminReturnView = "landing";
     showAdminVoteRoundsView();
     els.adminVoteRoundsStatus.textContent = "Loading…";
     els.adminVoteRoundsStatus.className = "admin-status";
     els.adminVoteRoundsStatus.hidden = false;
+    els.adminRetirementTopN.textContent = ADMIN_RETIREMENT_TOP_N;
+    els.adminRetirementDays.textContent = ADMIN_RETIREMENT_DAYS;
+    els.adminRetirementStatus.hidden = true;
     if (adminVoteLeaderboardUnsub) adminVoteLeaderboardUnsub();
     adminVoteLeaderboardUnsub = db.collection("videoVotes").orderBy("count", "desc").limit(25)
       .onSnapshot(function (snap) {
@@ -9742,12 +9779,59 @@
         els.adminVoteRoundsStatus.textContent = "Couldn't load: " + err.message + " -- has firestore.rules been deployed with the votes/videoVotes rules yet?";
         els.adminVoteRoundsStatus.className = "admin-status is-error";
       });
+    if (adminHallOfFameUnsub) adminHallOfFameUnsub();
+    adminHallOfFameUnsub = db.collection("voteHallOfFame").orderBy("retiredAt", "desc")
+      .onSnapshot(function (snap) {
+        renderAdminHallOfFame(snap.docs.map(function (doc) { return Object.assign({ id: doc.id }, doc.data()); }));
+      }, function (err) {
+        console.error("Hall of Fame load failed:", err);
+      });
   }
 
   els.adminGoVoteRoundsBtn.addEventListener("click", goAdminVoteRounds);
   els.adminVoteRoundsBackBtn.addEventListener("click", function () {
     if (adminVoteLeaderboardUnsub) { adminVoteLeaderboardUnsub(); adminVoteLeaderboardUnsub = null; }
+    if (adminHallOfFameUnsub) { adminHallOfFameUnsub(); adminHallOfFameUnsub = null; }
     showAdminLanding();
+  });
+
+  // Manually fires the dormant checkVoteRetirements Function (see its
+  // comment in functions/index.js) -- nothing runs on a schedule yet, so
+  // this button is the only way anything here ever changes while it's
+  // still being tested.
+  els.adminRunRetirementCheckBtn.addEventListener("click", function () {
+    els.adminRunRetirementCheckBtn.disabled = true;
+    els.adminRetirementStatus.hidden = true;
+    functionsClient.httpsCallable("checkVoteRetirements")({}).then(function (result) {
+      var data = result.data || {};
+      var retired = data.retiredNow || [];
+      els.adminRetirementStatus.textContent = "Checked " + (data.checked || 0) + " video(s); " +
+        (retired.length ? retired.length + " newly retired." : "none newly retired.");
+      els.adminRetirementStatus.className = "admin-status";
+      els.adminRetirementStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Retirement check failed:", err);
+      els.adminRetirementStatus.textContent = "Couldn't run retirement check: " + err.message;
+      els.adminRetirementStatus.className = "admin-status is-error";
+      els.adminRetirementStatus.hidden = false;
+    }).finally(function () {
+      els.adminRunRetirementCheckBtn.disabled = false;
+    });
+  });
+
+  els.adminHallOfFameList.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-unretire-video]");
+    if (!btn) return;
+    var rowNum = btn.getAttribute("data-unretire-video");
+    if (!window.confirm("Un-retire this video? It becomes eligible for the leaderboard and future retirement checks again.")) return;
+    btn.disabled = true;
+    functionsClient.httpsCallable("unretireVideo")({ rowNum: rowNum }).catch(function (err) {
+      console.error("Un-retiring failed:", err);
+      els.adminRetirementStatus.textContent = "Couldn't un-retire: " + err.message;
+      els.adminRetirementStatus.className = "admin-status is-error";
+      els.adminRetirementStatus.hidden = false;
+      btn.disabled = false;
+    });
   });
 
   // Calls the resetVideoVotes Cloud Function (functions/index.js) --

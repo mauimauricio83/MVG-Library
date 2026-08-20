@@ -464,12 +464,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Retirement/Hall of Fame snapshot -- see VOTE_RETIREMENT_PLAN.md and
+    // functions/index.js's checkVoteRetirements. Dormant for now (that
+    // Function is admin-triggered only, not scheduled), so this stays
+    // empty in practice until it's actually turned on. World-readable
+    // like videoVotes, written only by the Function's Admin SDK access.
+    match /voteHallOfFame/{rowNum} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Purchase/spend log for the prepaid vote-credit wallet (see
     // users/{uid}.voteCredits above and functions/index.js). Written only
     // by the Functions' Admin SDK access (bypasses rules) -- a purchase
-    // comes from stripeWebhook after verifying Stripe's signature, a spend
-    // from castVoteWithCredit's transaction. A user can read their own
-    // history; admins can read anyone's for support/dispute lookups.
+    // comes from lemonSqueezyWebhook after verifying its signature, a
+    // spend from castVoteWithCredit's transaction. A user can read their
+    // own history; admins can read anyone's for support/dispute lookups.
     match /walletTransactions/{id} {
       allow read: if request.auth != null &&
         (resource.data.uid == request.auth.uid ||

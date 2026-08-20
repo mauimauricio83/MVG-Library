@@ -115,6 +115,105 @@ exports.resetVideoVotes = onCall(async (request) => {
   return { ok: true, talliesCleared: tallySnap.size };
 });
 
+// ---- Vote retirement / Hall of Fame (dormant -- see VOTE_RETIREMENT_PLAN.md) ----
+// Modeled on MTV TRL's retirement rule: a video that camps in the top N
+// long enough gets permanently retired from active competition and
+// enshrined in a Hall of Fame instead of just sitting at #1 forever.
+// Cumulative, not consecutive -- a video that drops out of the top N and
+// re-enters later just resumes accumulating where it left off, same as
+// TRL's "cumulative days" (not "consecutive days") rule.
+//
+// DORMANT BY DESIGN while this is still in testing: this is an onCall
+// Function, not an onSchedule one, so nothing runs automatically -- an
+// admin has to manually trigger it (see the "Run retirement check now"
+// button in the admin Vote Rounds view). It also only ever WRITES
+// daysInTop/retired/voteHallOfFame; nothing on the live site reads or
+// filters on those fields yet (see VOTE_RETIREMENT_PLAN.md's activation
+// checklist), so even repeated manual runs can't change what any visitor
+// currently sees. Retirement is additive/preserving, not destructive --
+// unlike resetVideoVotes above, it freezes and snapshots the count/
+// topVoter rather than erasing them.
+const RETIREMENT_TOP_N = 5;
+const RETIREMENT_DAYS = 14;
+
+exports.checkVoteRetirements = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const adminDoc = await db.collection("admins").doc(request.auth.uid).get();
+  if (!adminDoc.exists) throw new HttpsError("permission-denied", "Admin only.");
+
+  // Filtered in memory rather than via a Firestore where("retired","==",
+  // false) clause: every videoVotes doc created before this feature
+  // existed (i.e. every real one right now) has no `retired` field at
+  // all, and Firestore equality filters exclude docs missing the field
+  // entirely -- that query would silently match nothing until every doc
+  // got backfilled. Fetching a wider slice by count and filtering here
+  // sidesteps that AND avoids needing a new composite index.
+  const topSnap = await db.collection("videoVotes")
+    .orderBy("count", "desc")
+    .limit(RETIREMENT_TOP_N * 5)
+    .get();
+
+  const batch = db.batch();
+  const retiredNow = [];
+  let consideredCount = 0;
+
+  for (const doc of topSnap.docs) {
+    if (consideredCount >= RETIREMENT_TOP_N) break;
+    const data = doc.data();
+    if (data.retired) continue; // already retired -- doesn't occupy a top-N slot or accumulate further
+    consideredCount++;
+    const newDaysInTop = (data.daysInTop || 0) + 1;
+    if (newDaysInTop >= RETIREMENT_DAYS) {
+      batch.update(doc.ref, {
+        daysInTop: newDaysInTop,
+        retired: true,
+        retiredAt: FieldValue.serverTimestamp()
+      });
+      batch.set(db.collection("voteHallOfFame").doc(doc.id), {
+        artist: data.artist || "",
+        song: data.song || "",
+        thumb: data.thumb || "",
+        finalCount: data.count || 0,
+        topVoter: data.topVoter || null,
+        retiredAt: FieldValue.serverTimestamp()
+      });
+      retiredNow.push(doc.id);
+    } else {
+      batch.update(doc.ref, { daysInTop: newDaysInTop });
+    }
+  }
+
+  await batch.commit();
+  return { ok: true, checked: consideredCount, retiredNow: retiredNow };
+});
+
+// Admin correction for a mistaken retirement -- resets daysInTop back to
+// 0 (a fresh runway, not immediately re-eligible for retirement on the
+// next check) and clears the Hall of Fame entry. Doesn't touch count/
+// topVoter, which retirement never altered in the first place.
+exports.unretireVideo = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const adminDoc = await db.collection("admins").doc(request.auth.uid).get();
+  if (!adminDoc.exists) throw new HttpsError("permission-denied", "Admin only.");
+
+  const rowNum = request.data && request.data.rowNum;
+  if (typeof rowNum !== "string" || !rowNum) {
+    throw new HttpsError("invalid-argument", "Missing rowNum.");
+  }
+
+  const batch = db.batch();
+  batch.update(db.collection("videoVotes").doc(rowNum), {
+    retired: false,
+    daysInTop: 0
+  });
+  batch.delete(db.collection("voteHallOfFame").doc(rowNum));
+  await batch.commit();
+
+  return { ok: true };
+});
+
 // Deliberately short and NOT exhaustive -- catches the clearest, most
 // common cases as a first pass for admin review, not a guarantee nothing
 // slips through. Plain substring match (case-insensitive), so it has the

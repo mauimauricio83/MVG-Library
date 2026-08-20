@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.60.0 — current
+- Built (but dormant) a TRL-style vote retirement / Hall of Fame system -- see VOTE_RETIREMENT_PLAN.md (local-only) for the full design and activation checklist. `checkVoteRetirements` (admin-only, manually triggered -- deliberately not on a schedule yet) increments `daysInTop` for whatever's currently in the top 5, and permanently retires (freezes + snapshots into `voteHallOfFame`) anything that's spent 14 cumulative days there, same idea as TRL's own day-count retirement rule. `unretireVideo` is the admin correction tool. Nothing on the live site reads/filters on the new fields yet, so this genuinely changes nothing a visitor sees until the activation steps in the plan doc happen. Admin's Vote Rounds view gained a "Retirement / Hall of Fame" section (labeled Dormant) with a manual "Run retirement check now" button and an Un-retire action per entry.
+
 ## v5.59.0 — current
 - Admin's Vote Rounds view gained a "Reset to 0" button per video, with a confirm() warning before it fires. New `resetVideoVotes` Cloud Function (admin-gated) zeroes `videoVotes/{rowNum}`'s count/topVoter/latestVoter AND deletes every recorded `voterTallies` doc for that video -- not just the visible count, so a future vote's topVoter comparison starts clean instead of comparing against a stale pre-reset tally. Doesn't touch `voteEvents` history (stays as an audit trail, just never replayed). Needs `firebase deploy --only functions` before it works live.
 

@@ -874,6 +874,12 @@
         <p class="admin-bulk-hint">Voting is open to any catalog video from the Vote button on the site -- there's no round to manage here, just the live standings, for deciding what's worth featuring on Instagram. Currently free to vote; no payment is collected.</p>
         <p class="admin-status" id="adminVoteRoundsStatus" hidden></p>
         <div class="admin-entries-list" id="adminVoteRoundHistory"></div>
+
+        <h3 class="recent-title">Retirement / Hall of Fame <span class="admin-badge">Dormant</span></h3>
+        <p class="admin-bulk-hint">TRL-style retirement: a video that camps in the top <span id="adminRetirementTopN"></span> for <span id="adminRetirementDays"></span> cumulative days gets permanently retired from the leaderboard and enshrined below instead of sitting at #1 forever. Nothing runs automatically yet -- this only ever changes anything when you click the button below, on purpose, while this is still being tested. See VOTE_RETIREMENT_PLAN.md.</p>
+        <button type="button" class="admin-row-btn" id="adminRunRetirementCheckBtn">Run retirement check now</button>
+        <p class="admin-status" id="adminRetirementStatus" hidden></p>
+        <div class="admin-entries-list" id="adminHallOfFameList"></div>
       </div>
 
       <div id="adminGraphicsView" hidden>
