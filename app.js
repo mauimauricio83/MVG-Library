@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.60.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.60.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4089,6 +4089,7 @@
 
   function teardownTV() {
     teardownChannelMode();
+    if (stopArmedStaticNoise) { stopArmedStaticNoise(); stopArmedStaticNoise = null; }
     state.tv.active = false;
     state.tv.started = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -4493,12 +4494,60 @@
   // watching, TV-channel-surfing style rather than announcing what's next.
   function tvStaticMarkup() {
     return '<div class="tv-static-wrap">' +
-      '<div class="tv-static-noise"></div>' +
+      '<canvas class="tv-static-noise"></canvas>' +
       '<button type="button" class="tv-static-play" id="tvArmedPlayBtn" aria-label="Play">' +
         '<span class="tv-static-play-icon">▶</span>' +
       "</button>" +
       '<p class="tv-static-hint">Tap to play</p>' +
     "</div>";
+  }
+
+  // Holds the current armed-screen noise loop's stop function (see
+  // startStaticNoise() below) -- null whenever the armed "channel ready"
+  // screen isn't showing. Stopped from every place that removes/replaces
+  // it: teardownTV(), ensureTVShell() (swaps in the real player), and
+  // armTV() re-arming (which goes through teardownTV() first anyway).
+  var stopArmedStaticNoise = null;
+
+  // Fills a <canvas class="tv-static-noise"> with fresh random grayscale
+  // pixels -- genuine per-frame randomness, unlike the old approach (one
+  // fixed SVG feTurbulence tile sliding around via CSS transform), which
+  // read as "a single texture shaking" rather than real static once you
+  // looked for more than a second. Rendered at a small backing resolution
+  // (see startStaticNoise()) and scaled up via CSS with image-rendering:
+  // pixelated, so the chunky pixels themselves read as analog grain
+  // instead of blurring into a smooth gradient.
+  function renderStaticNoiseFrame(canvas) {
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var w = canvas.width, h = canvas.height;
+    var imageData = ctx.createImageData(w, h);
+    var buf = imageData.data;
+    for (var i = 0; i < buf.length; i += 4) {
+      var v = (Math.random() * 256) | 0;
+      buf[i] = v;
+      buf[i + 1] = v;
+      buf[i + 2] = v;
+      buf[i + 3] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // ~15fps, not 60 -- real analog static has a coarse, chaotic flicker
+  // rather than a smooth one, and it's cheap besides (a low-res backing
+  // canvas redrawn a handful of times a second, not every frame). Returns
+  // a stop function; the caller MUST call it once the canvas is removed
+  // or replaced (armTV() re-arming, ensureTVShell() swapping in the real
+  // player, showChannelTuningFlash()'s own timeout) -- nothing here can
+  // detect that on its own, an interval left running against a detached
+  // canvas would just be silent wasted work, not a visible bug, so it's
+  // easy to forget.
+  function startStaticNoise(canvas) {
+    canvas.width = 120;
+    canvas.height = 90;
+    renderStaticNoiseFrame(canvas);
+    var timer = setInterval(function () { renderStaticNoiseFrame(canvas); }, 1000 / 15);
+    return function stopStaticNoise() { clearInterval(timer); };
   }
 
   function shuffle(arr) {
@@ -4685,6 +4734,7 @@
   // playArmedTV()/startTVMode()/teardownTV() for their show/hide).
   function ensureTVShell() {
     if (state.tv.shellBuilt) return;
+    if (stopArmedStaticNoise) { stopArmedStaticNoise(); stopArmedStaticNoise = null; }
     els.videoBox.innerHTML = TV_PLAYER_TARGET_HTML;
     state.tv.shellBuilt = true;
     applyTVCrop();
@@ -5163,9 +5213,12 @@
     if (!frame) return;
     var flash = document.createElement("div");
     flash.className = "tv-tuning-flash";
-    flash.innerHTML = '<div class="tv-static-noise"></div>';
+    var canvas = document.createElement("canvas");
+    canvas.className = "tv-static-noise";
+    flash.appendChild(canvas);
     frame.appendChild(flash);
-    setTimeout(function () { flash.remove(); }, 600);
+    var stop = startStaticNoise(canvas);
+    setTimeout(function () { stop(); flash.remove(); }, 600);
   }
 
   // Loads `pos.item` (from computeChannelPosition() -- either a regular
@@ -5424,6 +5477,7 @@
     state.tv.queue = shuffle(pool);
     state.tv.index = 0;
     els.videoBox.innerHTML = tvStaticMarkup();
+    stopArmedStaticNoise = startStaticNoise(els.videoBox.querySelector(".tv-static-noise"));
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(false);
   }

@@ -2895,21 +2895,23 @@ body.is-searching #discoverSection {
   overflow: hidden;
 }
 
+/* A <canvas>, not a styled <div> -- see startStaticNoise()/
+   renderStaticNoiseFrame() in app.js. Redrawn with fresh random
+   grayscale pixels every frame instead of one fixed noise image sliding
+   around (the old approach, which read as "one texture shaking" rather
+   than real static once you looked for more than a second). Rendered at
+   a small backing resolution and scaled up via CSS, image-rendering:
+   pixelated keeping the pixels crisp/chunky instead of blurring them
+   into a soft gradient -- that chunkiness is what actually reads as
+   analog static. Full opaque already (real per-pixel randomness gives
+   genuine black/white contrast on its own, no CSS filter trick needed
+   the way the old single fixed texture did). */
 .tv-static-noise {
   position: absolute;
-  inset: -10%;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 140px 140px;
-  opacity: 0.55;
-  animation: tv-static-flicker 0.2s steps(4) infinite;
-}
-
-@keyframes tv-static-flicker {
-  0% { transform: translate(0, 0); }
-  25% { transform: translate(-3%, 2%); }
-  50% { transform: translate(2%, -3%); }
-  75% { transform: translate(-2%, -2%); }
-  100% { transform: translate(0, 0); }
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 
 .tv-static-play {
@@ -2952,10 +2954,6 @@ body.is-searching #discoverSection {
   overflow: hidden;
   pointer-events: none;
   animation: tv-tuning-flash-fade 0.55s ease forwards;
-}
-
-.tv-tuning-flash .tv-static-noise {
-  inset: -10%;
 }
 
 @keyframes tv-tuning-flash-fade {
