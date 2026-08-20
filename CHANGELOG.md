@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.60.3 — current
+- Fix: TV Mode's widen button did nothing -- `#tvModal .lightbox-panel` (an ID selector, `max-width: 780px`) always outranked the plain `.lightbox-panel.size-large` class selector (`max-width: 1080px`) on specificity alone, regardless of which class was actually toggled. Added a `#tvModal .lightbox-panel.size-large` override so the widen toggle wins back the specificity fight. Confirmed the panel now actually resizes (780px ↔ 1080px) when the button is clicked.
+
 ## v5.60.2 — current
 - Rebuilt TV Mode's "channel ready" static/noise effect from scratch -- it used to be one fixed SVG feTurbulence noise tile sliding around via a CSS transform animation, which read as "a single texture shaking" rather than real static once you looked for more than a second (and was too dim/low-contrast besides). Now a small `<canvas>` redrawn with genuinely random black/white pixels ~15 times a second (`startStaticNoise()`/`renderStaticNoiseFrame()` in app.js), scaled up with `image-rendering: pixelated` for authentic chunky analog grain. Same canvas-based renderer now backs both the armed "tap to play" screen and Channel Mode's brief tuning flash between tracks. Verified the noise loop stops cleanly (no leaked interval) whenever the static screen is torn down, re-armed, or replaced by the real player.
 

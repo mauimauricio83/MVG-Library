@@ -4461,6 +4461,16 @@ body.is-searching #discoverSection {
   #tvModal .lightbox-panel {
     max-width: 780px;
   }
+
+  /* Without this, the widen button's .size-large class (see
+     applyTVSize() in app.js) never actually widens anything in TV Mode --
+     #tvModal .lightbox-panel (an ID selector) always outranks the plain
+     .lightbox-panel.size-large class selector above on specificity alone,
+     regardless of which one comes later in the file or which class is
+     toggled. Needs its own #tvModal-qualified override to win back. */
+  #tvModal .lightbox-panel.size-large {
+    max-width: 1080px;
+  }
 }
 
 #tvModal #tvAdPlaceholder {
