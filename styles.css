@@ -3993,26 +3993,57 @@ body.is-searching #discoverSection {
 }
 
 /* Lives beside Clear filters instead of on the player's own overlay bar --
-   easier to reach on mobile without a thumb covering the video. Only shown
-   once TV Mode is actually playing (see playArmedTV()/teardownTV() in
-   app.js); outline style (vs. Clear filters' solid fill) since it's a
-   secondary/repeatable action, not a reset. */
-.tv-skip-btn {
-  margin-top: 0;
+   easier to reach on mobile without a thumb covering the video. YouTube/
+   Vimeo's own native controls are turned off for TV Mode (controls:false
+   in every createVideoPlayer() call in loadTVTrack()/loadChannelTrackAt())
+   in keeping with the "curated channel, not on-demand seeking" feel --
+   Play/Pause and Next sit together in "standard media player" order,
+   Mute/Volume alongside. Only shown once TV Mode is actually playing (see
+   showTVControls()/teardownTV() in app.js). No seek bar, by design. */
+.tv-playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tv-playback-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 5px 14px;
-  border-radius: 999px;
+  font-size: 0.85rem;
+  line-height: 1;
   cursor: pointer;
 }
 
-.tv-skip-btn:hover {
+/* Author styles always beat the UA [hidden]{display:none} rule -- same
+   gotcha as .header-icon-btn[hidden] elsewhere. Without this override,
+   .tv-playback-btn's own unconditional display:flex would keep a hidden
+   button visible. */
+.tv-playback-btn[hidden] {
+  display: none;
+}
+
+.tv-playback-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.tv-volume-slider {
+  flex: 0 0 auto;
+  width: 70px;
+  accent-color: var(--accent);
+}
+
+.tv-volume-slider[hidden] {
+  display: none;
 }
 
 .lightbox {

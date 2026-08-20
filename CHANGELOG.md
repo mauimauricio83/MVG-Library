@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.61.0 — current
+- TV Mode's YouTube/Vimeo embeds no longer show their own native control chrome at all (`controls: false` in every `createVideoPlayer()` call in `loadTVTrack()`/`loadChannelTrackAt()`, not just when cropped) -- in keeping with the "curated channel, not on-demand seeking" feel. Replaced with custom controls: Play/Pause and a proper "Next" icon (a filled triangle+bar, not the old "Skip ▶" text) sit together in standard media-player order, plus a Mute toggle and volume slider alongside the other TV Mode controls. No seek bar, by design. Volume/mute choices carry over across track changes (including Skip and Channel Mode's own auto-advance) instead of resetting each time. Icons are either plain-text glyphs already precedented on the site (▶) or plain filled/outline SVG shapes built for this -- deliberately not Unicode media-control glyphs (⏸/⏭/🔊), which render as full-color emoji on enough platforms to violate the no-emoji rule.
+
 ## v5.60.3 — current
 - Fix: TV Mode's widen button did nothing -- `#tvModal .lightbox-panel` (an ID selector, `max-width: 780px`) always outranked the plain `.lightbox-panel.size-large` class selector (`max-width: 1080px`) on specificity alone, regardless of which class was actually toggled. Added a `#tvModal .lightbox-panel.size-large` override so the widen toggle wins back the specificity fight. Confirmed the panel now actually resizes (780px ↔ 1080px) when the button is clicked.
 

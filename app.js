@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.60.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.61.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -158,6 +158,9 @@
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     tvSkipBtn: document.getElementById("tvSkipBtn"),
+    tvPlayPauseBtn: document.getElementById("tvPlayPauseBtn"),
+    tvMuteBtn: document.getElementById("tvMuteBtn"),
+    tvVolumeSlider: document.getElementById("tvVolumeSlider"),
     tvReportLink: document.getElementById("tvReportLink"),
     tvPowerSwitch: document.getElementById("tvPowerSwitch"),
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
@@ -945,7 +948,7 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref() },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: false, volume: 100 },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -4098,6 +4101,9 @@
     state.tv.player = null;
     state.tv.shellBuilt = false;
     els.tvSkipBtn.hidden = true;
+    els.tvPlayPauseBtn.hidden = true;
+    els.tvMuteBtn.hidden = true;
+    els.tvVolumeSlider.hidden = true;
     els.tvReportLink.hidden = true;
     els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
@@ -4823,11 +4829,12 @@
       } else {
         state.tv.player.loadVideoById(ref.id);
       }
+      applyTVPlaybackState(state.tv.player, "youtube", !startPaused);
       return;
     }
     if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "vimeo" && state.tv.player.loadVideo) {
       state.tv.player.loadVideo(ref.id).then(function () {
-        if (startPaused) state.tv.player.pause(); else state.tv.player.play();
+        applyTVPlaybackState(state.tv.player, "vimeo", !startPaused);
       }).catch(function () { if (state.tv.active) advanceTV(); });
       return;
     }
@@ -4840,13 +4847,14 @@
     if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
     createVideoPlayer("tvPlayerTarget", ref, {
       autoplay: !startPaused,
-      controls: !state.tv.crop,
+      controls: false,
       isStale: function () { return !state.tv.active; },
       onEnded: function () { if (state.tv.active) advanceTV(); },
       onError: function () { if (state.tv.active) advanceTV(); },
       onReady: function (player) {
         state.tv.player = player;
         state.tv.playerProvider = ref.provider;
+        applyTVPlaybackState(player, ref.provider, !startPaused);
       }
     });
   }
@@ -5267,12 +5275,13 @@
 
     if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "youtube" && state.tv.player.loadVideoById) {
       state.tv.player.loadVideoById(ref.id, offsetSec);
+      applyTVPlaybackState(state.tv.player, "youtube", true);
       return;
     }
     if (state.tv.player && state.tv.playerProvider === ref.provider && ref.provider === "vimeo" && state.tv.player.loadVideo) {
       state.tv.player.loadVideo(ref.id).then(function () {
         seekOnceReady(state.tv.player, "vimeo");
-        state.tv.player.play();
+        applyTVPlaybackState(state.tv.player, "vimeo", true);
       }).catch(function () { if (state.tv.active) advanceChannelTrack(); });
       return;
     }
@@ -5285,7 +5294,7 @@
     if (frame) frame.innerHTML = TV_PLAYER_TARGET_INNER_HTML;
     createVideoPlayer("tvPlayerTarget", ref, {
       autoplay: true,
-      controls: !state.tv.crop,
+      controls: false,
       isStale: function () { return !state.tv.active || state.tvActiveTab !== "channel"; },
       onEnded: function () { if (state.tv.active && state.tvActiveTab === "channel") advanceChannelTrack(); },
       onError: function () { if (state.tv.active && state.tvActiveTab === "channel") advanceChannelTrack(); },
@@ -5293,6 +5302,7 @@
         state.tv.player = player;
         state.tv.playerProvider = ref.provider;
         seekOnceReady(player, ref.provider);
+        applyTVPlaybackState(player, ref.provider, true);
       }
     });
   }
@@ -5384,11 +5394,104 @@
     state.channel.currentTrackStartedAt = null;
   }
 
+  // Custom playback controls -- YouTube/Vimeo's own native chrome is
+  // deliberately turned off for TV Mode now (controls:false in every
+  // createVideoPlayer() call in loadTVTrack()/loadChannelTrackAt()), in
+  // keeping with the "curated channel, not on-demand seeking" feel --
+  // these replace it with just what a real TV remote would have: play/
+  // pause, next, mute, volume. No seek bar by design. Plain glyph icons
+  // where the codebase already has precedent (▶ is used elsewhere, e.g.
+  // tv-static-play-icon) or a plain filled SVG shape where it doesn't
+  // (pause/speaker) -- Unicode media-control glyphs like ⏸/⏭/🔊 render as
+  // full-color emoji on enough platforms to violate the no-emoji rule.
+  var TV_ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
+  var TV_ICON_PLAY = "▶";
+  var TV_ICON_SPEAKER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M17 8a5 5 0 0 1 0 8"/><path d="M19.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  var TV_ICON_MUTED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+
+  function updateTVPlayPauseUI() {
+    els.tvPlayPauseBtn.innerHTML = state.tv.isPlaying ? TV_ICON_PAUSE : TV_ICON_PLAY;
+    var label = state.tv.isPlaying ? "Pause" : "Play";
+    els.tvPlayPauseBtn.title = label;
+    els.tvPlayPauseBtn.setAttribute("aria-label", label);
+  }
+
+  function updateTVMuteUI() {
+    els.tvMuteBtn.innerHTML = state.tv.isMuted ? TV_ICON_MUTED : TV_ICON_SPEAKER;
+    var label = state.tv.isMuted ? "Unmute" : "Mute";
+    els.tvMuteBtn.title = label;
+    els.tvMuteBtn.setAttribute("aria-label", label);
+  }
+
+  function setTVPlaying(playing) {
+    state.tv.isPlaying = playing;
+    var p = state.tv.player;
+    if (p) {
+      if (state.tv.playerProvider === "youtube") {
+        playing ? p.playVideo() : p.pauseVideo();
+      } else if (p.play) {
+        (playing ? p.play() : p.pause()).catch(function () {});
+      }
+    }
+    updateTVPlayPauseUI();
+  }
+
+  function setTVMuted(muted) {
+    state.tv.isMuted = muted;
+    var p = state.tv.player;
+    if (p) {
+      if (state.tv.playerProvider === "youtube") {
+        muted ? p.mute() : p.unMute();
+      } else if (p.setMuted) {
+        p.setMuted(muted).catch(function () {});
+      }
+    }
+    updateTVMuteUI();
+  }
+
+  function setTVVolume(vol) {
+    state.tv.volume = vol;
+    var p = state.tv.player;
+    if (p) {
+      if (state.tv.playerProvider === "youtube") {
+        p.setVolume(vol);
+      } else if (p.setVolume) {
+        p.setVolume(vol / 100).catch(function () {});
+      }
+    }
+    if (vol > 0 && state.tv.isMuted) setTVMuted(false);
+  }
+
+  // Carries the viewer's own volume/mute choice over to a (re)used or
+  // freshly created player -- called from every branch of loadTVTrack()/
+  // loadChannelTrackAt() so switching tracks doesn't silently reset the
+  // volume they'd already set. `playing` is what THIS load wants
+  // (autoplay vs. cued/startPaused, or always true for Channel Mode --
+  // there's no per-viewer pause on a shared channel, same reasoning as
+  // tvPowerSwitch staying hidden there).
+  function applyTVPlaybackState(player, provider, playing) {
+    if (provider === "youtube") {
+      state.tv.isMuted ? player.mute() : player.unMute();
+      player.setVolume(state.tv.volume);
+    } else {
+      player.setMuted(state.tv.isMuted).catch(function () {});
+      player.setVolume(state.tv.volume / 100).catch(function () {});
+    }
+    setTVPlaying(playing);
+  }
+
+  els.tvPlayPauseBtn.addEventListener("click", function () { setTVPlaying(!state.tv.isPlaying); });
+  els.tvMuteBtn.addEventListener("click", function () { setTVMuted(!state.tv.isMuted); });
+  els.tvVolumeSlider.addEventListener("input", function () { setTVVolume(parseInt(els.tvVolumeSlider.value, 10)); });
+
   // Shared by every TV Mode entry point that actually starts playback
-  // (tuneChannelMode/playArmedTV/startTVMode) -- the same 7 controls
+  // (tuneChannelMode/playArmedTV/startTVMode) -- the same controls
   // always appear together once something's playing; only the power
   // switch/skip button differ per entry point, so those stay separate.
   function showTVControls() {
+    els.tvPlayPauseBtn.hidden = false;
+    els.tvMuteBtn.hidden = false;
+    els.tvVolumeSlider.hidden = false;
     els.tvReportLink.hidden = false;
     els.tvFavBtn.hidden = false;
     els.tvVoteBtn.hidden = false;
@@ -5396,6 +5499,9 @@
     els.tvCropBtn.hidden = false;
     els.tvWidenBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
+    updateTVPlayPauseUI();
+    updateTVMuteUI();
+    els.tvVolumeSlider.value = state.tv.volume;
   }
 
   // Entry point for the Channel tab -- bypasses TV Mode's usual armed/
