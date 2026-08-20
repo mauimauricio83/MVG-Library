@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.60.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.60.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -5331,6 +5331,20 @@
     state.channel.currentTrackStartedAt = null;
   }
 
+  // Shared by every TV Mode entry point that actually starts playback
+  // (tuneChannelMode/playArmedTV/startTVMode) -- the same 7 controls
+  // always appear together once something's playing; only the power
+  // switch/skip button differ per entry point, so those stay separate.
+  function showTVControls() {
+    els.tvReportLink.hidden = false;
+    els.tvFavBtn.hidden = false;
+    els.tvVoteBtn.hidden = false;
+    els.tvPlaylistBtn.hidden = false;
+    els.tvCropBtn.hidden = false;
+    els.tvWidenBtn.hidden = false;
+    els.tvInfoBtn.hidden = false;
+  }
+
   // Entry point for the Channel tab -- bypasses TV Mode's usual armed/
   // static "tap to play" screen entirely, since there's nothing to arm: you
   // tune in to whatever's already playing, like a real TV channel.
@@ -5341,13 +5355,7 @@
     state.channel.tuned = true;
     ensureTVShell();
     updateTVChannelStatus("Tuning in…");
-    els.tvReportLink.hidden = false;
-    els.tvFavBtn.hidden = false;
-    els.tvVoteBtn.hidden = false;
-    els.tvPlaylistBtn.hidden = false;
-    els.tvCropBtn.hidden = false;
-    els.tvWidenBtn.hidden = false;
-    els.tvInfoBtn.hidden = false;
+    showTVControls();
     els.tvPowerSwitch.hidden = true; // no pause on a shared channel -- always on
     els.tvSkipBtn.hidden = true;     // skipping would only diverge this viewer from everyone else
 
@@ -5426,13 +5434,7 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[state.tv.index]);
     els.tvSkipBtn.hidden = false;
-    els.tvReportLink.hidden = false;
-    els.tvFavBtn.hidden = false;
-    els.tvVoteBtn.hidden = false;
-    els.tvPlaylistBtn.hidden = false;
-    els.tvCropBtn.hidden = false;
-    els.tvWidenBtn.hidden = false;
-    els.tvInfoBtn.hidden = false;
+    showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
   }
@@ -5455,13 +5457,7 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     els.tvSkipBtn.hidden = false;
-    els.tvReportLink.hidden = false;
-    els.tvFavBtn.hidden = false;
-    els.tvVoteBtn.hidden = false;
-    els.tvPlaylistBtn.hidden = false;
-    els.tvCropBtn.hidden = false;
-    els.tvWidenBtn.hidden = false;
-    els.tvInfoBtn.hidden = false;
+    showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
   }
@@ -8172,12 +8168,6 @@
   // real (hidden, silent, no-autoplay) player just long enough to read
   // getDuration() off it, then tears it down.
   var channelDurationProbeSeq = 0;
-
-  function resolveDurationForRow(row) {
-    var ref = getRowVideoRef(row);
-    if (!ref) return Promise.resolve(0);
-    return resolveDurationForRef(ref);
-  }
 
   function resolveDurationForRef(ref) {
     if (!ref) return Promise.resolve(0);

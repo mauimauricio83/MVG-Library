@@ -2708,13 +2708,6 @@ body.is-searching #discoverSection {
   -webkit-box-orient: vertical;
 }
 
-.result-card-more-note {
-  padding: 14px 4px;
-  color: var(--text-faint);
-  font-size: 0.82rem;
-  text-align: center;
-}
-
 .tv-custom-list {
   display: flex;
   flex-direction: column;
@@ -5891,10 +5884,6 @@ body.is-searching #discoverSection {
 .submit-form-status {
   margin: 0;
   font-size: 0.85rem;
-}
-
-.submit-form-status.is-success {
-  color: #1f8a5f;
 }
 
 .submit-form-status.is-error {

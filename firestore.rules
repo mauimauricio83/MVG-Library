@@ -31,7 +31,7 @@ service cloud.firestore {
     // "Reset Username" moderation action (see Username Moderation in the
     // admin panel), which clears a stranger's users/{uid}.username.
     // voteCredits (prepaid "vote wallet" balance -- see walletTransactions
-    // and functions/index.js's createWalletCheckout/stripeWebhook/
+    // and functions/index.js's createWalletCheckout/lemonSqueezyWebhook/
     // castVoteWithCredit) is carved out of the owner's normal write access:
     // only an admin (or, in practice, the Functions' Admin SDK access,
     // which bypasses rules entirely) may set it, since a client that could

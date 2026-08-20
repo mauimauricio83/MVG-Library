@@ -192,10 +192,11 @@ a count.
   if it's ever actually a problem.
 - **Viewer count**: nice-to-have if Meshcast's embed exposes it cheaply; not
   worth custom-building presence tracking for.
-- **Mobile**: TV Mode has real mobile affordances (crop, mirror, interlace toggle
-  are desktop/admin-oriented, but the core playback works on mobile). Live Mode's
-  embed needs the same baseline — should be checked once there's something to
-  check, not designed for in the abstract.
+- **Mobile**: TV Mode has real mobile affordances (crop toggle works everywhere;
+  Mirror/Interlace were admin debug tools and have since been removed from TV
+  Mode entirely — core playback works on mobile). Live Mode's embed needs the
+  same baseline — should be checked once there's something to check, not
+  designed for in the abstract.
 - **VOD / replay**: out of scope entirely for v1. Meshcast is a live relay, not
   storage — if past streams ever need to be watchable afterward, that's a
   separate feature (record locally in OBS, upload to YouTube/the catalog like

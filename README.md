@@ -4,11 +4,13 @@ A browsable database of music videos, directors, and artists for [The Music Vide
 
 ## How it works
 
-No build step, no framework — plain HTML/CSS/JS, deployed via GitHub Pages straight from `main`.
+No build step, no framework — plain HTML/CSS/JS, deployed via GitHub Pages straight from `main`, backed by Firebase (Firestore + Cloud Functions + Cloud Storage) for anything that needs a real database, auth, or server-side logic.
 
-The database itself is a published Google Sheet. [app.js](app.js) fetches it as CSV ([PapaParse](https://www.papaparse.com/)) on page load, caches it in `localStorage` for instant repeat visits, and renders everything client-side: search, director/artist/song browsing, category/genre/year/country filters, a TV Mode shuffle player, a lightbox with full credits, and a Featured/Latest/Spotlight rail system driven by checkbox columns in the sheet.
+The catalog itself lives in Firestore (`videos/{rowNum}` — `rowNum` preserved from the project's original spreadsheet). Admins edit it through the in-app Admin panel; the public site never talks to Firestore directly for catalog data — [app.js](app.js) fetches a static published JSON snapshot (Cloud Storage) on page load, caches it in IndexedDB for instant repeat visits, and renders everything client-side from that snapshot: search, director/artist/song browsing, category/genre/year/country filters, a TV Mode shuffle player, a lightbox with full credits, and Featured/Latest/Viewer's Choice/Maui's Picks rail systems driven by admin-controlled flags. See [CLAUDE.md](CLAUDE.md) for the full data-model writeup.
 
-Two more published sheets (`Seconds, Image, Link` columns) drive rotating ad slideshows — one in the results sidebar, one in the top banner — each crossfading through its own ads at its own per-ad duration.
+Voting, vote credits, user accounts/profiles, playlists, favorites, comments, and the message board are all Firestore-backed and live-synced for signed-in users; Cloud Functions (`functions/index.js`) handle anything that needs server-side trust — vote tallying, prepaid vote-credit checkout (Lemon Squeezy), username moderation, and admin-only actions like resetting a video's votes.
+
+Two published Google Sheets (`Seconds, Image, Link` columns) still drive rotating ad slideshows via CSV ([PapaParse](https://www.papaparse.com/)) — one in the results sidebar, one in the top banner — each crossfading through its own ads at its own per-ad duration. This is the one place the site still reads a Google Sheet directly; the catalog itself moved off that model to Firestore.
 
 ### Files
 
@@ -18,8 +20,14 @@ Two more published sheets (`Seconds, Image, Link` columns) drive rotating ad sli
 | `app.js` | All application logic (single IIFE, no modules) |
 | `styles.css` | All styling, light/dark via `prefers-color-scheme` |
 | `hub.css` | Styling for the static director/artist hub pages |
+| `site-nav.js` | Shared header/nav markup + version constant, injected into every page |
+| `cloud.js` / `cloud.html` | Word-cloud sphere visualization |
+| `blog.html`, `land.html`, `support.html`, `privacy.html`, `delete-account.html` | Standalone pages outside the main SPA |
+| `firestore.rules`, `firestore.indexes.json`, `storage.rules` | Firebase security rules — need `firebase deploy` after editing, not just committing |
+| `functions/index.js` | Cloud Functions — vote tallying, wallet/checkout, moderation, admin actions |
 | `serve.js` | Zero-dependency local dev server (`node serve.js`) |
 | `scripts/generate-seo-pages.js` | Generates `/directors/`, `/artists/`, and `sitemap.xml` |
+| `scripts/publish-snapshot.js` | CLI counterpart to `app.js`'s `publishSnapshot()` — must stay field-for-field in sync with it |
 | `robots.txt`, `sitemap.xml` | SEO — sitemap is regenerated, don't hand-edit |
 | `CHANGELOG.md` | Version history, kept in sync with `APP_VERSION` in app.js |
 
@@ -47,4 +55,6 @@ Then open `http://localhost:8420`. No install step — the only external depende
 
 ## Deploying
 
-Push to `main` — GitHub Pages serves directly from it, no build step. Changes are typically live within a minute or two of the push.
+Push to `main` — GitHub Pages serves the static site directly from it, no build step. Changes are typically live within a minute or two of the push.
+
+**Firebase changes are a separate step**: editing `firestore.rules`, `firestore.indexes.json`, `storage.rules`, or anything in `functions/` only takes effect after `firebase deploy` (`--only firestore:rules`, `--only functions`, etc., from the repo root) — a git push alone does not deploy them.
