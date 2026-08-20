@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.61.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.62.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -158,9 +158,13 @@
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
     tvSkipBtn: document.getElementById("tvSkipBtn"),
+    tvPrevBtn: document.getElementById("tvPrevBtn"),
     tvPlayPauseBtn: document.getElementById("tvPlayPauseBtn"),
     tvMuteBtn: document.getElementById("tvMuteBtn"),
     tvVolumeSlider: document.getElementById("tvVolumeSlider"),
+    tvSeekRow: document.getElementById("tvSeekRow"),
+    tvSeekBar: document.getElementById("tvSeekBar"),
+    tvSeekTime: document.getElementById("tvSeekTime"),
     tvReportLink: document.getElementById("tvReportLink"),
     tvPowerSwitch: document.getElementById("tvPowerSwitch"),
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
@@ -168,6 +172,7 @@
     tvFavBtn: document.getElementById("tvFavBtn"),
     tvVoteBtn: document.getElementById("tvVoteBtn"),
     tvWidenBtn: document.getElementById("tvWidenBtn"),
+    tvCcBtn: document.getElementById("tvCcBtn"),
     tvInfoBtn: document.getElementById("tvInfoBtn"),
     tvInfoPanel: document.getElementById("tvInfoPanel"),
     tvFilterTabs: document.getElementById("tvFilterTabs"),
@@ -948,7 +953,7 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: false, volume: 100 },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: false, volume: 100, ccEnabled: false },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -4051,6 +4056,17 @@
           videoId: ref.id,
           playerVars: { autoplay: opts.autoplay ? 1 : 0, rel: 0, controls: opts.controls === false ? 0 : 1 },
           events: {
+            // Firing opts.onReady() synchronously right after `new
+            // YT.Player(...)` returns (the old code) was calling it
+            // before the player was actually API-ready -- the
+            // constructor returns immediately, but methods like
+            // mute()/setVolume() aren't real until YouTube's OWN
+            // onReady event fires. Harmless as long as nothing called
+            // player methods from inside onReady, which is exactly
+            // what broke once TV Mode's custom controls started doing
+            // that (applyTVPlaybackState()) -- "player.unMute is not a
+            // function" from inside YouTube's own widget script.
+            onReady: function () { if (opts.onReady) opts.onReady(player); },
             onStateChange: function (e) {
               if (opts.onEnded && e.data === YT.PlayerState.ENDED) opts.onEnded();
             },
@@ -4060,7 +4076,6 @@
             }
           }
         });
-        if (opts.onReady) opts.onReady(player);
       });
     } else {
       loadVimeoAPI(function () {
@@ -4093,6 +4108,8 @@
   function teardownTV() {
     teardownChannelMode();
     if (stopArmedStaticNoise) { stopArmedStaticNoise(); stopArmedStaticNoise = null; }
+    stopTVSeekPoll();
+    hideTVLowerThirdNow();
     state.tv.active = false;
     state.tv.started = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -4101,9 +4118,11 @@
     state.tv.player = null;
     state.tv.shellBuilt = false;
     els.tvSkipBtn.hidden = true;
+    els.tvPrevBtn.hidden = true;
     els.tvPlayPauseBtn.hidden = true;
     els.tvMuteBtn.hidden = true;
     els.tvVolumeSlider.hidden = true;
+    els.tvSeekRow.hidden = true;
     els.tvReportLink.hidden = true;
     els.tvPowerSwitch.hidden = true;
     els.tvFavBtn.hidden = true;
@@ -4111,6 +4130,7 @@
     els.tvPlaylistBtn.hidden = true;
     els.tvCropBtn.hidden = true;
     els.tvWidenBtn.hidden = true;
+    els.tvCcBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
@@ -4731,7 +4751,21 @@
     return 60;
   }
 
-  var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div>';
+  // The logo/lower-third live inside this template (rebuilt fresh on
+  // every provider switch/fresh player create, see loadTVTrack()/
+  // loadChannelTrackAt()) rather than being cached in `els` the way most
+  // elements are -- a cached reference would go stale the instant this
+  // innerHTML gets replaced. Looked up fresh via document.getElementById
+  // wherever they're needed instead (see showTVLowerThird() etc.).
+  // Same-provider track reuse (loadVideoById/loadVideo) never touches
+  // this innerHTML at all, so they persist untouched across those.
+  var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div>' +
+    '<img class="tv-channel-logo" id="tvChannelLogo" src="icons/icon-192.png" alt="">' +
+    '<div class="tv-lower-third" id="tvLowerThird" hidden>' +
+      '<div class="tv-lower-third-artist" id="tvLowerThirdArtist"></div>' +
+      '<div class="tv-lower-third-song" id="tvLowerThirdSong"></div>' +
+      '<div class="tv-lower-third-director" id="tvLowerThirdDirector"></div>' +
+    "</div>";
   var TV_PLAYER_TARGET_HTML = '<div class="video-embed-frame">' + TV_PLAYER_TARGET_INNER_HTML + '</div>';
 
   // No title bar -- the YouTube player itself already shows the video's
@@ -4808,6 +4842,21 @@
     els.tvAdminEditBtn.hidden = !state.isAdmin;
     els.tvAdminDeleteBtn.hidden = !state.isAdmin;
     els.tvInfoPanel.innerHTML = tvInfoMarkup(row);
+
+    // NOT populated/shown here directly -- this runs at the very top of
+    // loadTVTrack(), before a fresh player create rebuilds the video
+    // frame's innerHTML (which recreates tvLowerThird from scratch,
+    // wiping out anything set here in the same tick). Stashed instead
+    // for applyTVPlaybackState() to apply once it's actually called --
+    // every branch of loadTVTrack()/loadChannelTrackAt() reaches that
+    // AFTER any frame rebuild has already happened, fresh-create
+    // included (it fires from the player's own onReady, which is
+    // necessarily after the synchronous rebuild that preceded it).
+    tvPendingLowerThird = {
+      artist: row.artist || "",
+      song: '"' + (row.song || "(untitled)") + '"',
+      director: row.director ? "Director: " + row.director : ""
+    };
   }
 
   // Reuses the existing player in place (loadVideoById/loadVideo) when the
@@ -4865,6 +4914,17 @@
       state.tv.queue = shuffle(state.tv.queue);
       state.tv.index = 0;
     }
+    loadTVTrack(state.tv.queue[state.tv.index]);
+  }
+
+  // Steps back within the current shuffle order instead of reshuffling
+  // the way wrapping forward past the end does -- "go back to what I
+  // was just on" should mean exactly that, not a fresh random pick.
+  // Wraps to the last track rather than no-oping at index 0, same
+  // "always something to land on" feel as advanceTV()'s own wrap.
+  function previousTV() {
+    state.tv.index--;
+    if (state.tv.index < 0) state.tv.index = state.tv.queue.length - 1;
     loadTVTrack(state.tv.queue[state.tv.index]);
   }
 
@@ -5462,6 +5522,40 @@
     if (vol > 0 && state.tv.isMuted) setTVMuted(false);
   }
 
+  function updateTVCcUI() {
+    els.tvCcBtn.classList.toggle("is-active", state.tv.ccEnabled);
+  }
+
+  // YouTube and Vimeo both require an explicit language on enable
+  // ("en" -- not ideal for a non-English video, but there's no per-video
+  // caption-language metadata in the catalog to do better, and both
+  // SDKs fall back to whatever's actually available if "en" doesn't
+  // exist rather than erroring). Neither SDK carries this choice across
+  // a loadVideoById/loadVideo call, let alone a fresh player, so this is
+  // re-applied on every track/provider change too -- see
+  // applyTVPlaybackState().
+  function setTVCaptions(enabled) {
+    state.tv.ccEnabled = enabled;
+    var p = state.tv.player;
+    if (p) {
+      if (state.tv.playerProvider === "youtube") {
+        if (enabled) {
+          if (p.loadModule) p.loadModule("captions");
+          if (p.setOption) p.setOption("captions", "track", {});
+        } else if (p.unloadModule) {
+          p.unloadModule("captions");
+        }
+      } else if (enabled) {
+        if (p.enableTextTrack) p.enableTextTrack("en").catch(function () {});
+      } else if (p.disableTextTrack) {
+        p.disableTextTrack().catch(function () {});
+      }
+    }
+    updateTVCcUI();
+  }
+
+  els.tvCcBtn.addEventListener("click", function () { setTVCaptions(!state.tv.ccEnabled); });
+
   // Carries the viewer's own volume/mute choice over to a (re)used or
   // freshly created player -- called from every branch of loadTVTrack()/
   // loadChannelTrackAt() so switching tracks doesn't silently reset the
@@ -5478,11 +5572,121 @@
       player.setVolume(state.tv.volume / 100).catch(function () {});
     }
     setTVPlaying(playing);
+    setTVCaptions(state.tv.ccEnabled); // re-applied per track/provider -- neither SDK carries a caption choice across a loadVideoById/loadVideo call, let alone a fresh player
+    startTVSeekPoll();
+    tvLowerThirdShownForEnd = false;
+    if (tvPendingLowerThird) {
+      var artistEl = document.getElementById("tvLowerThirdArtist");
+      var songEl = document.getElementById("tvLowerThirdSong");
+      var directorEl = document.getElementById("tvLowerThirdDirector");
+      if (artistEl && songEl && directorEl) {
+        artistEl.textContent = tvPendingLowerThird.artist;
+        songEl.textContent = tvPendingLowerThird.song;
+        directorEl.textContent = tvPendingLowerThird.director;
+        showTVLowerThird();
+      }
+      tvPendingLowerThird = null;
+    }
   }
 
   els.tvPlayPauseBtn.addEventListener("click", function () { setTVPlaying(!state.tv.isPlaying); });
   els.tvMuteBtn.addEventListener("click", function () { setTVMuted(!state.tv.isMuted); });
   els.tvVolumeSlider.addEventListener("input", function () { setTVVolume(parseInt(els.tvVolumeSlider.value, 10)); });
+  els.tvPrevBtn.addEventListener("click", previousTV);
+
+  // ---- Custom seek bar --------------------------------------------------
+  // Lives outside the player itself (native controls are off, see
+  // .video-embed-frame iframe's pointer-events:none in styles.css --
+  // that's also what this whole custom control set exists to replace).
+  // Polled rather than event-driven since neither the YouTube nor Vimeo
+  // SDK fires a "time updated" event -- both just expose a getter.
+  function formatTVTime(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  var tvSeekPollTimer = null;
+  var tvSeekDragging = false; // suppress poll updates while the viewer's own drag is in progress
+  var tvLowerThirdShownForEnd = false; // per-track guard so the end-of-track lower third fires exactly once
+
+  function updateTVSeekUI(cur, dur) {
+    if (tvSeekDragging || !dur) return;
+    els.tvSeekBar.max = Math.floor(dur);
+    els.tvSeekBar.value = Math.floor(cur);
+    els.tvSeekTime.textContent = formatTVTime(cur) + " / " + formatTVTime(dur);
+    if (!tvLowerThirdShownForEnd && (dur - cur) > 0 && (dur - cur) <= TV_LOWER_THIRD_END_WINDOW_SEC) {
+      tvLowerThirdShownForEnd = true;
+      showTVLowerThird();
+    }
+  }
+
+  function startTVSeekPoll() {
+    stopTVSeekPoll();
+    tvSeekPollTimer = setInterval(function () {
+      var p = state.tv.player;
+      if (!p) return;
+      if (state.tv.playerProvider === "youtube") {
+        if (p.getCurrentTime && p.getDuration) updateTVSeekUI(p.getCurrentTime(), p.getDuration());
+      } else if (p.getCurrentTime && p.getDuration) {
+        Promise.all([p.getCurrentTime(), p.getDuration()]).then(function (r) {
+          updateTVSeekUI(r[0], r[1]);
+        }).catch(function () {});
+      }
+    }, 500);
+  }
+
+  function stopTVSeekPoll() {
+    if (tvSeekPollTimer) { clearInterval(tvSeekPollTimer); tvSeekPollTimer = null; }
+  }
+
+  els.tvSeekBar.addEventListener("input", function () {
+    tvSeekDragging = true;
+    els.tvSeekTime.textContent = formatTVTime(parseInt(els.tvSeekBar.value, 10)) + " / " + formatTVTime(parseInt(els.tvSeekBar.max, 10));
+  });
+  els.tvSeekBar.addEventListener("change", function () {
+    var t = parseInt(els.tvSeekBar.value, 10);
+    var p = state.tv.player;
+    if (p) {
+      if (state.tv.playerProvider === "youtube") {
+        if (p.seekTo) p.seekTo(t, true);
+      } else if (p.setCurrentTime) {
+        p.setCurrentTime(t).catch(function () {});
+      }
+    }
+    tvSeekDragging = false;
+  });
+
+  // ---- Lower third -------------------------------------------------------
+  // MTV-style song/artist/director card, shown briefly at the start of a
+  // track (see updateTVTrackDetails()) and again in the last few seconds
+  // before it ends (see updateTVSeekUI() above) -- not a standing title
+  // bar, since native controls (which used to show the title) are off
+  // now. Lives inside TV_PLAYER_TARGET_INNER_HTML, not `els`, since that
+  // markup gets rebuilt on provider switches -- see that var's comment.
+  var TV_LOWER_THIRD_VISIBLE_MS = 5000;
+  var TV_LOWER_THIRD_END_WINDOW_SEC = 5;
+  var TV_LOWER_THIRD_FADE_MS = 400;
+  var tvLowerThirdTimer = null;
+  var tvPendingLowerThird = null; // {song, meta} staged by updateTVTrackDetails(), applied by applyTVPlaybackState()
+
+  function showTVLowerThird() {
+    var el = document.getElementById("tvLowerThird");
+    if (!el) return;
+    if (tvLowerThirdTimer) clearTimeout(tvLowerThirdTimer);
+    el.hidden = false;
+    el.classList.remove("is-fading");
+    tvLowerThirdTimer = setTimeout(function () {
+      el.classList.add("is-fading");
+      setTimeout(function () { el.hidden = true; }, TV_LOWER_THIRD_FADE_MS);
+    }, TV_LOWER_THIRD_VISIBLE_MS);
+  }
+
+  function hideTVLowerThirdNow() {
+    if (tvLowerThirdTimer) { clearTimeout(tvLowerThirdTimer); tvLowerThirdTimer = null; }
+    var el = document.getElementById("tvLowerThird");
+    if (el) { el.hidden = true; el.classList.remove("is-fading"); }
+  }
 
   // Shared by every TV Mode entry point that actually starts playback
   // (tuneChannelMode/playArmedTV/startTVMode) -- the same controls
@@ -5498,9 +5702,11 @@
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
     els.tvWidenBtn.hidden = false;
+    els.tvCcBtn.hidden = false;
     els.tvInfoBtn.hidden = false;
     updateTVPlayPauseUI();
     updateTVMuteUI();
+    updateTVCcUI();
     els.tvVolumeSlider.value = state.tv.volume;
   }
 
@@ -5594,6 +5800,8 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[state.tv.index]);
     els.tvSkipBtn.hidden = false;
+    els.tvPrevBtn.hidden = false;
+    els.tvSeekRow.hidden = false;
     showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
@@ -5617,6 +5825,8 @@
     ensureTVShell();
     loadTVTrack(state.tv.queue[0]);
     els.tvSkipBtn.hidden = false;
+    els.tvPrevBtn.hidden = false;
+    els.tvSeekRow.hidden = false;
     showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
