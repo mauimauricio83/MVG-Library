@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.62.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.63.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -544,6 +544,8 @@
     usernameModalSkipBtn: document.getElementById("usernameModalSkipBtn"),
     autoplayToggle: document.getElementById("autoplayToggle"),
     themeToggle: document.getElementById("themeToggle"),
+    adminNormieRow: document.getElementById("adminNormieRow"),
+    adminNormieToggle: document.getElementById("adminNormieToggle"),
     settingsStatus: document.getElementById("settingsStatus")
   };
 
@@ -953,7 +955,14 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: false, volume: 100, ccEnabled: false },
+    // isMuted starts true: the very first playVideo()/autoplay call always
+    // happens inside YouTube/Vimeo's own async onReady, not inside the
+    // click that armed TV Mode, so it can't carry a user-gesture flag --
+    // browsers silently block unmuted autoplay/play() without one. Starting
+    // muted keeps that first play() call within policy; unmuting via the
+    // Mute button afterward is a real click and is allowed, same as it
+    // always was clicking YouTube's own play icon before controls:false.
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: true, volume: 100, ccEnabled: false },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -991,6 +1000,7 @@
     // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
     selectedPlaylistId: null,
     isAdmin: false,
+    viewAsNormie: loadAdminNormiePref(), // per-device pref, see adminUiActive()
     adminRows: [],
     // Rows the most recent Data Health broken-link scan flagged -- kept
     // separate from adminRows itself so a delete elsewhere (Manage Entries,
@@ -1203,6 +1213,32 @@
     try {
       localStorage.setItem(AUTOPLAY_KEY, on ? "on" : "off");
     } catch (e) {}
+  }
+
+  var ADMIN_NORMIE_KEY = "mvg-admin-view-as-normie";
+
+  function loadAdminNormiePref() {
+    try {
+      return localStorage.getItem(ADMIN_NORMIE_KEY) === "on";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveAdminNormiePref(on) {
+    try {
+      localStorage.setItem(ADMIN_NORMIE_KEY, on ? "on" : "off");
+    } catch (e) {}
+  }
+
+  // True admin status (state.isAdmin) is untouched by this -- it's purely a
+  // per-device display preference so an admin can see the site the way a
+  // regular visitor does. Every admin-only UI visibility check should read
+  // this instead of state.isAdmin directly; permission-bearing logic (e.g.
+  // Firestore rule pre-checks, moderation click handlers) still reads
+  // state.isAdmin itself since hiding a button doesn't revoke the ability.
+  function adminUiActive() {
+    return state.isAdmin && !state.viewAsNormie;
   }
 
   // All four media strips are collapsible; each picks its own default via
@@ -4839,8 +4875,8 @@
     var fav = isFavorite(row.rowNum);
     els.tvFavBtn.classList.toggle("is-active", fav);
     els.tvFavBtn.textContent = fav ? "♥" : "♡";
-    els.tvAdminEditBtn.hidden = !state.isAdmin;
-    els.tvAdminDeleteBtn.hidden = !state.isAdmin;
+    els.tvAdminEditBtn.hidden = !adminUiActive();
+    els.tvAdminDeleteBtn.hidden = !adminUiActive();
     els.tvInfoPanel.innerHTML = tvInfoMarkup(row);
 
     // NOT populated/shown here directly -- this runs at the very top of
@@ -5186,7 +5222,7 @@
     listEl.innerHTML = docs.map(function (doc) {
       var d = doc.data();
       var when = d.createdAt && d.createdAt.toDate ? formatChannelCommentTime(d.createdAt.toDate(), airingStartedAt) : "";
-      var deleteBtn = state.isAdmin
+      var deleteBtn = adminUiActive()
         ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">' + ICON_TRASH + "</button>"
         : "";
       return '<div class="comment-item">' +
@@ -5575,6 +5611,7 @@
     setTVCaptions(state.tv.ccEnabled); // re-applied per track/provider -- neither SDK carries a caption choice across a loadVideoById/loadVideo call, let alone a fresh player
     startTVSeekPoll();
     tvLowerThirdShownForEnd = false;
+    if (tvLowerThirdStartTimer) { clearTimeout(tvLowerThirdStartTimer); tvLowerThirdStartTimer = null; }
     if (tvPendingLowerThird) {
       var artistEl = document.getElementById("tvLowerThirdArtist");
       var songEl = document.getElementById("tvLowerThirdSong");
@@ -5583,7 +5620,10 @@
         artistEl.textContent = tvPendingLowerThird.artist;
         songEl.textContent = tvPendingLowerThird.song;
         directorEl.textContent = tvPendingLowerThird.director;
-        showTVLowerThird();
+        tvLowerThirdStartTimer = setTimeout(function () {
+          tvLowerThirdStartTimer = null;
+          showTVLowerThird();
+        }, TV_LOWER_THIRD_START_DELAY_MS);
       }
       tvPendingLowerThird = null;
     }
@@ -5615,7 +5655,7 @@
     els.tvSeekBar.max = Math.floor(dur);
     els.tvSeekBar.value = Math.floor(cur);
     els.tvSeekTime.textContent = formatTVTime(cur) + " / " + formatTVTime(dur);
-    if (!tvLowerThirdShownForEnd && (dur - cur) > 0 && (dur - cur) <= TV_LOWER_THIRD_END_WINDOW_SEC) {
+    if (!tvLowerThirdShownForEnd && (dur - cur) > 0 && (dur - cur) <= TV_LOWER_THIRD_END_TRIGGER_SEC) {
       tvLowerThirdShownForEnd = true;
       showTVLowerThird();
     }
@@ -5665,9 +5705,18 @@
   // now. Lives inside TV_PLAYER_TARGET_INNER_HTML, not `els`, since that
   // markup gets rebuilt on provider switches -- see that var's comment.
   var TV_LOWER_THIRD_VISIBLE_MS = 5000;
-  var TV_LOWER_THIRD_END_WINDOW_SEC = 5;
   var TV_LOWER_THIRD_FADE_MS = 400;
+  // At track start it doesn't fade in until this long after playback begins,
+  // so it doesn't compete with the viewer's first glance at the video itself.
+  var TV_LOWER_THIRD_START_DELAY_MS = 5000;
+  // Total time the card is ever on screen at the end of a track (visible + fade)
+  // -- used to back into how early the end-of-track showing must trigger so it's
+  // fully cleared before TV_LOWER_THIRD_END_CLEAR_SEC remains.
+  var TV_LOWER_THIRD_END_ONSCREEN_SEC = (TV_LOWER_THIRD_VISIBLE_MS + TV_LOWER_THIRD_FADE_MS) / 1000;
+  var TV_LOWER_THIRD_END_CLEAR_SEC = 5; // last N seconds of a track must stay clear of the lower third
+  var TV_LOWER_THIRD_END_TRIGGER_SEC = TV_LOWER_THIRD_END_ONSCREEN_SEC + TV_LOWER_THIRD_END_CLEAR_SEC;
   var tvLowerThirdTimer = null;
+  var tvLowerThirdStartTimer = null; // the track-start fade-in delay; cleared on teardown/track change so a stale timer can't fire onto the next track
   var tvPendingLowerThird = null; // {song, meta} staged by updateTVTrackDetails(), applied by applyTVPlaybackState()
 
   function showTVLowerThird() {
@@ -5683,6 +5732,7 @@
   }
 
   function hideTVLowerThirdNow() {
+    if (tvLowerThirdStartTimer) { clearTimeout(tvLowerThirdStartTimer); tvLowerThirdStartTimer = null; }
     if (tvLowerThirdTimer) { clearTimeout(tvLowerThirdTimer); tvLowerThirdTimer = null; }
     var el = document.getElementById("tvLowerThird");
     if (el) { el.hidden = true; el.classList.remove("is-fading"); }
@@ -5995,7 +6045,7 @@
     listEl.innerHTML = docs.map(function (doc) {
       var d = doc.data();
       var when = d.createdAt && d.createdAt.toDate ? formatMsgBoardTime(d.createdAt.toDate()) : "";
-      var deleteBtn = state.isAdmin
+      var deleteBtn = adminUiActive()
         ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">' + ICON_TRASH + "</button>"
         : "";
       return '<div class="comment-item">' +
@@ -6337,17 +6387,17 @@
 
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
 
-    var adminEditBtn = state.isAdmin
+    var adminEditBtn = adminUiActive()
       ? '<button type="button" class="lightbox-admin-edit-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Edit entry (admin)" aria-label="Edit entry">✎ Edit</button>'
       : "";
-    var adminDeleteBtn = state.isAdmin
+    var adminDeleteBtn = adminUiActive()
       ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">' + ICON_TRASH + ' Delete</button>'
       : "";
     // Admin-only debug tools -- not shown to regular visitors.
-    var mirrorBtn = state.isAdmin && videoRef
+    var mirrorBtn = adminUiActive() && videoRef
       ? '<button type="button" class="lightbox-mirror-btn" title="Mirror" aria-label="Toggle mirror">Mirror</button>'
       : "";
-    var interlaceBtn = state.isAdmin && videoRef
+    var interlaceBtn = adminUiActive() && videoRef
       ? '<button type="button" class="lightbox-interlace-btn" title="Interlace flicker (test)" aria-label="Toggle interlace flicker">Interlace</button>'
       : "";
 
@@ -6613,7 +6663,7 @@
       var when = d.createdAt && d.createdAt.toDate ? formatMsgBoardTime(d.createdAt.toDate()) : "";
       var authorName = d.authorName || "Anonymous";
       var admin = "";
-      if (state.isAdmin && d.authorUid && d.authorUid !== currentUser.uid) {
+      if (adminUiActive() && d.authorUid && d.authorUid !== currentUser.uid) {
         var isMuted = !!msgBoardMutedSet[d.authorUid];
         var isBanned = !!msgBoardBannedSet[d.authorUid];
         var nameAttr = escapeHtml(authorName);
@@ -7112,6 +7162,33 @@
     applyAutoplayToggle(on);
   });
 
+  function applyAdminNormieToggle() {
+    Array.prototype.forEach.call(els.adminNormieToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-normie-choice") === "on") === state.viewAsNormie);
+    });
+  }
+
+  // Re-applies visibility of the admin entry points that are live right
+  // now; buttons rendered from a data snapshot (comment/message lists,
+  // the lightbox admin bar) pick up the new state next time they redraw,
+  // same as any other admin UI -- no need to force a redraw of everything.
+  function refreshAdminUiVisibility() {
+    els.openAdminBtn.hidden = !adminUiActive();
+    els.topBarAdminBtn.hidden = !adminUiActive();
+    if (els.tvAdminEditBtn) els.tvAdminEditBtn.hidden = !adminUiActive();
+    if (els.tvAdminDeleteBtn) els.tvAdminDeleteBtn.hidden = !adminUiActive();
+    if (!els.msgBoardPanel.hidden) renderMsgBoardMessages(msgBoardLastDocs);
+  }
+
+  els.adminNormieToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    state.viewAsNormie = btn.getAttribute("data-normie-choice") === "on";
+    saveAdminNormiePref(state.viewAsNormie);
+    applyAdminNormieToggle();
+    refreshAdminUiVisibility();
+  });
+
   function applyVoterNameToggle() {
     Array.prototype.forEach.call(els.voterNameToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
       btn.classList.toggle("is-active", (btn.getAttribute("data-vote-name-choice") === "on") === showVoterName);
@@ -7298,6 +7375,8 @@
     var currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(currentTheme);
     applyAutoplayToggle(loadAutoplayPref());
+    els.adminNormieRow.hidden = !state.isAdmin;
+    applyAdminNormieToggle();
     els.settingsModal.hidden = false;
     els.settingsModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
@@ -11674,8 +11753,10 @@
       syncFromFirestore();
       db.collection("admins").doc(user.uid).get().then(function (doc) {
         state.isAdmin = doc.exists;
-        els.openAdminBtn.hidden = !state.isAdmin;
-        els.topBarAdminBtn.hidden = !state.isAdmin;
+        els.adminNormieRow.hidden = !state.isAdmin;
+        applyAdminNormieToggle();
+        els.openAdminBtn.hidden = !adminUiActive();
+        els.topBarAdminBtn.hidden = !adminUiActive();
         // Covers the case where the board was opened before this admin
         // check resolved -- openMsgBoard() itself only starts the mod
         // listeners when state.isAdmin is already true.
@@ -11683,11 +11764,13 @@
       }).catch(function (err) {
         console.error("Admin check failed:", err);
         state.isAdmin = false;
+        els.adminNormieRow.hidden = true;
         els.openAdminBtn.hidden = true;
         els.topBarAdminBtn.hidden = true;
       });
     } else {
       state.isAdmin = false;
+      els.adminNormieRow.hidden = true;
       els.openAdminBtn.hidden = true;
       els.topBarAdminBtn.hidden = true;
       showVoterName = false;
