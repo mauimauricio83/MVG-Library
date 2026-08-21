@@ -10,7 +10,7 @@
     document.documentElement.setAttribute("data-theme", "dark");
   }
 </script>
-<title>Blog — MVG Library</title>
+<title>News — MVG Library</title>
 <meta id="metaDescription" name="description" content="News, notes, and features from The Music Video Guy.">
 <meta name="robots" content="index, follow">
 <link rel="icon" href="icons/icon-192.png">
@@ -745,10 +745,10 @@
 
   function renderListing(page) {
     page = Math.max(1, page || 1);
-    document.title = page > 1 ? "Blog — Page " + page + " — MVG Library" : "Blog — MVG Library";
+    document.title = page > 1 ? "News — Page " + page + " — MVG Library" : "News — MVG Library";
     main.classList.remove("has-sidebar");
     main.innerHTML =
-      '<h1 class="page-title">Blog</h1>' +
+      '<h1 class="page-title">News</h1>' +
       '<p class="page-intro">News, notes, and features from The Music Video Guy.</p>' +
       '<div id="postsLoading">' + skeletonCardsHtml(BIG_CARDS_PER_PAGE) + skeletonListHtml(5) + "</div>";
 
@@ -795,7 +795,7 @@
         return;
       }
       var p = snap.docs[0].data();
-      document.title = (p.title || "Post") + " — MVG Library Blog";
+      document.title = (p.title || "Post") + " — MVG Library News";
       var descMeta = document.getElementById("metaDescription");
       if (descMeta && p.excerpt) descMeta.setAttribute("content", p.excerpt);
 

@@ -1475,17 +1475,10 @@ html, body {
     padding: 20px 20px 60px;
   }
 
-  /* This app is often embedded via an auto-height iframe (e.g. on a
-     Squarespace page) with no independent scrolling -- the OUTER page
-     scrolls the (tall) iframe instead. `position: fixed` is relative to
-     the iframe's own render box in that setup, which can be much taller
-     than the physical screen, so a fixed fullscreen overlay ends up
-     covering the wrong slice of that box once the outer page has
-     scrolled -- there's no way to read the outer page's scroll position
-     across origins to correct for it. Anchoring the menu in normal
-     document flow, right at the top of .shell (just below the top bar),
-     sidesteps the problem entirely: that spot is guaranteed to be
-     on-screen, since the user just tapped a button in the top bar above it. */
+  /* Anchoring the menu in normal document flow, right at the top of
+     .shell (just below the top bar), guarantees it opens on-screen since
+     the user just tapped a button in the top bar right above it -- no
+     need for a fixed-position overlay calculation. */
   .shell {
     position: relative;
     display: block;

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.63.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.64.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -799,15 +799,11 @@
     "</div>";
   }
 
-  // This app is often embedded in a Squarespace page via an auto-height
-  // iframe (no independent scrolling inside the iframe -- the OUTER page
-  // scrolls a tall iframe instead). `position: fixed` is relative to the
-  // iframe's own viewport, which in that setup spans the iframe's full
-  // (tall) document rather than just the visible slice, so fixed overlays
-  // drift far off-screen once the outer page has scrolled. Freezing the
-  // body at scroll position 0 via `position: fixed; top: -Ypx` while a
-  // modal is open keeps our fixed overlays aligned with what's actually
-  // visible, and is restored (with scroll position) on close.
+  // Standard cross-browser modal scroll lock: freezing the body at scroll
+  // position 0 via `position: fixed; top: -Ypx` while a modal is open (and
+  // restoring both on close) prevents the background page from scrolling
+  // underneath it, which plain `overflow: hidden` doesn't reliably do on
+  // mobile Safari.
   var scrollLockCount = 0;
   var scrollLockY = 0;
   function lockBodyScroll() {
@@ -3917,10 +3913,8 @@
 
     container.innerHTML = ads.map(function (ad, i) {
       var img = '<img src="' + escapeHtml(ad.image) + '" alt="" loading="lazy">';
-      // Same-site links (e.g. #submit) should navigate in place -- if this
-      // banner sits inside an embedded iframe on the main site, target="_blank"
-      // would blow past that embed into a bare new tab on the raw GitHub
-      // Pages URL instead of just updating the hash where the user already is.
+      // Same-site links (e.g. #submit) should navigate in place rather than
+      // force a new tab; only genuinely external links get target="_blank".
       var isSameOrigin = ad.link && isSameOriginUrl(ad.link);
       var slideInner = ad.link
         ? '<a href="' + escapeHtml(ad.link) + '"' + (isSameOrigin ? "" : ' target="_blank" rel="noopener noreferrer"') + ">" + img + "</a>"
@@ -7235,15 +7229,7 @@
       bundle: bundle,
       successUrl: baseUrl + "?walletPurchase=success"
     }).then(function (result) {
-      // themusicvideoguy.com embeds this app in an iframe, and hosted
-      // checkout pages generally refuse to render inside one (a common
-      // anti-clickjacking measure) -- window.top.location is the one
-      // navigation target that's always allowed cross-origin (browsers
-      // permit *setting* it even though they block *reading* it), so
-      // this breaks out to the real top-level tab regardless of whether
-      // the page is framed or standalone. When standalone, window.top
-      // === window, so this is a no-op difference.
-      window.top.location.href = result.data.url;
+      location.href = result.data.url;
     }).catch(function (err) {
       console.error("Starting checkout failed:", err);
       els.voteStatus.textContent = "Couldn't start checkout: " + err.message;

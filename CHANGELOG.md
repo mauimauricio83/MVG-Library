@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.64.0 — current
+- First post-migration cleanup now that themusicvideoguy.com serves this site directly (see the CNAME addition) instead of through a Squarespace iframe wrapper: the header nav's separate external "News" link (which pointed at the old Squarespace-hosted news page) is gone, and the in-app "Blog" link -- already a self-hosted replacement for that same Squarespace news feed -- has been renamed to "News" and moved into that nav slot, page title included. Also dropped the `window.top.location` iframe-breakout workaround in wallet checkout (plain `location.href` now that there's never a frame to break out of) and updated a couple of comments that referenced iframe-embedding reasoning no longer accurate to how the site is served.
+
 ## v5.63.0 — current
 - Fixed TV Mode playback silently failing to start: the first `playVideo()`/`play()` call always happens inside YouTube/Vimeo's own async `onReady`, not inside the click that armed TV Mode, so it never carries a user-gesture flag and browsers block unmuted autoplay without one. Previously this was masked by clicking YouTube's own native play icon (a real in-frame gesture) as a fallback -- once that iframe became unclickable (`pointer-events: none`, see v5.62.0), there was no fallback left and playback just silently never started. TV Mode now starts muted by default so that first play call is always within policy; the Mute button un-mutes with a real click same as before.
 - Tuned lower-third timing: it now waits 5 seconds after a track starts before fading in (so it doesn't compete with the viewer's first glance at the video), and the end-of-track showing now triggers earlier so it's fully faded out again before the last 5 seconds of the track, instead of running right up to the cut.
