@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.4.1 — current
+- Replaced the trading card frame texture attempt (fractal marble, added in v6.4.0) with a simple top-to-bottom gradient on the outer border instead -- the marble texture wasn't reading as intended at normal card size. The border now uses its own genre color, darkening slightly toward the bottom.
+
 ## v6.4.0 — current
 - Replaced the trading card frame elements' flat per-pixel noise with an actual fractal marble texture -- several octaves of smoothly-interpolated value noise (fBm) fed through a sine wave for the classic swirled marble/wood-grain look, rendered once at card scale and reused as one continuous "slab" behind the title bar, type-line bar, and tag pills rather than a small repeating tile (no visible seams), at a much stronger blend strength than the old noise had.
 
