@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.5.1 — current
+- Fixed a stuck-hash bug: refreshing the page while a lightbox was open, then opening a second lightbox/profile/TV without closing the first one first, then closing that second one would land back on the FIRST lightbox's stale hash instead of a clean browsing state -- and since hashchange fires on the way back, it would silently reopen that first lightbox too. Root cause: pushModalHistory() anchors the "closed" state to whatever entry was current when a modal first opened, and a cold page load already sitting on a deep-link hash bakes that hash into that entry permanently. Now strips the hash from that anchor entry before pushing, so every modal always closes back down to a clean URL regardless of how the page was loaded.
+
 ## v6.5.0 — current
 - Hovering "Download trading card" now shows the actual rendered card in a small floating preview instead of downloading blind. Reuses the exact same renderTradingCard() the real download uses (guaranteed pixel-for-pixel match) and caches the result per video, so re-hovering the same entry -- or hovering right before clicking -- is instant instead of re-running the thumbnail/logo image loads every time.
 

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.5.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -837,6 +837,19 @@
 
   function pushModalHistory() {
     if (modalHistoryActive) return;
+    // Strip any hash from the entry we're about to anchor "closed" state
+    // to. If the page was loaded (or refreshed) directly on a deep-link
+    // hash -- a lightbox's #song-slug-N, #profile-, #tv, etc. -- that hash
+    // is otherwise baked into this base entry forever: opening one modal,
+    // switching straight to a second one without closing the first (which
+    // reuses this same layer, see the comment above), then closing that
+    // second one lands back on this base entry via history.back() --
+    // showing the FIRST modal's stale hash in the address bar and, since
+    // hashchange fires on the way back, silently reopening that stale
+    // deep link instead of just closing. Stripping it here means the
+    // entry every modal ultimately closes back down to is always a clean
+    // browsing state, cold-load hash or not.
+    history.replaceState(history.state, "", location.pathname + location.search);
     modalHistoryActive = true;
     history.pushState({ mvgModal: true }, "", location.href);
   }
