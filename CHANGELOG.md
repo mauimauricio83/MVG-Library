@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.4.2 — current
+- Viewer's Choice (a full screen tall on its own) now hides while actively searching, same as Featured/Discover already did -- previously it sat above the search results, pushing them a full page down.
+
 ## v6.4.1 — current
 - Replaced the trading card frame texture attempt (fractal marble, added in v6.4.0) with a simple top-to-bottom gradient on the outer border instead -- the marble texture wasn't reading as intended at normal card size. The border now uses its own genre color, darkening slightly toward the bottom.
 

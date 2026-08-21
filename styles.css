@@ -1880,10 +1880,12 @@ html, body {
 }
 
 /* While actively searching (state.query non-empty -- see render()'s
-   is-searching toggle), Featured/Discover just push the results the user
-   is looking for further down, so hide them until the query is cleared. */
+   is-searching toggle), Featured/Discover/Viewer's Choice just push the
+   results the user is looking for further down (Viewer's Choice alone
+   runs a full screen tall), so hide them until the query is cleared. */
 body.is-searching #featuredStrip,
-body.is-searching #discoverSection {
+body.is-searching #discoverSection,
+body.is-searching #viewersChoiceSection {
   display: none;
 }
 
