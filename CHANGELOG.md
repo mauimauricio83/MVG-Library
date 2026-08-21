@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.68.0 — current
+- Video lightbox links now read as the song title (e.g. `#spirit-jumper-13435` instead of `#row-13435`), reusing the blog editor's existing slugify(). The slug is purely cosmetic -- only the trailing number is ever actually looked up -- so every already-shared or indexed `#row-<n>` link (including the ~13k SEO hub pages) keeps working unchanged, and a stale slug in an old copied link still resolves correctly even after a song's title is edited.
+
 ## v5.67.0 — current
 - The lightbox's Copy link button now uses the phone's native share sheet (navigator.share -- Messages, WhatsApp, etc.) wherever it's available, which today is effectively mobile only, falling back to the existing clipboard-copy behavior everywhere else (including if the share sheet itself fails for a reason other than the user just cancelling it).
 

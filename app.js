@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.67.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.68.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -895,6 +895,16 @@
 
   function findRowByNum(rowNum) {
     return state.rows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
+  }
+
+  // Deep-link hash for a video's lightbox -- readably the song title (via
+  // slugify(), see its own comment for why -- shared with the blog editor)
+  // with rowNum as a trailing, unambiguous suffix. The slug is purely
+  // cosmetic: applyDeepLinkFromHash() below only ever reads the trailing
+  // digits back out, so a stale/renamed slug in an already-shared link
+  // still resolves correctly -- rowNum is the only part that has to match.
+  function lightboxHash(row) {
+    return "#" + slugify(row.song || "untitled") + "-" + row.rowNum;
   }
 
   // Must be declared before `state` below -- state.view calls this at
@@ -6433,7 +6443,7 @@
     // entry pushModalHistory() just made current, never adds its own
     // history entry. Back/closing still lands on the pre-modal URL
     // underneath, hash and all, exactly as before this was added.
-    history.replaceState(history.state, "", location.pathname + location.search + "#row-" + encodeURIComponent(row.rowNum));
+    history.replaceState(history.state, "", location.pathname + location.search + lightboxHash(row));
     applyLightboxSize();
     applyLightboxCrop();
     applyLightboxMirror();
@@ -11288,7 +11298,8 @@
     var shareBtn = e.target.closest(".lightbox-share-btn");
     if (shareBtn) {
       var shareRowNum = shareBtn.getAttribute("data-rownum");
-      var shareLink = location.origin + location.pathname + "#row-" + encodeURIComponent(shareRowNum);
+      var shareRow = findRowByNum(shareRowNum);
+      var shareLink = location.origin + location.pathname + (shareRow ? lightboxHash(shareRow) : "#row-" + encodeURIComponent(shareRowNum));
       var flash = function (copied) {
         if (!copied) { try { window.prompt("Copy this link:", shareLink); } catch (e) {} return; }
         var original = shareBtn.innerHTML;
@@ -11303,7 +11314,6 @@
       // path on any failure, including the user just cancelling the sheet
       // (AbortError) -- no flash for that case, dismissing isn't a failure.
       if (navigator.share) {
-        var shareRow = findRowByNum(shareRowNum);
         var shareTitle = shareRow ? (shareRow.song || "Untitled") + (shareRow.artist ? " — " + shareRow.artist : "") : "MVG Library";
         navigator.share({ title: shareTitle, url: shareLink }).catch(function (err) {
           if (err && err.name === "AbortError") return;
@@ -11679,7 +11689,16 @@
   setActiveTab(state.view);
 
   function applyDeepLinkFromHash() {
-    var m = location.hash.match(/^#row-(.+)$/);
+    // Matches both the current #<song-slug>-<rowNum> format and the old
+    // #row-<rowNum> links already out in the wild (shared before this
+    // existed, or baked into the SEO hub pages) -- the slug is cosmetic,
+    // only the trailing digits (rowNum) are ever actually looked up, so
+    // any prefix before the last hyphen works. Explicitly not #favs-<uid>
+    // (applyFavoritesShareFromHash's own hash format, checked separately)
+    // -- excluded up front rather than relying on Firebase UIDs never
+    // happening to end in "-<digits>".
+    if (/^#favs-/.test(location.hash)) return;
+    var m = location.hash.match(/^#(?:.*-)?(\d+)$/);
     if (!m || !state.rows.length) return;
     var rowNum = decodeURIComponent(m[1]);
     var row = findRowByNum(rowNum);
