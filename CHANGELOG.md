@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.1.0 — current
+- Added downloadable trading cards, one per music video: a "Download card" button in the lightbox renders an MTG/Top-Trumps-style card client-side (title, artist, thumbnail as the art, director as the type line, genre tags and description as flavor text, category/year and an MVG watermark in the corners) and saves it as a PNG. Purely detail-based, no invented stats or pretend game mechanics. Border color comes from a deterministic hash of the video's genre(s) into a fixed palette (so it never needs a hand-maintained genre->color table, and stays consistent for the same genre across every card) -- two genres split the border diagonally, MTG-multicolor-style. Reuses the Social Graphics section's existing canvas helpers (cross-origin thumbnail loading, cover-fit cropping, the MVG logo watermark) instead of duplicating them. Director names entered surname-first ("Fagin, Josh") display in natural reading order on the card, and a too-long description truncates at the last complete sentence that fits rather than cutting off mid-sentence.
+
 ## v6.0.0 — current
 - Major version bump marking the site's move off Squarespace: themusicvideoguy.com now serves this app directly (see the CNAME addition) instead of iframing it inside a Squarespace wrapper page. Everything since -- the YouTube autoplay/hover fixes only possible once the iframe's native controls weren't needed as a fallback, the News section pointing at real content instead of a frozen Squarespace scrape, real shareable links for videos/profiles/TV Mode, and the broken Squarespace-page nav links removed -- was cleanup and follow-through from that one architectural change.
 

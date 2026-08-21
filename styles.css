@@ -4240,7 +4240,8 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
-.lightbox-share-btn {
+.lightbox-share-btn,
+.lightbox-card-btn {
   flex: 0 0 auto;
   width: 26px;
   height: 26px;
@@ -4253,7 +4254,8 @@ body.is-searching #discoverSection {
   cursor: pointer;
 }
 
-.lightbox-share-btn:hover {
+.lightbox-share-btn:hover,
+.lightbox-card-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -4261,6 +4263,11 @@ body.is-searching #discoverSection {
 .lightbox-share-btn.is-active {
   border-color: #2fbf71;
   color: #2fbf71;
+}
+
+.lightbox-card-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .lightbox-widen-btn {

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.0.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.1.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6403,6 +6403,7 @@
   var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   var ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:0.9em;height:0.9em;vertical-align:-0.1em"><path d="M12 22s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>';
   var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6a5 5 0 0 1 0-10h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
+  var ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>';
 
   function destroyLightboxPlayer() {
     if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
@@ -6488,6 +6489,7 @@
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       shareButtonHtml(lightboxHash(row), (row.song || "Untitled") + (row.artist ? " — " + row.artist : "")) +
+      '<button type="button" class="lightbox-card-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Download trading card" aria-label="Download trading card">' + ICON_DOWNLOAD + "</button>" +
       lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
@@ -10757,6 +10759,262 @@
     }, "maui-picks.png");
   });
 
+  // ---- Trading cards -------------------------------------------------------
+  // Downloadable MTG/Top-Trumps-style card per video, from the lightbox's
+  // "Download card" button. Pure client-side canvas, same approach as the
+  // Social Graphics section above -- reuses its loadImageCrossOrigin(),
+  // roundRectPath(), drawThumbOrPlaceholder(), truncateToWidth(), and
+  // loadMvgLogoImage() rather than duplicating them. Purely detail-based
+  // (title, artist, director, category/year, genre tags, description) --
+  // no invented stats or pretend game mechanics, per the reference brief.
+  var CARD_W = 750;
+  var CARD_H = 1050;
+  var CARD_BORDER = 28;
+
+  // A genre string always maps to the same color (deterministic hash into
+  // a fixed palette) rather than a hand-maintained genre->color table --
+  // genres are free-text and admin-extensible (see buildGenreOptions()),
+  // so a fixed mapping would need constant upkeep and silently miss new
+  // ones. Two genres split the border diagonally, MTG-multicolor-style;
+  // one genre (or none) is a solid border.
+  var CARD_GENRE_PALETTE = ["#3B6D11", "#0F6E56", "#185FA5", "#534AB7", "#993556", "#993C1D", "#854F0B", "#A32D2D"];
+  var CARD_GENRE_FALLBACK = "#5F5E5A";
+
+  function genreCardColor(genre) {
+    if (!genre) return CARD_GENRE_FALLBACK;
+    var hash = 0;
+    for (var i = 0; i < genre.length; i++) hash = (hash * 31 + genre.charCodeAt(i)) >>> 0;
+    return CARD_GENRE_PALETTE[hash % CARD_GENRE_PALETTE.length];
+  }
+
+  // Greedy word-wrap -- canvas has no native text wrapping. When the text
+  // doesn't fit in maxLines, prefers cutting at the last complete sentence
+  // within what would be shown (reads as a finished thought) over a hard
+  // mid-sentence ellipsis -- only falls back to the ellipsis cut if no
+  // sentence break falls in a reasonable range (at least half the shown
+  // text kept).
+  function wrapCanvasLines(ctx, text, maxWidth, maxLines) {
+    function wrapAll(t) {
+      var words = t.split(/\s+/);
+      var lines = [];
+      var line = "";
+      for (var i = 0; i < words.length; i++) {
+        var test = line ? line + " " + words[i] : words[i];
+        if (line && ctx.measureText(test).width > maxWidth) {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    var allLines = wrapAll(text);
+    if (allLines.length <= maxLines) return allLines;
+
+    var shown = allLines.slice(0, maxLines).join(" ");
+    var lastBreak = -1;
+    var re = /[.!?](?=\s|$)/g;
+    var m;
+    while ((m = re.exec(shown))) lastBreak = m.index;
+    if (lastBreak >= shown.length * 0.5) {
+      return wrapAll(shown.slice(0, lastBreak + 1));
+    }
+
+    var lines = allLines.slice(0, maxLines);
+    var last = lines[maxLines - 1];
+    while (last.length > 1 && ctx.measureText(last + "…").width > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[maxLines - 1] = last.replace(/\s+$/, "") + "…";
+    return lines;
+  }
+
+  // Flips "Surname, Given name" back to natural reading order for display
+  // -- site data has director sometimes entered surname-first (inconsistent
+  // with the majority, which are already "Given Surname"). Only fires when
+  // the part before the comma is a short (<=2 word) surname, so it doesn't
+  // misfire on an actual list of two full names sharing a field.
+  function displayName(name) {
+    if (!name) return name;
+    var m = name.match(/^([^,]+),\s*(.+)$/);
+    if (!m) return name;
+    var surname = m[1].trim(), rest = m[2].trim();
+    if (surname.split(/\s+/).length > 2) return name;
+    return rest + " " + surname;
+  }
+
+  // Fills a tinted bar (title/type-line bars) by layering the border color
+  // at low alpha over the cream panel underneath it, rather than hand-
+  // picking a light-tint hex per genre color.
+  function drawCardTintedBar(ctx, x, y, w, h, tint) {
+    roundRectPath(ctx, x, y, w, h, 10);
+    ctx.fillStyle = tint;
+    ctx.globalAlpha = 0.16;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function renderTradingCard(row) {
+    var genres = row.genres || [];
+    var borderColors = [genreCardColor(genres[0])];
+    if (genres[1]) borderColors.push(genreCardColor(genres[1]));
+
+    return Promise.all([
+      loadImageCrossOrigin(getRowThumbUrl(row)),
+      loadMvgLogoImage()
+    ]).then(function (results) {
+      var thumbImg = results[0], logoImg = results[1];
+      var canvas = document.createElement("canvas");
+      canvas.width = CARD_W;
+      canvas.height = CARD_H;
+      var ctx = canvas.getContext("2d");
+
+      roundRectPath(ctx, 0, 0, CARD_W, CARD_H, 36);
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = borderColors[0];
+      ctx.fillRect(0, 0, CARD_W, CARD_H);
+      if (borderColors[1]) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(CARD_W, 0);
+        ctx.lineTo(CARD_W, CARD_H);
+        ctx.closePath();
+        ctx.fillStyle = borderColors[1];
+        ctx.fill();
+      }
+      ctx.restore();
+
+      var panelX = CARD_BORDER, panelY = CARD_BORDER;
+      var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
+      roundRectPath(ctx, panelX, panelY, panelW, panelH, 24);
+      ctx.fillStyle = "#F3EFE4";
+      ctx.fill();
+
+      var pad = 18;
+      var contentX = panelX + pad;
+      var contentW = panelW - pad * 2;
+      var cursorY = panelY + pad;
+
+      var titleBarH = 64;
+      drawCardTintedBar(ctx, contentX, cursorY, contentW, titleBarH, borderColors[0]);
+      ctx.textBaseline = "middle";
+      var titleBarMidY = cursorY + titleBarH / 2;
+      ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#2A2620";
+      var artistText = row.artist || "";
+      ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+      var artistMaxW = contentW * 0.4;
+      artistText = truncateToWidth(ctx, artistText, artistMaxW);
+      var artistW = ctx.measureText(artistText).width;
+      ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
+      var titleMaxW = contentW - 32 - (artistText ? artistW + 20 : 0);
+      var titleText = truncateToWidth(ctx, row.song || "Untitled", titleMaxW);
+      ctx.textAlign = "left";
+      ctx.fillText(titleText, contentX + 16, titleBarMidY);
+      if (artistText) {
+        ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#5A5348";
+        ctx.textAlign = "right";
+        ctx.fillText(artistText, contentX + contentW - 16, titleBarMidY);
+      }
+      cursorY += titleBarH + 14;
+
+      var artH = contentW * 0.75;
+      drawThumbOrPlaceholder(ctx, thumbImg, contentX, cursorY, contentW, artH);
+      cursorY += artH + 14;
+
+      var typeBarH = 48;
+      drawCardTintedBar(ctx, contentX, cursorY, contentW, typeBarH, borderColors[0]);
+      ctx.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#2A2620";
+      ctx.textAlign = "left";
+      var typeLineText = row.director ? "Directed by " + displayName(row.director) : (row.category || "Music Video");
+      ctx.fillText(truncateToWidth(ctx, typeLineText, contentW - 32), contentX + 16, cursorY + typeBarH / 2);
+      cursorY += typeBarH + 14;
+
+      var bottomReserve = 56;
+      var boxH = panelY + panelH - pad - bottomReserve - cursorY;
+      roundRectPath(ctx, contentX, cursorY, contentW, boxH, 10);
+      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fill();
+
+      var boxPad = 18;
+      var boxCursorY = cursorY + boxPad;
+      if (genres.length) {
+        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+        var pillX = contentX + boxPad;
+        var pillH = 26;
+        genres.slice(0, 4).forEach(function (g) {
+          var textW = ctx.measureText(g).width;
+          var pillW = textW + 20;
+          if (pillX + pillW > contentX + contentW - boxPad) return;
+          var pillColor = genreCardColor(g);
+          roundRectPath(ctx, pillX, boxCursorY, pillW, pillH, 13);
+          ctx.fillStyle = pillColor;
+          ctx.globalAlpha = 0.18;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = "#2A2620";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(g, pillX + 10, boxCursorY + pillH / 2);
+          pillX += pillW + 8;
+        });
+        boxCursorY += pillH + 14;
+      }
+      if (row.description) {
+        ctx.font = "italic 20px Georgia, serif";
+        ctx.fillStyle = "#443F36";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        var maxLines = Math.max(1, Math.floor((cursorY + boxH - boxPad - boxCursorY) / 26));
+        var lines = wrapCanvasLines(ctx, row.description, contentW - boxPad * 2, maxLines);
+        lines.forEach(function (line, i) {
+          ctx.fillText(line, contentX + boxPad, boxCursorY + 18 + i * 26);
+        });
+      }
+
+      var bottomY = panelY + panelH - pad;
+      ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#847C6C";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      var metaText = [row.category, row.year].filter(Boolean).join(" · ");
+      if (metaText) ctx.fillText(metaText, contentX, bottomY);
+
+      if (logoImg) {
+        var logoR = 22;
+        var logoCx = contentX + contentW - logoR;
+        var logoCy = bottomY - logoR + 6;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(logoImg, logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
+        ctx.restore();
+      }
+
+      return canvas;
+    });
+  }
+
+  function downloadCanvasAsPng(canvas, filename) {
+    canvas.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }, "image/png");
+  }
+
   // ---- Username Moderation ------------------------------------------------
   // Two independent live lists: flaggedUsernames (Function-maintained, see
   // onUsernameWritten in functions/index.js -- a basic wordlist match,
@@ -11371,6 +11629,21 @@
     var shareBtn = e.target.closest(".lightbox-share-btn");
     if (shareBtn) {
       handleShareButtonClick(shareBtn);
+      return;
+    }
+    var cardBtn = e.target.closest(".lightbox-card-btn");
+    if (cardBtn) {
+      var cardRow = findRowByNum(cardBtn.getAttribute("data-rownum"));
+      if (cardRow && !cardBtn.disabled) {
+        cardBtn.disabled = true;
+        renderTradingCard(cardRow).then(function (canvas) {
+          downloadCanvasAsPng(canvas, slugify(cardRow.song || "video") + "-card.png");
+        }).catch(function (err) {
+          console.error("Card generation failed:", err);
+        }).finally(function () {
+          cardBtn.disabled = false;
+        });
+      }
       return;
     }
     var voteBtn = e.target.closest(".lightbox-vote-btn");
