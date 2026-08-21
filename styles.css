@@ -3145,6 +3145,11 @@ body.is-searching #discoverSection {
   color: var(--accent);
 }
 
+.tv-share-btn.is-active {
+  border-color: #2fbf71;
+  color: #2fbf71;
+}
+
 .tv-playlist-btn:hover {
   border-color: var(--accent);
   color: var(--accent);

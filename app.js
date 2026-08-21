@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.68.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.69.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -168,6 +168,7 @@
     tvVoteBtn: document.getElementById("tvVoteBtn"),
     tvWidenBtn: document.getElementById("tvWidenBtn"),
     tvCcBtn: document.getElementById("tvCcBtn"),
+    tvShareBtn: document.getElementById("tvShareBtn"),
     tvInfoBtn: document.getElementById("tvInfoBtn"),
     tvInfoPanel: document.getElementById("tvInfoPanel"),
     tvFilterTabs: document.getElementById("tvFilterTabs"),
@@ -905,6 +906,54 @@
   // still resolves correctly -- rowNum is the only part that has to match.
   function lightboxHash(row) {
     return "#" + slugify(row.song || "untitled") + "-" + row.rowNum;
+  }
+
+  // Same idea as lightboxHash() but for a profile -- #profile-<slug>-<uid>.
+  function profileHash(profile) {
+    return "#profile-" + slugify(profile.displayName || "member") + "-" + profile.uid;
+  }
+
+  // Builds a "Copy link" button reused by every shareable modal (video
+  // lightbox, profile lightbox, TV Mode) -- data-sharehash carries the
+  // exact hash handleShareButtonClick() below turns into a full URL, so
+  // one button markup + one click handler covers all of them instead of
+  // each caller needing its own copy of the clipboard/share-sheet logic.
+  function shareButtonHtml(hash, title) {
+    return '<button type="button" class="lightbox-share-btn" data-sharehash="' + escapeHtml(hash) + '" data-sharetitle="' + escapeHtml(title) + '" title="Copy link" aria-label="Copy link">' + ICON_LINK + "</button>";
+  }
+
+  function handleShareButtonClick(shareBtn) {
+    var shareLink = location.origin + location.pathname + shareBtn.getAttribute("data-sharehash");
+    var shareTitle = shareBtn.getAttribute("data-sharetitle") || "MVG Library";
+    var flash = function (copied) {
+      if (!copied) { try { window.prompt("Copy this link:", shareLink); } catch (e) {} return; }
+      var original = shareBtn.innerHTML;
+      shareBtn.innerHTML = "✓";
+      shareBtn.classList.add("is-active");
+      setTimeout(function () { shareBtn.innerHTML = original; shareBtn.classList.remove("is-active"); }, 1500);
+    };
+    // navigator.share is mobile browsers' native share sheet (Messages,
+    // WhatsApp, etc.) -- prefer it over clipboard-copy wherever it exists,
+    // which today is effectively "on a phone" (desktop Chrome/Firefox
+    // still don't implement it). Falls through to the clipboard/prompt
+    // path on any failure, including the user just cancelling the sheet
+    // (AbortError) -- no flash for that case, dismissing isn't a failure.
+    if (navigator.share) {
+      navigator.share({ title: shareTitle, url: shareLink }).catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
+        } else {
+          flash(false);
+        }
+      });
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
+    } else {
+      flash(false);
+    }
   }
 
   // Must be declared before `state` below -- state.view calls this at
@@ -1765,6 +1814,8 @@
     render();
     applyDeepLinkFromHash();
     applyFavoritesShareFromHash();
+    applyProfileDeepLinkFromHash();
+    applyTVDeepLinkFromHash();
     updateStripRowHeightVar();
     startWelcomeThumbField();
   }
@@ -3066,12 +3117,13 @@
       '<h2 class="lightbox-title">' + escapeHtml(profile.displayName || "Untitled") + verifiedBadgeHtml(profile.uid) + "</h2>" +
       '<p class="lightbox-subtitle">' + escapeHtml(roleLabel) + "</p>" +
       "</div></div>" +
+      '<div class="lightbox-title-actions">' +
       (id
-        ? '<div class="lightbox-title-actions">' +
-          '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
-          '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
-          "</div>"
+        ? '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
+          '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>'
         : "") +
+      shareButtonHtml(profileHash(profile), profile.displayName || "MVG Library profile") +
+      "</div>" +
       "</div>" +
       (profile.uid !== currentUser.uid
         ? '<div class="profile-lightbox-actions" id="profileRequestArea">' +
@@ -3089,6 +3141,9 @@
     els.lightboxPanel.scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
+    // See the matching call in openLightbox() -- same reasoning, just a
+    // profile hash instead of a video one.
+    history.replaceState(history.state, "", location.pathname + location.search + profileHash(profile));
     applyLightboxSize();
     applyLightboxCrop();
 
@@ -4169,6 +4224,7 @@
     els.tvCropBtn.hidden = true;
     els.tvWidenBtn.hidden = true;
     els.tvCcBtn.hidden = true;
+    els.tvShareBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
@@ -4448,6 +4504,7 @@
       // normal armed/static "tap to play" flow, same as any other tab pick.
       teardownChannelMode();
       armTV();
+      history.replaceState(history.state, "", location.pathname + location.search + "#tv");
     }
   });
 
@@ -4516,6 +4573,10 @@
     els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
+    // Refined to #tv-channel by tuneChannelMode() once that's actually
+    // what's showing -- see the matching call in openLightbox() for why
+    // replaceState (not push).
+    history.replaceState(history.state, "", location.pathname + location.search + "#tv");
     if (!tvAdController) {
       onTopAdsReady(function (ads) {
         if (els.tvModal.hidden) return;
@@ -5594,6 +5655,8 @@
 
   els.tvCcBtn.addEventListener("click", function () { setTVCaptions(!state.tv.ccEnabled); });
 
+  els.tvShareBtn.addEventListener("click", function () { handleShareButtonClick(els.tvShareBtn); });
+
   // Carries the viewer's own volume/mute choice over to a (re)used or
   // freshly created player -- called from every branch of loadTVTrack()/
   // loadChannelTrackAt() so switching tracks doesn't silently reset the
@@ -5755,6 +5818,15 @@
     els.tvCropBtn.hidden = false;
     els.tvWidenBtn.hidden = false;
     els.tvCcBtn.hidden = false;
+    els.tvShareBtn.hidden = false;
+    // Channel Mode is the one TV state actually worth deep-linking to
+    // precisely -- everyone who opens #tv-channel joins the same synced
+    // stream. A filtered/random pool (#tv) just re-rolls per visitor, so
+    // that's the fallback for every other tab.
+    var tvShareIsChannel = state.tvActiveTab === "channel";
+    els.tvShareBtn.setAttribute("data-sharehash", tvShareIsChannel ? "#tv-channel" : "#tv");
+    els.tvShareBtn.setAttribute("data-sharetitle", tvShareIsChannel ? "MVG Library TV — Channel" : "MVG Library TV Mode");
+    els.tvShareBtn.innerHTML = ICON_LINK;
     els.tvInfoBtn.hidden = false;
     updateTVPlayPauseUI();
     updateTVMuteUI();
@@ -5773,6 +5845,7 @@
     ensureTVShell();
     updateTVChannelStatus("Tuning in…");
     showTVControls();
+    history.replaceState(history.state, "", location.pathname + location.search + "#tv-channel");
     els.tvPowerSwitch.hidden = true; // no pause on a shared channel -- always on
     els.tvSkipBtn.hidden = true;     // skipping would only diverge this viewer from everyone else
 
@@ -6414,7 +6487,7 @@
       adminEditBtn +
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
-      '<button type="button" class="lightbox-share-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Copy link to this video" aria-label="Copy link to this video">' + ICON_LINK + "</button>" +
+      shareButtonHtml(lightboxHash(row), (row.song || "Untitled") + (row.artist ? " — " + row.artist : "")) +
       lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
@@ -11297,39 +11370,7 @@
     }
     var shareBtn = e.target.closest(".lightbox-share-btn");
     if (shareBtn) {
-      var shareRowNum = shareBtn.getAttribute("data-rownum");
-      var shareRow = findRowByNum(shareRowNum);
-      var shareLink = location.origin + location.pathname + (shareRow ? lightboxHash(shareRow) : "#row-" + encodeURIComponent(shareRowNum));
-      var flash = function (copied) {
-        if (!copied) { try { window.prompt("Copy this link:", shareLink); } catch (e) {} return; }
-        var original = shareBtn.innerHTML;
-        shareBtn.innerHTML = "✓";
-        shareBtn.classList.add("is-active");
-        setTimeout(function () { shareBtn.innerHTML = original; shareBtn.classList.remove("is-active"); }, 1500);
-      };
-      // navigator.share is mobile browsers' native share sheet (Messages,
-      // WhatsApp, etc.) -- prefer it over clipboard-copy wherever it exists,
-      // which today is effectively "on a phone" (desktop Chrome/Firefox
-      // still don't implement it). Falls through to the clipboard/prompt
-      // path on any failure, including the user just cancelling the sheet
-      // (AbortError) -- no flash for that case, dismissing isn't a failure.
-      if (navigator.share) {
-        var shareTitle = shareRow ? (shareRow.song || "Untitled") + (shareRow.artist ? " — " + shareRow.artist : "") : "MVG Library";
-        navigator.share({ title: shareTitle, url: shareLink }).catch(function (err) {
-          if (err && err.name === "AbortError") return;
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
-          } else {
-            flash(false);
-          }
-        });
-        return;
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
-      } else {
-        flash(false);
-      }
+      handleShareButtonClick(shareBtn);
       return;
     }
     var voteBtn = e.target.closest(".lightbox-vote-btn");
@@ -11694,10 +11735,10 @@
     // existed, or baked into the SEO hub pages) -- the slug is cosmetic,
     // only the trailing digits (rowNum) are ever actually looked up, so
     // any prefix before the last hyphen works. Explicitly not #favs-<uid>
-    // (applyFavoritesShareFromHash's own hash format, checked separately)
-    // -- excluded up front rather than relying on Firebase UIDs never
+    // or #profile-<slug>-<uid> (their own formats, checked separately) --
+    // excluded up front rather than relying on a Firebase UID never
     // happening to end in "-<digits>".
-    if (/^#favs-/.test(location.hash)) return;
+    if (/^#(favs|profile)-/.test(location.hash)) return;
     var m = location.hash.match(/^#(?:.*-)?(\d+)$/);
     if (!m || !state.rows.length) return;
     var rowNum = decodeURIComponent(m[1]);
@@ -11718,6 +11759,45 @@
   }
 
   window.addEventListener("hashchange", applyFavoritesShareFromHash);
+
+  // #profile-<slug>-<uid> (profileHash()'s format). Firebase UIDs never
+  // contain a hyphen, so the trailing run of non-hyphen characters is
+  // always exactly the uid regardless of what's in the (cosmetic) slug
+  // before it. Profiles are a members-only directory (see loadAllProfiles()
+  // -- profiles/{uid} requires request.auth != null), so this is a no-op
+  // while signed out rather than trying to show a sign-in prompt from deep
+  // inside hash-routing.
+  function applyProfileDeepLinkFromHash() {
+    var m = location.hash.match(/^#profile-.+-([^-]+)$/);
+    if (!m || !currentUser) return;
+    var uid = decodeURIComponent(m[1]);
+    var openIfFound = function () {
+      var profile = profilesCache.filter(function (p) { return p.uid === uid; })[0];
+      if (profile) openProfileLightbox(profile);
+    };
+    if (profilesCache.length) openIfFound();
+    else loadAllProfiles().then(openIfFound);
+  }
+
+  window.addEventListener("hashchange", applyProfileDeepLinkFromHash);
+
+  // #tv opens TV Mode fresh (armed with a random pick from whatever
+  // filters are already selected, same as the sidebar/bottom-nav entry
+  // points); #tv-channel goes straight to the shared live channel -- see
+  // the matching writes in openTVModal()/tuneChannelMode().
+  function applyTVDeepLinkFromHash() {
+    if (!state.rows.length) return;
+    if (location.hash === "#tv-channel") {
+      openTVModal();
+      state.tvActiveTab = "channel";
+      updateTVFilterTabUI();
+      tuneChannelMode();
+    } else if (location.hash === "#tv") {
+      openTVModalFresh();
+    }
+  }
+
+  window.addEventListener("hashchange", applyTVDeepLinkFromHash);
 
   var searchTimer = null;
   els.search.addEventListener("input", function () {
@@ -11790,6 +11870,10 @@
       if (!user && !alreadySeen) { els.welcomeGate.hidden = false; startWelcomeThumbField(); }
     }
     currentUser = user;
+    // Auth state can resolve before or after the catalog/profiles finish
+    // loading -- also called from the data-load chain (see fetchData())
+    // to cover whichever order actually happens; harmless to call twice.
+    applyProfileDeepLinkFromHash();
     els.signInBtn.hidden = !!user;
     els.topBarSignInBtn.hidden = !!user;
     els.headerAccount.hidden = !user;

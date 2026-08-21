@@ -85,19 +85,9 @@
         '<span class="header-links-label">Discord</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="https://themusicvideoguy.com/mvg" target="_blank" rel="noopener noreferrer">' +
-        '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 4 6 4 9s-1.5 6.3-4 9c-2.5-2.7-4-6-4-9s1.5-6.3 4-9Z"/></svg></span>' +
-        '<span class="header-links-label">The Music Video Guy</span>' +
-      '</a>' +
-      '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="https://themusicvideoguy.com/news" target="_blank" rel="noopener noreferrer">' +
-        '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M17 21V7h3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>' +
-        '<span class="header-links-label">News</span>' +
-      '</a>' +
-      '<span class="header-links-sep">&middot;</span>' +
       '<a class="submit-link" href="blog.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5a2 2 0 0 0 2 2h5"/><path d="M6 3h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M9 13h6M9 17h6"/></svg></span>' +
-        '<span class="header-links-label">Blog</span>' +
+        '<span class="header-links-label">News</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
       '<a class="submit-link" href="index.html">' +
@@ -141,7 +131,7 @@
   // reproduced statically here. SITE_VERSION isn't read from app.js (no
   // shared module system, no build step), so bump it by hand alongside
   // APP_VERSION in app.js when that changes.
-  var SITE_VERSION = "5.68.0";
+  var SITE_VERSION = "5.69.0";
   var FOOTER_HTML =
     '<footer class="app-footer">' +
       '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +

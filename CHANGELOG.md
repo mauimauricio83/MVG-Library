@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.69.0 — current
+- Extended shareable links beyond the video lightbox: profile lightboxes get `#profile-<slug>-<uid>` (members-only, same as browsing the directory itself), TV Mode gets `#tv`, and Channel Mode -- the one TV state that's actually the same experience for everyone who opens it -- gets `#tv-channel`. All three get the same "Copy link" button (native share sheet on mobile, clipboard elsewhere) the video lightbox already had, now generalized into one shared button/handler instead of one-off copies.
+- Removed the sidebar's "The Music Video Guy" link -- it pointed at `themusicvideoguy.com/mvg`, a Squarespace page slug that no longer exists now that this domain serves this site directly.
+- Found and fixed the same stale "News" link (and "Blog" label) inside `site-nav.js` -- the shared header/sidebar injected into every page outside the main app (support.html, blog.html, privacy.html), which hadn't gotten the fix already applied to index.html's own copy of that markup.
+
 ## v5.68.0 — current
 - Video lightbox links now read as the song title (e.g. `#spirit-jumper-13435` instead of `#row-13435`), reusing the blog editor's existing slugify(). The slug is purely cosmetic -- only the trailing number is ever actually looked up -- so every already-shared or indexed `#row-<n>` link (including the ~13k SEO hub pages) keeps working unchanged, and a stale slug in an old copied link still resolves correctly even after a song's title is edited.
 
