@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.5.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -3882,7 +3882,7 @@
   });
 
   // Latest posts from the self-hosted News/blog (blogPosts collection --
-  // same data blog.html reads), fetched once at startup. Independent of
+  // same data news.html reads), fetched once at startup. Independent of
   // the video catalog, so this has its own small fetch rather than
   // piggybacking on fetchData(). First 2 get the full big-thumbnail card
   // treatment; the rest (once there are that many recent posts) render as
@@ -3902,7 +3902,7 @@
     var extraPosts = posts.slice(NEWS_CARD_COUNT);
 
     els.blogLatestCards.innerHTML = cardPosts.map(function (post) {
-      var url = "blog.html?post=" + encodeURIComponent(post.slug);
+      var url = "news.html?post=" + encodeURIComponent(post.slug);
       var thumb = post.coverImageURL
         ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
         : "";
@@ -3919,7 +3919,7 @@
 
     if (extraPosts.length) {
       els.blogLatestExtra.innerHTML = extraPosts.map(function (post) {
-        var url = "blog.html?post=" + encodeURIComponent(post.slug);
+        var url = "news.html?post=" + encodeURIComponent(post.slug);
         var thumb = post.coverImageURL
           ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
           : "";
@@ -8123,7 +8123,7 @@
 
   // ---- Blog Posts (admin editor) -----------------------------------------
   // Self-hosted replacement for the Squarespace-fed News feed -- see
-  // blog.html for the public listing/post pages this content actually
+  // news.html for the public listing/post pages this content actually
   // shows up on. A post's own document ID is pre-generated client-side
   // (db.collection().doc().id, no write) as soon as the editor opens for a
   // NEW post, so image uploads have a real postId to key off of (see

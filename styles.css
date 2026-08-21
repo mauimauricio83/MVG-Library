@@ -2026,7 +2026,8 @@ body.is-searching #viewersChoiceSection {
   body.desktop-view-search .ad-placeholder,
   body.desktop-view-search #videoEmbed,
   body.desktop-view-search #featuredStrip,
-  body.desktop-view-search #discoverSection {
+  body.desktop-view-search #discoverSection,
+  body.desktop-view-search #viewersChoiceSection {
     display: none;
   }
 
@@ -2045,6 +2046,7 @@ body.is-searching #viewersChoiceSection {
   body.desktop-view-favorites #videoEmbed,
   body.desktop-view-favorites #featuredStrip,
   body.desktop-view-favorites #discoverSection,
+  body.desktop-view-favorites #viewersChoiceSection,
   body.desktop-view-favorites .controls,
   body.desktop-view-favorites #filtersGroup,
   body.desktop-view-favorites #jumpNavTop,
@@ -2068,6 +2070,7 @@ body.is-searching #viewersChoiceSection {
   body.desktop-view-playlists #videoEmbed,
   body.desktop-view-playlists #featuredStrip,
   body.desktop-view-playlists #discoverSection,
+  body.desktop-view-playlists #viewersChoiceSection,
   body.desktop-view-playlists .controls,
   body.desktop-view-playlists #filtersGroup,
   body.desktop-view-playlists #jumpNavTop,
@@ -2091,6 +2094,7 @@ body.is-searching #viewersChoiceSection {
   body.desktop-view-profiles #videoEmbed,
   body.desktop-view-profiles #featuredStrip,
   body.desktop-view-profiles #discoverSection,
+  body.desktop-view-profiles #viewersChoiceSection,
   body.desktop-view-profiles .controls,
   body.desktop-view-profiles #filtersGroup,
   body.desktop-view-profiles #jumpNavTop,
@@ -6734,7 +6738,8 @@ body.is-searching #viewersChoiceSection {
   body.mobile-view-search .ad-placeholder,
   body.mobile-view-search #videoEmbed,
   body.mobile-view-search #featuredStrip,
-  body.mobile-view-search #discoverSection {
+  body.mobile-view-search #discoverSection,
+  body.mobile-view-search #viewersChoiceSection {
     display: none;
   }
 
@@ -6766,7 +6771,8 @@ body.is-searching #viewersChoiceSection {
   body.mobile-view-favorites .ad-placeholder,
   body.mobile-view-favorites #videoEmbed,
   body.mobile-view-favorites #featuredStrip,
-  body.mobile-view-favorites #discoverSection {
+  body.mobile-view-favorites #discoverSection,
+  body.mobile-view-favorites #viewersChoiceSection {
     display: none;
   }
 
@@ -6783,7 +6789,8 @@ body.is-searching #viewersChoiceSection {
   body.mobile-view-playlists .ad-placeholder,
   body.mobile-view-playlists #videoEmbed,
   body.mobile-view-playlists #featuredStrip,
-  body.mobile-view-playlists #discoverSection {
+  body.mobile-view-playlists #discoverSection,
+  body.mobile-view-playlists #viewersChoiceSection {
     display: none;
   }
 
@@ -6800,7 +6807,8 @@ body.is-searching #viewersChoiceSection {
   body.mobile-view-profiles .ad-placeholder,
   body.mobile-view-profiles #videoEmbed,
   body.mobile-view-profiles #featuredStrip,
-  body.mobile-view-profiles #discoverSection {
+  body.mobile-view-profiles #discoverSection,
+  body.mobile-view-profiles #viewersChoiceSection {
     display: none;
   }
 

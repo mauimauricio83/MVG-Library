@@ -22,7 +22,7 @@ Two published Google Sheets (`Seconds, Image, Link` columns) still drive rotatin
 | `hub.css` | Styling for the static director/artist hub pages |
 | `site-nav.js` | Shared header/nav markup + version constant, injected into every page |
 | `cloud.js` / `cloud.html` | Word-cloud sphere visualization |
-| `blog.html`, `land.html`, `support.html`, `privacy.html`, `delete-account.html` | Standalone pages outside the main SPA |
+| `news.html`, `land.html`, `support.html`, `privacy.html`, `delete-account.html` | Standalone pages outside the main SPA |
 | `firestore.rules`, `firestore.indexes.json`, `storage.rules` | Firebase security rules — need `firebase deploy` after editing, not just committing |
 | `functions/index.js` | Cloud Functions — vote tallying, wallet/checkout, moderation, admin actions |
 | `serve.js` | Zero-dependency local dev server (`node serve.js`) |

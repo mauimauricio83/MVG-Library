@@ -506,9 +506,9 @@ async function main() {
     sitemapUrls.push(canonical);
   }
 
-  sitemapUrls.push(SITE_URL + "/blog.html");
+  sitemapUrls.push(SITE_URL + "/news.html");
   blogPosts.forEach((p) => {
-    sitemapUrls.push(SITE_URL + "/blog.html?post=" + encodeURIComponent(p.slug));
+    sitemapUrls.push(SITE_URL + "/news.html?post=" + encodeURIComponent(p.slug));
   });
 
   const sitemap =
@@ -570,7 +570,7 @@ async function main() {
     .slice()
     .sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
   const blogRssItems = blogPostsSorted.map((p) => {
-    const link = SITE_URL + "/blog.html?post=" + encodeURIComponent(p.slug);
+    const link = SITE_URL + "/news.html?post=" + encodeURIComponent(p.slug);
     const pubDate = (p.date || buildTime).toUTCString();
     return (
       "  <item>\n" +
@@ -587,8 +587,8 @@ async function main() {
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<rss version="2.0">\n' +
     "<channel>\n" +
-    "  <title>MVG Library — Blog</title>\n" +
-    "  <link>" + SITE_URL + "/blog.html</link>\n" +
+    "  <title>MVG Library — News</title>\n" +
+    "  <link>" + SITE_URL + "/news.html</link>\n" +
     "  <description>News, notes, and features from The Music Video Guy.</description>\n" +
     "  <lastBuildDate>" + buildTime.toUTCString() + "</lastBuildDate>\n" +
     blogRssItems.join("\n") + "\n" +

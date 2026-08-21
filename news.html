@@ -14,7 +14,7 @@
 <meta id="metaDescription" name="description" content="News, notes, and features from The Music Video Guy.">
 <meta name="robots" content="index, follow">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="alternate" type="application/rss+xml" title="MVG Library — Blog" href="https://mauimauricio83.github.io/MVG-Library/blog-rss.xml">
+<link rel="alternate" type="application/rss+xml" title="MVG Library — News" href="https://mauimauricio83.github.io/MVG-Library/blog-rss.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
@@ -662,7 +662,7 @@
     var thumb = p.coverImageURL
       ? '<img src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
       : "";
-    return '<a class="spotlight-card blog-latest-card" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+    return '<a class="spotlight-card blog-latest-card" href="news.html?post=' + encodeURIComponent(p.slug) + '">' +
       '<div class="spotlight-card-thumb">' + thumb + "</div>" +
       '<div class="spotlight-card-info">' +
         '<div class="spotlight-card-song">' + escapeHtml(p.title || "(untitled)") + "</div>" +
@@ -679,7 +679,7 @@
     var thumb = p.coverImageURL
       ? '<img src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
       : "";
-    return '<a class="blog-latest-extra-item" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+    return '<a class="blog-latest-extra-item" href="news.html?post=' + encodeURIComponent(p.slug) + '">' +
       '<div class="blog-latest-extra-thumb">' + thumb + "</div>" +
       '<div class="blog-latest-extra-info">' +
         '<div class="blog-latest-extra-title">' + escapeHtml(p.title || "(untitled)") + "</div>" +
@@ -696,15 +696,15 @@
     if (totalPages <= 1) return "";
     var out = ['<nav class="pagination" aria-label="Pagination">'];
     out.push(
-      '<a class="pagination-link' + (page <= 1 ? " is-disabled" : "") + '" href="blog.html?page=' + (page - 1) + '">&larr;</a>'
+      '<a class="pagination-link' + (page <= 1 ? " is-disabled" : "") + '" href="news.html?page=' + (page - 1) + '">&larr;</a>'
     );
     for (var i = 1; i <= totalPages; i++) {
       out.push(
-        '<a class="pagination-link' + (i === page ? " is-active" : "") + '" href="blog.html' + (i === 1 ? "" : "?page=" + i) + '">' + i + "</a>"
+        '<a class="pagination-link' + (i === page ? " is-active" : "") + '" href="news.html' + (i === 1 ? "" : "?page=" + i) + '">' + i + "</a>"
       );
     }
     out.push(
-      '<a class="pagination-link' + (page >= totalPages ? " is-disabled" : "") + '" href="blog.html?page=' + (page + 1) + '">&rarr;</a>'
+      '<a class="pagination-link' + (page >= totalPages ? " is-disabled" : "") + '" href="news.html?page=' + (page + 1) + '">&rarr;</a>'
     );
     out.push("</nav>");
     return out.join("");
@@ -714,7 +714,7 @@
     var cover = p.coverImageURL
       ? '<img src="' + escapeHtml(p.coverImageURL) + '" alt="" loading="lazy">'
       : '<img src="" alt="" loading="lazy" style="visibility:hidden">';
-    return '<a class="post-sidebar-item" href="blog.html?post=' + encodeURIComponent(p.slug) + '">' +
+    return '<a class="post-sidebar-item" href="news.html?post=' + encodeURIComponent(p.slug) + '">' +
       cover +
       '<span class="post-sidebar-item-title">' + escapeHtml(p.title || "(untitled)") + "</span>" +
     "</a>";
@@ -791,7 +791,7 @@
       if (snap.empty) {
         main.classList.remove("has-sidebar");
         main.innerHTML = '<p class="empty-state">That post doesn\'t exist (or isn\'t published).</p>' +
-          '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>';
+          '<a class="back-to-list" href="news.html">&larr; Back to all posts</a>';
         return;
       }
       var p = snap.docs[0].data();
@@ -809,7 +809,7 @@
               (p.publishedAt ? " · " + escapeHtml(formatDate(p.publishedAt)) : "") + "</p>" +
             '<div class="post-body">' + (p.body || "") + "</div>" +
             postCommentsHtml(p.slug) +
-            '<a class="back-to-list" href="blog.html">&larr; Back to all posts</a>' +
+            '<a class="back-to-list" href="news.html">&larr; Back to all posts</a>' +
           "</article>" +
           '<aside class="post-sidebar">' +
             '<h2 class="post-sidebar-title">Previous Articles</h2>' +

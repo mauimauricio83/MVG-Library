@@ -1,5 +1,5 @@
 // Shared header + sidebar for pages that live outside the main app.js SPA
-// (blog.html, support.html, and any other lightweight static page) -- so
+// (news.html, support.html, and any other lightweight static page) -- so
 // they get the same navigation chrome as index.html without pulling in the
 // whole app (13k-video fetch, Firebase auth, TV Mode, etc.), which would be
 // a lot of dead weight for a page that's just an article or a thank-you
@@ -85,7 +85,7 @@
         '<span class="header-links-label">Discord</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="blog.html">' +
+      '<a class="submit-link" href="news.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5a2 2 0 0 0 2 2h5"/><path d="M6 3h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M9 13h6M9 17h6"/></svg></span>' +
         '<span class="header-links-label">News</span>' +
       '</a>' +
@@ -131,7 +131,7 @@
   // reproduced statically here. SITE_VERSION isn't read from app.js (no
   // shared module system, no build step), so bump it by hand alongside
   // APP_VERSION in app.js when that changes.
-  var SITE_VERSION = "6.5.1";
+  var SITE_VERSION = "6.6.0";
   var FOOTER_HTML =
     '<footer class="app-footer">' +
       '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
@@ -142,7 +142,7 @@
   function appendFooter() {
     var app = document.querySelector(".app");
     // Appended at load time, as the last child of .app -- safe even on
-    // pages like blog.html whose #blogMain content is filled in later by
+    // pages like news.html whose #blogMain content is filled in later by
     // an async Firestore fetch, since the footer is a sibling, not nested
     // inside the part that gets rewritten.
     if (app) app.insertAdjacentHTML("beforeend", FOOTER_HTML);

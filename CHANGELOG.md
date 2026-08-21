@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.6.0 — current
+- Viewer's Choice now hides on every view Featured/Discover already hid on (Connect/Profiles, Favorites, Playlists, the Search view) -- it's a separate top-level section, not nested inside the sidebar those two live in, so it had been missed from all of those view-switch CSS rules and stuck around a full screen tall wherever it wasn't wanted.
+- Renamed `blog.html` to `news.html` (nav link, internal links, sitemap/RSS entries) to match the "Blog" nav item's earlier rename to "News" -- the page itself said News everywhere already, just not its URL.
+
 ## v6.5.1 — current
 - Fixed a stuck-hash bug: refreshing the page while a lightbox was open, then opening a second lightbox/profile/TV without closing the first one first, then closing that second one would land back on the FIRST lightbox's stale hash instead of a clean browsing state -- and since hashchange fires on the way back, it would silently reopen that first lightbox too. Root cause: pushModalHistory() anchors the "closed" state to whatever entry was current when a modal first opened, and a cold page load already sitting on a deep-link hash bakes that hash into that entry permanently. Now strips the hash from that anchor entry before pushing, so every modal always closes back down to a clean URL regardless of how the page was loaded.
 
