@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.0.0 — current
+- Major version bump marking the site's move off Squarespace: themusicvideoguy.com now serves this app directly (see the CNAME addition) instead of iframing it inside a Squarespace wrapper page. Everything since -- the YouTube autoplay/hover fixes only possible once the iframe's native controls weren't needed as a fallback, the News section pointing at real content instead of a frozen Squarespace scrape, real shareable links for videos/profiles/TV Mode, and the broken Squarespace-page nav links removed -- was cleanup and follow-through from that one architectural change.
+
 ## v5.69.0 — current
 - Extended shareable links beyond the video lightbox: profile lightboxes get `#profile-<slug>-<uid>` (members-only, same as browsing the directory itself), TV Mode gets `#tv`, and Channel Mode -- the one TV state that's actually the same experience for everyone who opens it -- gets `#tv-channel`. All three get the same "Copy link" button (native share sheet on mobile, clipboard elsewhere) the video lightbox already had, now generalized into one shared button/handler instead of one-off copies.
 - Removed the sidebar's "The Music Video Guy" link -- it pointed at `themusicvideoguy.com/mvg`, a Squarespace page slug that no longer exists now that this domain serves this site directly.
