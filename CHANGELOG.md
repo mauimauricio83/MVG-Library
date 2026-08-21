@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.3.0 — current
+- Trading card polish round two: removed the outer border's bevel stroke (it didn't need one); added a subtle grain/noise texture to the title bar, type-line bar, and genre pills (not the outer border or the flavor/fact box, which stay flat for legibility); reverted the flavor box's content from center-aligned back to left-aligned, while keeping it vertically centered as a block so a near-empty box (most videos have no description) doesn't read as pinned to the top; and bumped the description/fact text size up a notch as a further hedge against empty-looking cards.
+
 ## v6.2.0 — current
 - Trading card refinements after the first pass, since most videos have no description: the flavor-text box now falls back to whatever credits are actually available (country, studio, producer, DP, editor, choreographer) when there's no description, and falls back further to a big faint centered MVG watermark (MTG-basic-land style) when there's truly nothing to show. All of a box's content -- tags, description, or facts -- is now centered as a single block instead of pinned top-left, which read badly once boxes were this often near-empty. The art crop moved from 4:3 (which both lost part of the frame and upscaled a smaller crop of it) to the thumbnail's native 16:9, and card generation now tries YouTube's maxresdefault thumbnail before falling back to hqdefault, instead of always requesting the small mqdefault size built for tiny in-list thumbnails elsewhere on the site. Every element (bars, boxes, pills, the outer border, the logo) now has a thin beveled stroke in a darker shade of its own color.
 

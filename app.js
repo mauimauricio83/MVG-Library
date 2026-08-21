@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.2.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.3.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10888,6 +10888,44 @@
     ctx.globalAlpha = 1;
   }
 
+  // A small random-grayscale tile, cached and reused as a repeating
+  // pattern -- cheap fractal-ish grain for the frame elements (title bar,
+  // type line, tag pills), same idea as MTG's textured card frame.
+  // Deliberately not used on the outer border or the flavor/fact box --
+  // the border stays a flat clean color and the text box stays plain for
+  // legibility.
+  var cardNoisePatternCache = null;
+  function getCardNoisePattern(ctx) {
+    if (cardNoisePatternCache) return cardNoisePatternCache;
+    var n = 96;
+    var nc = document.createElement("canvas");
+    nc.width = n;
+    nc.height = n;
+    var nctx = nc.getContext("2d");
+    var imgData = nctx.createImageData(n, n);
+    for (var i = 0; i < imgData.data.length; i += 4) {
+      var v = Math.floor(Math.random() * 255);
+      imgData.data[i] = v;
+      imgData.data[i + 1] = v;
+      imgData.data[i + 2] = v;
+      imgData.data[i + 3] = 255;
+    }
+    nctx.putImageData(imgData, 0, 0);
+    cardNoisePatternCache = ctx.createPattern(nc, "repeat");
+    return cardNoisePatternCache;
+  }
+
+  function drawCardNoise(ctx, x, y, w, h, radius) {
+    ctx.save();
+    roundRectPath(ctx, x, y, w, h, radius);
+    ctx.clip();
+    ctx.globalAlpha = 0.15;
+    ctx.globalCompositeOperation = "overlay";
+    ctx.fillStyle = getCardNoisePattern(ctx);
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+  }
+
   // Facts to fall back on when a video has no description (most don't) --
   // everything creditsHtml() shows except Director (already the type line)
   // and release date/year (already in the footer). Deliberately NOT run
@@ -10936,10 +10974,6 @@
         ctx.fill();
       }
       ctx.restore();
-      roundRectPath(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
-      ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 3;
-      ctx.stroke();
 
       var panelX = CARD_BORDER, panelY = CARD_BORDER;
       var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
@@ -10961,6 +10995,7 @@
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      drawCardNoise(ctx, contentX, cursorY, contentW, titleBarH, 10);
       ctx.textBaseline = "middle";
       var titleBarMidY = cursorY + titleBarH / 2;
       ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
@@ -11000,6 +11035,7 @@
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      drawCardNoise(ctx, contentX, cursorY, contentW, typeBarH, 10);
       ctx.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#2A2620";
       ctx.textAlign = "left";
@@ -11020,14 +11056,18 @@
       var boxPad = 18;
       var boxInnerW = contentW - boxPad * 2;
       var boxCenterX = contentX + contentW / 2;
-      var pillH = 26;
-      var lineH = 26;
+      var pillH = 28;
+      var lineH = 28;
 
-      // Pass 1: measure without drawing, so the whole block (tag pills +
-      // text) can be centered as a unit instead of pinned to the top --
-      // an empty or near-empty box (most videos have no description) read
-      // as lopsided anchored at the top.
-      ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+      // Pass 1: measure without drawing, so the block's height is known
+      // before it's positioned -- vertically centered in the box (an
+      // empty/near-empty box, which is most of them since most videos have
+      // no description, read as lopsided pinned to the top), but left-
+      // aligned horizontally within that vertical centering, genre pill(s)
+      // included -- center-aligning turned out to look worse than a
+      // slightly bigger, left-set block, which also eats more of the
+      // negative space on its own.
+      ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
       var pillWidths = genres.slice(0, 4).map(function (g) { return ctx.measureText(g).width + 20; });
       var pillsRowW = pillWidths.reduce(function (a, w) { return a + w; }, 0) + Math.max(0, pillWidths.length - 1) * 8;
       var hasPills = pillWidths.length > 0 && pillsRowW <= boxInnerW;
@@ -11037,10 +11077,10 @@
       var usingDescription = !!row.description;
       var maxTextLines = Math.max(1, Math.floor((boxH - boxPad * 2 - (hasPills ? pillH + 14 : 0)) / lineH));
       if (usingDescription) {
-        ctx.font = "italic 20px Georgia, serif";
+        ctx.font = "italic 22px Georgia, serif";
         textLines = wrapCanvasLines(ctx, row.description, boxInnerW, maxTextLines);
       } else {
-        ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
       }
 
@@ -11059,7 +11099,7 @@
       } else {
         var blockY = boxY + (boxH - blockH) / 2;
         if (hasPills) {
-          var pillX = boxCenterX - pillsRowW / 2;
+          var pillX = contentX + boxPad;
           genres.slice(0, pillWidths.length).forEach(function (g, i) {
             var pillW = pillWidths[i];
             var pillColor = genreCardColor(g);
@@ -11071,21 +11111,22 @@
             ctx.strokeStyle = darkenColor(pillColor, 0.45);
             ctx.lineWidth = 1;
             ctx.stroke();
+            drawCardNoise(ctx, pillX, blockY, pillW, pillH, 13);
             ctx.fillStyle = "#2A2620";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+            ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
             ctx.fillText(g, pillX + pillW / 2, blockY + pillH / 2);
             pillX += pillW + 8;
           });
           blockY += pillH + (textLines.length ? 14 : 0);
         }
-        ctx.textAlign = "center";
+        ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
         ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
-        ctx.font = usingDescription ? "italic 20px Georgia, serif" : "18px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = usingDescription ? "italic 22px Georgia, serif" : "20px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines.forEach(function (line, i) {
-          ctx.fillText(line, boxCenterX, blockY + 18 + i * lineH);
+          ctx.fillText(line, contentX + boxPad, blockY + 19 + i * lineH);
         });
       }
 
