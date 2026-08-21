@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.8.0 — current
+- Video lightbox cleanup: removed the Mirror and Interlace admin debug toggles and the 4:3 crop button (the video-detail lightbox only -- TV Mode and the profile lightbox keep their own separate crop features, untouched); merged the separate "Report an issue" link and "Suggest an edit" button into one "Report an issue" button that opens a small popover with both choices; reordered the remaining lightbox buttons to Edit/Delete (admin only), Add to playlist, Vote, Favorite, Share, Widen, Report an issue.
+- Grid view (Admin → Manage Entries) is now paginated (75 rows per page, with Prev/Next) instead of rendering all ~13k filtered rows as live inputs at once -- this is what was making it slow to open and laggy to click into a field. The grid also now expands to a near-full-viewport takeover while active instead of being squeezed into the regular 560px-wide admin modal, so far more columns are visible at once (previously only Row through Year fit).
+
 ## v6.7.1 — current
 - `app.js`, `styles.css`, `hub.css`, and `site-nav.js` are now loaded with a `?v=` cache-busting query param on every page that references them -- without it, a push could go live server-side while browsers (and GitHub Pages' own CDN) kept serving an already-cached copy of the old file, so a just-shipped change (like v6.7.0's Grid view) wouldn't actually show up for a visitor, including a signed-in admin testing right after the push. The query param now gets bumped alongside every version bump going forward (see CLAUDE.md).
 

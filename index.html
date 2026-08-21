@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.7.1">
+<link rel="stylesheet" href="styles.css?v=6.8.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -693,7 +693,7 @@
 
 <div class="lightbox" id="adminModal" hidden>
   <div class="lightbox-backdrop"></div>
-  <div class="lightbox-panel admin-panel" role="dialog" aria-modal="true" aria-label="Manage Entries">
+  <div class="lightbox-panel admin-panel" id="adminPanel" role="dialog" aria-modal="true" aria-label="Manage Entries">
     <button type="button" class="lightbox-close" id="adminClose" aria-label="Close">&times;</button>
     <div class="admin-body">
       <div id="adminLandingView">
@@ -938,6 +938,11 @@
         <p class="admin-grid-hint" id="adminGridHint" hidden>Editing here saves straight to the database as you go, but the live site won't show your changes until you hit <strong>Publish</strong> above -- edit as many rows as you like, then publish once at the end.</p>
         <div class="admin-entries-list" id="adminEntriesList"></div>
         <div class="admin-grid-wrap" id="adminGridWrap" hidden>
+          <div class="admin-grid-pager" id="adminGridPager">
+            <button type="button" class="admin-row-btn" id="adminGridPrevBtn">&larr; Prev</button>
+            <span class="admin-grid-pager-label" id="adminGridPagerLabel"></span>
+            <button type="button" class="admin-row-btn" id="adminGridNextBtn">Next &rarr;</button>
+          </div>
           <table class="admin-grid" id="adminGridTable"></table>
         </div>
       </div>
@@ -1447,6 +1452,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.7.1"></script>
+<script src="app.js?v=6.8.0"></script>
 </body>
 </html>

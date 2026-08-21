@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.7.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -498,10 +498,15 @@
     adminStatus: document.getElementById("adminStatus"),
     adminEntriesList: document.getElementById("adminEntriesList"),
     adminSearchInput: document.getElementById("adminSearchInput"),
+    adminPanel: document.getElementById("adminPanel"),
     adminGridToggleBtn: document.getElementById("adminGridToggleBtn"),
     adminGridHint: document.getElementById("adminGridHint"),
     adminGridWrap: document.getElementById("adminGridWrap"),
     adminGridTable: document.getElementById("adminGridTable"),
+    adminGridPager: document.getElementById("adminGridPager"),
+    adminGridPagerLabel: document.getElementById("adminGridPagerLabel"),
+    adminGridPrevBtn: document.getElementById("adminGridPrevBtn"),
+    adminGridNextBtn: document.getElementById("adminGridNextBtn"),
     adminListView: document.getElementById("adminListView"),
     adminAddBtn: document.getElementById("adminAddBtn"),
     adminForm: document.getElementById("adminForm"),
@@ -1010,10 +1015,6 @@
     lightboxPlayer: null,
     lightboxSize: loadLightboxSizePref(),
     lightboxCrop: loadLightboxCropPref(),
-    // Admin debug toggles, session-only (not persisted -- these are testing
-    // tools, not viewer preferences, so they always start off).
-    lightboxMirror: false,
-    lightboxInterlaceHz: 0, // 0 = off, else 50 or 60
     // Never persisted across page loads (see applyNavMode()'s comment) --
     // always starts on "watch", matching the page's own default view
     // (Home), so the switch and what's actually on screen never disagree.
@@ -4793,80 +4794,6 @@
     }
   });
 
-  // Admin debug tool: an approximation of interlace flicker, NOT a real
-  // interlaced signal -- there's no pixel/canvas access into a cross-origin
-  // YouTube/Vimeo iframe, so the actual source frames can't be read or
-  // resampled. This overlays a repeating-linear-gradient scanline pattern
-  // on top of the real (progressive) video and shifts it by one line on a
-  // timer, alternating which set of lines reads as darkened -- a
-  // requestAnimationFrame loop (not a CSS animation) checks elapsed time
-  // against the target period so the flip cadence is a real 50/60Hz
-  // regardless of the display's own refresh rate, rather than however a
-  // browser happens to schedule a CSS animation. On a 60Hz display, a 50Hz
-  // target will show slight beating/jitter -- physically inherent to
-  // emulating one rate on a display running another, not a bug to chase.
-  // Real NTSC has ~486 active scanlines split into two ~243-line fields.
-  // Matching that exactly scales line pitch with the player's actual
-  // rendered height the way a real interlaced signal's would -- but at
-  // typical player sizes, true 243-line-per-field pitch is finer than a
-  // browser can render legibly over compressed video (the CSS reads as a
-  // faint haze, not scanlines). This coarsens to roughly a third of the
-  // real line count -- still scales with player height, just chosen for
-  // visibility over broadcast accuracy.
-  var INTERLACE_TOTAL_LINES = 162;
-  // TV Mode's own mirror/interlace debug tools were retired (removed
-  // entirely, not just hidden) -- this stays lightbox-only now. Kept
-  // keyed by an object/"which" rather than flattened to lightbox-only
-  // variables since that's a bigger, riskier refactor than this feature
-  // removal calls for.
-  var INTERLACE_OVERLAY_IDS = { lightbox: "lightboxInterlaceOverlay" };
-  var interlaceHz = { lightbox: 0 };
-  var interlaceField = { lightbox: false };
-  var interlaceLastFlip = { lightbox: 0 };
-  var interlaceRAF = null;
-
-  function interlaceFrameEl() {
-    return document.getElementById("lightboxVideoFrame");
-  }
-
-  function tickInterlace(now) {
-    Object.keys(INTERLACE_OVERLAY_IDS).forEach(function (which) {
-      var hz = interlaceHz[which];
-      if (!hz) return;
-      if (now - interlaceLastFlip[which] < 1000 / hz) return;
-      interlaceLastFlip[which] = now;
-      interlaceField[which] = !interlaceField[which];
-      var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
-      var frame = interlaceFrameEl();
-      if (!el || !frame) return;
-      // Recomputed on every flip (not just on toggle/resize) so a crop
-      // toggle, widen, or window resize between flips is picked up for
-      // free without a separate resize listener.
-      var linePx = Math.max(1, frame.clientHeight / INTERLACE_TOTAL_LINES);
-      el.style.backgroundSize = "100% " + (linePx * 2) + "px";
-      el.style.backgroundPositionY = interlaceField[which] ? linePx + "px" : "0px";
-    });
-    interlaceRAF = requestAnimationFrame(tickInterlace);
-  }
-
-  function setInterlaceHz(which, hz) {
-    interlaceHz[which] = hz;
-    var el = document.getElementById(INTERLACE_OVERLAY_IDS[which]);
-    if (el) el.hidden = !hz;
-    if (hz && interlaceRAF == null) interlaceRAF = requestAnimationFrame(tickInterlace);
-    if (!interlaceHz.lightbox && interlaceRAF != null) {
-      cancelAnimationFrame(interlaceRAF);
-      interlaceRAF = null;
-    }
-  }
-
-  // Cycles Off -> 60Hz -> 50Hz -> Off on each click.
-  function nextInterlaceHz(hz) {
-    if (hz === 60) return 50;
-    if (hz === 50) return 0;
-    return 60;
-  }
-
   // The logo/lower-third live inside this template (rebuilt fresh on
   // every provider switch/fresh player create, see loadTVTrack()/
   // loadChannelTrackAt()) rather than being cached in `els` the way most
@@ -6458,7 +6385,7 @@
     var videoRef = getRowVideoRef(row);
     var id = videoRef ? videoRef.id : null;
     var videoHtml = videoRef
-      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div><div class="video-interlace-overlay" id="lightboxInterlaceOverlay" hidden></div></div>'
+      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
       : '<div class="lightbox-video-empty">No video available for this entry.</div>';
 
     var sub = [];
@@ -6486,13 +6413,6 @@
     var adminDeleteBtn = adminUiActive()
       ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">' + ICON_TRASH + ' Delete</button>'
       : "";
-    // Admin-only debug tools -- not shown to regular visitors.
-    var mirrorBtn = adminUiActive() && videoRef
-      ? '<button type="button" class="lightbox-mirror-btn" title="Mirror" aria-label="Toggle mirror">Mirror</button>'
-      : "";
-    var interlaceBtn = adminUiActive() && videoRef
-      ? '<button type="button" class="lightbox-interlace-btn" title="Interlace flicker (test)" aria-label="Toggle interlace flicker">Interlace</button>'
-      : "";
 
     els.lightboxContent.innerHTML =
       '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
@@ -6503,16 +6423,12 @@
       '<div class="lightbox-title-actions">' +
       adminEditBtn +
       adminDeleteBtn +
+      '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
+      lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       shareButtonHtml(lightboxHash(row), (row.song || "Untitled") + (row.artist ? " — " + row.artist : "")) +
-      lightboxVoteBtnHtml(row) +
-      '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
-      '<button type="button" class="lightbox-crop-btn" title="Crop to 4:3" aria-label="Toggle 4:3 crop">4:3</button>' +
-      mirrorBtn +
-      interlaceBtn +
-      '<a class="lightbox-report-link" href="' + escapeHtml(reportFormUrl(row)) + '" target="_blank" rel="noopener noreferrer">Report issue</a>' +
-      '<button type="button" class="suggest-edit-open-btn" data-rownum="' + escapeHtml(row.rowNum) + '">Suggest an edit</button>' +
+      '<button type="button" class="lightbox-report-menu-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-report-url="' + escapeHtml(reportFormUrl(row)) + '" aria-haspopup="true" aria-expanded="false">Report an issue</button>' +
       "</div>" +
       "</div>" +
       (sub.length ? '<p class="lightbox-subtitle">' + sub.join(" · ") + "</p>" : "") +
@@ -6536,9 +6452,6 @@
     // underneath, hash and all, exactly as before this was added.
     history.replaceState(history.state, "", location.pathname + location.search + lightboxHash(row));
     applyLightboxSize();
-    applyLightboxCrop();
-    applyLightboxMirror();
-    applyLightboxInterlace();
     startCommentsListener(row.rowNum);
 
     var lightboxAdEl = document.getElementById("lightboxAdPlaceholder");
@@ -6559,7 +6472,7 @@
       var fallbackUrl = row.youtube || row.vimeo;
       createVideoPlayer("lightboxPlayerTarget", videoRef, {
         autoplay: loadAutoplayPref(),
-        controls: !state.lightboxCrop,
+        controls: true,
         isStale: function () { return els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen; },
         onError: function () {
           destroyLightboxPlayer();
@@ -6580,12 +6493,7 @@
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
     els.lightboxContent.innerHTML = "";
-    // Admin debug toggles don't persist across closing the lightbox --
-    // avoids leaving them on and surprising the next video, and stops the
-    // now-pointless interlace rAF loop.
-    state.lightboxMirror = false;
-    state.lightboxInterlaceHz = 0;
-    setInterlaceHz("lightbox", 0);
+    hideLightboxReportMenu();
     state.lightboxRowNum = null;
     state.lightboxProfileUid = null;
     document.title = DEFAULT_TITLE;
@@ -9931,6 +9839,13 @@
   var adminGridMode = false;
   var ADMIN_GRID_CATEGORIES = ["Music Video", "Dance", "Montage", "DVD", "Live", "Installation", "Short", "Docu"];
   var ADMIN_GRID_CHECKBOX_FIELDS = ["feature", "spotlight", "sponsored", "backdoor"];
+  // Rendering all ~13k filtered rows at once as live <input>/<select> elements
+  // was what made the grid slow to open and laggy to click into -- this many
+  // interactive DOM nodes bogs down layout/event dispatch even on a fast
+  // machine. Paginating keeps each render to a small, fixed-size DOM.
+  var ADMIN_GRID_PAGE_SIZE = 75;
+  var adminGridAllRows = [];
+  var adminGridPage = 0;
 
   function adminGridCategoryOptionsHtml(current) {
     return '<option value=""' + (current ? "" : " selected") + "></option>" +
@@ -9956,20 +9871,50 @@
   }
 
   function renderAdminGrid(rows) {
+    adminGridAllRows = rows;
+    adminGridPage = 0;
+    renderAdminGridPage();
+  }
+
+  function renderAdminGridPage() {
     els.adminEntriesList.hidden = true;
     els.adminGridWrap.hidden = false;
+    var rows = adminGridAllRows;
     if (!rows.length) {
       els.adminGridTable.innerHTML = '<caption class="admin-empty">No matching entries.</caption>';
+      els.adminGridPagerLabel.textContent = "";
+      els.adminGridPrevBtn.disabled = true;
+      els.adminGridNextBtn.disabled = true;
       return;
     }
+    var totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_GRID_PAGE_SIZE));
+    adminGridPage = Math.max(0, Math.min(adminGridPage, totalPages - 1));
+    var start = adminGridPage * ADMIN_GRID_PAGE_SIZE;
+    var pageRows = rows.slice(start, start + ADMIN_GRID_PAGE_SIZE);
     els.adminGridTable.innerHTML =
       "<thead><tr>" +
         "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
         "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th>" +
       "</tr></thead><tbody>" +
-      rows.map(adminGridRowHtml).join("") +
+      pageRows.map(adminGridRowHtml).join("") +
       "</tbody>";
+    els.adminGridPagerLabel.textContent = (start + 1) + "–" + (start + pageRows.length) + " of " + rows.length;
+    els.adminGridPrevBtn.disabled = adminGridPage === 0;
+    els.adminGridNextBtn.disabled = adminGridPage >= totalPages - 1;
   }
+
+  els.adminGridPrevBtn.addEventListener("click", function () {
+    if (adminGridPage <= 0) return;
+    adminGridPage--;
+    renderAdminGridPage();
+    els.adminGridWrap.scrollTop = 0;
+  });
+
+  els.adminGridNextBtn.addEventListener("click", function () {
+    adminGridPage++;
+    renderAdminGridPage();
+    els.adminGridWrap.scrollTop = 0;
+  });
 
   function flashAdminGridCell(el, ok) {
     el.classList.remove("save-ok", "save-error");
@@ -10023,6 +9968,11 @@
     els.adminGridHint.hidden = !adminGridMode;
     els.adminGridWrap.hidden = !adminGridMode;
     els.adminEntriesList.hidden = adminGridMode;
+    // Grid view needs real width to show more than the first few columns --
+    // .admin-panel's normal 560px cap (fine for every other admin view) is
+    // way too cramped for a spreadsheet, so widen the whole modal to a
+    // near-full-page takeover only while grid mode is on.
+    els.adminPanel.classList.toggle("is-grid-full", adminGridMode);
     renderAdminEntries();
   });
 
@@ -11910,20 +11860,43 @@
     btn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
   }
 
-  function applyLightboxMirror() {
-    var frame = document.getElementById("lightboxVideoFrame");
-    var btn = els.lightboxContent.querySelector(".lightbox-mirror-btn");
-    if (frame) frame.classList.toggle("is-mirrored", !!state.lightboxMirror);
-    if (btn) btn.classList.toggle("is-active", !!state.lightboxMirror);
+  var lightboxReportMenuEl = null;
+  function getLightboxReportMenu() {
+    if (!lightboxReportMenuEl) {
+      lightboxReportMenuEl = document.createElement("div");
+      lightboxReportMenuEl.className = "lightbox-report-menu";
+      lightboxReportMenuEl.hidden = true;
+      document.body.appendChild(lightboxReportMenuEl);
+    }
+    return lightboxReportMenuEl;
   }
-
-  function applyLightboxInterlace() {
-    setInterlaceHz("lightbox", state.lightboxInterlaceHz);
-    var btn = els.lightboxContent.querySelector(".lightbox-interlace-btn");
-    if (!btn) return;
-    btn.classList.toggle("is-active", !!state.lightboxInterlaceHz);
-    btn.textContent = state.lightboxInterlaceHz ? "Interlace " + state.lightboxInterlaceHz + "Hz" : "Interlace";
+  function hideLightboxReportMenu() {
+    if (lightboxReportMenuEl) lightboxReportMenuEl.hidden = true;
   }
+  function toggleLightboxReportMenu(btn) {
+    var menu = getLightboxReportMenu();
+    if (!menu.hidden && menu.dataset.forBtn === btn.getAttribute("data-rownum")) {
+      hideLightboxReportMenu();
+      return;
+    }
+    menu.dataset.forBtn = btn.getAttribute("data-rownum");
+    menu.innerHTML =
+      '<a href="' + escapeHtml(btn.getAttribute("data-report-url")) + '" target="_blank" rel="noopener noreferrer" class="lightbox-report-menu-item">Report a problem</a>' +
+      '<button type="button" class="lightbox-report-menu-item lightbox-suggest-edit-item" data-rownum="' + escapeHtml(btn.getAttribute("data-rownum")) + '">Suggest an edit</button>';
+    menu.hidden = false;
+    var rect = btn.getBoundingClientRect();
+    var menuRect = menu.getBoundingClientRect();
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - menuRect.width - 8));
+    var top = rect.bottom + 6;
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  }
+  document.addEventListener("click", function (e) {
+    if (!lightboxReportMenuEl || lightboxReportMenuEl.hidden) return;
+    if (e.target.closest(".lightbox-report-menu-item")) { hideLightboxReportMenu(); return; }
+    if (e.target.closest(".lightbox-report-menu") || e.target.closest(".lightbox-report-menu-btn")) return;
+    hideLightboxReportMenu();
+  });
 
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
@@ -11942,14 +11915,10 @@
       applyLightboxCrop();
       return;
     }
-    if (e.target.closest(".lightbox-mirror-btn")) {
-      state.lightboxMirror = !state.lightboxMirror;
-      applyLightboxMirror();
-      return;
-    }
-    if (e.target.closest(".lightbox-interlace-btn")) {
-      state.lightboxInterlaceHz = nextInterlaceHz(state.lightboxInterlaceHz);
-      applyLightboxInterlace();
+    var reportMenuBtn = e.target.closest(".lightbox-report-menu-btn");
+    if (reportMenuBtn) {
+      e.stopPropagation();
+      toggleLightboxReportMenu(reportMenuBtn);
       return;
     }
     var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");
@@ -12044,8 +12013,9 @@
       });
       return;
     }
-    var suggestEditBtn = e.target.closest(".suggest-edit-open-btn");
+    var suggestEditBtn = e.target.closest(".lightbox-suggest-edit-item");
     if (suggestEditBtn) {
+      hideLightboxReportMenu();
       openSuggestEditModal(suggestEditBtn.getAttribute("data-rownum"));
       return;
     }
