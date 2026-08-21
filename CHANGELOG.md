@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.7.0 — current
+- Added a Grid view to Admin → Manage Entries: a spreadsheet-style table (Artist/Song/Director/Category/Year, plus checkboxes for Feature/Spotlight/Sponsored/Backdoor) for skimming and editing many entries in one view instead of opening the full form per row. Text fields save on leaving the cell, checkboxes save immediately -- one small Firestore write per actual edit, same cost as editing a single entry today. Deliberately does NOT auto-publish per edit the way the single-entry form does, since publishSnapshot() re-reads the entire ~13k-doc collection every time it runs -- doing that after every keystroke across a bulk editing session would multiply an already-not-cheap operation by however many cells get touched. Publish stays a manual, one-time step at the end of a grid-editing session.
+
 ## v6.6.0 — current
 - Viewer's Choice now hides on every view Featured/Discover already hid on (Connect/Profiles, Favorites, Playlists, the Search view) -- it's a separate top-level section, not nested inside the sidebar those two live in, so it had been missed from all of those view-switch CSS rules and stuck around a full screen tall wherever it wasn't wanted.
 - Renamed `blog.html` to `news.html` (nav link, internal links, sitemap/RSS entries) to match the "Blog" nav item's earlier rename to "News" -- the page itself said News everywhere already, just not its URL.

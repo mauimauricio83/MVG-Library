@@ -928,13 +928,18 @@
           <h2 class="recent-title">Manage Entries</h2>
           <div class="admin-toolbar-actions">
             <button type="button" class="admin-row-btn" id="adminPublishBtn">Publish</button>
+            <button type="button" class="admin-row-btn" id="adminGridToggleBtn" aria-pressed="false">Grid view</button>
             <button type="button" class="admin-row-btn" id="adminBulkBtn">Bulk Import</button>
             <button type="button" class="admin-row-btn" id="adminAddBtn">+ Add Entry</button>
           </div>
         </div>
         <input type="search" id="adminSearchInput" class="admin-search" placeholder="Search artist, song, or director…">
         <p class="admin-status" id="adminStatus" hidden></p>
+        <p class="admin-grid-hint" id="adminGridHint" hidden>Editing here saves straight to the database as you go, but the live site won't show your changes until you hit <strong>Publish</strong> above -- edit as many rows as you like, then publish once at the end.</p>
         <div class="admin-entries-list" id="adminEntriesList"></div>
+        <div class="admin-grid-wrap" id="adminGridWrap" hidden>
+          <table class="admin-grid" id="adminGridTable"></table>
+        </div>
       </div>
 
       <form class="admin-form submit-form" id="adminForm" hidden>

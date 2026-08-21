@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.6.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.7.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -498,6 +498,10 @@
     adminStatus: document.getElementById("adminStatus"),
     adminEntriesList: document.getElementById("adminEntriesList"),
     adminSearchInput: document.getElementById("adminSearchInput"),
+    adminGridToggleBtn: document.getElementById("adminGridToggleBtn"),
+    adminGridHint: document.getElementById("adminGridHint"),
+    adminGridWrap: document.getElementById("adminGridWrap"),
+    adminGridTable: document.getElementById("adminGridTable"),
     adminListView: document.getElementById("adminListView"),
     adminAddBtn: document.getElementById("adminAddBtn"),
     adminForm: document.getElementById("adminForm"),
@@ -9900,6 +9904,11 @@
     // Most recently added first, same convention as the Latest strip.
     rows = rows.slice().sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); });
 
+    if (adminGridMode) {
+      renderAdminGrid(rows);
+      return;
+    }
+
     if (!rows.length) {
       els.adminEntriesList.innerHTML = '<p class="admin-empty">No matching entries.</p>';
       return;
@@ -9907,6 +9916,115 @@
 
     els.adminEntriesList.innerHTML = rows.map(adminRowHtml).join("");
   }
+
+  // ---- Manage Entries: Grid view -----------------------------------------
+  // A spreadsheet-style alternative to the Edit/Delete list above, for
+  // skimming and tweaking many entries in one view instead of opening the
+  // full form per row. Deliberately does NOT auto-publish per edit the way
+  // the single-entry form does (see its submit handler) -- publishSnapshot()
+  // re-reads the entire ~13k-doc collection every time it runs, so doing
+  // that after every keystroke/checkbox across a bulk editing session would
+  // multiply an already-not-cheap operation by however many cells get
+  // touched. Each edit here is exactly one small Firestore write (the same
+  // cost as any other single-field edit); Publish stays a manual, one-time
+  // step at the end of the session (see adminGridHint in index.html).
+  var adminGridMode = false;
+  var ADMIN_GRID_CATEGORIES = ["Music Video", "Dance", "Montage", "DVD", "Live", "Installation", "Short", "Docu"];
+  var ADMIN_GRID_CHECKBOX_FIELDS = ["feature", "spotlight", "sponsored", "backdoor"];
+
+  function adminGridCategoryOptionsHtml(current) {
+    return '<option value=""' + (current ? "" : " selected") + "></option>" +
+      ADMIN_GRID_CATEGORIES.map(function (c) {
+        return "<option" + (c === current ? " selected" : "") + ">" + escapeHtml(c) + "</option>";
+      }).join("");
+  }
+
+  function adminGridRowHtml(r) {
+    return (
+      '<tr data-rownum="' + escapeHtml(r.rowNum) + '">' +
+        '<td class="admin-grid-rownum">#' + escapeHtml(r.rowNum) + "</td>" +
+        '<td><input type="text" data-field="artist" value="' + escapeHtml(r.artist || "") + '"></td>' +
+        '<td><input type="text" data-field="song" value="' + escapeHtml(r.song || "") + '"></td>' +
+        '<td><input type="text" data-field="director" value="' + escapeHtml(r.director || "") + '"></td>' +
+        '<td><select data-field="category">' + adminGridCategoryOptionsHtml(r.category) + "</select></td>" +
+        '<td><input type="text" class="admin-grid-year" data-field="year" value="' + escapeHtml(r.year || "") + '"></td>' +
+        ADMIN_GRID_CHECKBOX_FIELDS.map(function (f) {
+          return '<td class="admin-grid-check"><input type="checkbox" data-field="' + f + '"' + (r[f] ? " checked" : "") + "></td>";
+        }).join("") +
+      "</tr>"
+    );
+  }
+
+  function renderAdminGrid(rows) {
+    els.adminEntriesList.hidden = true;
+    els.adminGridWrap.hidden = false;
+    if (!rows.length) {
+      els.adminGridTable.innerHTML = '<caption class="admin-empty">No matching entries.</caption>';
+      return;
+    }
+    els.adminGridTable.innerHTML =
+      "<thead><tr>" +
+        "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
+        "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th>" +
+      "</tr></thead><tbody>" +
+      rows.map(adminGridRowHtml).join("") +
+      "</tbody>";
+  }
+
+  function flashAdminGridCell(el, ok) {
+    el.classList.remove("save-ok", "save-error");
+    // Reflow so re-adding the same class right after removing it still
+    // restarts the CSS animation instead of being a no-op.
+    void el.offsetWidth;
+    el.classList.add(ok ? "save-ok" : "save-error");
+  }
+
+  function saveAdminGridField(cellEl, rowNum, field, value) {
+    var patch = {};
+    patch[field] = value;
+    patch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    db.collection("videos").doc(rowNum).set(patch, { merge: true }).then(function () {
+      var row = findAdminRowByNum(rowNum);
+      if (row) row[field] = value;
+      flashAdminGridCell(cellEl, true);
+    }).catch(function (err) {
+      console.error("Grid save failed:", err);
+      flashAdminGridCell(cellEl, false);
+    });
+  }
+
+  function adminGridFieldValue(inputEl) {
+    return inputEl.type === "checkbox" ? inputEl.checked : inputEl.value.trim();
+  }
+
+  els.adminGridTable.addEventListener("change", function (e) {
+    var input = e.target.closest("input[data-field], select[data-field]");
+    if (!input || input.type === "text") return; // text inputs save on focusout below, not every change
+    var rowNum = input.closest("tr").getAttribute("data-rownum");
+    saveAdminGridField(input, rowNum, input.getAttribute("data-field"), adminGridFieldValue(input));
+  });
+
+  els.adminGridTable.addEventListener("focusout", function (e) {
+    var input = e.target.closest('input[type="text"][data-field]');
+    if (!input) return;
+    var rowNum = input.closest("tr").getAttribute("data-rownum");
+    var field = input.getAttribute("data-field");
+    var value = adminGridFieldValue(input);
+    var row = findAdminRowByNum(rowNum);
+    if (row && (row[field] || "") === value) return; // unchanged -- don't spend a write confirming nothing happened
+    saveAdminGridField(input, rowNum, field, value);
+  });
+
+  els.adminGridToggleBtn.addEventListener("click", function () {
+    adminGridMode = !adminGridMode;
+    els.adminGridToggleBtn.setAttribute("aria-pressed", adminGridMode ? "true" : "false");
+    els.adminGridToggleBtn.classList.toggle("is-active", adminGridMode);
+    els.adminGridToggleBtn.textContent = adminGridMode ? "List view" : "Grid view";
+    els.adminGridHint.hidden = !adminGridMode;
+    els.adminGridWrap.hidden = !adminGridMode;
+    els.adminEntriesList.hidden = adminGridMode;
+    renderAdminEntries();
+  });
 
   // ---- Data Health: duplicate videos, missing links, broken links ------
   // All three read off state.adminRows (the same full-catalog snapshot
