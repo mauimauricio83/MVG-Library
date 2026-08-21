@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.67.0 — current
+- The lightbox's Copy link button now uses the phone's native share sheet (navigator.share -- Messages, WhatsApp, etc.) wherever it's available, which today is effectively mobile only, falling back to the existing clipboard-copy behavior everywhere else (including if the share sheet itself fails for a reason other than the user just cancelling it).
+
 ## v5.66.0 — current
 - Video lightboxes now get real shareable links: opening one updates the address bar to `#row-<id>` (the deep-link format an existing but one-way `#row-` reader already supported, originally built for the SEO hub pages), so the URL can just be copied straight out of the address bar and reopens the right video on a fresh load. Added an explicit "Copy link" button next to Favorite for the same thing in one click, with a clipboard-API-unavailable fallback.
 

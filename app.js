@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.66.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.67.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11287,7 +11287,8 @@
     }
     var shareBtn = e.target.closest(".lightbox-share-btn");
     if (shareBtn) {
-      var shareLink = location.origin + location.pathname + "#row-" + encodeURIComponent(shareBtn.getAttribute("data-rownum"));
+      var shareRowNum = shareBtn.getAttribute("data-rownum");
+      var shareLink = location.origin + location.pathname + "#row-" + encodeURIComponent(shareRowNum);
       var flash = function (copied) {
         if (!copied) { try { window.prompt("Copy this link:", shareLink); } catch (e) {} return; }
         var original = shareBtn.innerHTML;
@@ -11295,6 +11296,25 @@
         shareBtn.classList.add("is-active");
         setTimeout(function () { shareBtn.innerHTML = original; shareBtn.classList.remove("is-active"); }, 1500);
       };
+      // navigator.share is mobile browsers' native share sheet (Messages,
+      // WhatsApp, etc.) -- prefer it over clipboard-copy wherever it exists,
+      // which today is effectively "on a phone" (desktop Chrome/Firefox
+      // still don't implement it). Falls through to the clipboard/prompt
+      // path on any failure, including the user just cancelling the sheet
+      // (AbortError) -- no flash for that case, dismissing isn't a failure.
+      if (navigator.share) {
+        var shareRow = findRowByNum(shareRowNum);
+        var shareTitle = shareRow ? (shareRow.song || "Untitled") + (shareRow.artist ? " — " + shareRow.artist : "") : "MVG Library";
+        navigator.share({ title: shareTitle, url: shareLink }).catch(function (err) {
+          if (err && err.name === "AbortError") return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
+          } else {
+            flash(false);
+          }
+        });
+        return;
+      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
       } else {
