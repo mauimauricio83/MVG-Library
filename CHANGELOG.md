@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.5.0 — current
+- Hovering "Download trading card" now shows the actual rendered card in a small floating preview instead of downloading blind. Reuses the exact same renderTradingCard() the real download uses (guaranteed pixel-for-pixel match) and caches the result per video, so re-hovering the same entry -- or hovering right before clicking -- is instant instead of re-running the thumbnail/logo image loads every time.
+
 ## v6.4.4 — current
 - "Download trading card" moved from an icon button in the lightbox's action row to a plain, smaller-than-body-text hyperlink right below the description, instead of sitting alongside Favorite/Share/Vote/etc.
 

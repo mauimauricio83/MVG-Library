@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.4.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.5.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6555,6 +6555,7 @@
 
   function closeLightbox() {
     if (els.lightbox.hidden) return;
+    hideCardPreviewPopup();
     destroyLightboxPlayer();
     destroyProfileLightboxMap();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
@@ -11143,6 +11144,89 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }, "image/png");
   }
+
+  // ---- Trading card hover preview ------------------------------------------
+  // Hovering "Download trading card" shows the actual rendered card in a
+  // small floating popup instead of making the visitor download blind.
+  // Reuses renderTradingCard() itself (not a separate lightweight preview
+  // path) so what's previewed is guaranteed to match the real download
+  // pixel-for-pixel, and caches the canvas per row so re-hovering the same
+  // entry (or hovering right before actually clicking) is instant instead
+  // of re-running image loads every time.
+  var cardPreviewCache = {};
+  var cardPreviewPopupEl = null;
+  var cardPreviewHoverTimer = null;
+  var cardPreviewRequestId = 0;
+
+  function getCardPreviewPopup() {
+    if (!cardPreviewPopupEl) {
+      cardPreviewPopupEl = document.createElement("div");
+      cardPreviewPopupEl.className = "card-preview-popup";
+      cardPreviewPopupEl.hidden = true;
+      document.body.appendChild(cardPreviewPopupEl);
+    }
+    return cardPreviewPopupEl;
+  }
+
+  function positionCardPreviewPopup(popup, anchorEl) {
+    var rect = anchorEl.getBoundingClientRect();
+    var popupRect = popup.getBoundingClientRect();
+    var left = rect.left + rect.width / 2 - popupRect.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - popupRect.width - 8));
+    var top = rect.top - popupRect.height - 10;
+    var flipBelow = top < 8;
+    if (flipBelow) top = rect.bottom + 10;
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+    popup.classList.toggle("is-below", flipBelow);
+  }
+
+  function hideCardPreviewPopup() {
+    clearTimeout(cardPreviewHoverTimer);
+    cardPreviewRequestId++; // invalidates any in-flight render from resolving into a now-stale popup
+    if (cardPreviewPopupEl) cardPreviewPopupEl.hidden = true;
+  }
+
+  function showCardPreviewFor(linkEl, row) {
+    var popup = getCardPreviewPopup();
+    var thisRequest = ++cardPreviewRequestId;
+    var cached = cardPreviewCache[row.rowNum];
+    if (cached) {
+      popup.innerHTML = "";
+      popup.appendChild(cached);
+      popup.hidden = false;
+      positionCardPreviewPopup(popup, linkEl);
+      return;
+    }
+    popup.innerHTML = '<div class="card-preview-loading">Loading preview…</div>';
+    popup.hidden = false;
+    positionCardPreviewPopup(popup, linkEl);
+    renderTradingCard(row).then(function (canvas) {
+      cardPreviewCache[row.rowNum] = canvas;
+      if (thisRequest !== cardPreviewRequestId) return; // moved on before this finished
+      popup.innerHTML = "";
+      popup.appendChild(canvas);
+      positionCardPreviewPopup(popup, linkEl);
+    }).catch(function (err) {
+      console.error("Card preview failed:", err);
+      if (thisRequest === cardPreviewRequestId) popup.hidden = true;
+    });
+  }
+
+  els.lightbox.addEventListener("mouseover", function (e) {
+    var link = e.target.closest(".lightbox-card-link");
+    if (!link || link.contains(e.relatedTarget)) return;
+    var row = findRowByNum(link.getAttribute("data-rownum"));
+    if (!row) return;
+    clearTimeout(cardPreviewHoverTimer);
+    cardPreviewHoverTimer = setTimeout(function () { showCardPreviewFor(link, row); }, 150);
+  });
+
+  els.lightbox.addEventListener("mouseout", function (e) {
+    var link = e.target.closest(".lightbox-card-link");
+    if (!link || link.contains(e.relatedTarget)) return;
+    hideCardPreviewPopup();
+  });
 
   // ---- Username Moderation ------------------------------------------------
   // Two independent live lists: flaggedUsernames (Function-maintained, see

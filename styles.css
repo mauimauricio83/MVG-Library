@@ -4787,6 +4787,38 @@ body.is-searching #viewersChoiceSection {
   opacity: 0.6;
 }
 
+/* Floating hover preview of the trading card -- see showCardPreviewFor() in
+   app.js. Appended straight to <body> (position: fixed) rather than nested
+   in the lightbox, so it's never clipped by the lightbox panel's own
+   overflow/scroll -- positioned in JS from the link's own bounding rect. */
+.card-preview-popup {
+  position: fixed;
+  z-index: 1200;
+  width: 220px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.card-preview-popup canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.card-preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 5 / 7;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .lightbox-links {
   display: flex;
   gap: 8px;
