@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.3.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.3.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11059,23 +11059,22 @@
       var pillH = 28;
       var lineH = 28;
 
-      // Pass 1: measure without drawing, so the block's height is known
-      // before it's positioned -- vertically centered in the box (an
-      // empty/near-empty box, which is most of them since most videos have
-      // no description, read as lopsided pinned to the top), but left-
-      // aligned horizontally within that vertical centering, genre pill(s)
-      // included -- center-aligning turned out to look worse than a
-      // slightly bigger, left-set block, which also eats more of the
-      // negative space on its own.
+      // Genre pill(s) stay pinned to the box's top-left, not part of the
+      // floating block below -- only the description/facts (which vary a
+      // lot in length, unlike the pill row) get vertically centered, in
+      // whatever space is left under the pills.
       ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
       var pillWidths = genres.slice(0, 4).map(function (g) { return ctx.measureText(g).width + 20; });
       var pillsRowW = pillWidths.reduce(function (a, w) { return a + w; }, 0) + Math.max(0, pillWidths.length - 1) * 8;
       var hasPills = pillWidths.length > 0 && pillsRowW <= boxInnerW;
       if (!hasPills) pillWidths = [];
 
+      var textAreaY = boxY + (hasPills ? boxPad + pillH + 14 : boxPad);
+      var textAreaH = boxY + boxH - boxPad - textAreaY;
+
       var textLines = [];
       var usingDescription = !!row.description;
-      var maxTextLines = Math.max(1, Math.floor((boxH - boxPad * 2 - (hasPills ? pillH + 14 : 0)) / lineH));
+      var maxTextLines = Math.max(1, Math.floor(textAreaH / lineH));
       if (usingDescription) {
         ctx.font = "italic 22px Georgia, serif";
         textLines = wrapCanvasLines(ctx, row.description, boxInnerW, maxTextLines);
@@ -11084,9 +11083,40 @@
         textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
       }
 
-      var blockH = (hasPills ? pillH + (textLines.length ? 14 : 0) : 0) + textLines.length * lineH;
+      if (hasPills) {
+        var pillX = contentX + boxPad;
+        var pillY = boxY + boxPad;
+        genres.slice(0, pillWidths.length).forEach(function (g, i) {
+          var pillW = pillWidths[i];
+          var pillColor = genreCardColor(g);
+          roundRectPath(ctx, pillX, pillY, pillW, pillH, 13);
+          ctx.fillStyle = pillColor;
+          ctx.globalAlpha = 0.18;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = darkenColor(pillColor, 0.45);
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          drawCardNoise(ctx, pillX, pillY, pillW, pillH, 13);
+          ctx.fillStyle = "#2A2620";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.fillText(g, pillX + pillW / 2, pillY + pillH / 2);
+          pillX += pillW + 8;
+        });
+      }
 
-      if (!hasPills && !textLines.length) {
+      if (textLines.length) {
+        var textBlockY = textAreaY + (textAreaH - textLines.length * lineH) / 2;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
+        ctx.font = usingDescription ? "italic 22px Georgia, serif" : "20px -apple-system, BlinkMacSystemFont, sans-serif";
+        textLines.forEach(function (line, i) {
+          ctx.fillText(line, contentX + boxPad, textBlockY + 19 + i * lineH);
+        });
+      } else if (!hasPills) {
         // Nothing at all to show -- same idea as an MTG basic land: a
         // big, faint, centered watermark instead of an empty box.
         if (logoImg) {
@@ -11096,38 +11126,6 @@
           ctx.drawImage(logoImg, boxCenterX - wmSize / 2, boxY + boxH / 2 - wmSize / 2, wmSize, wmSize);
           ctx.restore();
         }
-      } else {
-        var blockY = boxY + (boxH - blockH) / 2;
-        if (hasPills) {
-          var pillX = contentX + boxPad;
-          genres.slice(0, pillWidths.length).forEach(function (g, i) {
-            var pillW = pillWidths[i];
-            var pillColor = genreCardColor(g);
-            roundRectPath(ctx, pillX, blockY, pillW, pillH, 13);
-            ctx.fillStyle = pillColor;
-            ctx.globalAlpha = 0.18;
-            ctx.fill();
-            ctx.globalAlpha = 1;
-            ctx.strokeStyle = darkenColor(pillColor, 0.45);
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            drawCardNoise(ctx, pillX, blockY, pillW, pillH, 13);
-            ctx.fillStyle = "#2A2620";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
-            ctx.fillText(g, pillX + pillW / 2, blockY + pillH / 2);
-            pillX += pillW + 8;
-          });
-          blockY += pillH + (textLines.length ? 14 : 0);
-        }
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
-        ctx.font = usingDescription ? "italic 22px Georgia, serif" : "20px -apple-system, BlinkMacSystemFont, sans-serif";
-        textLines.forEach(function (line, i) {
-          ctx.fillText(line, contentX + boxPad, blockY + 19 + i * lineH);
-        });
       }
 
       var bottomY = panelY + panelH - pad;

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.3.1 — current
+- Genre pill(s) in the trading card's flavor box now stay pinned to the top-left instead of floating as part of the vertically-centered content block -- only the description/facts below them (which vary a lot in length, unlike the pill row) center within whatever space is left underneath.
+
 ## v6.3.0 — current
 - Trading card polish round two: removed the outer border's bevel stroke (it didn't need one); added a subtle grain/noise texture to the title bar, type-line bar, and genre pills (not the outer border or the flavor/fact box, which stay flat for legibility); reverted the flavor box's content from center-aligned back to left-aligned, while keeping it vertically centered as a block so a near-empty box (most videos have no description) doesn't read as pinned to the top; and bumped the description/fact text size up a notch as a further hedge against empty-looking cards.
 
