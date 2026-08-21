@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.4.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.4.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10804,8 +10804,13 @@
   // that's plenty for a small card -- upscaled to the trading card's much
   // larger art box, it reads as pixelated. maxresdefault (1280x720) isn't
   // guaranteed to exist for every video (older/smaller uploads often lack
-  // it and 404), so this tries that first and falls back to hqdefault
-  // (480x360, always present) rather than assuming either one works.
+  // it), so this tries that first and falls back to hqdefault (480x360,
+  // always present) -- but a video without a real maxresdefault doesn't
+  // 404, it silently returns a 120x90 gray placeholder with a 200 OK, which
+  // loads "successfully" and would otherwise never trigger the fallback.
+  // Checking the loaded width catches that placeholder and falls through
+  // to hqdefault anyway instead of stretching a tiny gray square across
+  // the whole art box.
   // Vimeo has no equivalent size ladder -- row.vimeoThumb (fetched once via
   // oEmbed at save time, see fetchVimeoThumbnail()) is already the best
   // available and is used as-is.
@@ -10814,7 +10819,7 @@
     if (!ref) return Promise.resolve(null);
     if (ref.provider !== "youtube") return loadImageCrossOrigin(row.vimeoThumb || null);
     return loadImageCrossOrigin("https://i.ytimg.com/vi/" + ref.id + "/maxresdefault.jpg").then(function (img) {
-      return img || loadImageCrossOrigin("https://i.ytimg.com/vi/" + ref.id + "/hqdefault.jpg");
+      return (img && img.naturalWidth > 120) ? img : loadImageCrossOrigin("https://i.ytimg.com/vi/" + ref.id + "/hqdefault.jpg");
     });
   }
 

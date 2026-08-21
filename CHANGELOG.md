@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.4.3 — current
+- Fixed trading cards showing a blank/gray art box for videos without a real high-res thumbnail: requesting YouTube's maxresdefault thumbnail for a video that doesn't have one doesn't 404, it silently returns a tiny 120x90 gray placeholder with a 200 OK, which loaded "successfully" and skipped the intended hqdefault fallback entirely. Now checks the loaded image's actual width and falls through to hqdefault when it's just that placeholder.
+
 ## v6.4.2 — current
 - Viewer's Choice (a full screen tall on its own) now hides while actively searching, same as Featured/Discover already did -- previously it sat above the search results, pushing them a full page down.
 
