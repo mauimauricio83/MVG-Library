@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.64.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.65.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -21,11 +21,6 @@
   // actually finishes. Bump occasionally as the catalog grows.
   var SNAPSHOT_APPROX_BYTES = 24000000;
 
-  // Latest blog posts from themusicvideoguy.com/news -- written same-origin
-  // by scripts/fetch-blog-latest.js (daily GitHub Action, same one that
-  // regenerates the SEO hub pages) since Squarespace's own JSON feed has no
-  // CORS headers and can't be fetched directly from this domain.
-  var BLOG_LATEST_URL = "blog-latest.json";
 
   // Ad slideshow, sourced from a small published sheet -- columns: Seconds
   // (how long that ad shows before advancing), Image, Link.
@@ -3808,16 +3803,13 @@
     if (row) openLightbox(row);
   });
 
-  // Latest blog posts (themusicvideoguy.com/news), fetched once at startup
-  // from a same-origin static file -- see BLOG_LATEST_URL. Independent of
-  // the video catalog, so this has its own small fetch rather than piggybacking
-  // on fetchData().
-  // Matches COUNT in scripts/fetch-blog-latest.js -- capped here too as a
-  // safety net, not just trusted from the fetched JSON. First 2 get the
-  // full big-thumbnail card treatment; the next 4 (once the blog actually
-  // has that many recent posts -- right now it only has 3) render as a
-  // compact list below with a small thumbnail beside the text instead of
-  // a full card, so the section can grow past 2 without repeating that
+  // Latest posts from the self-hosted News/blog (blogPosts collection --
+  // same data blog.html reads), fetched once at startup. Independent of
+  // the video catalog, so this has its own small fetch rather than
+  // piggybacking on fetchData(). First 2 get the full big-thumbnail card
+  // treatment; the rest (once there are that many recent posts) render as
+  // a compact list below with a small thumbnail beside the text instead
+  // of a full card, so the section can grow past 2 without repeating that
   // much visual weight.
   var NEWS_COUNT = 6;
   var NEWS_CARD_COUNT = 2;
@@ -3832,11 +3824,12 @@
     var extraPosts = posts.slice(NEWS_CARD_COUNT);
 
     els.blogLatestCards.innerHTML = cardPosts.map(function (post) {
-      var thumb = post.image
-        ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
+      var url = "blog.html?post=" + encodeURIComponent(post.slug);
+      var thumb = post.coverImageURL
+        ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
         : "";
       return (
-        '<a class="spotlight-card blog-latest-card" href="' + escapeHtml(post.url) + '" target="_blank" rel="noopener noreferrer">' +
+        '<a class="spotlight-card blog-latest-card" href="' + escapeHtml(url) + '">' +
           '<div class="spotlight-card-thumb">' + thumb + "</div>" +
           '<div class="spotlight-card-info">' +
             '<div class="spotlight-card-song">' + escapeHtml(post.title) + "</div>" +
@@ -3848,11 +3841,12 @@
 
     if (extraPosts.length) {
       els.blogLatestExtra.innerHTML = extraPosts.map(function (post) {
-        var thumb = post.image
-          ? '<img src="' + escapeHtml(post.image) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
+        var url = "blog.html?post=" + encodeURIComponent(post.slug);
+        var thumb = post.coverImageURL
+          ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
           : "";
         return (
-          '<a class="blog-latest-extra-item" href="' + escapeHtml(post.url) + '" target="_blank" rel="noopener noreferrer">' +
+          '<a class="blog-latest-extra-item" href="' + escapeHtml(url) + '">' +
             '<div class="blog-latest-extra-thumb">' + thumb + "</div>" +
             '<div class="blog-latest-extra-info">' +
               '<div class="blog-latest-extra-title">' + escapeHtml(post.title) + "</div>" +
@@ -3870,10 +3864,14 @@
   }
 
   function fetchBlogLatest() {
-    fetch(BLOG_LATEST_URL)
-      .then(function (res) { return res.ok ? res.json() : []; })
-      .then(renderBlogLatest)
-      .catch(function (err) { console.error("Blog latest load error:", err); });
+    db.collection("blogPosts").where("status", "==", "published").get().then(function (snap) {
+      var posts = snap.docs.map(function (doc) { return doc.data(); });
+      posts.sort(function (a, b) {
+        var ta = a.publishedAt || a.createdAt, tb = b.publishedAt || b.createdAt;
+        return (tb ? tb.toMillis() : 0) - (ta ? ta.toMillis() : 0);
+      });
+      renderBlogLatest(posts);
+    }).catch(function (err) { console.error("News latest load error:", err); });
   }
 
   els.spotlightCards.addEventListener("click", function (e) {

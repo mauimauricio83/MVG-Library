@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.65.0 — current
+- The homepage's News sidebar was still showing stale articles pulled from the old Squarespace feed (`themusicvideoguy.com/news?format=json-pretty`, fetched hourly by a GitHub Action into `blog-latest.json`) -- that endpoint stopped being Squarespace's the moment DNS moved to point the domain at this site, so the feed was frozen on whatever it last fetched successfully. It now reads live from the same self-hosted `blogPosts` Firestore collection blog.html already serves, and links navigate to it in place instead of opening a new tab. Retired the now-dead fetch script, its hourly workflow, and the stale JSON file it wrote.
+
 ## v5.64.0 — current
 - First post-migration cleanup now that themusicvideoguy.com serves this site directly (see the CNAME addition) instead of through a Squarespace iframe wrapper: the header nav's separate external "News" link (which pointed at the old Squarespace-hosted news page) is gone, and the in-app "Blog" link -- already a self-hosted replacement for that same Squarespace news feed -- has been renamed to "News" and moved into that nav slot, page title included. Also dropped the `window.top.location` iframe-breakout workaround in wallet checkout (plain `location.href` now that there's never a frame to break out of) and updated a couple of comments that referenced iframe-embedding reasoning no longer accurate to how the site is served.
 
