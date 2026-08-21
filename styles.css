@@ -4235,6 +4235,29 @@ body.is-searching #discoverSection {
   color: #fff;
 }
 
+.lightbox-share-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-share-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lightbox-share-btn.is-active {
+  border-color: #2fbf71;
+  color: #2fbf71;
+}
+
 .lightbox-widen-btn {
   flex: 0 0 auto;
   width: 26px;

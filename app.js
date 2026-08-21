@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "5.65.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "5.66.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6319,6 +6319,7 @@
   // are explicitly out of scope for this -- don't "fix" those too.
   var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   var ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:0.9em;height:0.9em;vertical-align:-0.1em"><path d="M12 22s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+  var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6a5 5 0 0 1 0-10h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
 
   function destroyLightboxPlayer() {
     if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
@@ -6403,6 +6404,7 @@
       adminEditBtn +
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
+      '<button type="button" class="lightbox-share-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Copy link to this video" aria-label="Copy link to this video">' + ICON_LINK + "</button>" +
       lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
@@ -6426,6 +6428,12 @@
     els.lightboxPanel.scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
+    // Reflects the open video in the address bar so it's a real, shareable
+    // link -- replaceState (not push) so this only ever rewrites whatever
+    // entry pushModalHistory() just made current, never adds its own
+    // history entry. Back/closing still lands on the pre-modal URL
+    // underneath, hash and all, exactly as before this was added.
+    history.replaceState(history.state, "", location.pathname + location.search + "#row-" + encodeURIComponent(row.rowNum));
     applyLightboxSize();
     applyLightboxCrop();
     applyLightboxMirror();
@@ -11275,6 +11283,23 @@
       favBtn.classList.toggle("is-active", nowFavorite);
       favBtn.textContent = nowFavorite ? "♥" : "♡";
       renderFavoritesStrip(state.rows);
+      return;
+    }
+    var shareBtn = e.target.closest(".lightbox-share-btn");
+    if (shareBtn) {
+      var shareLink = location.origin + location.pathname + "#row-" + encodeURIComponent(shareBtn.getAttribute("data-rownum"));
+      var flash = function (copied) {
+        if (!copied) { try { window.prompt("Copy this link:", shareLink); } catch (e) {} return; }
+        var original = shareBtn.innerHTML;
+        shareBtn.innerHTML = "✓";
+        shareBtn.classList.add("is-active");
+        setTimeout(function () { shareBtn.innerHTML = original; shareBtn.classList.remove("is-active"); }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareLink).then(function () { flash(true); }).catch(function () { flash(false); });
+      } else {
+        flash(false);
+      }
       return;
     }
     var voteBtn = e.target.closest(".lightbox-vote-btn");

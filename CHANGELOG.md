@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v5.66.0 — current
+- Video lightboxes now get real shareable links: opening one updates the address bar to `#row-<id>` (the deep-link format an existing but one-way `#row-` reader already supported, originally built for the SEO hub pages), so the URL can just be copied straight out of the address bar and reopens the right video on a fresh load. Added an explicit "Copy link" button next to Favorite for the same thing in one click, with a clipboard-API-unavailable fallback.
+
 ## v5.65.0 — current
 - The homepage's News sidebar was still showing stale articles pulled from the old Squarespace feed (`themusicvideoguy.com/news?format=json-pretty`, fetched hourly by a GitHub Action into `blog-latest.json`) -- that endpoint stopped being Squarespace's the moment DNS moved to point the domain at this site, so the feed was frozen on whatever it last fetched successfully. It now reads live from the same self-hosted `blogPosts` Firestore collection blog.html already serves, and links navigate to it in place instead of opening a new tab. Retired the now-dead fetch script, its hourly workflow, and the stale JSON file it wrote.
 
