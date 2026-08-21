@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.1.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.2.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10787,6 +10787,37 @@
     return CARD_GENRE_PALETTE[hash % CARD_GENRE_PALETTE.length];
   }
 
+  // Scales each RGB channel down for a beveled-trim stroke color -- a
+  // darker shade of the element's own fill rather than one fixed border
+  // color for everything.
+  function darkenColor(hex, factor) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.round(((n >> 16) & 255) * factor);
+    var g = Math.round(((n >> 8) & 255) * factor);
+    var b = Math.round((n & 255) * factor);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+
+  // YouTube's predictable thumbnail URLs come in several fixed sizes;
+  // getRowThumbUrl() (used for small in-list thumbnails everywhere else on
+  // the site) deliberately requests the modest mqdefault (320x180) since
+  // that's plenty for a small card -- upscaled to the trading card's much
+  // larger art box, it reads as pixelated. maxresdefault (1280x720) isn't
+  // guaranteed to exist for every video (older/smaller uploads often lack
+  // it and 404), so this tries that first and falls back to hqdefault
+  // (480x360, always present) rather than assuming either one works.
+  // Vimeo has no equivalent size ladder -- row.vimeoThumb (fetched once via
+  // oEmbed at save time, see fetchVimeoThumbnail()) is already the best
+  // available and is used as-is.
+  function loadRowThumbForCard(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(null);
+    if (ref.provider !== "youtube") return loadImageCrossOrigin(row.vimeoThumb || null);
+    return loadImageCrossOrigin("https://i.ytimg.com/vi/" + ref.id + "/maxresdefault.jpg").then(function (img) {
+      return img || loadImageCrossOrigin("https://i.ytimg.com/vi/" + ref.id + "/hqdefault.jpg");
+    });
+  }
+
   // Greedy word-wrap -- canvas has no native text wrapping. When the text
   // doesn't fit in maxLines, prefers cutting at the last complete sentence
   // within what would be shown (reads as a finished thought) over a hard
@@ -10857,13 +10888,31 @@
     ctx.globalAlpha = 1;
   }
 
+  // Facts to fall back on when a video has no description (most don't) --
+  // everything creditsHtml() shows except Director (already the type line)
+  // and release date/year (already in the footer). Deliberately NOT run
+  // through displayName(): unlike director, these fields sometimes hold a
+  // comma-separated list of several people (e.g. two producers) rather
+  // than one surname-first name, and flipping would mangle a list.
+  function cardFactLines(row) {
+    var lines = [];
+    if (row.country) lines.push(normalizeCountry(row.country));
+    if (row.studio) lines.push(row.studio);
+    if (row.producer) lines.push("Produced by " + row.producer);
+    if (row.dp) lines.push("DP: " + row.dp);
+    if (row.editor) lines.push("Edited by " + row.editor);
+    if (row.choreographer) lines.push("Choreography by " + row.choreographer);
+    return lines;
+  }
+
   function renderTradingCard(row) {
     var genres = row.genres || [];
     var borderColors = [genreCardColor(genres[0])];
     if (genres[1]) borderColors.push(genreCardColor(genres[1]));
+    var accentDark = darkenColor(borderColors[0], 0.45);
 
     return Promise.all([
-      loadImageCrossOrigin(getRowThumbUrl(row)),
+      loadRowThumbForCard(row),
       loadMvgLogoImage()
     ]).then(function (results) {
       var thumbImg = results[0], logoImg = results[1];
@@ -10887,12 +10936,20 @@
         ctx.fill();
       }
       ctx.restore();
+      roundRectPath(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
+      ctx.strokeStyle = accentDark;
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
       var panelX = CARD_BORDER, panelY = CARD_BORDER;
       var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
+      var panelDark = darkenColor("#F3EFE4", 0.65);
       roundRectPath(ctx, panelX, panelY, panelW, panelH, 24);
       ctx.fillStyle = "#F3EFE4";
       ctx.fill();
+      ctx.strokeStyle = panelDark;
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
       var pad = 18;
       var contentX = panelX + pad;
@@ -10901,6 +10958,9 @@
 
       var titleBarH = 64;
       drawCardTintedBar(ctx, contentX, cursorY, contentW, titleBarH, borderColors[0]);
+      ctx.strokeStyle = accentDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       ctx.textBaseline = "middle";
       var titleBarMidY = cursorY + titleBarH / 2;
       ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
@@ -10923,12 +10983,23 @@
       }
       cursorY += titleBarH + 14;
 
-      var artH = contentW * 0.75;
+      // 16:9, matching the source thumbnail's native aspect -- cover-fit
+      // cropping into a taller/narrower box (the old 4:3) both lost part
+      // of the frame and effectively upscaled a smaller crop of it,
+      // exaggerating compression artifacts. No crop needed at 16:9.
+      var artH = contentW * (9 / 16);
       drawThumbOrPlaceholder(ctx, thumbImg, contentX, cursorY, contentW, artH);
+      roundRectPath(ctx, contentX, cursorY, contentW, artH, 10);
+      ctx.strokeStyle = accentDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       cursorY += artH + 14;
 
       var typeBarH = 48;
       drawCardTintedBar(ctx, contentX, cursorY, contentW, typeBarH, borderColors[0]);
+      ctx.strokeStyle = accentDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       ctx.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#2A2620";
       ctx.textAlign = "left";
@@ -10937,44 +11008,84 @@
       cursorY += typeBarH + 14;
 
       var bottomReserve = 56;
+      var boxY = cursorY;
       var boxH = panelY + panelH - pad - bottomReserve - cursorY;
-      roundRectPath(ctx, contentX, cursorY, contentW, boxH, 10);
+      roundRectPath(ctx, contentX, boxY, contentW, boxH, 10);
       ctx.fillStyle = "rgba(0,0,0,0.04)";
       ctx.fill();
+      ctx.strokeStyle = accentDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
       var boxPad = 18;
-      var boxCursorY = cursorY + boxPad;
-      if (genres.length) {
-        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
-        var pillX = contentX + boxPad;
-        var pillH = 26;
-        genres.slice(0, 4).forEach(function (g) {
-          var textW = ctx.measureText(g).width;
-          var pillW = textW + 20;
-          if (pillX + pillW > contentX + contentW - boxPad) return;
-          var pillColor = genreCardColor(g);
-          roundRectPath(ctx, pillX, boxCursorY, pillW, pillH, 13);
-          ctx.fillStyle = pillColor;
-          ctx.globalAlpha = 0.18;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = "#2A2620";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText(g, pillX + 10, boxCursorY + pillH / 2);
-          pillX += pillW + 8;
-        });
-        boxCursorY += pillH + 14;
-      }
-      if (row.description) {
+      var boxInnerW = contentW - boxPad * 2;
+      var boxCenterX = contentX + contentW / 2;
+      var pillH = 26;
+      var lineH = 26;
+
+      // Pass 1: measure without drawing, so the whole block (tag pills +
+      // text) can be centered as a unit instead of pinned to the top --
+      // an empty or near-empty box (most videos have no description) read
+      // as lopsided anchored at the top.
+      ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+      var pillWidths = genres.slice(0, 4).map(function (g) { return ctx.measureText(g).width + 20; });
+      var pillsRowW = pillWidths.reduce(function (a, w) { return a + w; }, 0) + Math.max(0, pillWidths.length - 1) * 8;
+      var hasPills = pillWidths.length > 0 && pillsRowW <= boxInnerW;
+      if (!hasPills) pillWidths = [];
+
+      var textLines = [];
+      var usingDescription = !!row.description;
+      var maxTextLines = Math.max(1, Math.floor((boxH - boxPad * 2 - (hasPills ? pillH + 14 : 0)) / lineH));
+      if (usingDescription) {
         ctx.font = "italic 20px Georgia, serif";
-        ctx.fillStyle = "#443F36";
-        ctx.textAlign = "left";
+        textLines = wrapCanvasLines(ctx, row.description, boxInnerW, maxTextLines);
+      } else {
+        ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
+        textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
+      }
+
+      var blockH = (hasPills ? pillH + (textLines.length ? 14 : 0) : 0) + textLines.length * lineH;
+
+      if (!hasPills && !textLines.length) {
+        // Nothing at all to show -- same idea as an MTG basic land: a
+        // big, faint, centered watermark instead of an empty box.
+        if (logoImg) {
+          var wmSize = Math.min(boxInnerW, boxH - boxPad * 2) * 0.8;
+          ctx.save();
+          ctx.globalAlpha = 0.14;
+          ctx.drawImage(logoImg, boxCenterX - wmSize / 2, boxY + boxH / 2 - wmSize / 2, wmSize, wmSize);
+          ctx.restore();
+        }
+      } else {
+        var blockY = boxY + (boxH - blockH) / 2;
+        if (hasPills) {
+          var pillX = boxCenterX - pillsRowW / 2;
+          genres.slice(0, pillWidths.length).forEach(function (g, i) {
+            var pillW = pillWidths[i];
+            var pillColor = genreCardColor(g);
+            roundRectPath(ctx, pillX, blockY, pillW, pillH, 13);
+            ctx.fillStyle = pillColor;
+            ctx.globalAlpha = 0.18;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = darkenColor(pillColor, 0.45);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = "#2A2620";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+            ctx.fillText(g, pillX + pillW / 2, blockY + pillH / 2);
+            pillX += pillW + 8;
+          });
+          blockY += pillH + (textLines.length ? 14 : 0);
+        }
+        ctx.textAlign = "center";
         ctx.textBaseline = "alphabetic";
-        var maxLines = Math.max(1, Math.floor((cursorY + boxH - boxPad - boxCursorY) / 26));
-        var lines = wrapCanvasLines(ctx, row.description, contentW - boxPad * 2, maxLines);
-        lines.forEach(function (line, i) {
-          ctx.fillText(line, contentX + boxPad, boxCursorY + 18 + i * 26);
+        ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
+        ctx.font = usingDescription ? "italic 20px Georgia, serif" : "18px -apple-system, BlinkMacSystemFont, sans-serif";
+        textLines.forEach(function (line, i) {
+          ctx.fillText(line, boxCenterX, blockY + 18 + i * lineH);
         });
       }
 
@@ -10996,6 +11107,11 @@
         ctx.clip();
         ctx.drawImage(logoImg, logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
         ctx.restore();
+        ctx.beginPath();
+        ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
+        ctx.strokeStyle = panelDark;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
 
       return canvas;
