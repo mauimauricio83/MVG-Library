@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.8.1 — current
+- Grid view column tightening: text/select cells now size to a fixed comfortable width instead of stretching evenly to fill the panel, which was leaving a lot of empty space in narrow columns like Category and Year. The table itself no longer forces its width to match the panel, so once there are more columns than fit, the grid now scrolls horizontally instead of squeezing every column down to fit -- also added an Editor column past the checkboxes as the first thing reachable by that scroll.
+
 ## v6.8.0 — current
 - Video lightbox cleanup: removed the Mirror and Interlace admin debug toggles and the 4:3 crop button (the video-detail lightbox only -- TV Mode and the profile lightbox keep their own separate crop features, untouched); merged the separate "Report an issue" link and "Suggest an edit" button into one "Report an issue" button that opens a small popover with both choices; reordered the remaining lightbox buttons to Edit/Delete (admin only), Add to playlist, Vote, Favorite, Share, Widen, Report an issue.
 - Grid view (Admin → Manage Entries) is now paginated (75 rows per page, with Prev/Next) instead of rendering all ~13k filtered rows as live inputs at once -- this is what was making it slow to open and laggy to click into a field. The grid also now expands to a near-full-viewport takeover while active instead of being squeezed into the regular 560px-wide admin modal, so far more columns are visible at once (previously only Row through Year fit).

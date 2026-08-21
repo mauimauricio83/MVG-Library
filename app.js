@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.8.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.8.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9866,6 +9866,7 @@
         ADMIN_GRID_CHECKBOX_FIELDS.map(function (f) {
           return '<td class="admin-grid-check"><input type="checkbox" data-field="' + f + '"' + (r[f] ? " checked" : "") + "></td>";
         }).join("") +
+        '<td><input type="text" data-field="editor" value="' + escapeHtml(r.editor || "") + '"></td>' +
       "</tr>"
     );
   }
@@ -9894,7 +9895,7 @@
     els.adminGridTable.innerHTML =
       "<thead><tr>" +
         "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
-        "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th>" +
+        "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th><th>Editor</th>" +
       "</tr></thead><tbody>" +
       pageRows.map(adminGridRowHtml).join("") +
       "</tbody>";

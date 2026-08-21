@@ -5163,7 +5163,6 @@ body.is-searching #viewersChoiceSection {
 }
 
 .admin-grid {
-  width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
 }
@@ -5196,8 +5195,7 @@ body.is-searching #viewersChoiceSection {
 
 .admin-grid td input[type="text"],
 .admin-grid td select {
-  width: 100%;
-  min-width: 90px;
+  width: 130px;
   padding: 5px 6px;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -5220,7 +5218,11 @@ body.is-searching #viewersChoiceSection {
 }
 
 .admin-grid .admin-grid-year input {
-  min-width: 56px;
+  width: 56px;
+}
+
+.admin-grid td select {
+  width: 108px;
 }
 
 .admin-grid-check {
