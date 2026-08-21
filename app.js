@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.4.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.4.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6403,7 +6403,6 @@
   var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   var ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:0.9em;height:0.9em;vertical-align:-0.1em"><path d="M12 22s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>';
   var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6a5 5 0 0 1 0-10h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
-  var ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>';
 
   function destroyLightboxPlayer() {
     if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
@@ -6489,7 +6488,6 @@
       adminDeleteBtn +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
       shareButtonHtml(lightboxHash(row), (row.song || "Untitled") + (row.artist ? " — " + row.artist : "")) +
-      '<button type="button" class="lightbox-card-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Download trading card" aria-label="Download trading card">' + ICON_DOWNLOAD + "</button>" +
       lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
@@ -6504,6 +6502,7 @@
       '<div class="lightbox-tag-row">' + tagHtml + genreTags + "</div>" +
       creditsHtml(row) +
       descHtml +
+      '<a class="lightbox-card-link" href="#" data-rownum="' + escapeHtml(row.rowNum) + '">Download trading card</a>' +
       (links ? '<div class="lightbox-links">' + links + "</div>" : "") +
       lightboxRelatedHtml(row) +
       lightboxCommentsHtml(row) +
@@ -11761,17 +11760,21 @@
       handleShareButtonClick(shareBtn);
       return;
     }
-    var cardBtn = e.target.closest(".lightbox-card-btn");
+    var cardBtn = e.target.closest(".lightbox-card-link");
     if (cardBtn) {
+      e.preventDefault();
       var cardRow = findRowByNum(cardBtn.getAttribute("data-rownum"));
-      if (cardRow && !cardBtn.disabled) {
-        cardBtn.disabled = true;
+      if (cardRow && !cardBtn.classList.contains("is-busy")) {
+        cardBtn.classList.add("is-busy");
+        var cardBtnOriginalText = cardBtn.textContent;
+        cardBtn.textContent = "Generating…";
         renderTradingCard(cardRow).then(function (canvas) {
           downloadCanvasAsPng(canvas, slugify(cardRow.song || "video") + "-card.png");
         }).catch(function (err) {
           console.error("Card generation failed:", err);
         }).finally(function () {
-          cardBtn.disabled = false;
+          cardBtn.classList.remove("is-busy");
+          cardBtn.textContent = cardBtnOriginalText;
         });
       }
       return;

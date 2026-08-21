@@ -4242,8 +4242,7 @@ body.is-searching #viewersChoiceSection {
   color: #fff;
 }
 
-.lightbox-share-btn,
-.lightbox-card-btn {
+.lightbox-share-btn {
   flex: 0 0 auto;
   width: 26px;
   height: 26px;
@@ -4256,8 +4255,7 @@ body.is-searching #viewersChoiceSection {
   cursor: pointer;
 }
 
-.lightbox-share-btn:hover,
-.lightbox-card-btn:hover {
+.lightbox-share-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -4265,11 +4263,6 @@ body.is-searching #viewersChoiceSection {
 .lightbox-share-btn.is-active {
   border-color: #2fbf71;
   color: #2fbf71;
-}
-
-.lightbox-card-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .lightbox-widen-btn {
@@ -4774,6 +4767,24 @@ body.is-searching #viewersChoiceSection {
 .lightbox-desc.placeholder {
   color: var(--text-faint);
   font-style: italic;
+}
+
+.lightbox-card-link {
+  display: block;
+  width: fit-content;
+  margin: -8px 0 16px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+.lightbox-card-link:hover {
+  color: var(--accent);
+}
+
+.lightbox-card-link.is-busy {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .lightbox-links {

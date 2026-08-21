@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.4.4 — current
+- "Download trading card" moved from an icon button in the lightbox's action row to a plain, smaller-than-body-text hyperlink right below the description, instead of sitting alongside Favorite/Share/Vote/etc.
+
 ## v6.4.3 — current
 - Fixed trading cards showing a blank/gray art box for videos without a real high-res thumbnail: requesting YouTube's maxresdefault thumbnail for a video that doesn't have one doesn't 404, it silently returns a tiny 120x90 gray placeholder with a 200 OK, which loaded "successfully" and skipped the intended hqdefault fallback entirely. Now checks the loaded image's actual width and falls through to hqdefault when it's just that placeholder.
 
