@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.4.0 — current
+- Replaced the trading card frame elements' flat per-pixel noise with an actual fractal marble texture -- several octaves of smoothly-interpolated value noise (fBm) fed through a sine wave for the classic swirled marble/wood-grain look, rendered once at card scale and reused as one continuous "slab" behind the title bar, type-line bar, and tag pills rather than a small repeating tile (no visible seams), at a much stronger blend strength than the old noise had.
+
 ## v6.3.1 — current
 - Genre pill(s) in the trading card's flavor box now stay pinned to the top-left instead of floating as part of the vertically-centered content block -- only the description/facts below them (which vary a lot in length, unlike the pill row) center within whatever space is left underneath.
 

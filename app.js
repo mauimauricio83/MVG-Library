@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.3.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.4.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10888,41 +10888,90 @@
     ctx.globalAlpha = 1;
   }
 
-  // A small random-grayscale tile, cached and reused as a repeating
-  // pattern -- cheap fractal-ish grain for the frame elements (title bar,
-  // type line, tag pills), same idea as MTG's textured card frame.
+  // Fractal marble texture for the frame elements (title bar, type line,
+  // tag pills) -- fBm value noise (several octaves of a smoothly
+  // interpolated random grid, each half the amplitude/double the
+  // frequency of the last) fed through a sine wave to get the classic
+  // "wood grain / marble" veined look, rather than flat per-pixel static.
   // Deliberately not used on the outer border or the flavor/fact box --
   // the border stays a flat clean color and the text box stays plain for
-  // legibility.
-  var cardNoisePatternCache = null;
-  function getCardNoisePattern(ctx) {
-    if (cardNoisePatternCache) return cardNoisePatternCache;
-    var n = 96;
-    var nc = document.createElement("canvas");
-    nc.width = n;
-    nc.height = n;
-    var nctx = nc.getContext("2d");
-    var imgData = nctx.createImageData(n, n);
-    for (var i = 0; i < imgData.data.length; i += 4) {
-      var v = Math.floor(Math.random() * 255);
-      imgData.data[i] = v;
-      imgData.data[i + 1] = v;
-      imgData.data[i + 2] = v;
-      imgData.data[i + 3] = 255;
+  // legibility. Rendered once at card scale (not tiled) and reused as-is
+  // for every element, so the veining reads as one continuous slab
+  // showing through different windows rather than a repeating pattern
+  // with visible seams; drawn at half resolution and scaled up 2x, which
+  // also softens it to a more natural, less pixel-grid look.
+  var cardMarbleTextureCache = null;
+
+  function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+  function sampleValueGrid(grid, size, x, y) {
+    var gx = x * (size - 1), gy = y * (size - 1);
+    var x0 = Math.floor(gx), y0 = Math.floor(gy);
+    var x1 = Math.min(x0 + 1, size - 1), y1 = Math.min(y0 + 1, size - 1);
+    var tx = smoothstep(gx - x0), ty = smoothstep(gy - y0);
+    var v00 = grid[y0 * size + x0], v10 = grid[y0 * size + x1];
+    var v01 = grid[y1 * size + x0], v11 = grid[y1 * size + x1];
+    var a = v00 + (v10 - v00) * tx;
+    var b = v01 + (v11 - v01) * tx;
+    return a + (b - a) * ty;
+  }
+
+  function buildCardMarbleTexture() {
+    var w = Math.round(CARD_W / 2), h = Math.round(CARD_H / 2);
+    var seed = 1;
+    function rng() {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
     }
-    nctx.putImageData(imgData, 0, 0);
-    cardNoisePatternCache = ctx.createPattern(nc, "repeat");
-    return cardNoisePatternCache;
+    var gridSizes = [5, 9, 17, 33];
+    var grids = gridSizes.map(function (size) {
+      var g = new Float32Array(size * size);
+      for (var i = 0; i < g.length; i++) g[i] = rng();
+      return g;
+    });
+
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    var imgData = ctx.createImageData(w, h);
+    var scale = 3.2, power = 5.5;
+    for (var py = 0; py < h; py++) {
+      var ny = py / h;
+      for (var px = 0; px < w; px++) {
+        var nx = px / w;
+        var turb = 0, amp = 1, ampSum = 0;
+        for (var o = 0; o < gridSizes.length; o++) {
+          turb += sampleValueGrid(grids[o], gridSizes[o], nx, ny) * amp;
+          ampSum += amp;
+          amp *= 0.5;
+        }
+        turb /= ampSum;
+        var marble = Math.sin((nx + ny) * scale * Math.PI + turb * power);
+        var gray = Math.round(((marble + 1) / 2) * 255);
+        var idx = (py * w + px) * 4;
+        imgData.data[idx] = gray;
+        imgData.data[idx + 1] = gray;
+        imgData.data[idx + 2] = gray;
+        imgData.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  function getCardMarbleTexture() {
+    if (!cardMarbleTextureCache) cardMarbleTextureCache = buildCardMarbleTexture();
+    return cardMarbleTextureCache;
   }
 
   function drawCardNoise(ctx, x, y, w, h, radius) {
     ctx.save();
     roundRectPath(ctx, x, y, w, h, radius);
     ctx.clip();
-    ctx.globalAlpha = 0.15;
+    ctx.globalAlpha = 0.4;
     ctx.globalCompositeOperation = "overlay";
-    ctx.fillStyle = getCardNoisePattern(ctx);
-    ctx.fillRect(x, y, w, h);
+    ctx.drawImage(getCardMarbleTexture(), 0, 0, CARD_W, CARD_H);
     ctx.restore();
   }
 
