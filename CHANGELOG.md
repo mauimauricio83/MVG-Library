@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.8.3 — current
+- Trading cards are now 1080x1350 (4:5) instead of 750x1050 (5:7, the original MTG card proportions) -- 5:7 falls outside Instagram's allowed portrait range, so a downloaded card would get auto-cropped when posted to a feed. Every hand-tuned pixel size in the card layout (borders, bar heights, padding, font sizes, the logo badge) scales proportionally with the new width, so the design itself is unchanged, just wider.
+
 ## v6.8.2 — current
 - Fixed Grid view sometimes rendering underneath/alongside the regular Manage Entries list instead of replacing it. Root cause: `.admin-entries-list`'s own `display: flex` and the browser's built-in `[hidden] { display: none }` rule have equal CSS specificity, so as the later-loaded rule in the stylesheet, `display: flex` was winning the tie -- meaning `adminEntriesList.hidden = true` was silently doing nothing, and the ~13k-row list kept rendering (very slow) with Grid view drawn wherever it landed relative to it. Added the standard `[hidden]` override this codebase already uses elsewhere for the same reason.
 

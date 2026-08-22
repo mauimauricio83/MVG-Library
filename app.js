@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.8.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.8.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10849,9 +10849,16 @@
   // loadMvgLogoImage() rather than duplicating them. Purely detail-based
   // (title, artist, director, category/year, genre tags, description) --
   // no invented stats or pretend game mechanics, per the reference brief.
-  var CARD_W = 750;
-  var CARD_H = 1050;
-  var CARD_BORDER = 28;
+  // 4:5 -- Instagram's minimum portrait ratio (anything narrower, like the
+  // original 5:7 MTG-card ratio, falls outside what a feed post allows and
+  // gets auto-cropped). CARD_SCALE keeps every hand-tuned pixel constant
+  // below proportional to the original 750px-wide design instead of having
+  // them go relatively thinner/smaller on the wider canvas.
+  var CARD_W = 1080;
+  var CARD_H = 1350;
+  var CARD_SCALE = CARD_W / 750;
+  function cardPx(v) { return Math.round(v * CARD_SCALE); }
+  var CARD_BORDER = cardPx(28);
 
   // A genre string always maps to the same color (deterministic hash into
   // a fixed palette) rather than a hand-maintained genre->color table --
@@ -11019,7 +11026,7 @@
       canvas.height = CARD_H;
       var ctx = canvas.getContext("2d");
 
-      roundRectPath(ctx, 0, 0, CARD_W, CARD_H, 36);
+      roundRectPath(ctx, 0, 0, CARD_W, CARD_H, cardPx(36));
       ctx.save();
       ctx.clip();
       ctx.fillStyle = cardVerticalGradient(ctx, borderColors[0]);
@@ -11038,44 +11045,44 @@
       var panelX = CARD_BORDER, panelY = CARD_BORDER;
       var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
       var panelDark = darkenColor("#F3EFE4", 0.65);
-      roundRectPath(ctx, panelX, panelY, panelW, panelH, 24);
+      roundRectPath(ctx, panelX, panelY, panelW, panelH, cardPx(24));
       ctx.fillStyle = "#F3EFE4";
       ctx.fill();
       ctx.strokeStyle = panelDark;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = cardPx(2);
       ctx.stroke();
 
-      var pad = 18;
+      var pad = cardPx(18);
       var contentX = panelX + pad;
       var contentW = panelW - pad * 2;
       var cursorY = panelY + pad;
 
-      var titleBarH = 64;
+      var titleBarH = cardPx(64);
       drawCardTintedBar(ctx, contentX, cursorY, contentW, titleBarH, borderColors[0]);
       ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
       ctx.textBaseline = "middle";
       var titleBarMidY = cursorY + titleBarH / 2;
-      ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = "600 " + cardPx(30) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#2A2620";
       var artistText = row.artist || "";
-      ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       var artistMaxW = contentW * 0.4;
       artistText = truncateToWidth(ctx, artistText, artistMaxW);
       var artistW = ctx.measureText(artistText).width;
-      ctx.font = "600 30px -apple-system, BlinkMacSystemFont, sans-serif";
-      var titleMaxW = contentW - 32 - (artistText ? artistW + 20 : 0);
+      ctx.font = "600 " + cardPx(30) + "px -apple-system, BlinkMacSystemFont, sans-serif";
+      var titleMaxW = contentW - cardPx(32) - (artistText ? artistW + cardPx(20) : 0);
       var titleText = truncateToWidth(ctx, row.song || "Untitled", titleMaxW);
       ctx.textAlign = "left";
-      ctx.fillText(titleText, contentX + 16, titleBarMidY);
+      ctx.fillText(titleText, contentX + cardPx(16), titleBarMidY);
       if (artistText) {
-        ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         ctx.fillStyle = "#5A5348";
         ctx.textAlign = "right";
-        ctx.fillText(artistText, contentX + contentW - 16, titleBarMidY);
+        ctx.fillText(artistText, contentX + contentW - cardPx(16), titleBarMidY);
       }
-      cursorY += titleBarH + 14;
+      cursorY += titleBarH + cardPx(14);
 
       // 16:9, matching the source thumbnail's native aspect -- cover-fit
       // cropping into a taller/narrower box (the old 4:3) both lost part
@@ -11083,61 +11090,61 @@
       // exaggerating compression artifacts. No crop needed at 16:9.
       var artH = contentW * (9 / 16);
       drawThumbOrPlaceholder(ctx, thumbImg, contentX, cursorY, contentW, artH);
-      roundRectPath(ctx, contentX, cursorY, contentW, artH, 10);
+      roundRectPath(ctx, contentX, cursorY, contentW, artH, cardPx(10));
       ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
-      cursorY += artH + 14;
+      cursorY += artH + cardPx(14);
 
-      var typeBarH = 48;
+      var typeBarH = cardPx(48);
       drawCardTintedBar(ctx, contentX, cursorY, contentW, typeBarH, borderColors[0]);
       ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
-      ctx.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = "600 " + cardPx(22) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#2A2620";
       ctx.textAlign = "left";
       var typeLineText = row.director ? "Directed by " + displayName(row.director) : (row.category || "Music Video");
-      ctx.fillText(truncateToWidth(ctx, typeLineText, contentW - 32), contentX + 16, cursorY + typeBarH / 2);
-      cursorY += typeBarH + 14;
+      ctx.fillText(truncateToWidth(ctx, typeLineText, contentW - cardPx(32)), contentX + cardPx(16), cursorY + typeBarH / 2);
+      cursorY += typeBarH + cardPx(14);
 
-      var bottomReserve = 56;
+      var bottomReserve = cardPx(56);
       var boxY = cursorY;
       var boxH = panelY + panelH - pad - bottomReserve - cursorY;
-      roundRectPath(ctx, contentX, boxY, contentW, boxH, 10);
+      roundRectPath(ctx, contentX, boxY, contentW, boxH, cardPx(10));
       ctx.fillStyle = "rgba(0,0,0,0.04)";
       ctx.fill();
       ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
 
-      var boxPad = 18;
+      var boxPad = cardPx(18);
       var boxInnerW = contentW - boxPad * 2;
       var boxCenterX = contentX + contentW / 2;
-      var pillH = 28;
-      var lineH = 28;
+      var pillH = cardPx(28);
+      var lineH = cardPx(28);
 
       // Genre pill(s) stay pinned to the box's top-left, not part of the
       // floating block below -- only the description/facts (which vary a
       // lot in length, unlike the pill row) get vertically centered, in
       // whatever space is left under the pills.
-      ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
-      var pillWidths = genres.slice(0, 4).map(function (g) { return ctx.measureText(g).width + 20; });
-      var pillsRowW = pillWidths.reduce(function (a, w) { return a + w; }, 0) + Math.max(0, pillWidths.length - 1) * 8;
+      ctx.font = cardPx(17) + "px -apple-system, BlinkMacSystemFont, sans-serif";
+      var pillWidths = genres.slice(0, 4).map(function (g) { return ctx.measureText(g).width + cardPx(20); });
+      var pillsRowW = pillWidths.reduce(function (a, w) { return a + w; }, 0) + Math.max(0, pillWidths.length - 1) * cardPx(8);
       var hasPills = pillWidths.length > 0 && pillsRowW <= boxInnerW;
       if (!hasPills) pillWidths = [];
 
-      var textAreaY = boxY + (hasPills ? boxPad + pillH + 14 : boxPad);
+      var textAreaY = boxY + (hasPills ? boxPad + pillH + cardPx(14) : boxPad);
       var textAreaH = boxY + boxH - boxPad - textAreaY;
 
       var textLines = [];
       var usingDescription = !!row.description;
       var maxTextLines = Math.max(1, Math.floor(textAreaH / lineH));
       if (usingDescription) {
-        ctx.font = "italic 22px Georgia, serif";
+        ctx.font = "italic " + cardPx(22) + "px Georgia, serif";
         textLines = wrapCanvasLines(ctx, row.description, boxInnerW, maxTextLines);
       } else {
-        ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
       }
 
@@ -11147,20 +11154,20 @@
         genres.slice(0, pillWidths.length).forEach(function (g, i) {
           var pillW = pillWidths[i];
           var pillColor = genreCardColor(g);
-          roundRectPath(ctx, pillX, pillY, pillW, pillH, 13);
+          roundRectPath(ctx, pillX, pillY, pillW, pillH, cardPx(13));
           ctx.fillStyle = pillColor;
           ctx.globalAlpha = 0.18;
           ctx.fill();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = darkenColor(pillColor, 0.45);
-          ctx.lineWidth = 1;
+          ctx.lineWidth = cardPx(1);
           ctx.stroke();
           ctx.fillStyle = "#2A2620";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.font = "17px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.font = cardPx(17) + "px -apple-system, BlinkMacSystemFont, sans-serif";
           ctx.fillText(g, pillX + pillW / 2, pillY + pillH / 2);
-          pillX += pillW + 8;
+          pillX += pillW + cardPx(8);
         });
       }
 
@@ -11169,9 +11176,9 @@
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
         ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
-        ctx.font = usingDescription ? "italic 22px Georgia, serif" : "20px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = usingDescription ? "italic " + cardPx(22) + "px Georgia, serif" : cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines.forEach(function (line, i) {
-          ctx.fillText(line, contentX + boxPad, textBlockY + 19 + i * lineH);
+          ctx.fillText(line, contentX + boxPad, textBlockY + cardPx(19) + i * lineH);
         });
       } else if (!hasPills) {
         // Nothing at all to show -- same idea as an MTG basic land: a
@@ -11186,7 +11193,7 @@
       }
 
       var bottomY = panelY + panelH - pad;
-      ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = cardPx(18) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#847C6C";
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
@@ -11194,9 +11201,9 @@
       if (metaText) ctx.fillText(metaText, contentX, bottomY);
 
       if (logoImg) {
-        var logoR = 22;
+        var logoR = cardPx(22);
         var logoCx = contentX + contentW - logoR;
-        var logoCy = bottomY - logoR + 6;
+        var logoCy = bottomY - logoR + cardPx(6);
         ctx.save();
         ctx.beginPath();
         ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
@@ -11206,7 +11213,7 @@
         ctx.beginPath();
         ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
         ctx.strokeStyle = panelDark;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = cardPx(1.5);
         ctx.stroke();
       }
 

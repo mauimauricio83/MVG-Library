@@ -4779,7 +4779,7 @@ body.is-searching #viewersChoiceSection {
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 5 / 7;
+  aspect-ratio: 4 / 5;
   color: var(--text-muted);
   font-size: 0.8rem;
 }
