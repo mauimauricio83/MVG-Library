@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.11.0 — current
+- Trading card country flag switched from a Unicode flag emoji to an actual flag image (via flagcdn, cached per country code) -- Windows' default emoji font doesn't include flags at all, so the emoji version was rendering as plain two-letter text ("PH") for the large majority of visitors instead of a flag.
+- Grid view (Admin → Manage Entries) gained three more editable columns -- Country, Genres, and YouTube Link -- reachable via the horizontal scroll added a few versions back, which had nothing to actually scroll to until now.
+
 ## v6.10.2 — current
 - Trading cards now show the entry's country as a flag emoji, middle-right in the "Directed by" bar (built from the two-letter ISO code via the existing country name/code data, no image asset needed). Canvas rendering of flag emoji is font-dependent and can fall back to plain letters on systems without full color-emoji support -- unaffected on a normal Windows/Mac browser.
 

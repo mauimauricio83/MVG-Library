@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.10.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1203,15 +1203,8 @@
     return map;
   })();
 
-  // Flag emoji is just the two Regional Indicator Symbol characters for the
-  // ISO code, at U+1F1E6 + (A=0..Z=25) each -- no image asset needed, the OS/
-  // browser's own emoji font renders the pair as a single flag glyph. Silently
-  // empty for anything not in COUNTRY_CODE_TO_NAME (Kosovo's "XK" isn't a
-  // real ISO code and has no flag glyph in most fonts, for instance).
-  function countryFlagEmoji(countryName) {
-    var code = COUNTRY_NAME_TO_CODE[countryName];
-    if (!code || code.length !== 2) return "";
-    return String.fromCodePoint(0x1F1E6 + (code.charCodeAt(0) - 65), 0x1F1E6 + (code.charCodeAt(1) - 65));
+  function countryIsoCode(countryName) {
+    return COUNTRY_NAME_TO_CODE[countryName] || "";
   }
 
   function escapeHtml(str) {
@@ -10205,6 +10198,9 @@
           return '<td class="admin-grid-check"><input type="checkbox" data-field="' + f + '"' + (r[f] ? " checked" : "") + "></td>";
         }).join("") +
         '<td><input type="text" data-field="editor" value="' + escapeHtml(r.editor || "") + '"></td>' +
+        '<td><input type="text" data-field="country" value="' + escapeHtml(r.country || "") + '"></td>' +
+        '<td><input type="text" data-field="genres" value="' + escapeHtml((r.genres || []).join(", ")) + '" placeholder="Pop, Synthpop"></td>' +
+        '<td class="admin-grid-wide"><input type="text" data-field="youtube" value="' + escapeHtml(r.youtube || "") + '"></td>' +
       "</tr>"
     );
   }
@@ -10234,6 +10230,7 @@
       "<thead><tr>" +
         "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
         "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th><th>Editor</th>" +
+        "<th>Country</th><th>Genres</th><th>YouTube Link</th>" +
       "</tr></thead><tbody>" +
       pageRows.map(adminGridRowHtml).join("") +
       "</tbody>";
@@ -10264,12 +10261,18 @@
   }
 
   function saveAdminGridField(cellEl, rowNum, field, value) {
+    // Genres is the one grid field whose Firestore shape (array) differs
+    // from what the cell edits (a plain comma-separated string) -- same
+    // split/trim/filter as the single-entry form's own genres field.
+    var storedValue = field === "genres"
+      ? String(value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean)
+      : value;
     var patch = {};
-    patch[field] = value;
+    patch[field] = storedValue;
     patch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
     db.collection("videos").doc(rowNum).set(patch, { merge: true }).then(function () {
       var row = findAdminRowByNum(rowNum);
-      if (row) row[field] = value;
+      if (row) row[field] = storedValue;
       flashAdminGridCell(cellEl, true);
     }).catch(function (err) {
       console.error("Grid save failed:", err);
@@ -10295,7 +10298,11 @@
     var field = input.getAttribute("data-field");
     var value = adminGridFieldValue(input);
     var row = findAdminRowByNum(rowNum);
-    if (row && (row[field] || "") === value) return; // unchanged -- don't spend a write confirming nothing happened
+    // Genres is stored as an array -- compare against its joined form
+    // rather than the array itself, which would never equal the cell's
+    // plain string value.
+    var currentValue = row ? (field === "genres" ? (row.genres || []).join(", ") : (row[field] || "")) : null;
+    if (row && currentValue === value) return; // unchanged -- don't spend a write confirming nothing happened
     saveAdminGridField(input, rowNum, field, value);
   });
 
@@ -10932,6 +10939,24 @@
     return mvgLogoImagePromise;
   }
 
+  // Trading card country flag -- an actual small flag image rather than the
+  // Unicode Regional Indicator Symbol pair (a "flag emoji"): Windows'
+  // default emoji font doesn't include flags at all (a longstanding,
+  // deliberate omission), so those render as plain two-letter text ("PH")
+  // instead of a flag on the most common desktop OS, canvas or not. flagcdn
+  // is a free, CORS-enabled flag image CDN; h80 (fixed 80px height, aspect
+  // ratio preserved per-country) gets fetched once per country code and
+  // reused for every card, cached module-level same as the MVG logo above.
+  var countryFlagImageCache = {};
+  function loadCountryFlagImage(isoCode) {
+    if (!isoCode) return Promise.resolve(null);
+    var key = isoCode.toLowerCase();
+    if (!countryFlagImageCache[key]) {
+      countryFlagImageCache[key] = loadImageCrossOrigin("https://flagcdn.com/h80/" + key + ".png");
+    }
+    return countryFlagImageCache[key];
+  }
+
   // Small watermark, lower-right corner, on every graphic.
   function drawGraphicLogo(ctx, img) {
     if (!img) return;
@@ -11416,11 +11441,14 @@
     if (genres[1]) borderColors.push(genreCardColor(genres[1]));
     var accentDark = darkenColor(borderColors[0], 0.45);
 
+    var flagIsoCode = row.country ? countryIsoCode(normalizeCountry(row.country)) : "";
+
     return Promise.all([
       loadRowThumbForCard(row),
-      loadMvgLogoImage()
+      loadMvgLogoImage(),
+      loadCountryFlagImage(flagIsoCode)
     ]).then(function (results) {
-      var thumbImg = results[0], logoImg = results[1];
+      var thumbImg = results[0], logoImg = results[1], flagImg = results[2];
       var canvas = document.createElement("canvas");
       canvas.width = CARD_W;
       canvas.height = CARD_H;
@@ -11524,16 +11552,24 @@
       ctx.font = "600 " + cardPx(22) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#F7F3E8";
       var typeLineMidY = cursorY + typeBarH / 2;
-      var flagEmoji = row.country ? countryFlagEmoji(normalizeCountry(row.country)) : "";
-      var flagW = 0;
-      if (flagEmoji) {
-        flagW = ctx.measureText(flagEmoji).width;
-        ctx.textAlign = "right";
-        ctx.fillText(flagEmoji, contentX + contentW - cardPx(16), typeLineMidY);
+      var flagDrawW = 0;
+      if (flagImg) {
+        var flagDrawH = cardPx(26);
+        flagDrawW = flagImg.naturalWidth / flagImg.naturalHeight * flagDrawH;
+        var flagX = contentX + contentW - cardPx(16) - flagDrawW;
+        var flagY = typeLineMidY - flagDrawH / 2;
+        roundRectPath(ctx, flagX, flagY, flagDrawW, flagDrawH, cardPx(3));
+        ctx.save();
+        ctx.clip();
+        ctx.drawImage(flagImg, flagX, flagY, flagDrawW, flagDrawH);
+        ctx.restore();
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = cardPx(1);
+        ctx.stroke();
       }
       ctx.textAlign = "left";
       var typeLineText = row.director ? "Directed by " + displayName(row.director) : (row.category || "Music Video");
-      var typeLineMaxW = contentW - cardPx(32) - (flagEmoji ? flagW + cardPx(12) : 0);
+      var typeLineMaxW = contentW - cardPx(32) - (flagImg ? flagDrawW + cardPx(12) : 0);
       ctx.fillText(truncateToWidth(ctx, typeLineText, typeLineMaxW), contentX + cardPx(16), typeLineMidY);
       cursorY += typeBarH + cardPx(14);
 
