@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.15.1 — current
+- Weekly Intake: Shorts (under 90s) are now hidden by default, same as already-catalogued videos, behind a "Show Shorts" toggle -- they were showing up badged but still cluttering the list. Each result's thumbnail and title now link straight to the video on YouTube (opens in a new tab) so you can actually watch it before deciding, without that click also toggling its selection checkbox.
+
 ## v6.15.0 — current
 - Added `admin-intake.html`, a standalone admin-only page for weekly video intake: searches YouTube for recent "music video" uploads (default last 7 days, adjustable 1-30), cross-checks results against the catalog to gray out anything already added, flags likely Shorts by duration, and lets you copy selected picks as a ready-to-paste Bulk Import block (Artist/Song split off the title, YouTube link, Category, Year). Reuses the existing YouTube Data API key and the existing Bulk Import pipeline as-is -- this only speeds up finding and triaging candidates, not the judgment call of what's worth covering.
 

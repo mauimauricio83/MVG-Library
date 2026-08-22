@@ -37,6 +37,7 @@
     daysInput: document.getElementById("intakeDaysInput"),
     searchBtn: document.getElementById("intakeSearchBtn"),
     showDupesCheckbox: document.getElementById("intakeShowDupesCheckbox"),
+    showShortsCheckbox: document.getElementById("intakeShowShortsCheckbox"),
     status: document.getElementById("intakeStatus"),
     results: document.getElementById("intakeResults"),
     copyRow: document.getElementById("intakeCopyRow"),
@@ -164,30 +165,41 @@
 
   function renderResults() {
     var showDupes = els.showDupesCheckbox.checked;
-    var visible = results.filter(function (r) { return showDupes || !r.isDuplicate; });
+    var showShorts = els.showShortsCheckbox.checked;
+    var visible = results.filter(function (r) {
+      return (showDupes || !r.isDuplicate) && (showShorts || !r.isShort);
+    });
 
     if (!visible.length) {
-      els.results.innerHTML = '<p class="admin-empty">' + (results.length ? "Nothing new -- everything found is already in the catalog." : "No results yet -- run a search.") + "</p>";
+      els.results.innerHTML = '<p class="admin-empty">' + (results.length ? "Nothing to show -- try Show already-added / Show Shorts, or search again." : "No results yet -- run a search.") + "</p>";
       updateCopyBar();
       return;
     }
 
+    // Checkbox (selection) and the thumbnail/title (watch on YouTube, new
+    // tab) are deliberately separate click targets, not one wrapping
+    // <label> -- otherwise clicking through to watch a video would also
+    // toggle its selection, and vice versa.
     els.results.innerHTML = visible.map(function (r) {
       var badges = "";
       if (r.isDuplicate) badges += '<span class="admin-badge">Already in catalog</span>';
       if (r.isShort) badges += '<span class="admin-badge admin-badge-sponsored">Short</span>';
       var disabled = r.isDuplicate ? "disabled" : "";
       var publishedDate = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : "";
+      var watchUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(r.videoId);
       return (
-        '<label class="intake-result-card' + (r.isDuplicate ? " is-duplicate" : "") + '">' +
+        '<div class="intake-result-card' + (r.isDuplicate ? " is-duplicate" : "") + '">' +
           '<input type="checkbox" class="intake-result-check" data-video-id="' + escapeHtml(r.videoId) + '" ' + disabled + '>' +
-          '<img class="intake-result-thumb" src="' + escapeHtml(r.thumb || "") + '" alt="" loading="lazy">' +
+          '<a class="intake-result-thumb-link" href="' + escapeHtml(watchUrl) + '" target="_blank" rel="noopener noreferrer" aria-label="Watch on YouTube">' +
+            '<img class="intake-result-thumb" src="' + escapeHtml(r.thumb || "") + '" alt="" loading="lazy">' +
+            '<span class="intake-result-play">&#9654;</span>' +
+          "</a>" +
           '<div class="intake-result-info">' +
-            '<div class="intake-result-title">' + escapeHtml(r.title) + badges + "</div>" +
+            '<a class="intake-result-title" href="' + escapeHtml(watchUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(r.title) + "</a>" + badges +
             '<div class="intake-result-meta">' + escapeHtml(r.channel) + " &middot; " + escapeHtml(publishedDate) +
               (r.seconds ? " &middot; " + formatDuration(r.seconds) : "") + "</div>" +
           "</div>" +
-        "</label>"
+        "</div>"
       );
     }).join("");
 
@@ -225,6 +237,7 @@
 
   els.searchBtn.addEventListener("click", runSearch);
   els.showDupesCheckbox.addEventListener("change", renderResults);
+  els.showShortsCheckbox.addEventListener("change", renderResults);
   els.results.addEventListener("change", function (e) {
     if (e.target.classList.contains("intake-result-check")) updateCopyBar();
   });
