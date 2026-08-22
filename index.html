@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.9.0">
+<link rel="stylesheet" href="styles.css?v=6.9.1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1026,6 +1026,9 @@
         <label>Description
           <textarea name="description" rows="3"></textarea>
         </label>
+        <label>Flavor Text Override (FTO) <span class="submit-optional">(replaces Description on the trading card only -- leave blank to use Description there too)</span>
+          <textarea name="flavorTextOverride" rows="3"></textarea>
+        </label>
         <label class="admin-form-checkbox"><input type="checkbox" name="feature"> Feature</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="spotlight"> Maui's Picks</label>
         <label class="admin-form-checkbox"><input type="checkbox" name="sponsored"> Sponsored</label>
@@ -1243,6 +1246,9 @@
       <label>Description
         <textarea name="description" rows="3"></textarea>
       </label>
+      <label>Flavor Text Override <span class="submit-optional">(optional -- replaces Description on the trading card only, if you'd rather it say something else there)</span>
+        <textarea name="flavorTextOverride" rows="3"></textarea>
+      </label>
       <label>Genre
         <select name="genre" id="submitGenre">
           <option value="">Choose…</option>
@@ -1452,6 +1458,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.9.0"></script>
+<script src="app.js?v=6.9.1"></script>
 </body>
 </html>

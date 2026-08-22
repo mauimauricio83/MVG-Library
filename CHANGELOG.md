@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.9.1 — current
+- Added a "Flavor Text Override" (FTO) field, empty by default -- when filled, it replaces Description as the trading card's flavor text, everywhere else on the site still shows the real Description untouched. Visible in the public submission form, the admin single-entry form, and the admin Bulk Import (matches an "FTO" column header, among a few other spellings).
+
 ## v6.9.0 — current
 - Trading card panel background is now the video's own cover art -- cropped to fill, blurred, darkened, desaturated, and washed with the genre color -- instead of a flat cream fill. The title bar, type-line bar, and description/facts box are now a mostly see-through dark scrim (20% opaque) over that background instead of solid panels, and all card text switched from dark-on-cream to light-on-dark to match.
 

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.9.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9293,7 +9293,8 @@
       mvg: fields.mvg, year: fields.year,
       releaseDate: fields.releaseDate, studio: fields.studio, producer: fields.producer,
       dp: fields.dp, editor: fields.editor, choreographer: fields.choreographer, country: fields.country,
-      genres: fields.genres, description: fields.description, feature: fields.feature, spotlight: fields.spotlight,
+      genres: fields.genres, description: fields.description, flavorTextOverride: fields.flavorTextOverride,
+      feature: fields.feature, spotlight: fields.spotlight,
       sponsored: fields.sponsored, backdoor: fields.backdoor
     };
     var idx = -1;
@@ -9327,7 +9328,7 @@
     f.elements.rowNum.value = row ? row.rowNum : "";
     if (row) {
       ["artist", "song", "director", "submitterEmail", "category", "youtube", "vimeo", "mvg", "year", "releaseDate",
-        "studio", "producer", "dp", "editor", "choreographer", "country", "description"].forEach(function (key) {
+        "studio", "producer", "dp", "editor", "choreographer", "country", "description", "flavorTextOverride"].forEach(function (key) {
         if (f.elements[key]) f.elements[key].value = row[key] || "";
       });
       f.elements.genres.value = (row.genres || []).join(", ");
@@ -9392,6 +9393,7 @@
           country: d.country || "",
           genres: d.genres || [],
           description: d.description || "",
+          flavorTextOverride: d.flavorTextOverride || "",
           feature: !!d.feature,
           spotlight: !!d.spotlight,
           sponsored: !!d.sponsored,
@@ -9483,6 +9485,7 @@
     choreographer: ["choreographer"],
     country: ["country"],
     description: ["description"],
+    flavorTextOverride: ["fto", "flavor text override", "flavor text", "flavor override"],
     feature: ["feature"],
     spotlight: ["spotlight"],
     sponsored: ["sponsored"]
@@ -9567,6 +9570,7 @@
       country: pickAlias(norm, BULK_FIELD_ALIASES.country),
       genres: readBulkGenres(norm),
       description: pickAlias(norm, BULK_FIELD_ALIASES.description),
+      flavorTextOverride: pickAlias(norm, BULK_FIELD_ALIASES.flavorTextOverride),
       feature: feature,
       spotlight: spotlight,
       sponsored: sponsored,
@@ -11171,11 +11175,15 @@
       var textAreaH = boxY + boxH - boxPad - textAreaY;
 
       var textLines = [];
-      var usingDescription = !!row.description;
+      // Flavor Text Override wins over the regular Description here, and
+      // only here -- everywhere else on the site (search, list cards, the
+      // lightbox) still shows the real Description untouched.
+      var cardFlavorText = row.flavorTextOverride || row.description;
+      var usingDescription = !!cardFlavorText;
       var maxTextLines = Math.max(1, Math.floor(textAreaH / lineH));
       if (usingDescription) {
         ctx.font = "italic " + cardPx(22) + "px Georgia, serif";
-        textLines = wrapCanvasLines(ctx, row.description, boxInnerW, maxTextLines);
+        textLines = wrapCanvasLines(ctx, cardFlavorText, boxInnerW, maxTextLines);
       } else {
         ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
@@ -11724,6 +11732,7 @@
         country: field("country"),
         genres: genres,
         description: field("description"),
+        flavorTextOverride: field("flavorTextOverride"),
         feature: feature,
         spotlight: spotlight,
         sponsored: sponsored,
