@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.13.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.13.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1123,16 +1123,16 @@
     CR: "Costa Rica", CI: "Côte d'Ivoire", HR: "Croatia", CU: "Cuba", CY: "Cyprus", CZ: "Czechia",
     DK: "Denmark", DJ: "Djibouti", DM: "Dominica", DO: "Dominican Republic", EC: "Ecuador",
     EG: "Egypt", SV: "El Salvador", GQ: "Equatorial Guinea", ER: "Eritrea", EE: "Estonia",
-    SZ: "Eswatini", ET: "Ethiopia", FJ: "Fiji", FI: "Finland", FR: "France",
+    SZ: "Eswatini", ET: "Ethiopia", FJ: "Fiji", FI: "Finland", FO: "Faroe Islands", FR: "France",
     GA: "Gabon", GM: "Gambia", GE: "Georgia", DE: "Germany", GH: "Ghana",
     GR: "Greece", GD: "Grenada", GT: "Guatemala", GN: "Guinea", GW: "Guinea-Bissau",
-    GY: "Guyana", HT: "Haiti", HN: "Honduras", HU: "Hungary", IS: "Iceland",
+    GY: "Guyana", HT: "Haiti", HK: "Hong Kong", HN: "Honduras", HU: "Hungary", IS: "Iceland",
     IN: "India", ID: "Indonesia", IR: "Iran", IQ: "Iraq", IE: "Ireland",
     IL: "Israel", IT: "Italy", JM: "Jamaica", JP: "Japan", JO: "Jordan",
     KZ: "Kazakhstan", KE: "Kenya", KI: "Kiribati", XK: "Kosovo", KW: "Kuwait",
     KG: "Kyrgyzstan", LA: "Laos", LV: "Latvia", LB: "Lebanon", LS: "Lesotho",
     LR: "Liberia", LY: "Libya", LI: "Liechtenstein", LT: "Lithuania", LU: "Luxembourg",
-    MG: "Madagascar", MW: "Malawi", MY: "Malaysia", MV: "Maldives", ML: "Mali",
+    MG: "Madagascar", MW: "Malawi", MY: "Malaysia", MV: "Maldives", ML: "Mali", MQ: "Martinique",
     MT: "Malta", MH: "Marshall Islands", MR: "Mauritania", MU: "Mauritius", MX: "Mexico",
     FM: "Micronesia", MD: "Moldova", MC: "Monaco", MN: "Mongolia", ME: "Montenegro",
     MA: "Morocco", MZ: "Mozambique", MM: "Myanmar", NA: "Namibia", NR: "Nauru",
@@ -1150,13 +1150,17 @@
     TL: "Timor-Leste", TG: "Togo", TO: "Tonga", TT: "Trinidad and Tobago", TN: "Tunisia",
     TR: "Turkey", TM: "Turkmenistan", TV: "Tuvalu", UG: "Uganda", UA: "Ukraine",
     AE: "United Arab Emirates", GB: "United Kingdom", US: "United States", UY: "Uruguay", UZ: "Uzbekistan",
-    VU: "Vanuatu", VA: "Vatican City", VE: "Venezuela", VN: "Vietnam", YE: "Yemen",
+    VG: "British Virgin Islands", VU: "Vanuatu", VA: "Vatican City", VE: "Venezuela", VN: "Vietnam", YE: "Yemen",
     ZM: "Zambia", ZW: "Zimbabwe"
   };
 
   var COUNTRY_ALIASES = {
     usa: "United States", "u.s.a.": "United States", "u.s.": "United States", america: "United States",
     uk: "United Kingdom", "u.k.": "United Kingdom", england: "United Kingdom",
+    // "United Ki" -- one entry (#13426) has this exact truncated value stored
+    // as-is in Firestore (a data-entry mistake, not a fixed convention), so
+    // aliasing it here fixes display everywhere without needing a manual edit.
+    "united ki": "United Kingdom",
     "south korea": "South Korea", korea: "South Korea", "republic of korea": "South Korea",
     "russian federation": "Russia", holland: "Netherlands", uae: "United Arab Emirates",
     "czech republic": "Czechia", "ivory coast": "Côte d'Ivoire", "cote d'ivoire": "Côte d'Ivoire",
