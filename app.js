@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.12.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11484,7 +11484,7 @@
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(CARD_W, 0);
-        ctx.lineTo(CARD_W / 2, CARD_H * 0.16);
+        ctx.lineTo(CARD_W / 2, CARD_H * 0.42);
         ctx.closePath();
         ctx.fillStyle = "#FFFFFF";
         ctx.fill();
@@ -11511,22 +11511,27 @@
       // Panel background is the video's own cover art, cropped to fill,
       // blurred/darkened/desaturated so it reads as texture rather than a
       // competing image, then washed with the border color so it ties into
-      // the border -- OPM included (washed blue, tying into its own
-      // red/blue/white border), same treatment as every other card. Falls
-      // back to a flat dark tint (no blur needed) when there's no
-      // thumbnail to work with.
+      // the border -- same treatment as every other card, except OPM washes
+      // neutral black/white (fully desaturated, darker) instead of a genre
+      // color, since red/blue/yellow already carry the card's color and a
+      // colored wash here would compete with them. Falls back to a flat
+      // dark tint (no blur needed) when there's no thumbnail to work with.
       ctx.save();
       ctx.clip();
       if (thumbImg) {
-        ctx.filter = "blur(" + cardPx(24) + "px) saturate(35%) brightness(55%)";
+        ctx.filter = isOPM
+          ? "blur(" + cardPx(24) + "px) saturate(0%) brightness(40%)"
+          : "blur(" + cardPx(24) + "px) saturate(35%) brightness(55%)";
         drawCoverFitImage(ctx, thumbImg, panelX, panelY, panelW, panelH, 1.15);
         ctx.filter = "none";
-        ctx.fillStyle = isOPM ? OPM_BLUE : borderColors[0];
-        ctx.globalAlpha = 0.38;
-        ctx.fillRect(panelX, panelY, panelW, panelH);
-        ctx.globalAlpha = 1;
+        if (!isOPM) {
+          ctx.fillStyle = borderColors[0];
+          ctx.globalAlpha = 0.38;
+          ctx.fillRect(panelX, panelY, panelW, panelH);
+          ctx.globalAlpha = 1;
+        }
       } else {
-        ctx.fillStyle = darkenColor(isOPM ? OPM_BLUE : borderColors[0], 0.35);
+        ctx.fillStyle = isOPM ? "#1A1A1A" : darkenColor(borderColors[0], 0.35);
         ctx.fillRect(panelX, panelY, panelW, panelH);
       }
       ctx.restore();

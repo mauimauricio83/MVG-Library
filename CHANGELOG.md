@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.13.0 — current
+- OPM trading card polish round two: the border's white triangle is now steeper (apex at 42% down instead of 16%), reading much closer to the real flag's proportions; and after a couple of rounds trying to keep the blurred cover art faintly visible behind the facts box (translucent scrim, then a brighter re-rendered "window" under a light wash), both read as murky/dirty rather than clean -- settled back on a plain solid white box with black text, which is what actually reads well against the rest of the card.
+
 ## v6.12.2 — current
 - Reverted v6.12.1's flat-white OPM panel background -- OPM cards get the same blurred/darkened/tinted cover-art panel every other card gets (washed blue instead of the usual hashed genre color, tying into OPM's own red/blue/white border), not a plain white fill. The yellow title/director bars and white facts box stay as designed.
 
