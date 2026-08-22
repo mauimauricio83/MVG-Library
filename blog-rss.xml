@@ -1,25 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
 <channel>
-  <title>MVG Library — Blog</title>
-  <link>https://mauimauricio83.github.io/MVG-Library/blog.html</link>
+  <title>MVG Library — News</title>
+  <link>https://mauimauricio83.github.io/MVG-Library/news.html</link>
   <description>News, notes, and features from The Music Video Guy.</description>
-  <lastBuildDate>Fri, 21 Aug 2026 06:23:01 GMT</lastBuildDate>
+  <lastBuildDate>Sat, 22 Aug 2026 06:17:48 GMT</lastBuildDate>
   <item>
     <title>Welcome to the MVG Library</title>
-    <link>https://mauimauricio83.github.io/MVG-Library/blog.html?post=welcome-to-the-mvg-library</link>
-    <guid isPermaLink="true">https://mauimauricio83.github.io/MVG-Library/blog.html?post=welcome-to-the-mvg-library</guid>
+    <link>https://mauimauricio83.github.io/MVG-Library/news.html?post=welcome-to-the-mvg-library</link>
+    <guid isPermaLink="true">https://mauimauricio83.github.io/MVG-Library/news.html?post=welcome-to-the-mvg-library</guid>
     <pubDate>Sat, 08 Aug 2026 04:00:00 GMT</pubDate>
     <author>Maui Mauricio</author>
     <description>AI Need Not Apply.We built this database to celebrate the actual human beings behind the camera. The MVG Library currently holds over 13,000 music videos. Every single entry was made by human hands. G…</description>
-  </item>
-  <item>
-    <title>Test Article</title>
-    <link>https://mauimauricio83.github.io/MVG-Library/blog.html?post=test-article</link>
-    <guid isPermaLink="true">https://mauimauricio83.github.io/MVG-Library/blog.html?post=test-article</guid>
-    <pubDate>Sat, 08 Aug 2026 03:06:50 GMT</pubDate>
-    <author>Maui Mauricio</author>
-    <description>TestTestTestTestTestTestTest testtest2</description>
   </item>
 </channel>
 </rss>
