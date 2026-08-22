@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
+<title>Manage Entries — MVG Library Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css?v=6.17.0">
+<link rel="stylesheet" href="hub.css?v=6.17.0">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<style>
+  /* .hub-page already carries its own max-width/padding for the reading
+     width -- .app's default padding (from styles.css, needed only for its
+     sidebar-sharing flex behavior) would otherwise double up with it. */
+  .app { padding: 0; }
+  .hub-page { max-width: 1400px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<script src="site-nav.js?v=6.17.0"></script>
+<div class="app">
+<div class="hub-page">
+
+<h1>Manage Entries</h1>
+
+<div id="meSignedOut">
+  <button type="button" class="submit-form-btn" id="meSignInBtn">Sign in with Google</button>
+</div>
+
+<div id="meUnauthorized" hidden>
+  <p class="admin-status is-error">This page is for MVG Library admins only. <a href="index.html">Back to the library</a>.</p>
+</div>
+
+<div id="meApp" hidden>
+  <div class="admin-toolbar">
+    <div class="admin-toolbar-actions">
+      <button type="button" class="admin-row-btn" id="mePublishBtn">Publish</button>
+      <button type="button" class="admin-row-btn" id="meGridToggleBtn" aria-pressed="false">Grid view</button>
+      <a class="admin-row-btn" href="index.html?admin=bulk">Bulk Import</a>
+      <a class="admin-row-btn" href="index.html?admin=add">+ Add Entry</a>
+    </div>
+  </div>
+  <input type="search" id="meSearchInput" class="admin-search" placeholder="Search artist, song, director, country, genre, credits…">
+  <p class="admin-status" id="meStatus" hidden></p>
+  <p class="admin-grid-hint" id="meGridHint" hidden>Editing here saves straight to the database as you go, but the live site won't show your changes until you hit <strong>Publish</strong> above -- edit as many rows as you like, then publish once at the end.</p>
+  <div class="admin-entries-list" id="meEntriesList"></div>
+  <div class="admin-grid-wrap" id="meGridWrap" hidden>
+    <div class="admin-grid-pager" id="meGridPager">
+      <button type="button" class="admin-row-btn" id="meGridPrevBtn">&larr; Prev</button>
+      <span class="admin-grid-pager-label" id="meGridPagerLabel"></span>
+      <button type="button" class="admin-row-btn" id="meGridNextBtn">Next &rarr;</button>
+    </div>
+    <table class="admin-grid" id="meGridTable"></table>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+<script src="manage-entries.js?v=6.17.0"></script>
+</body>
+</html>

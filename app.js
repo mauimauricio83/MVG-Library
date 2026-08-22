@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.16.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.17.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -489,33 +489,16 @@
     adminModal: document.getElementById("adminModal"),
     adminClose: document.getElementById("adminClose"),
     adminLandingView: document.getElementById("adminLandingView"),
-    adminGoManageBtn: document.getElementById("adminGoManageBtn"),
     adminGoAddBtn: document.getElementById("adminGoAddBtn"),
     adminGoBulkBtn: document.getElementById("adminGoBulkBtn"),
     adminGoPublishBtn: document.getElementById("adminGoPublishBtn"),
     adminLandingStatus: document.getElementById("adminLandingStatus"),
-    adminBackBtn: document.getElementById("adminBackBtn"),
-    adminStatus: document.getElementById("adminStatus"),
-    adminEntriesList: document.getElementById("adminEntriesList"),
-    adminSearchInput: document.getElementById("adminSearchInput"),
-    adminPanel: document.getElementById("adminPanel"),
-    adminGridToggleBtn: document.getElementById("adminGridToggleBtn"),
-    adminGridHint: document.getElementById("adminGridHint"),
-    adminGridWrap: document.getElementById("adminGridWrap"),
-    adminGridTable: document.getElementById("adminGridTable"),
-    adminGridPager: document.getElementById("adminGridPager"),
-    adminGridPagerLabel: document.getElementById("adminGridPagerLabel"),
-    adminGridPrevBtn: document.getElementById("adminGridPrevBtn"),
-    adminGridNextBtn: document.getElementById("adminGridNextBtn"),
-    adminListView: document.getElementById("adminListView"),
-    adminAddBtn: document.getElementById("adminAddBtn"),
     adminForm: document.getElementById("adminForm"),
     adminFormTitle: document.getElementById("adminFormTitle"),
     adminFormCancelBtn: document.getElementById("adminFormCancelBtn"),
     adminFormSaveBtn: document.getElementById("adminFormSaveBtn"),
     adminYoutubeSearchBtn: document.getElementById("adminYoutubeSearchBtn"),
     adminFormStatus: document.getElementById("adminFormStatus"),
-    adminBulkBtn: document.getElementById("adminBulkBtn"),
     adminBulkView: document.getElementById("adminBulkView"),
     adminBulkTextarea: document.getElementById("adminBulkTextarea"),
     adminBulkBackdoorCheckbox: document.getElementById("adminBulkBackdoorCheckbox"),
@@ -525,7 +508,6 @@
     adminBulkPreview: document.getElementById("adminBulkPreview"),
     adminBulkCommitRow: document.getElementById("adminBulkCommitRow"),
     adminBulkCommitBtn: document.getElementById("adminBulkCommitBtn"),
-    adminPublishBtn: document.getElementById("adminPublishBtn"),
     openSettingsBtn: document.getElementById("openSettingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     settingsSyncNote: document.getElementById("settingsSyncNote"),
@@ -7420,6 +7402,32 @@
   window.addEventListener("hashchange", applySubmitHash);
   applySubmitHash();
 
+  // manage-entries.html's Edit/Add/Bulk Import links jump back here rather
+  // than duplicating the Add/Edit form or Bulk Import pipeline on that
+  // page -- ?admin=edit&row=<rowNum> / ?admin=add / ?admin=bulk. Only
+  // called once state.isAdmin is confirmed true (see the admins/{uid}
+  // check in onAuthStateChanged), same as applySubmitHash() but query-
+  // param- rather than hash-driven since these need an admin check first.
+  // Strips the params afterward so a reload doesn't reopen the same view.
+  function applyAdminDeepLink() {
+    var params = new URLSearchParams(location.search);
+    var admin = params.get("admin");
+    if (!admin) return;
+    history.replaceState(null, "", location.pathname + location.hash);
+    if (admin === "edit") {
+      var rowNum = params.get("row");
+      if (rowNum) openAdminEditForRow(rowNum);
+    } else if (admin === "add") {
+      state.adminReturnView = "list";
+      openAdminModalChrome();
+      showAdminForm(null);
+    } else if (admin === "bulk") {
+      state.adminReturnView = "list";
+      openAdminModalChrome();
+      showAdminBulk();
+    }
+  }
+
   var THEME_KEY = "mvg-theme";
 
   function applyTheme(theme) {
@@ -8021,10 +8029,10 @@
   }
 
   // Opens the modal onto the landing chooser -- deliberately does NOT load
-  // anything. Manage Entries (full browse/search) is the only path that
-  // reads the whole `videos` collection; Add Entry and Bulk Import reserve
-  // fresh IDs via meta/counters instead of scanning for the max, so they
-  // don't need it loaded at all.
+  // anything. Full browse/search of the `videos` collection now lives on
+  // manage-entries.html; Add Entry and Bulk Import reserve fresh IDs via
+  // meta/counters instead of scanning for the max, so they don't need it
+  // loaded at all.
   function openAdminModal() {
     state.adminReturnView = "landing";
     els.adminLandingStatus.hidden = true;
@@ -8038,7 +8046,6 @@
     stopAdminChannelPreview();
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
@@ -8053,7 +8060,6 @@
 
   function showAdminBlogList() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8069,7 +8075,6 @@
 
   function showAdminSuggestions() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminVerificationsView.hidden = true;
@@ -8084,7 +8089,6 @@
 
   function showAdminVerifications() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8099,7 +8103,6 @@
 
   function showAdminChannelView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8115,7 +8118,6 @@
 
   function showAdminDataToolsView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8131,7 +8133,6 @@
 
   function showAdminFillLinksView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8147,7 +8148,6 @@
 
   function showAdminVoteRoundsView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8161,7 +8161,6 @@
 
   function showAdminGraphicsView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -8176,7 +8175,6 @@
 
   function showAdminUsernamesView() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
@@ -9466,14 +9464,6 @@
     });
   });
 
-  function goAdminManageEntries() {
-    state.adminReturnView = "list";
-    els.adminStatus.hidden = true;
-    els.adminSearchInput.value = "";
-    showAdminList();
-    return loadAdminEntries();
-  }
-
   // Jumps straight to editing a specific entry (e.g. from the lightbox's
   // admin Edit button) without reading the entire ~13k-doc `videos`
   // collection just to populate one form -- fetches only that one document.
@@ -9573,22 +9563,13 @@
   // it was entered from, without fabricating a partial list if Manage
   // Entries was never loaded.
   function returnFromAdminSubview() {
-    if (state.adminReturnView === "list") showAdminList();
+    // "list" means this form/bulk-import view was reached via a
+    // manage-entries.html deep link (see applyAdminDeepLink()) -- there's
+    // no in-modal list to go back to anymore, so send them back to that
+    // page instead.
+    if (state.adminReturnView === "list") location.href = "manage-entries.html";
     else if (state.adminReturnView === "dataTools") showAdminDataToolsView();
     else showAdminLanding();
-  }
-
-  function showAdminList() {
-    els.adminLandingView.hidden = true;
-    els.adminForm.hidden = true;
-    els.adminBulkView.hidden = true;
-    els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
-    els.adminVoteRoundsView.hidden = true;
-    els.adminGraphicsView.hidden = true;
-    els.adminUsernamesView.hidden = true;
-    els.adminListView.hidden = false;
   }
 
   // Reserves `count` sequential rowNums atomically via meta/counters, so
@@ -9641,7 +9622,6 @@
 
   function showAdminForm(row) {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminBulkView.hidden = true;
     els.adminDataToolsView.hidden = true;
     els.adminFillLinksView.hidden = true;
@@ -9770,13 +9750,6 @@
     });
   }
 
-  els.adminPublishBtn.addEventListener("click", function () {
-    els.adminPublishBtn.disabled = true;
-    runAdminPublish(els.adminStatus).then(function () {
-      els.adminPublishBtn.disabled = false;
-    });
-  });
-
   // ---- Bulk import/upsert ---------------------------------------------
   // Header-row-driven paste: columns are matched by name (via the same
   // `get()`/`readGenres()`/`fixReleaseDate()` helpers cleanRows() uses for
@@ -9859,7 +9832,6 @@
 
   function showAdminBulk() {
     els.adminLandingView.hidden = true;
-    els.adminListView.hidden = true;
     els.adminForm.hidden = true;
     els.adminBulkView.hidden = false;
     els.adminBulkTextarea.value = "";
@@ -9996,7 +9968,6 @@
     }).join("");
   }
 
-  els.adminBulkBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminBulk(); });
   els.adminGoBulkBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminBulk(); });
   els.adminBulkCancelBtn.addEventListener("click", returnFromAdminSubview);
 
@@ -10068,12 +10039,12 @@
       els.adminBulkCommitBtn.disabled = false;
       var summary = createdCount + " created, " + updatedCount + " updated, and published to the live site.";
       // Patch locally rather than re-reading -- cheap either way, and keeps
-      // state.adminRows accurate if Manage Entries gets opened next.
+      // state.adminRows accurate if Data Health gets opened next.
       rows.forEach(function (r) { upsertAdminRowLocal(r.rowNum, r.doc); });
       if (state.adminReturnView === "list") {
-        showAdminList();
-        renderAdminEntries();
-        setAdminStatus(summary);
+        // Reached via manage-entries.html's Bulk Import link -- no in-modal
+        // list to return to, send them back to that page.
+        location.href = "manage-entries.html";
       } else {
         showAdminLanding();
         els.adminLandingStatus.textContent = summary;
@@ -10096,26 +10067,8 @@
     unlockBodyScroll();
   }
 
-  function setAdminStatus(text, isError) {
-    els.adminStatus.textContent = text;
-    els.adminStatus.className = "admin-status" + (isError ? " is-error" : "");
-    els.adminStatus.hidden = !text;
-  }
-
-  function loadAdminEntries(statusOverride) {
-    setAdminStatus("Loading entries…");
-    els.adminEntriesList.innerHTML = "";
-    return db.collection("videos").get().then(function (snap) {
-      state.adminRows = snap.docs.map(function (doc) { return doc.data(); });
-      setAdminStatus(statusOverride || (state.adminRows.length + " entries loaded."));
-      renderAdminEntries();
-    }).catch(function (err) {
-      console.error("Admin load failed:", err);
-      setAdminStatus("Couldn't load entries: " + err.message, true);
-    });
-  }
-
-  // Shared by the Manage Entries list and every Data Health list below --
+  // Shared by every Data Health list below (Manage Entries' own list moved
+  // to manage-entries.html, which has its own copy of this markup) --
   // same row markup, same Edit/Delete buttons, all handled by the one
   // delegated data-admin-action click listener on els.adminModal.
   function adminRowHtml(r) {
@@ -10138,211 +10091,11 @@
     );
   }
 
-  // Country is searchable both as whatever's actually stored (a raw "SE"
-  // code, say) and its normalized full name ("Sweden"), so either one finds
-  // the entry regardless of which convention that particular row happens
-  // to use.
-  function adminSearchHaystack(r) {
-    return [
-      r.rowNum, r.artist, r.song, r.director, r.category, r.editor,
-      r.country, normalizeCountry(r.country), (r.genres || []).join(" "),
-      r.studio, r.producer, r.dp, r.choreographer,
-      r.youtube, r.vimeo, r.mvg, r.description, r.flavorTextOverride
-    ].join(" ").toLowerCase();
-  }
-
-  function renderAdminEntries() {
-    var query = els.adminSearchInput.value.trim().toLowerCase();
-    var rows = state.adminRows.filter(function (r) {
-      if (!query) return true;
-      return adminSearchHaystack(r).indexOf(query) !== -1;
-    });
-    // Most recently added first, same convention as the Latest strip.
-    rows = rows.slice().sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); });
-
-    if (adminGridMode) {
-      renderAdminGrid(rows);
-      return;
-    }
-
-    if (!rows.length) {
-      els.adminEntriesList.innerHTML = '<p class="admin-empty">No matching entries.</p>';
-      return;
-    }
-
-    els.adminEntriesList.innerHTML = rows.map(adminRowHtml).join("");
-  }
-
-  // ---- Manage Entries: Grid view -----------------------------------------
-  // A spreadsheet-style alternative to the Edit/Delete list above, for
-  // skimming and tweaking many entries in one view instead of opening the
-  // full form per row. Deliberately does NOT auto-publish per edit the way
-  // the single-entry form does (see its submit handler) -- publishSnapshot()
-  // re-reads the entire ~13k-doc collection every time it runs, so doing
-  // that after every keystroke/checkbox across a bulk editing session would
-  // multiply an already-not-cheap operation by however many cells get
-  // touched. Each edit here is exactly one small Firestore write (the same
-  // cost as any other single-field edit); Publish stays a manual, one-time
-  // step at the end of the session (see adminGridHint in index.html).
-  var adminGridMode = false;
-  var ADMIN_GRID_CATEGORIES = ["Music Video", "Dance", "Montage", "DVD", "Live", "Installation", "Short", "Docu"];
-  var ADMIN_GRID_CHECKBOX_FIELDS = ["feature", "spotlight", "sponsored", "backdoor"];
-  // Rendering all ~13k filtered rows at once as live <input>/<select> elements
-  // was what made the grid slow to open and laggy to click into -- this many
-  // interactive DOM nodes bogs down layout/event dispatch even on a fast
-  // machine. Paginating keeps each render to a small, fixed-size DOM.
-  var ADMIN_GRID_PAGE_SIZE = 75;
-  var adminGridAllRows = [];
-  var adminGridPage = 0;
-
-  function adminGridCategoryOptionsHtml(current) {
-    return '<option value=""' + (current ? "" : " selected") + "></option>" +
-      ADMIN_GRID_CATEGORIES.map(function (c) {
-        return "<option" + (c === current ? " selected" : "") + ">" + escapeHtml(c) + "</option>";
-      }).join("");
-  }
-
-  function adminGridRowHtml(r) {
-    return (
-      '<tr data-rownum="' + escapeHtml(r.rowNum) + '">' +
-        '<td class="admin-grid-rownum">#' + escapeHtml(r.rowNum) + "</td>" +
-        '<td><input type="text" data-field="artist" value="' + escapeHtml(r.artist || "") + '"></td>' +
-        '<td><input type="text" data-field="song" value="' + escapeHtml(r.song || "") + '"></td>' +
-        '<td><input type="text" data-field="director" value="' + escapeHtml(r.director || "") + '"></td>' +
-        '<td><select data-field="category">' + adminGridCategoryOptionsHtml(r.category) + "</select></td>" +
-        '<td><input type="text" class="admin-grid-year" data-field="year" value="' + escapeHtml(r.year || "") + '"></td>' +
-        ADMIN_GRID_CHECKBOX_FIELDS.map(function (f) {
-          return '<td class="admin-grid-check"><input type="checkbox" data-field="' + f + '"' + (r[f] ? " checked" : "") + "></td>";
-        }).join("") +
-        '<td><input type="text" data-field="editor" value="' + escapeHtml(r.editor || "") + '"></td>' +
-        '<td><input type="text" data-field="country" value="' + escapeHtml(r.country || "") + '"></td>' +
-        '<td><input type="text" data-field="genres" value="' + escapeHtml((r.genres || []).join(", ")) + '" placeholder="Pop, Synthpop"></td>' +
-        '<td class="admin-grid-wide"><input type="text" data-field="youtube" value="' + escapeHtml(r.youtube || "") + '"></td>' +
-      "</tr>"
-    );
-  }
-
-  function renderAdminGrid(rows) {
-    adminGridAllRows = rows;
-    adminGridPage = 0;
-    renderAdminGridPage();
-  }
-
-  function renderAdminGridPage() {
-    els.adminEntriesList.hidden = true;
-    els.adminGridWrap.hidden = false;
-    var rows = adminGridAllRows;
-    if (!rows.length) {
-      els.adminGridTable.innerHTML = '<caption class="admin-empty">No matching entries.</caption>';
-      els.adminGridPagerLabel.textContent = "";
-      els.adminGridPrevBtn.disabled = true;
-      els.adminGridNextBtn.disabled = true;
-      return;
-    }
-    var totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_GRID_PAGE_SIZE));
-    adminGridPage = Math.max(0, Math.min(adminGridPage, totalPages - 1));
-    var start = adminGridPage * ADMIN_GRID_PAGE_SIZE;
-    var pageRows = rows.slice(start, start + ADMIN_GRID_PAGE_SIZE);
-    els.adminGridTable.innerHTML =
-      "<thead><tr>" +
-        "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
-        "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th><th>Editor</th>" +
-        "<th>Country</th><th>Genres</th><th>YouTube Link</th>" +
-      "</tr></thead><tbody>" +
-      pageRows.map(adminGridRowHtml).join("") +
-      "</tbody>";
-    els.adminGridPagerLabel.textContent = (start + 1) + "–" + (start + pageRows.length) + " of " + rows.length;
-    els.adminGridPrevBtn.disabled = adminGridPage === 0;
-    els.adminGridNextBtn.disabled = adminGridPage >= totalPages - 1;
-  }
-
-  els.adminGridPrevBtn.addEventListener("click", function () {
-    if (adminGridPage <= 0) return;
-    adminGridPage--;
-    renderAdminGridPage();
-    els.adminGridWrap.scrollTop = 0;
-  });
-
-  els.adminGridNextBtn.addEventListener("click", function () {
-    adminGridPage++;
-    renderAdminGridPage();
-    els.adminGridWrap.scrollTop = 0;
-  });
-
-  function flashAdminGridCell(el, ok) {
-    el.classList.remove("save-ok", "save-error");
-    // Reflow so re-adding the same class right after removing it still
-    // restarts the CSS animation instead of being a no-op.
-    void el.offsetWidth;
-    el.classList.add(ok ? "save-ok" : "save-error");
-  }
-
-  function saveAdminGridField(cellEl, rowNum, field, value) {
-    // Genres is the one grid field whose Firestore shape (array) differs
-    // from what the cell edits (a plain comma-separated string) -- same
-    // split/trim/filter as the single-entry form's own genres field.
-    var storedValue = field === "genres"
-      ? String(value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean)
-      : value;
-    var patch = {};
-    patch[field] = storedValue;
-    patch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    db.collection("videos").doc(rowNum).set(patch, { merge: true }).then(function () {
-      var row = findAdminRowByNum(rowNum);
-      if (row) row[field] = storedValue;
-      flashAdminGridCell(cellEl, true);
-    }).catch(function (err) {
-      console.error("Grid save failed:", err);
-      flashAdminGridCell(cellEl, false);
-    });
-  }
-
-  function adminGridFieldValue(inputEl) {
-    return inputEl.type === "checkbox" ? inputEl.checked : inputEl.value.trim();
-  }
-
-  els.adminGridTable.addEventListener("change", function (e) {
-    var input = e.target.closest("input[data-field], select[data-field]");
-    if (!input || input.type === "text") return; // text inputs save on focusout below, not every change
-    var rowNum = input.closest("tr").getAttribute("data-rownum");
-    saveAdminGridField(input, rowNum, input.getAttribute("data-field"), adminGridFieldValue(input));
-  });
-
-  els.adminGridTable.addEventListener("focusout", function (e) {
-    var input = e.target.closest('input[type="text"][data-field]');
-    if (!input) return;
-    var rowNum = input.closest("tr").getAttribute("data-rownum");
-    var field = input.getAttribute("data-field");
-    var value = adminGridFieldValue(input);
-    var row = findAdminRowByNum(rowNum);
-    // Genres is stored as an array -- compare against its joined form
-    // rather than the array itself, which would never equal the cell's
-    // plain string value.
-    var currentValue = row ? (field === "genres" ? (row.genres || []).join(", ") : (row[field] || "")) : null;
-    if (row && currentValue === value) return; // unchanged -- don't spend a write confirming nothing happened
-    saveAdminGridField(input, rowNum, field, value);
-  });
-
-  els.adminGridToggleBtn.addEventListener("click", function () {
-    adminGridMode = !adminGridMode;
-    els.adminGridToggleBtn.setAttribute("aria-pressed", adminGridMode ? "true" : "false");
-    els.adminGridToggleBtn.classList.toggle("is-active", adminGridMode);
-    els.adminGridToggleBtn.textContent = adminGridMode ? "List view" : "Grid view";
-    els.adminGridHint.hidden = !adminGridMode;
-    els.adminGridWrap.hidden = !adminGridMode;
-    els.adminEntriesList.hidden = adminGridMode;
-    // Grid view needs real width to show more than the first few columns --
-    // .admin-panel's normal 560px cap (fine for every other admin view) is
-    // way too cramped for a spreadsheet, so widen the whole modal to a
-    // near-full-page takeover only while grid mode is on.
-    els.adminPanel.classList.toggle("is-grid-full", adminGridMode);
-    renderAdminEntries();
-  });
 
   // ---- Data Health: duplicate videos, missing links, broken links ------
-  // All three read off state.adminRows (the same full-catalog snapshot
-  // Manage Entries loads), so opening Data Health always (re)loads it fresh
-  // via loadAdminEntries() rather than assuming it's already populated.
+  // All three read off state.adminRows -- goAdminDataTools() below always
+  // (re)loads it fresh with its own `videos` read rather than assuming
+  // it's already populated.
 
   // Two rows pointing at the same YouTube/Vimeo video ID -- almost always
   // an accidental double-submission/double-import rather than a real
@@ -12090,22 +11843,19 @@
       var row = findAdminRowByNum(rowNum);
       var label = row ? row.artist + " — " + row.song : "entry #" + rowNum;
       if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
-      var inDataTools = !els.adminDataToolsView.hidden;
-      var reportStatus = inDataTools
-        ? function (text, isError) {
-            els.adminDataToolsStatus.textContent = text;
-            els.adminDataToolsStatus.className = "admin-status" + (isError ? " is-error" : "");
-            els.adminDataToolsStatus.hidden = !text;
-          }
-        : setAdminStatus;
+      // Only Data Health's own lists (duplicates/no-video/broken) render a
+      // delete button through this modal anymore -- Manage Entries' List
+      // view (the only other caller) moved to manage-entries.html.
+      function reportStatus(text, isError) {
+        els.adminDataToolsStatus.textContent = text;
+        els.adminDataToolsStatus.className = "admin-status" + (isError ? " is-error" : "");
+        els.adminDataToolsStatus.hidden = !text;
+      }
       db.collection("videos").doc(rowNum).delete().then(function () {
         removeAdminRowLocal(rowNum);
-        renderAdminEntries();
-        if (inDataTools) {
-          renderAdminDataToolsInstant();
-          state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
-          renderAdminBroken();
-        }
+        renderAdminDataToolsInstant();
+        state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
+        renderAdminBroken();
         reportStatus('Deleted "' + label + '". Publishing…');
         return publishSnapshot().then(function (result) {
           reportStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
@@ -12120,8 +11870,6 @@
     }
   });
 
-  els.adminGoManageBtn.addEventListener("click", goAdminManageEntries);
-  els.adminBackBtn.addEventListener("click", showAdminLanding);
 
   function updateAdminBadge(el, count) {
     el.textContent = String(count);
@@ -12150,7 +11898,6 @@
   els.adminVerificationsBackBtn.addEventListener("click", showAdminLanding);
 
   els.adminGoAddBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminForm(null); });
-  els.adminAddBtn.addEventListener("click", function () { state.adminReturnView = "list"; showAdminForm(null); });
   els.adminFormCancelBtn.addEventListener("click", returnFromAdminSubview);
 
   // Opens a YouTube search in a new tab for whatever Artist/Song is
@@ -12283,17 +12030,15 @@
         // full list -- just close instead of paying for a ~13k-doc read only
         // to show a list the admin didn't ask for. From the landing
         // shortcut, there's no list to refresh either -- go back to landing
-        // with a confirmation. Only from Manage Entries itself is there a
-        // loaded list worth patching in place.
+        // with a confirmation. "list" means this came from a
+        // manage-entries.html deep link (see applyAdminDeepLink()) -- no
+        // in-modal list to patch, just send them back to that page.
         if (state.adminReturnView === "lightbox") {
           dismissTopModal();
           publishPromise.catch(function () {}); // fire-and-forget, no status UI left to show it on
         } else if (state.adminReturnView === "list") {
-          upsertAdminRowLocal(rowNum, doc);
-          showAdminList();
-          renderAdminEntries();
-          setAdminStatus(label + " Publishing…");
-          publishPromise.then(setAdminStatus);
+          publishPromise.catch(function () {}); // fire-and-forget, no status UI left to show it on
+          location.href = "manage-entries.html";
         } else if (state.adminReturnView === "dataTools") {
           upsertAdminRowLocal(rowNum, doc);
           // The edit may have fixed the flagged link -- drop it from the
@@ -12325,8 +12070,6 @@
       els.adminFormSaveBtn.disabled = false;
     });
   });
-
-  els.adminSearchInput.addEventListener("input", renderAdminEntries);
 
   els.submitModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
@@ -13050,6 +12793,7 @@
         applyAdminNormieToggle();
         els.openAdminBtn.hidden = !adminUiActive();
         els.topBarAdminBtn.hidden = !adminUiActive();
+        if (state.isAdmin) applyAdminDeepLink();
         // Covers the case where the board was opened before this admin
         // check resolved -- openMsgBoard() itself only starts the mod
         // listeners when state.isAdmin is already true.

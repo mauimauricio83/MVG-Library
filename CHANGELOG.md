@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.17.0 — current
+- Manage Entries moved out of the admin popup into its own standalone page (`manage-entries.html`), same treatment Weekly Intake got -- full List/Grid browsing, search, and inline Grid editing, reached via a plain link from the admin landing menu instead of loading inside `#adminModal`. The Add/Edit form and Bulk Import stayed in the popup (they're shared with the public lightbox's admin Edit button and TV Mode, not exclusive to Manage Entries) -- the new page's Edit/Add/Bulk Import actions jump back into index.html via `?admin=edit&row=<n>` / `?admin=add` / `?admin=bulk` instead of duplicating that form's country/genre widgets, Vimeo thumbnail resolution, and row-reservation logic a second time.
+- Added a "Weekly Intake" link to the admin landing menu -- it existed as a page but had no way to reach it from inside the site.
+- Removed the now-dead in-modal List/Grid code this left behind (`showAdminList`, `renderAdminEntries`, the Grid view block, `.admin-panel.is-grid-full`) -- kept everything Data Health and the Add/Edit form still share (`adminRowHtml`, the delegated edit/delete handler, etc.).
+
 ## v6.16.0 — current
 - Weekly Intake gained a review step: clicking "Review N selected" now opens an editable grid (same .admin-grid pattern as Manage Entries' Grid view) with Artist, Song Title, Director, Category, Year, Country, and YouTube Link per selected candidate, plus a Remove button per row -- fix the title auto-split or fill in missing details before copying, instead of only catching mistakes after pasting into Bulk Import.
 - Fixed a pre-existing bug in `.admin-fill-links-card[hidden]` (shared by this and the existing Fill Missing Links admin tool) -- the class's own `display: flex` was silently overriding the browser's `[hidden] { display: none }` default, so toggling `.hidden = true` on either card did nothing.

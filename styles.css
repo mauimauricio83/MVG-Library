@@ -5174,29 +5174,6 @@ body.is-searching #viewersChoiceSection {
   flex-direction: column;
 }
 
-.admin-panel.is-grid-full {
-  max-width: 96vw;
-  width: 96vw;
-  max-height: 94vh;
-  height: 94vh;
-}
-
-.admin-panel.is-grid-full .admin-body,
-.admin-panel.is-grid-full #adminListView,
-.admin-panel.is-grid-full .admin-grid-wrap {
-  min-height: 0;
-  flex: 1;
-}
-
-.admin-panel.is-grid-full .admin-grid-wrap {
-  display: flex;
-  flex-direction: column;
-}
-
-.admin-panel.is-grid-full .admin-grid {
-  flex: 1;
-}
-
 .admin-body {
   display: flex;
   flex-direction: column;

@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.16.0">
+<link rel="stylesheet" href="styles.css?v=6.17.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -700,7 +700,8 @@
         <h2 class="recent-title">Admin</h2>
         <p class="admin-bulk-hint">Manage Entries loads and searches the full catalog. Add Entry and Bulk Import don't -- pick those directly if you're just adding new videos.</p>
         <div class="admin-landing-actions">
-          <button type="button" class="submit-form-btn" id="adminGoManageBtn">Manage Entries</button>
+          <a class="submit-form-btn" id="adminGoManageBtn" href="manage-entries.html">Manage Entries</a>
+          <a class="admin-row-btn" href="admin-intake.html">Weekly Intake</a>
           <button type="button" class="admin-row-btn" id="adminGoAddBtn">+ Add Entry</button>
           <button type="button" class="admin-row-btn" id="adminGoBulkBtn">Bulk Import</button>
           <button type="button" class="admin-row-btn" id="adminGoPublishBtn">Publish</button>
@@ -920,31 +921,6 @@
           <button type="button" class="admin-row-btn" id="adminReservedAddBtn">Add</button>
         </div>
         <div class="admin-entries-list" id="adminReservedList"></div>
-      </div>
-
-      <div id="adminListView" hidden>
-        <div class="admin-toolbar">
-          <button type="button" class="admin-row-btn" id="adminBackBtn">&larr; Back</button>
-          <h2 class="recent-title">Manage Entries</h2>
-          <div class="admin-toolbar-actions">
-            <button type="button" class="admin-row-btn" id="adminPublishBtn">Publish</button>
-            <button type="button" class="admin-row-btn" id="adminGridToggleBtn" aria-pressed="false">Grid view</button>
-            <button type="button" class="admin-row-btn" id="adminBulkBtn">Bulk Import</button>
-            <button type="button" class="admin-row-btn" id="adminAddBtn">+ Add Entry</button>
-          </div>
-        </div>
-        <input type="search" id="adminSearchInput" class="admin-search" placeholder="Search artist, song, director, country, genre, credits…">
-        <p class="admin-status" id="adminStatus" hidden></p>
-        <p class="admin-grid-hint" id="adminGridHint" hidden>Editing here saves straight to the database as you go, but the live site won't show your changes until you hit <strong>Publish</strong> above -- edit as many rows as you like, then publish once at the end.</p>
-        <div class="admin-entries-list" id="adminEntriesList"></div>
-        <div class="admin-grid-wrap" id="adminGridWrap" hidden>
-          <div class="admin-grid-pager" id="adminGridPager">
-            <button type="button" class="admin-row-btn" id="adminGridPrevBtn">&larr; Prev</button>
-            <span class="admin-grid-pager-label" id="adminGridPagerLabel"></span>
-            <button type="button" class="admin-row-btn" id="adminGridNextBtn">Next &rarr;</button>
-          </div>
-          <table class="admin-grid" id="adminGridTable"></table>
-        </div>
       </div>
 
       <form class="admin-form submit-form" id="adminForm" hidden>
@@ -1458,6 +1434,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.16.0"></script>
+<script src="app.js?v=6.17.0"></script>
 </body>
 </html>
