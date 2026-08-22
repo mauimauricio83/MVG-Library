@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.9.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6471,6 +6471,7 @@
     if (videoRef) {
       var rowNumAtOpen = row.rowNum;
       var fallbackUrl = row.youtube || row.vimeo;
+      setupLightboxScrollPip();
       createVideoPlayer("lightboxPlayerTarget", videoRef, {
         autoplay: loadAutoplayPref(),
         controls: true,
@@ -6487,6 +6488,7 @@
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     hideCardPreviewPopup();
+    teardownLightboxScrollPip();
     destroyLightboxPlayer();
     destroyProfileLightboxMap();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
@@ -6499,6 +6501,182 @@
     state.lightboxProfileUid = null;
     document.title = DEFAULT_TITLE;
     unlockBodyScroll();
+  }
+
+  // ---- Lightbox video mini player (PIP) --------------------------------
+  // Two ways in, both keeping the live YT/Vimeo iframe playing uninterrupted
+  // instead of destroying and recreating it (which would restart the video):
+  //  1. Scrolling the video out of view while the lightbox stays open (long
+  //     descriptions/comments make this inevitable) -- pure CSS, the frame
+  //     just gets pinned via position:fixed without moving in the DOM,
+  //     since its ancestors (the still-open lightbox) stay visible the
+  //     whole time. Scrolling back up un-PIPs it automatically.
+  //  2. Clicking the backdrop -- a common misclick, and the one case where
+  //     "closing" used to kill playback by accident. The modal itself still
+  //     closes back to normal browsing, but the frame is reparented out to
+  //     a small floating player over the whole site instead of being torn
+  //     down, with its own explicit close (X) as the deliberate way to
+  //     actually stop it. Clicking the floating player reopens the full
+  //     lightbox (a fresh reload of the embed, not a seamless resume --
+  //     acceptable since the whole point was just not losing playback while
+  //     it sits there floating).
+  var lightboxPipHost = null;
+  var lightboxPipDetached = false;
+  var lightboxPipScrollHandler = null;
+
+  function getLightboxPipHost() {
+    if (!lightboxPipHost) {
+      lightboxPipHost = document.createElement("div");
+      lightboxPipHost.className = "lightbox-pip-host";
+      lightboxPipHost.hidden = true;
+      document.body.appendChild(lightboxPipHost);
+      lightboxPipHost.addEventListener("click", function (e) {
+        if (e.target.closest(".lightbox-pip-close")) return; // handled by the button's own listener
+        reopenLightboxFromPip();
+      });
+    }
+    return lightboxPipHost;
+  }
+
+  // The close (X) and reopen affordances are real buttons layered over the
+  // iframe rather than relying on clicks landing on the frame body itself --
+  // a cross-origin YouTube/Vimeo iframe absorbs clicks on its own content,
+  // so our own listeners would never see them there.
+  function ensureLightboxPipControls(frame) {
+    if (!frame.querySelector(".lightbox-pip-close")) {
+      var closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "lightbox-pip-close";
+      closeBtn.setAttribute("aria-label", "Close mini player");
+      closeBtn.innerHTML = "&times;";
+      closeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        closeLightboxPip();
+      });
+      frame.appendChild(closeBtn);
+    }
+    if (!frame.querySelector(".lightbox-pip-reopen")) {
+      var reopenBtn = document.createElement("button");
+      reopenBtn.type = "button";
+      reopenBtn.className = "lightbox-pip-reopen";
+      reopenBtn.setAttribute("aria-label", "Reopen full player");
+      reopenBtn.textContent = "⤢";
+      reopenBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        reopenLightboxFromPip();
+      });
+      frame.appendChild(reopenBtn);
+    }
+  }
+
+  function enterLightboxScrollPip() {
+    if (lightboxPipDetached) return; // already floating for a different reason
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (!frame || frame.classList.contains("is-pip")) return;
+    ensureLightboxPipControls(frame);
+    frame.classList.add("is-pip");
+  }
+
+  function exitLightboxScrollPip() {
+    if (lightboxPipDetached) return;
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (frame) frame.classList.remove("is-pip");
+  }
+
+  // Set up once per openLightbox() call, watching the lightbox panel's own
+  // scroll (not the page's). Deliberately a plain scroll listener rather
+  // than an IntersectionObserver on the frame itself -- once .is-pip makes
+  // the frame position:fixed, it's taken out of normal flow entirely, so it
+  // stops moving relative to the panel on scroll at all, and an observer
+  // watching it would never see it "come back into view" on scrolling back
+  // up. The frame's normal in-flow height is captured once here, before it
+  // can ever go fixed, and used as a fixed scroll-distance threshold in
+  // both directions instead.
+  function setupLightboxScrollPip() {
+    teardownLightboxScrollPip();
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (!frame) return;
+    var threshold = frame.offsetHeight;
+    lightboxPipScrollHandler = function () {
+      if (lightboxPipDetached) return;
+      if (els.lightboxPanel.scrollTop > threshold) enterLightboxScrollPip();
+      else exitLightboxScrollPip();
+    };
+    els.lightboxPanel.addEventListener("scroll", lightboxPipScrollHandler);
+  }
+
+  function teardownLightboxScrollPip() {
+    if (lightboxPipScrollHandler) {
+      els.lightboxPanel.removeEventListener("scroll", lightboxPipScrollHandler);
+      lightboxPipScrollHandler = null;
+    }
+  }
+
+  function enterLightboxDetachedPip() {
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (!frame) return false;
+    teardownLightboxScrollPip();
+    frame.classList.remove("is-pip");
+    var host = getLightboxPipHost();
+    host.appendChild(frame);
+    ensureLightboxPipControls(frame);
+    frame.classList.add("is-pip", "is-pip-detached");
+    host.hidden = false;
+    lightboxPipDetached = true;
+    return true;
+  }
+
+  // Clicking the backdrop while a video is playing -- treated as a likely
+  // misclick rather than a deliberate close, so the video keeps playing as
+  // a floating mini player instead of being cut off. Everything closeLightbox()
+  // would normally tear down still gets torn down here EXCEPT the player
+  // itself and the row/title state it depends on -- those stay live until
+  // the mini player's own close (X) is clicked.
+  function softCloseLightboxToPip() {
+    if (els.lightbox.hidden) return;
+    if (!state.lightboxRowNum || !state.lightboxPlayer) { dismissTopModal(); return; }
+    enterLightboxDetachedPip();
+    hideCardPreviewPopup();
+    if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
+    if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
+    els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
+    els.lightbox.hidden = true;
+    hideLightboxReportMenu();
+    unlockBodyScroll();
+    // Pops the history entry pushModalHistory() pushed when this lightbox
+    // opened, same as a normal close -- closeLightbox() itself no-ops when
+    // this cascades into it, since els.lightbox.hidden is already true above.
+    dismissTopModal();
+  }
+
+  function closeLightboxPip() {
+    var frame = document.getElementById("lightboxVideoFrame");
+    var wasDetached = lightboxPipDetached;
+    lightboxPipDetached = false;
+    teardownLightboxScrollPip();
+    if (lightboxPipHost) lightboxPipHost.hidden = true;
+    if (wasDetached) {
+      destroyLightboxPlayer();
+      if (frame) frame.remove();
+      state.lightboxRowNum = null;
+      state.lightboxProfileUid = null;
+      document.title = DEFAULT_TITLE;
+    } else {
+      // Still embedded in an open lightbox (the scroll-triggered flavor) --
+      // closing the mini player here means closing the whole lightbox, not
+      // just un-PIPing it back to its normal spot.
+      dismissTopModal();
+    }
+  }
+
+  function reopenLightboxFromPip() {
+    if (!lightboxPipDetached) return;
+    var row = findRowByNum(state.lightboxRowNum);
+    lightboxPipDetached = false;
+    if (lightboxPipHost) lightboxPipHost.hidden = true;
+    var frame = document.getElementById("lightboxVideoFrame");
+    if (frame) frame.remove(); // openLightbox() below builds its own fresh frame/player
+    if (row) openLightbox(row);
   }
 
   // Genres requested/expected but not yet tagged on any existing entry --
@@ -10962,6 +11140,55 @@
     return lines;
   }
 
+  // Same greedy word-wrap as wrapCanvasLines, but honors the author's own
+  // line/paragraph breaks instead of flattening the whole text into one
+  // continuous flow -- Flavor Text Override only (see renderTradingCard),
+  // since that's typed by an admin deliberately formatting flavor text,
+  // where regular Description is closer to free-form prose that a stray
+  // Enter shouldn't visibly restructure.
+  function wrapCanvasLinesWithBreaks(ctx, text, maxWidth, maxLines) {
+    function wrapOne(t) {
+      var words = t.split(/\s+/).filter(Boolean);
+      var lines = [];
+      var line = "";
+      for (var i = 0; i < words.length; i++) {
+        var test = line ? line + " " + words[i] : words[i];
+        if (line && ctx.measureText(test).width > maxWidth) {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    var paragraphs = text.replace(/\r\n?/g, "\n").split(/\n{2,}/);
+    var allLines = [];
+    paragraphs.forEach(function (para, pIdx) {
+      if (pIdx > 0) allLines.push(""); // blank row between paragraphs
+      para.split(/\n/).forEach(function (lineText) {
+        if (lineText.trim() === "") { allLines.push(""); return; }
+        allLines = allLines.concat(wrapOne(lineText));
+      });
+    });
+
+    if (allLines.length <= maxLines) return allLines;
+
+    var shown = allLines.slice(0, maxLines);
+    var lastIdx = shown.length - 1;
+    while (lastIdx >= 0 && shown[lastIdx] === "") lastIdx--;
+    if (lastIdx >= 0) {
+      var last = shown[lastIdx];
+      while (last.length > 1 && ctx.measureText(last + "…").width > maxWidth) {
+        last = last.slice(0, -1);
+      }
+      shown[lastIdx] = last.replace(/\s+$/, "") + "…";
+    }
+    return shown;
+  }
+
   // Flips "Surname, Given name" back to natural reading order for display
   // -- site data has director sometimes entered surname-first (inconsistent
   // with the majority, which are already "Given Surname"). Only fires when
@@ -11179,12 +11406,18 @@
       // Flavor Text Override wins over the regular Description here, and
       // only here -- everywhere else on the site (search, list cards, the
       // lightbox) still shows the real Description untouched.
+      var hasFTO = !!row.flavorTextOverride;
       var cardFlavorText = row.flavorTextOverride || row.description;
       var usingDescription = !!cardFlavorText;
       var maxTextLines = Math.max(1, Math.floor(textAreaH / lineH));
       if (usingDescription) {
         ctx.font = "italic " + cardPx(22) + "px Georgia, serif";
-        textLines = wrapCanvasLines(ctx, cardFlavorText, boxInnerW, maxTextLines);
+        // Only FTO's own manual line/paragraph breaks are honored -- regular
+        // Description stays free-flowing prose (a stray Enter in there
+        // shouldn't visibly restructure the card).
+        textLines = hasFTO
+          ? wrapCanvasLinesWithBreaks(ctx, cardFlavorText, boxInnerW, maxTextLines)
+          : wrapCanvasLines(ctx, cardFlavorText, boxInnerW, maxTextLines);
       } else {
         ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines = cardFactLines(row).slice(0, maxTextLines).map(function (t) { return truncateToWidth(ctx, t, boxInnerW); });
@@ -11961,7 +12194,14 @@
 
   els.lightbox.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
-      dismissTopModal();
+      // A backdrop click is a likely misclick (the X button is a deliberate,
+      // targeted action either way) -- for a video that's actually playing,
+      // soften it into a floating mini player instead of killing playback.
+      if (e.target.closest(".lightbox-backdrop") && state.lightboxRowNum && state.lightboxPlayer) {
+        softCloseLightboxToPip();
+      } else {
+        dismissTopModal();
+      }
       return;
     }
     if (e.target.closest(".lightbox-widen-btn")) {

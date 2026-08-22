@@ -4663,6 +4663,76 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.88rem;
 }
 
+/* Mini player (PIP) -- see setupLightboxScrollPip()/softCloseLightboxToPip()
+   in app.js. .lightbox-video-frame's own padding-top:56.25% aspect-ratio
+   trick resolves against the CONTAINING BLOCK's width, not the element's
+   own -- fine in normal flow (where those happen to match), but once
+   position:fixed switches the containing block to the viewport, that
+   percentage would compute against viewport width instead of this 320px
+   box (hugely oversized). aspect-ratio replaces it here instead. */
+.lightbox-video-frame.is-pip {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding-top: 0;
+  aspect-ratio: 16 / 9;
+  z-index: 1250;
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+.lightbox-pip-close,
+.lightbox-pip-reopen {
+  position: absolute;
+  top: 6px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-video-frame:not(.is-pip) .lightbox-pip-close,
+.lightbox-video-frame:not(.is-pip) .lightbox-pip-reopen {
+  display: none;
+}
+
+.lightbox-pip-close {
+  right: 6px;
+}
+
+.lightbox-pip-reopen {
+  left: 6px;
+  font-size: 0.9rem;
+}
+
+/* Only the scroll-triggered flavor (still embedded, no reopen affordance
+   needed -- scrolling back up is the return path) hides the reopen button;
+   the detached flavor (floating over a closed lightbox) shows both. */
+.lightbox-video-frame.is-pip:not(.is-pip-detached) .lightbox-pip-reopen {
+  display: none;
+}
+
+.lightbox-pip-close:hover,
+.lightbox-pip-reopen:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.lightbox-pip-host {
+  pointer-events: none;
+}
+
+.lightbox-pip-host .lightbox-video-frame {
+  pointer-events: auto;
+}
+
 .lightbox-fallback-link {
   display: inline-block;
   margin-top: 12px;

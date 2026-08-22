@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.10.0 — current
+- Video lightbox now has a YouTube-style mini player (PIP), two ways in: scrolling the video out of view within the lightbox (inevitable on long descriptions/comments) pins it to the bottom-right corner while the rest of the lightbox stays open, un-pinning automatically on scrolling back up; clicking the backdrop (a common misclick) now softens into the same floating mini player instead of stopping playback outright -- the lightbox itself closes back to normal browsing, but the video keeps playing on top of the page with its own explicit close (X), and clicking the mini player reopens the full lightbox. The deliberate close (X) button on the lightbox itself is unchanged -- still a real, full close.
+- Trading card flavor text now honors manual line and paragraph breaks, but only when it's coming from Flavor Text Override -- regular Description still flows as continuous prose regardless of any stray Enter in it.
+
 ## v6.9.3 — current
 - Renamed the "Flavor Text Override (FTO)" option in Suggest an edit's field dropdown to "Card Text Override" -- clearer for visitors who don't know the FTO shorthand. The underlying field name (flavorTextOverride) and every other label for it are unchanged.
 
