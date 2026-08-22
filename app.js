@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.11.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6833,7 +6833,7 @@
   // (buildGenreOptions()) intentionally does NOT get these -- it's a
   // browse-by-count list, so an option with zero matching entries there
   // would just be a dead end.
-  var SUBMIT_GENRE_EXTRAS = ["Trip-Hop"];
+  var SUBMIT_GENRE_EXTRAS = ["Trip-Hop", "OPM"];
 
   // Populated once real data loads -- same live-derived, always-current
   // lists the filter dropdowns use, so there's no separate static list to
@@ -11393,6 +11393,24 @@
     ctx.fill();
   }
 
+  // OPM cards' title/type bars are solid yellow instead of a scrim -- see
+  // OPM_* constants and isOPM in renderTradingCard().
+  function drawCardSolidBar(ctx, x, y, w, h, color, radius) {
+    roundRectPath(ctx, x, y, w, h, radius == null ? 10 : radius);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // OPM (Original Pilipino Music) gets its own card theme referencing the
+  // Philippine flag instead of the usual hashed genre color -- red/blue
+  // split background with a white triangle at top, yellow title/type bars,
+  // and a white facts box with dark text (the one place cards use dark
+  // text on a light fill instead of light text on a dark one).
+  var OPM_RED = "#CE1126";
+  var OPM_BLUE = "#0038A8";
+  var OPM_YELLOW = "#FCD116";
+  var OPM_TEXT = "#1A1A1A";
+
   // Cover-fit crop (like CSS background-size: cover) -- scales the image up
   // just enough to fill the target box on its shorter axis, then centers
   // and lets the longer axis overflow, so the box is always fully covered
@@ -11437,8 +11455,9 @@
 
   function renderTradingCard(row) {
     var genres = row.genres || [];
-    var borderColors = [genreCardColor(genres[0])];
-    if (genres[1]) borderColors.push(genreCardColor(genres[1]));
+    var isOPM = genres.some(function (g) { return String(g).trim().toLowerCase() === "opm"; });
+    var borderColors = isOPM ? [OPM_BLUE] : [genreCardColor(genres[0])];
+    if (!isOPM && genres[1]) borderColors.push(genreCardColor(genres[1]));
     var accentDark = darkenColor(borderColors[0], 0.45);
 
     var flagIsoCode = row.country ? countryIsoCode(normalizeCountry(row.country)) : "";
@@ -11457,16 +11476,30 @@
       roundRectPath(ctx, 0, 0, CARD_W, CARD_H, cardPx(36));
       ctx.save();
       ctx.clip();
-      ctx.fillStyle = cardVerticalGradient(ctx, borderColors[0]);
-      ctx.fillRect(0, 0, CARD_W, CARD_H);
-      if (borderColors[1]) {
+      if (isOPM) {
+        ctx.fillStyle = OPM_RED;
+        ctx.fillRect(0, 0, CARD_W / 2, CARD_H);
+        ctx.fillStyle = OPM_BLUE;
+        ctx.fillRect(CARD_W / 2, 0, CARD_W / 2, CARD_H);
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(CARD_W, 0);
-        ctx.lineTo(CARD_W, CARD_H);
+        ctx.lineTo(CARD_W / 2, CARD_H * 0.16);
         ctx.closePath();
-        ctx.fillStyle = cardVerticalGradient(ctx, borderColors[1]);
+        ctx.fillStyle = "#FFFFFF";
         ctx.fill();
+      } else {
+        ctx.fillStyle = cardVerticalGradient(ctx, borderColors[0]);
+        ctx.fillRect(0, 0, CARD_W, CARD_H);
+        if (borderColors[1]) {
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(CARD_W, 0);
+          ctx.lineTo(CARD_W, CARD_H);
+          ctx.closePath();
+          ctx.fillStyle = cardVerticalGradient(ctx, borderColors[1]);
+          ctx.fill();
+        }
       }
       ctx.restore();
 
@@ -11506,14 +11539,15 @@
       var cursorY = panelY + pad;
 
       var titleBarH = cardPx(64);
-      drawCardScrimBar(ctx, contentX, cursorY, contentW, titleBarH);
+      if (isOPM) drawCardSolidBar(ctx, contentX, cursorY, contentW, titleBarH, OPM_YELLOW);
+      else drawCardScrimBar(ctx, contentX, cursorY, contentW, titleBarH);
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
       ctx.textBaseline = "middle";
       var titleBarMidY = cursorY + titleBarH / 2;
       ctx.font = "600 " + cardPx(30) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#F7F3E8";
+      ctx.fillStyle = isOPM ? OPM_TEXT : "#F7F3E8";
       var artistText = row.artist || "";
       ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       var artistMaxW = contentW * 0.4;
@@ -11526,7 +11560,7 @@
       ctx.fillText(titleText, contentX + cardPx(16), titleBarMidY);
       if (artistText) {
         ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "rgba(247,243,232,0.72)";
+        ctx.fillStyle = isOPM ? "rgba(26,26,26,0.72)" : "rgba(247,243,232,0.72)";
         ctx.textAlign = "right";
         ctx.fillText(artistText, contentX + contentW - cardPx(16), titleBarMidY);
       }
@@ -11545,12 +11579,13 @@
       cursorY += artH + cardPx(14);
 
       var typeBarH = cardPx(48);
-      drawCardScrimBar(ctx, contentX, cursorY, contentW, typeBarH);
+      if (isOPM) drawCardSolidBar(ctx, contentX, cursorY, contentW, typeBarH, OPM_YELLOW);
+      else drawCardScrimBar(ctx, contentX, cursorY, contentW, typeBarH);
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
       ctx.font = "600 " + cardPx(22) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#F7F3E8";
+      ctx.fillStyle = isOPM ? OPM_TEXT : "#F7F3E8";
       var typeLineMidY = cursorY + typeBarH / 2;
       var flagDrawW = 0;
       if (flagImg) {
@@ -11577,7 +11612,7 @@
       var boxY = cursorY;
       var boxH = panelY + panelH - pad - bottomReserve - cursorY;
       roundRectPath(ctx, contentX, boxY, contentW, boxH, cardPx(10));
-      ctx.fillStyle = "rgba(10,8,6,0.2)";
+      ctx.fillStyle = isOPM ? "#FFFFFF" : "rgba(10,8,6,0.2)";
       ctx.fill();
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
@@ -11637,7 +11672,7 @@
           ctx.strokeStyle = darkenColor(pillColor, 0.45);
           ctx.lineWidth = cardPx(1);
           ctx.stroke();
-          ctx.fillStyle = "#F7F3E8";
+          ctx.fillStyle = isOPM ? OPM_TEXT : "#F7F3E8";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.font = cardPx(17) + "px -apple-system, BlinkMacSystemFont, sans-serif";
@@ -11650,7 +11685,9 @@
         var textBlockY = textAreaY + (textAreaH - textLines.length * lineH) / 2;
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = usingDescription ? "rgba(247,243,232,0.92)" : "rgba(247,243,232,0.8)";
+        ctx.fillStyle = isOPM
+          ? (usingDescription ? "rgba(26,26,26,0.92)" : "rgba(26,26,26,0.8)")
+          : (usingDescription ? "rgba(247,243,232,0.92)" : "rgba(247,243,232,0.8)");
         ctx.font = usingDescription ? "italic " + cardPx(22) + "px Georgia, serif" : cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines.forEach(function (line, i) {
           ctx.fillText(line, contentX + boxPad, textBlockY + cardPx(19) + i * lineH);

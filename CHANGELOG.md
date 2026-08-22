@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.12.0 — current
+- Added "OPM" as a selectable genre (submission form, admin form's quick-fill dropdown). Trading cards tagged with it get their own Philippine-flag-inspired theme instead of the usual hashed genre color: red left / blue right / white triangle up top on the outer border, solid yellow title and "Directed by" bars, and a white facts/description box with black text -- the one place cards use dark text on a light fill instead of the usual light-on-dark.
+
 ## v6.11.0 — current
 - Trading card country flag switched from a Unicode flag emoji to an actual flag image (via flagcdn, cached per country code) -- Windows' default emoji font doesn't include flags at all, so the emoji version was rendering as plain two-letter text ("PH") for the large majority of visitors instead of a flag.
 - Grid view (Admin → Manage Entries) gained three more editable columns -- Country, Genres, and YouTube Link -- reachable via the horizontal scroll added a few versions back, which had nothing to actually scroll to until now.
