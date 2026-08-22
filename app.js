@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.12.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.12.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11505,17 +11505,22 @@
 
       var panelX = CARD_BORDER, panelY = CARD_BORDER;
       var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
-      var panelDark = "rgba(247,243,232,0.35)";
+      var panelDark = isOPM ? "rgba(26,26,26,0.35)" : "rgba(247,243,232,0.35)";
       roundRectPath(ctx, panelX, panelY, panelW, panelH, cardPx(24));
 
-      // Panel background is the video's own cover art, cropped to fill,
-      // blurred/darkened/desaturated so it reads as texture rather than a
-      // competing image, then washed with the genre color so it still ties
-      // into the border. Falls back to a flat dark tint (no blur needed --
-      // there's nothing to blur) when there's no thumbnail to work with.
+      // Panel background is normally the video's own cover art, cropped to
+      // fill, blurred/darkened/desaturated so it reads as texture rather
+      // than a competing image, then washed with the genre color so it
+      // ties into the border -- but that would leave a blue-tinted photo
+      // showing through the gaps around OPM's clean red/blue/yellow/white
+      // theme, so OPM gets a flat white panel instead (no blur needed --
+      // also the fallback for anything with no thumbnail to work with).
       ctx.save();
       ctx.clip();
-      if (thumbImg) {
+      if (isOPM) {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+      } else if (thumbImg) {
         ctx.filter = "blur(" + cardPx(24) + "px) saturate(35%) brightness(55%)";
         drawCoverFitImage(ctx, thumbImg, panelX, panelY, panelW, panelH, 1.15);
         ctx.filter = "none";
@@ -11706,7 +11711,7 @@
 
       var bottomY = panelY + panelH - pad;
       ctx.font = cardPx(18) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "rgba(247,243,232,0.6)";
+      ctx.fillStyle = isOPM ? "rgba(26,26,26,0.6)" : "rgba(247,243,232,0.6)";
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       var metaText = [row.category, row.year].filter(Boolean).join(" · ");

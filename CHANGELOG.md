@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.12.1 — current
+- OPM cards' panel background is now flat white instead of the usual blurred/tinted cover art -- left as blurred art it was showing a blue-tinted photo through the gaps around the flag theme's yellow bars and white box, undercutting the clean look. The bottom meta text (category/year) also switched to dark, since it sits directly on that now-white background.
+
 ## v6.12.0 — current
 - Added "OPM" as a selectable genre (submission form, admin form's quick-fill dropdown). Trading cards tagged with it get their own Philippine-flag-inspired theme instead of the usual hashed genre color: red left / blue right / white triangle up top on the outer border, solid yellow title and "Directed by" bars, and a white facts/description box with black text -- the one place cards use dark text on a light fill instead of the usual light-on-dark.
 
