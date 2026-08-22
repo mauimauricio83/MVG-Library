@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.8.2 — current
+- Fixed Grid view sometimes rendering underneath/alongside the regular Manage Entries list instead of replacing it. Root cause: `.admin-entries-list`'s own `display: flex` and the browser's built-in `[hidden] { display: none }` rule have equal CSS specificity, so as the later-loaded rule in the stylesheet, `display: flex` was winning the tie -- meaning `adminEntriesList.hidden = true` was silently doing nothing, and the ~13k-row list kept rendering (very slow) with Grid view drawn wherever it landed relative to it. Added the standard `[hidden]` override this codebase already uses elsewhere for the same reason.
+
 ## v6.8.1 — current
 - Grid view column tightening: text/select cells now size to a fixed comfortable width instead of stretching evenly to fill the panel, which was leaving a lot of empty space in narrow columns like Category and Year. The table itself no longer forces its width to match the panel, so once there are more columns than fit, the grid now scrolls horizontally instead of squeezing every column down to fit -- also added an Editor column past the checkboxes as the first thing reachable by that scroll.
 

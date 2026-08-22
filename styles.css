@@ -5122,6 +5122,14 @@ body.is-searching #viewersChoiceSection {
   gap: 4px;
 }
 
+/* [hidden] and .admin-entries-list are equal-specificity selectors, so
+   without this the class's own `display: flex` (loaded after the browser's
+   UA stylesheet) wins the tie and overrides [hidden]'s `display: none` --
+   setting .hidden = true on this element would silently do nothing. */
+.admin-entries-list[hidden] {
+  display: none;
+}
+
 .admin-empty {
   color: var(--text-muted);
   font-size: 0.9rem;
