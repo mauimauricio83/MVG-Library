@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.14.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.14.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11724,10 +11724,14 @@
         // big, faint, centered watermark instead of an empty box.
         if (logoImg) {
           var wmSize = Math.min(boxInnerW, boxH - boxPad * 2) * 0.8;
+          var wmCy = boxY + boxH / 2;
           ctx.save();
+          ctx.beginPath();
+          ctx.arc(boxCenterX, wmCy, wmSize / 2, 0, Math.PI * 2);
+          ctx.clip();
           ctx.globalAlpha = 0.14;
           ctx.filter = "saturate(0%)";
-          ctx.drawImage(logoImg, boxCenterX - wmSize / 2, boxY + boxH / 2 - wmSize / 2, wmSize, wmSize);
+          ctx.drawImage(logoImg, boxCenterX - wmSize / 2, wmCy - wmSize / 2, wmSize, wmSize);
           ctx.restore();
         }
       }

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.14.2 — current
+- Fixed the trading card's blank-box MVG watermark rendering as a square -- it now gets the same circular clip as the small logo badge in the footer.
+
 ## v6.14.1 — current
 - Trading card facts box no longer shows country as a lone text line -- it's redundant with the flag badge already shown in the "Directed by" bar. An entry with a country but no description, flavor text override, or other credits now falls through to the blank-box state (faint desaturated MVG watermark) instead of a sparse single line.
 
