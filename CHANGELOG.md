@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.15.3 — current
+- Weekly Intake: search now sorts by relevance instead of upload date. "Music video" is generic enough that new matching uploads (a lot of them noise) land every few minutes, so a strict date sort buried real candidates from a few days back under the last several hours -- confirmed this against a real report of videos showing up on youtube.com's own search but not here. Relevance still respects the days-back window as a hard cutoff, it just ranks within it instead of by recency, matching how youtube.com's own search behaves by default. This can't fully close the gap though -- the public API's ranking is a cruder text/tag index than the signals (personalization, channel authority, etc.) the actual youtube.com search box uses, so some videos it surfaces still won't show up here.
+
 ## v6.15.2 — current
 - Weekly Intake: the status line now says exactly how many results were fetched vs. shown vs. hidden (already-in-catalog / Shorts) -- "50 found, only 10 shown" wasn't a bug, it was heavy default filtering with no explanation. Added a "Load 50 more" button (paginates via the API's nextPageToken) for when the visible pile is thin, since a generic term like "music video" is dominated by Shorts/dupes and order=date + a 50-per-page cap means widening the day range alone often doesn't surface more. Also added a "Cover art" button per result that downloads the video's hi-res (maxresdefault, falling back to lower sizes when unavailable) thumbnail.
 

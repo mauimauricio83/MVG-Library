@@ -103,8 +103,19 @@
     });
   }
 
+  // order=relevance, not date -- "music video" is generic enough that new
+  // matching uploads (a lot of them spam/hashtag noise) land every few
+  // minutes, so sorting strictly by date buried real candidates from a
+  // few days back under the last several hours of noise. Relevance still
+  // respects publishedAfter as a hard cutoff, just ranks within it instead
+  // of by recency -- closer to how youtube.com's own search behaves when
+  // filtered by upload date (it defaults to relevance sort too). Even so,
+  // this can't fully match youtube.com's own search results: the public
+  // API's relevance ranking is a cruder text/tag index than the signals
+  // (personalization, channel authority, etc.) the website's search uses,
+  // so some real videos that the site surfaces just won't show up here.
   function ytSearchList(publishedAfter, pageToken) {
-    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date&maxResults=50" +
+    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=relevance&maxResults=50" +
       "&q=" + encodeURIComponent("music video") +
       "&publishedAfter=" + encodeURIComponent(publishedAfter) +
       "&key=" + encodeURIComponent(YOUTUBE_API_KEY) +
