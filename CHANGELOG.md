@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.14.1 — current
+- Trading card facts box no longer shows country as a lone text line -- it's redundant with the flag badge already shown in the "Directed by" bar. An entry with a country but no description, flavor text override, or other credits now falls through to the blank-box state (faint desaturated MVG watermark) instead of a sparse single line.
+
 ## v6.14.0 — current
 - Manage Entries search broadened way beyond artist/song/director -- now also matches row number, category, editor, country (both the raw stored value like "SE" and its resolved full name like "Sweden", so either one finds the entry), genres, studio, producer, DP, choreographer, YouTube/Vimeo/MVG links, description, and flavor text override. Applies to both List and Grid view since they share the same filter.
 

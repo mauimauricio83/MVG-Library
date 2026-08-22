@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.14.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11455,13 +11455,16 @@
 
   // Facts to fall back on when a video has no description (most don't) --
   // everything creditsHtml() shows except Director (already the type line)
-  // and release date/year (already in the footer). Deliberately NOT run
-  // through displayName(): unlike director, these fields sometimes hold a
-  // comma-separated list of several people (e.g. two producers) rather
-  // than one surname-first name, and flipping would mangle a list.
+  // and release date/year (already in the footer). Country is deliberately
+  // excluded -- it already shows as the flag badge in the type bar, so
+  // repeating it here would be redundant, and an entry whose only fact is
+  // its country should fall through to the blank-box watermark instead of
+  // showing a lone text line. Deliberately NOT run through displayName():
+  // unlike director, these fields sometimes hold a comma-separated list of
+  // several people (e.g. two producers) rather than one surname-first
+  // name, and flipping would mangle a list.
   function cardFactLines(row) {
     var lines = [];
-    if (row.country) lines.push(normalizeCountry(row.country));
     if (row.studio) lines.push(row.studio);
     if (row.producer) lines.push("Produced by " + row.producer);
     if (row.dp) lines.push("DP: " + row.dp);
@@ -11723,6 +11726,7 @@
           var wmSize = Math.min(boxInnerW, boxH - boxPad * 2) * 0.8;
           ctx.save();
           ctx.globalAlpha = 0.14;
+          ctx.filter = "saturate(0%)";
           ctx.drawImage(logoImg, boxCenterX - wmSize / 2, boxY + boxH / 2 - wmSize / 2, wmSize, wmSize);
           ctx.restore();
         }
