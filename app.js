@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.10.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.10.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1193,6 +1193,25 @@
     if (COUNTRY_NAME_SET[lower]) return COUNTRY_NAME_SET[lower];
     if (COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
     return v; // unrecognized — show whatever's there rather than hide it
+  }
+
+  var COUNTRY_NAME_TO_CODE = (function () {
+    var map = {};
+    Object.keys(COUNTRY_CODE_TO_NAME).forEach(function (code) {
+      map[COUNTRY_CODE_TO_NAME[code]] = code;
+    });
+    return map;
+  })();
+
+  // Flag emoji is just the two Regional Indicator Symbol characters for the
+  // ISO code, at U+1F1E6 + (A=0..Z=25) each -- no image asset needed, the OS/
+  // browser's own emoji font renders the pair as a single flag glyph. Silently
+  // empty for anything not in COUNTRY_CODE_TO_NAME (Kosovo's "XK" isn't a
+  // real ISO code and has no flag glyph in most fonts, for instance).
+  function countryFlagEmoji(countryName) {
+    var code = COUNTRY_NAME_TO_CODE[countryName];
+    if (!code || code.length !== 2) return "";
+    return String.fromCodePoint(0x1F1E6 + (code.charCodeAt(0) - 65), 0x1F1E6 + (code.charCodeAt(1) - 65));
   }
 
   function escapeHtml(str) {
@@ -11504,9 +11523,18 @@
       ctx.stroke();
       ctx.font = "600 " + cardPx(22) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#F7F3E8";
+      var typeLineMidY = cursorY + typeBarH / 2;
+      var flagEmoji = row.country ? countryFlagEmoji(normalizeCountry(row.country)) : "";
+      var flagW = 0;
+      if (flagEmoji) {
+        flagW = ctx.measureText(flagEmoji).width;
+        ctx.textAlign = "right";
+        ctx.fillText(flagEmoji, contentX + contentW - cardPx(16), typeLineMidY);
+      }
       ctx.textAlign = "left";
       var typeLineText = row.director ? "Directed by " + displayName(row.director) : (row.category || "Music Video");
-      ctx.fillText(truncateToWidth(ctx, typeLineText, contentW - cardPx(32)), contentX + cardPx(16), cursorY + typeBarH / 2);
+      var typeLineMaxW = contentW - cardPx(32) - (flagEmoji ? flagW + cardPx(12) : 0);
+      ctx.fillText(truncateToWidth(ctx, typeLineText, typeLineMaxW), contentX + cardPx(16), typeLineMidY);
       cursorY += typeBarH + cardPx(14);
 
       var bottomReserve = cardPx(56);

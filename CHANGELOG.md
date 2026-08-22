@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.10.2 — current
+- Trading cards now show the entry's country as a flag emoji, middle-right in the "Directed by" bar (built from the two-letter ISO code via the existing country name/code data, no image asset needed). Canvas rendering of flag emoji is font-dependent and can fall back to plain letters on systems without full color-emoji support -- unaffected on a normal Windows/Mac browser.
+
 ## v6.10.1 — current
 - Rebuilt the lightbox mini player (PIP, shipped in v6.10.0) around a different architecture after confirming a hard constraint: reparenting a cross-origin YouTube/Vimeo iframe to a new DOM parent reloads it (verified directly against the YouTube IFrame API -- currentTime resets to 0 even with the exact same iframe node and an unchanged src), so the original "move the frame into a floating host on backdrop click" approach was always going to restart playback despite testing clean beforehand. The video frame is now a single permanent document.body-level element, created once per video and never reparented -- while docked it's synced via JS to an inert placeholder's on-screen position instead, so it looks embedded without ever being a real descendant of anything that could hide/rebuild/move it. This also fixes the mini player rendering at the wrong (viewport-derived) height, caused by an unrelated CSS class name collision with the profile lightbox's differently-designed video frame.
 - Added a mute/unmute button to the mini player -- YouTube's own volume control is a hover-flyout that's unusable once the mouse isn't over the speaker icon anymore, which is most of the time at mini-player size.
