@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.13.1 — current
+- Trading card blurred panel background brightened across the board -- standard cards from `brightness(55%) saturate(35%)` to `brightness(70%) saturate(45%)`, OPM cards from `brightness(40%)` to `brightness(60%)` (still fully desaturated). It was reading consistently too dark, muddy on some thumbnails.
+
 ## v6.13.0 — current
 - OPM trading card polish round two: the border's white triangle is now steeper (apex at 42% down instead of 16%), reading much closer to the real flag's proportions; and after a couple of rounds trying to keep the blurred cover art faintly visible behind the facts box (translucent scrim, then a brighter re-rendered "window" under a light wash), both read as murky/dirty rather than clean -- settled back on a plain solid white box with black text, which is what actually reads well against the rest of the card.
 

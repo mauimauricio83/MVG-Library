@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.13.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.13.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11520,8 +11520,8 @@
       ctx.clip();
       if (thumbImg) {
         ctx.filter = isOPM
-          ? "blur(" + cardPx(24) + "px) saturate(0%) brightness(40%)"
-          : "blur(" + cardPx(24) + "px) saturate(35%) brightness(55%)";
+          ? "blur(" + cardPx(24) + "px) saturate(0%) brightness(60%)"
+          : "blur(" + cardPx(24) + "px) saturate(45%) brightness(70%)";
         drawCoverFitImage(ctx, thumbImg, panelX, panelY, panelW, panelH, 1.15);
         ctx.filter = "none";
         if (!isOPM) {
