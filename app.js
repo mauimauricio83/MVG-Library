@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.9.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.9.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6111,6 +6111,7 @@
     { key: "country", label: "Country" },
     { key: "genres", label: "Genres (comma-separated)" },
     { key: "description", label: "Description" },
+    { key: "flavorTextOverride", label: "Flavor Text Override (FTO)" },
     { key: "youtube", label: "YouTube Link" },
     { key: "vimeo", label: "Vimeo Link" },
     { key: "mvg", label: "MVG Link (Instagram Reel)" }
@@ -11943,6 +11944,16 @@
   }
   document.addEventListener("click", function (e) {
     if (!lightboxReportMenuEl || lightboxReportMenuEl.hidden) return;
+    // The menu is appended to document.body (so it can float above the
+    // lightbox/TV modal), not inside #lightbox -- so its own click handling
+    // has to live here rather than in #lightbox's delegated listener, which
+    // never sees clicks on it since it isn't a DOM descendant.
+    var suggestItem = e.target.closest(".lightbox-suggest-edit-item");
+    if (suggestItem) {
+      hideLightboxReportMenu();
+      openSuggestEditModal(suggestItem.getAttribute("data-rownum"));
+      return;
+    }
     if (e.target.closest(".lightbox-report-menu-item")) { hideLightboxReportMenu(); return; }
     if (e.target.closest(".lightbox-report-menu") || e.target.closest(".lightbox-report-menu-btn")) return;
     hideLightboxReportMenu();
@@ -12061,12 +12072,6 @@
       auth.signInWithPopup(googleProvider).catch(function (err) {
         console.error("Sign-in failed:", err);
       });
-      return;
-    }
-    var suggestEditBtn = e.target.closest(".lightbox-suggest-edit-item");
-    if (suggestEditBtn) {
-      hideLightboxReportMenu();
-      openSuggestEditModal(suggestEditBtn.getAttribute("data-rownum"));
       return;
     }
     var commentDeleteBtn = e.target.closest(".comment-delete-btn");
