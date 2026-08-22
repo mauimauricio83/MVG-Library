@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.14.0 — current
+- Manage Entries search broadened way beyond artist/song/director -- now also matches row number, category, editor, country (both the raw stored value like "SE" and its resolved full name like "Sweden", so either one finds the entry), genres, studio, producer, DP, choreographer, YouTube/Vimeo/MVG links, description, and flavor text override. Applies to both List and Grid view since they share the same filter.
+
 ## v6.13.2 — current
 - Fixed 6 country values across 6 entries that weren't resolving to a name/flag anywhere (lightbox credits, trading cards, the country filter): added Hong Kong (HK), Faroe Islands (FO), Martinique (MQ), and British Virgin Islands (VG) to the code→name table, and aliased the literal typo "United Ki" to "United Kingdom" (one entry, #13426, has that exact truncated value stored). Verified against the full live catalog: 11,475 of 11,476 country values now resolve; the one holdout ("XE", entry #8228) isn't a real country code and needs a manual fix in Grid View since it's not clear what it was meant to be. The two-letter-code convention itself (US, GB, PH, etc. -- the vast majority of entries) was already working correctly.
 

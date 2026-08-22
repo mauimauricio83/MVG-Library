@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.13.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.14.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10138,11 +10138,24 @@
     );
   }
 
+  // Country is searchable both as whatever's actually stored (a raw "SE"
+  // code, say) and its normalized full name ("Sweden"), so either one finds
+  // the entry regardless of which convention that particular row happens
+  // to use.
+  function adminSearchHaystack(r) {
+    return [
+      r.rowNum, r.artist, r.song, r.director, r.category, r.editor,
+      r.country, normalizeCountry(r.country), (r.genres || []).join(" "),
+      r.studio, r.producer, r.dp, r.choreographer,
+      r.youtube, r.vimeo, r.mvg, r.description, r.flavorTextOverride
+    ].join(" ").toLowerCase();
+  }
+
   function renderAdminEntries() {
     var query = els.adminSearchInput.value.trim().toLowerCase();
     var rows = state.adminRows.filter(function (r) {
       if (!query) return true;
-      return (r.artist + " " + r.song + " " + r.director).toLowerCase().indexOf(query) !== -1;
+      return adminSearchHaystack(r).indexOf(query) !== -1;
     });
     // Most recently added first, same convention as the Latest strip.
     rows = rows.slice().sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); });
