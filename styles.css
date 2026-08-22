@@ -4663,30 +4663,67 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.88rem;
 }
 
-/* Mini player (PIP) -- see setupLightboxScrollPip()/softCloseLightboxToPip()
-   in app.js. .lightbox-video-frame's own padding-top:56.25% aspect-ratio
-   trick resolves against the CONTAINING BLOCK's width, not the element's
-   own -- fine in normal flow (where those happen to match), but once
-   position:fixed switches the containing block to the viewport, that
-   percentage would compute against viewport width instead of this 320px
-   box (hugely oversized). aspect-ratio replaces it here instead. */
-.lightbox-video-frame.is-pip {
+/* Mini player (PIP) -- see the "Lightbox video mini player" section in
+   app.js. .lightbox-pip-frame is a PERMANENT direct child of
+   document.body (created once per video, never reparented) instead of a
+   normal-flow descendant here -- moving a cross-origin YouTube/Vimeo
+   iframe to a new DOM parent reloads it (confirmed directly against the
+   YouTube IFrame API: currentTime resets to 0 and playback drops to
+   buffering, even with the exact same iframe node and an unchanged src),
+   so continuous playback across scroll-PIP/backdrop-PIP/reopen requires
+   the frame to just stay put and only ever be moved via CSS. While
+   "docked" (the normal state) its position:fixed coordinates are synced
+   in JS to this inert placeholder slot's own on-screen position, so it
+   LOOKS embedded in the lightbox's normal flow without actually being a
+   DOM descendant of anything that could hide/rebuild/move it. */
+.lightbox-video-slot {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+}
+
+/* Deliberately its own class, NOT .lightbox-video-frame -- that class is
+   still used by the profile lightbox's differently-designed embedded reel
+   (normal document flow, sized via the padding-top:56.25% trick), and this
+   element must never inherit any of that. It first shared the name and the
+   leftover padding-top silently added onto this frame's explicit height
+   below, since padding adds to height under content-box sizing rather than
+   being overridden by it. */
+.lightbox-pip-frame {
   position: fixed;
+  z-index: 1001;
+  background: #000;
+  overflow: hidden;
+}
+
+.lightbox-pip-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Explicit height (not aspect-ratio) -- with top/left left auto and only
+   right/bottom/width set, some browsers resolve height:auto here as
+   "stretch to fill the viewport" rather than deriving it from aspect-ratio
+   (confirmed directly: computed height came out matching the viewport, not
+   320px's 16:9). A fixed 180px (320 * 9/16) sidesteps that ambiguity. */
+.lightbox-pip-frame.is-pip {
   right: 16px;
   bottom: 16px;
   width: 320px;
+  height: 180px;
   max-width: calc(100vw - 32px);
-  padding-top: 0;
-  aspect-ratio: 16 / 9;
   z-index: 1250;
   border-radius: 10px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
 }
 
 .lightbox-pip-close,
-.lightbox-pip-reopen {
+.lightbox-pip-reopen,
+.lightbox-pip-mute {
   position: absolute;
-  top: 6px;
   z-index: 2;
   width: 24px;
   height: 24px;
@@ -4699,38 +4736,41 @@ body.is-searching #viewersChoiceSection {
   cursor: pointer;
 }
 
-.lightbox-video-frame:not(.is-pip) .lightbox-pip-close,
-.lightbox-video-frame:not(.is-pip) .lightbox-pip-reopen {
+.lightbox-pip-frame:not(.is-pip) .lightbox-pip-close,
+.lightbox-pip-frame:not(.is-pip) .lightbox-pip-reopen,
+.lightbox-pip-frame:not(.is-pip) .lightbox-pip-mute {
   display: none;
 }
 
 .lightbox-pip-close {
+  top: 6px;
   right: 6px;
 }
 
 .lightbox-pip-reopen {
+  top: 6px;
   left: 6px;
   font-size: 0.9rem;
 }
 
-/* Only the scroll-triggered flavor (still embedded, no reopen affordance
-   needed -- scrolling back up is the return path) hides the reopen button;
-   the detached flavor (floating over a closed lightbox) shows both. */
-.lightbox-video-frame.is-pip:not(.is-pip-detached) .lightbox-pip-reopen {
+.lightbox-pip-mute {
+  bottom: 6px;
+  right: 6px;
+  font-size: 0.85rem;
+}
+
+/* Only the scroll-triggered flavor (still part of an open lightbox, no
+   reopen affordance needed -- scrolling back up is the return path) hides
+   the reopen button; the detached flavor (floating over a closed lightbox)
+   shows all three. */
+.lightbox-pip-frame.is-pip:not(.is-pip-detached) .lightbox-pip-reopen {
   display: none;
 }
 
 .lightbox-pip-close:hover,
-.lightbox-pip-reopen:hover {
+.lightbox-pip-reopen:hover,
+.lightbox-pip-mute:hover {
   background: rgba(0, 0, 0, 0.85);
-}
-
-.lightbox-pip-host {
-  pointer-events: none;
-}
-
-.lightbox-pip-host .lightbox-video-frame {
-  pointer-events: auto;
 }
 
 .lightbox-fallback-link {

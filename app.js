@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.10.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.10.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -3108,6 +3108,11 @@
   function openProfileLightbox(profile) {
     if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
     destroyLightboxPlayer();
+    // A video PIP floating from an earlier lightbox would otherwise be
+    // orphaned here -- state.lightboxPlayer (shared with this profile's own
+    // reel below) is about to point somewhere else, losing any way to
+    // control or close it.
+    destroyLightboxVideoFrame();
     destroyProfileLightboxMap();
     els.spotlightSidebar.classList.add("is-hidden-for-lightbox");
     state.lightboxRowNum = null;
@@ -4180,6 +4185,7 @@
             onReady: function () { if (opts.onReady) opts.onReady(player); },
             onStateChange: function (e) {
               if (opts.onEnded && e.data === YT.PlayerState.ENDED) opts.onEnded();
+              if (opts.onPlay && e.data === YT.PlayerState.PLAYING) opts.onPlay();
             },
             onError: function (e) {
               // 100: video not found/private, 101 & 150: embedding disabled by the owner
@@ -4198,6 +4204,7 @@
         });
         player.on("ended", function () { if (opts.onEnded) opts.onEnded(); });
         player.on("error", function () { if (opts.onError) opts.onError(); });
+        if (opts.onPlay) player.on("play", opts.onPlay);
         if (opts.onReady) opts.onReady(player);
       });
     }
@@ -6357,20 +6364,52 @@
   }
 
   function showLightboxVideoFallback(youtubeUrl) {
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (!frame) return;
-    // replace the whole aspect-ratio-locked frame (not just its contents) since the
-    // fallback message isn't absolutely positioned the way the iframe/player is.
+    destroyLightboxVideoFrame();
+    var slot = document.getElementById("lightboxVideoSlot");
+    if (!slot) return;
+    // Replaces the placeholder slot (not the video frame -- that's now a
+    // separate, already-destroyed document.body-level element) since the
+    // fallback message is a normal in-flow block, not absolutely positioned
+    // the way the real player is.
     var replacement = document.createElement("div");
     replacement.className = "lightbox-video-empty";
     replacement.innerHTML = "This video can't be played here.<br>" +
       '<a class="lightbox-fallback-link" href="' + escapeHtml(youtubeUrl) + '" target="_blank" rel="noopener noreferrer">▶ Watch on YouTube</a>';
-    frame.replaceWith(replacement);
+    slot.replaceWith(replacement);
   }
 
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
-    destroyLightboxPlayer();
+
+    // Reusing the still-live frame/player (rather than destroying and
+    // recreating it) is what makes clicking a detached mini player reopen
+    // the full lightbox without restarting playback -- only possible when
+    // it's the SAME row's video currently floating.
+    var reuseFrame = lightboxPipDetached && lightboxVideoFrameRowNum === row.rowNum;
+    // A DIFFERENT video is floating -- only one should ever play at once.
+    // Autoplay on: the new one is about to start immediately, so stop the
+    // old one right away. Autoplay off: leave it playing until the new one
+    // actually does (deferred via onPlay further down).
+    var deferOldPip = false;
+    if (reuseFrame) {
+      teardownLightboxDockSync();
+    } else if (lightboxPipDetached && lightboxVideoFrameRowNum && lightboxVideoFrameRowNum !== row.rowNum) {
+      if (loadAutoplayPref()) {
+        destroyLightboxVideoFrame();
+      } else {
+        discardOldLightboxPip(); // in case an earlier deferred switch never got to finish
+        lightboxOldPipFrameEl = lightboxVideoFrameEl;
+        lightboxOldPipPlayer = state.lightboxPlayer;
+        lightboxVideoFrameEl = null;
+        lightboxVideoFrameRowNum = null;
+        lightboxPipMode = "docked";
+        lightboxPipDetached = false;
+        state.lightboxPlayer = null;
+        deferOldPip = true;
+      }
+    } else {
+      destroyLightboxVideoFrame();
+    }
     // A profile's credits list (profileCreditsHtml()) can link straight
     // into a video from inside a profile lightbox -- clean up its Leaflet
     // map instance first, since it'd otherwise be left referencing a DOM
@@ -6386,7 +6425,7 @@
     var videoRef = getRowVideoRef(row);
     var id = videoRef ? videoRef.id : null;
     var videoHtml = videoRef
-      ? '<div class="lightbox-video-frame" id="lightboxVideoFrame"><div id="lightboxPlayerTarget"></div></div>'
+      ? '<div class="lightbox-video-slot" id="lightboxVideoSlot"></div>'
       : '<div class="lightbox-video-empty">No video available for this entry.</div>';
 
     var sub = [];
@@ -6465,31 +6504,46 @@
         // when the callback fires synchronously (cache already warm)
         if (els.lightbox.hidden || state.lightboxRowNum !== adRowNumAtOpen) return;
         lightboxAdController = renderAdSlideshowInto(lightboxAdEl, ads, TOP_AD_DEFAULT_SECONDS);
+        // The ad banner loading in shifts everything below it (including the
+        // video slot) down -- neither a scroll nor a resize event, so the
+        // docked frame's synced position would otherwise go stale here.
+        syncLightboxDockPosition();
       });
     }
 
     if (videoRef) {
-      var rowNumAtOpen = row.rowNum;
-      var fallbackUrl = row.youtube || row.vimeo;
-      setupLightboxScrollPip();
-      createVideoPlayer("lightboxPlayerTarget", videoRef, {
-        autoplay: loadAutoplayPref(),
-        controls: true,
-        isStale: function () { return els.lightbox.hidden || state.lightboxRowNum !== rowNumAtOpen; },
-        onError: function () {
-          destroyLightboxPlayer();
-          showLightboxVideoFallback(fallbackUrl);
-        },
-        onReady: function (player) { state.lightboxPlayer = player; }
-      });
+      var slot = document.getElementById("lightboxVideoSlot");
+      if (reuseFrame) {
+        dockLightboxVideoFrame(slot);
+      } else {
+        lightboxVideoFrameEl = createLightboxVideoFrame();
+        lightboxVideoFrameRowNum = row.rowNum;
+        dockLightboxVideoFrame(slot);
+        var rowNumAtOpen = row.rowNum;
+        var fallbackUrl = row.youtube || row.vimeo;
+        createVideoPlayer("lightboxPipPlayerTarget", videoRef, {
+          autoplay: loadAutoplayPref(),
+          controls: true,
+          isStale: function () { return lightboxVideoFrameRowNum !== rowNumAtOpen; },
+          onError: function () {
+            destroyLightboxVideoFrame();
+            showLightboxVideoFallback(fallbackUrl);
+          },
+          onReady: function (player) { state.lightboxPlayer = player; },
+          onPlay: deferOldPip ? function () { discardOldLightboxPip(); } : undefined
+        });
+      }
+    } else if (deferOldPip) {
+      // No video for this entry -- nothing to defer the old floating one
+      // to, so just stop it outright instead of leaving it stuck playing.
+      discardOldLightboxPip();
     }
   }
 
   function closeLightbox() {
     if (els.lightbox.hidden) return;
     hideCardPreviewPopup();
-    teardownLightboxScrollPip();
-    destroyLightboxPlayer();
+    destroyLightboxVideoFrame();
     destroyProfileLightboxMap();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
     if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
@@ -6504,44 +6558,79 @@
   }
 
   // ---- Lightbox video mini player (PIP) --------------------------------
-  // Two ways in, both keeping the live YT/Vimeo iframe playing uninterrupted
-  // instead of destroying and recreating it (which would restart the video):
+  // The video frame is a PERMANENT direct child of document.body (created
+  // once per video, never reparented) instead of a normal descendant of
+  // .lightboxContent -- moving a cross-origin YouTube/Vimeo iframe to a
+  // new DOM parent reloads it (confirmed directly against the YouTube
+  // IFrame API: currentTime resets to 0 and playback drops to buffering,
+  // even with the exact same iframe node and an unchanged src -- moving it
+  // is simply not an option if playback has to stay continuous). While
+  // "docked" (the normal state), its position:fixed coordinates are synced
+  // in JS to an inert placeholder slot's own on-screen position, so it
+  // LOOKS embedded in the lightbox without actually being a DOM descendant
+  // of anything that could hide/rebuild/move it. Two ways into PIP:
   //  1. Scrolling the video out of view while the lightbox stays open (long
-  //     descriptions/comments make this inevitable) -- pure CSS, the frame
-  //     just gets pinned via position:fixed without moving in the DOM,
-  //     since its ancestors (the still-open lightbox) stay visible the
-  //     whole time. Scrolling back up un-PIPs it automatically.
+  //     descriptions/comments make this inevitable) -- the sync target
+  //     switches from the placeholder to a fixed corner position. Scrolling
+  //     back up switches it back.
   //  2. Clicking the backdrop -- a common misclick, and the one case where
   //     "closing" used to kill playback by accident. The modal itself still
-  //     closes back to normal browsing, but the frame is reparented out to
-  //     a small floating player over the whole site instead of being torn
-  //     down, with its own explicit close (X) as the deliberate way to
-  //     actually stop it. Clicking the floating player reopens the full
-  //     lightbox (a fresh reload of the embed, not a seamless resume --
-  //     acceptable since the whole point was just not losing playback while
-  //     it sits there floating).
-  var lightboxPipHost = null;
-  var lightboxPipDetached = false;
-  var lightboxPipScrollHandler = null;
+  //     closes back to normal browsing, but since the frame was never a
+  //     descendant of it, hiding the modal doesn't touch it -- it just
+  //     keeps floating, with its own explicit close (X) as the deliberate
+  //     way to actually stop it, and a reopen affordance that re-docks it
+  //     into a freshly (re)opened lightbox for the same row without ever
+  //     touching the live player.
+  var lightboxVideoFrameEl = null;
+  var lightboxVideoFrameRowNum = null;
+  var lightboxDockSlotEl = null;
+  var lightboxPipMode = "docked"; // "docked" | "pip"
+  var lightboxPipDetached = false; // true once the lightbox itself has closed out from under a still-playing PIP
+  var lightboxDockScrollHandler = null;
+  var lightboxDockResizeHandler = null;
+  var lightboxDockContentObserver = null;
+  // A second, independent frame/player -- only ever populated for the brief
+  // window where a DIFFERENT video is opened while an old one is still
+  // floating with autoplay off (see openLightbox()): kept alive until the
+  // new video actually starts playing, then discarded for real.
+  var lightboxOldPipFrameEl = null;
+  var lightboxOldPipPlayer = null;
 
-  function getLightboxPipHost() {
-    if (!lightboxPipHost) {
-      lightboxPipHost = document.createElement("div");
-      lightboxPipHost.className = "lightbox-pip-host";
-      lightboxPipHost.hidden = true;
-      document.body.appendChild(lightboxPipHost);
-      lightboxPipHost.addEventListener("click", function (e) {
-        if (e.target.closest(".lightbox-pip-close")) return; // handled by the button's own listener
-        reopenLightboxFromPip();
-      });
-    }
-    return lightboxPipHost;
+  function createLightboxVideoFrame() {
+    var frame = document.createElement("div");
+    frame.className = "lightbox-pip-frame";
+    frame.id = "lightboxVideoFramePip";
+    frame.innerHTML = '<div id="lightboxPipPlayerTarget"></div>';
+    document.body.appendChild(frame);
+    return frame;
   }
 
-  // The close (X) and reopen affordances are real buttons layered over the
-  // iframe rather than relying on clicks landing on the frame body itself --
-  // a cross-origin YouTube/Vimeo iframe absorbs clicks on its own content,
-  // so our own listeners would never see them there.
+  function destroyLightboxVideoFrame() {
+    teardownLightboxDockSync();
+    if (state.lightboxPlayer && state.lightboxPlayer.destroy) {
+      try { state.lightboxPlayer.destroy(); } catch (e) {}
+    }
+    state.lightboxPlayer = null;
+    if (lightboxVideoFrameEl) { lightboxVideoFrameEl.remove(); lightboxVideoFrameEl = null; }
+    lightboxVideoFrameRowNum = null;
+    lightboxPipMode = "docked";
+    lightboxPipDetached = false;
+  }
+
+  function discardOldLightboxPip() {
+    if (lightboxOldPipPlayer && lightboxOldPipPlayer.destroy) {
+      try { lightboxOldPipPlayer.destroy(); } catch (e) {}
+    }
+    lightboxOldPipPlayer = null;
+    if (lightboxOldPipFrameEl) { lightboxOldPipFrameEl.remove(); lightboxOldPipFrameEl = null; }
+  }
+
+  // The close (X), reopen, and mute affordances are real buttons layered
+  // over the iframe rather than relying on clicks landing on the frame
+  // body itself -- a cross-origin iframe absorbs clicks on its own content,
+  // so our own listeners would never see them there. Mute exists because
+  // YouTube's own volume control is a hover-flyout that's unusable at mini
+  // -player size once the mouse isn't over the speaker icon anymore.
   function ensureLightboxPipControls(frame) {
     if (!frame.querySelector(".lightbox-pip-close")) {
       var closeBtn = document.createElement("button");
@@ -6549,10 +6638,7 @@
       closeBtn.className = "lightbox-pip-close";
       closeBtn.setAttribute("aria-label", "Close mini player");
       closeBtn.innerHTML = "&times;";
-      closeBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        closeLightboxPip();
-      });
+      closeBtn.addEventListener("click", function (e) { e.stopPropagation(); closeLightboxPip(); });
       frame.appendChild(closeBtn);
     }
     if (!frame.querySelector(".lightbox-pip-reopen")) {
@@ -6561,86 +6647,147 @@
       reopenBtn.className = "lightbox-pip-reopen";
       reopenBtn.setAttribute("aria-label", "Reopen full player");
       reopenBtn.textContent = "⤢";
-      reopenBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        reopenLightboxFromPip();
-      });
+      reopenBtn.addEventListener("click", function (e) { e.stopPropagation(); reopenLightboxFromPip(); });
       frame.appendChild(reopenBtn);
+    }
+    if (!frame.querySelector(".lightbox-pip-mute")) {
+      var muteBtn = document.createElement("button");
+      muteBtn.type = "button";
+      muteBtn.className = "lightbox-pip-mute";
+      muteBtn.setAttribute("aria-label", "Mute or unmute");
+      muteBtn.textContent = "🔇";
+      muteBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleLightboxPlayerMute(state.lightboxPlayer);
+      });
+      frame.appendChild(muteBtn);
     }
   }
 
-  function enterLightboxScrollPip() {
-    if (lightboxPipDetached) return; // already floating for a different reason
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (!frame || frame.classList.contains("is-pip")) return;
+  // YouTube's player object exposes isMuted()/mute()/unMute() synchronously;
+  // Vimeo's exposes getVolume()/setVolume() instead, both promise-based.
+  function toggleLightboxPlayerMute(player) {
+    if (!player) return;
+    if (typeof player.isMuted === "function") {
+      if (player.isMuted()) player.unMute(); else player.mute();
+    } else if (typeof player.getVolume === "function" && typeof player.setVolume === "function") {
+      player.getVolume().then(function (v) { player.setVolume(v > 0 ? 0 : 1); });
+    }
+  }
+
+  // Keeps the (fixed-position) frame visually locked onto the placeholder
+  // slot's current on-screen rect while docked. Also clips the frame against
+  // the lightbox panel's own visible bounds -- position:fixed isn't clipped
+  // by the panel's overflow:hidden the way a real descendant would be, so
+  // without this the video would spill outside the modal while scrolling
+  // through the transition zone just before crossing the PIP threshold.
+  function syncLightboxDockPosition() {
+    if (lightboxPipMode !== "docked" || !lightboxDockSlotEl || !lightboxVideoFrameEl) return;
+    var r = lightboxDockSlotEl.getBoundingClientRect();
+    var panelR = els.lightboxPanel.getBoundingClientRect();
+    var frame = lightboxVideoFrameEl;
+    frame.style.top = r.top + "px";
+    frame.style.left = r.left + "px";
+    frame.style.width = r.width + "px";
+    frame.style.height = r.height + "px";
+    var clipTop = Math.max(0, panelR.top - r.top);
+    var clipBottom = Math.max(0, r.bottom - panelR.bottom);
+    frame.style.clipPath = (clipTop || clipBottom) ? "inset(" + clipTop + "px 0 " + clipBottom + "px 0)" : "";
+  }
+
+  function enterLightboxPip() {
+    var frame = lightboxVideoFrameEl;
+    if (!frame || lightboxPipMode === "pip") return;
+    lightboxPipMode = "pip";
     ensureLightboxPipControls(frame);
+    frame.style.top = frame.style.left = frame.style.width = frame.style.height = frame.style.clipPath = "";
     frame.classList.add("is-pip");
   }
 
-  function exitLightboxScrollPip() {
-    if (lightboxPipDetached) return;
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (frame) frame.classList.remove("is-pip");
-  }
-
-  // Set up once per openLightbox() call, watching the lightbox panel's own
-  // scroll (not the page's). Deliberately a plain scroll listener rather
-  // than an IntersectionObserver on the frame itself -- once .is-pip makes
-  // the frame position:fixed, it's taken out of normal flow entirely, so it
-  // stops moving relative to the panel on scroll at all, and an observer
-  // watching it would never see it "come back into view" on scrolling back
-  // up. The frame's normal in-flow height is captured once here, before it
-  // can ever go fixed, and used as a fixed scroll-distance threshold in
-  // both directions instead.
-  function setupLightboxScrollPip() {
-    teardownLightboxScrollPip();
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (!frame) return;
-    var threshold = frame.offsetHeight;
-    lightboxPipScrollHandler = function () {
-      if (lightboxPipDetached) return;
-      if (els.lightboxPanel.scrollTop > threshold) enterLightboxScrollPip();
-      else exitLightboxScrollPip();
-    };
-    els.lightboxPanel.addEventListener("scroll", lightboxPipScrollHandler);
-  }
-
-  function teardownLightboxScrollPip() {
-    if (lightboxPipScrollHandler) {
-      els.lightboxPanel.removeEventListener("scroll", lightboxPipScrollHandler);
-      lightboxPipScrollHandler = null;
-    }
-  }
-
-  function enterLightboxDetachedPip() {
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (!frame) return false;
-    teardownLightboxScrollPip();
+  function exitLightboxPip() {
+    var frame = lightboxVideoFrameEl;
+    if (!frame || lightboxPipMode !== "pip" || lightboxPipDetached) return;
+    lightboxPipMode = "docked";
     frame.classList.remove("is-pip");
-    var host = getLightboxPipHost();
-    host.appendChild(frame);
-    ensureLightboxPipControls(frame);
-    frame.classList.add("is-pip", "is-pip-detached");
-    host.hidden = false;
-    lightboxPipDetached = true;
-    return true;
+    syncLightboxDockPosition();
   }
+
+  // Called once per openLightbox() call (for a video that already has a
+  // live frame -- either freshly created or reused from a detached PIP).
+  function dockLightboxVideoFrame(slotEl) {
+    lightboxDockSlotEl = slotEl;
+    lightboxPipMode = "docked";
+    lightboxPipDetached = false;
+    var frame = lightboxVideoFrameEl;
+    frame.classList.remove("is-pip", "is-pip-detached");
+    syncLightboxDockPosition();
+    teardownLightboxDockSync();
+    var threshold = null;
+    lightboxDockScrollHandler = function () {
+      if (threshold == null) threshold = lightboxDockSlotEl.getBoundingClientRect().height;
+      var pastThreshold = els.lightboxPanel.scrollTop > threshold;
+      if (pastThreshold && lightboxPipMode !== "pip") enterLightboxPip();
+      else if (!pastThreshold && lightboxPipMode === "pip") exitLightboxPip();
+      else if (!pastThreshold) syncLightboxDockPosition();
+    };
+    lightboxDockResizeHandler = function () {
+      threshold = null;
+      if (lightboxPipMode === "docked") syncLightboxDockPosition();
+    };
+    els.lightboxPanel.addEventListener("scroll", lightboxDockScrollHandler);
+    window.addEventListener("resize", lightboxDockResizeHandler);
+    // Catches layout shifts a scroll/resize event wouldn't -- the ad banner
+    // (above the slot) loading in async and pushing everything below it
+    // down being the main one, but this covers anything else that resizes
+    // the lightbox's own content too, without having to chase down every
+    // individual cause by hand.
+    lightboxDockContentObserver = new ResizeObserver(function () {
+      threshold = null;
+      if (lightboxPipMode === "docked") syncLightboxDockPosition();
+    });
+    lightboxDockContentObserver.observe(els.lightboxContent);
+  }
+
+  function teardownLightboxDockSync() {
+    if (lightboxDockContentObserver) { lightboxDockContentObserver.disconnect(); lightboxDockContentObserver = null; }
+    if (lightboxDockScrollHandler) { els.lightboxPanel.removeEventListener("scroll", lightboxDockScrollHandler); lightboxDockScrollHandler = null; }
+    if (lightboxDockResizeHandler) { window.removeEventListener("resize", lightboxDockResizeHandler); lightboxDockResizeHandler = null; }
+  }
+
+  // Catches the end of .lightbox-panel's own width transition (widen/shrink
+  // toggle) so the docked video frame settles at the exact final size
+  // instead of whatever applyLightboxSize()'s immediate resync caught
+  // mid-transition. A single listener for the panel's whole lifetime, not
+  // re-registered per dock -- harmless no-op via syncLightboxDockPosition()'s
+  // own guard whenever nothing is actually docked.
+  els.lightboxPanel.addEventListener("transitionend", function (e) {
+    if (e.propertyName === "max-width") syncLightboxDockPosition();
+  });
 
   // Clicking the backdrop while a video is playing -- treated as a likely
   // misclick rather than a deliberate close, so the video keeps playing as
   // a floating mini player instead of being cut off. Everything closeLightbox()
-  // would normally tear down still gets torn down here EXCEPT the player
-  // itself and the row/title state it depends on -- those stay live until
-  // the mini player's own close (X) is clicked.
+  // would normally tear down still gets torn down here EXCEPT the frame/
+  // player itself and the row/title state it depends on -- those stay live
+  // until the mini player's own close (X) is clicked. Safe to just hide
+  // els.lightbox here (unlike an earlier version of this feature) since the
+  // frame was never a descendant of it in the first place.
   function softCloseLightboxToPip() {
     if (els.lightbox.hidden) return;
-    if (!state.lightboxRowNum || !state.lightboxPlayer) { dismissTopModal(); return; }
-    enterLightboxDetachedPip();
+    if (!state.lightboxRowNum || !state.lightboxPlayer || !lightboxVideoFrameEl) { dismissTopModal(); return; }
+    lightboxPipDetached = true;
+    enterLightboxPip();
+    // The dock-sync scroll/resize listeners are otherwise still watching
+    // the (about to be cleared) lightbox panel and its now-detached slot --
+    // harmless per their own guards, but pointless to leave running.
+    teardownLightboxDockSync();
+    lightboxVideoFrameEl.classList.add("is-pip-detached");
     hideCardPreviewPopup();
     if (lightboxAdController) { lightboxAdController.stop(); lightboxAdController = null; }
     if (commentsUnsub) { commentsUnsub(); commentsUnsub = null; }
     els.spotlightSidebar.classList.remove("is-hidden-for-lightbox");
     els.lightbox.hidden = true;
+    els.lightboxContent.innerHTML = ""; // safe -- the video frame lives outside this subtree
     hideLightboxReportMenu();
     unlockBodyScroll();
     // Pops the history entry pushModalHistory() pushed when this lightbox
@@ -6650,19 +6797,12 @@
   }
 
   function closeLightboxPip() {
-    var frame = document.getElementById("lightboxVideoFrame");
-    var wasDetached = lightboxPipDetached;
-    lightboxPipDetached = false;
-    teardownLightboxScrollPip();
-    if (lightboxPipHost) lightboxPipHost.hidden = true;
-    if (wasDetached) {
-      destroyLightboxPlayer();
-      if (frame) frame.remove();
-      state.lightboxRowNum = null;
-      state.lightboxProfileUid = null;
+    if (lightboxPipDetached) {
+      // Floating over a closed lightbox -- a real, deliberate stop.
+      destroyLightboxVideoFrame();
       document.title = DEFAULT_TITLE;
     } else {
-      // Still embedded in an open lightbox (the scroll-triggered flavor) --
+      // Still part of an open lightbox (the scroll-triggered flavor) --
       // closing the mini player here means closing the whole lightbox, not
       // just un-PIPing it back to its normal spot.
       dismissTopModal();
@@ -6671,12 +6811,8 @@
 
   function reopenLightboxFromPip() {
     if (!lightboxPipDetached) return;
-    var row = findRowByNum(state.lightboxRowNum);
-    lightboxPipDetached = false;
-    if (lightboxPipHost) lightboxPipHost.hidden = true;
-    var frame = document.getElementById("lightboxVideoFrame");
-    if (frame) frame.remove(); // openLightbox() below builds its own fresh frame/player
-    if (row) openLightbox(row);
+    var row = findRowByNum(lightboxVideoFrameRowNum);
+    if (row) openLightbox(row); // reuses the still-live frame/player -- see openLightbox()
   }
 
   // Genres requested/expected but not yet tagged on any existing entry --
@@ -12124,6 +12260,12 @@
   function applyLightboxSize() {
     var isLarge = state.lightboxSize === "large";
     els.lightboxPanel.classList.toggle("size-large", isLarge);
+    // The panel's own width changes via a CSS transition (see .lightbox-panel
+    // in styles.css), which the video frame's position:fixed sync (see
+    // dockLightboxVideoFrame() in app.js) only otherwise picks up on a
+    // scroll/resize event -- resync now for immediate feedback, and again
+    // once the transition finishes for the final settled size.
+    syncLightboxDockPosition();
     var btn = els.lightboxContent.querySelector(".lightbox-widen-btn");
     if (!btn) return;
     btn.textContent = isLarge ? "⤡" : "⤢";
