@@ -13,8 +13,8 @@
 <title>Intake — MVG Library Admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="styles.css?v=6.15.3">
-<link rel="stylesheet" href="hub.css?v=6.15.3">
+<link rel="stylesheet" href="styles.css?v=6.16.0">
+<link rel="stylesheet" href="hub.css?v=6.16.0">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -28,7 +28,7 @@
 </head>
 <body>
 <div class="shell">
-<script src="site-nav.js?v=6.15.3"></script>
+<script src="site-nav.js?v=6.16.0"></script>
 <div class="app">
 <div class="hub-page">
 
@@ -68,8 +68,34 @@
 
   <div class="admin-fill-links-card intake-copy-bar" id="intakeCopyRow" hidden>
     <div class="admin-fill-links-actions">
-      <button type="button" class="submit-form-btn" id="intakeCopyBtn">Copy 0 selected rows</button>
-      <p class="admin-status">Paste into Admin &rarr; Bulk Import (Preview, check the parsed Artist/Song/Year, then Commit as usual).</p>
+      <button type="button" class="submit-form-btn" id="intakeReviewOpenBtn">Review 0 selected</button>
+    </div>
+  </div>
+
+  <div class="admin-fill-links-card" id="intakeReviewSection" hidden>
+    <h2 class="admin-fill-links-title">Review before copying</h2>
+    <p class="admin-fill-links-sub">Fix anything the title auto-split got wrong and fill in what's missing (Director, Country, etc.) -- this is exactly what gets pasted into Bulk Import.</p>
+    <div class="admin-grid-wrap">
+      <table class="admin-grid" id="intakeReviewGrid">
+        <thead>
+          <tr>
+            <th>Artist</th>
+            <th>Song Title</th>
+            <th>Director</th>
+            <th>Category</th>
+            <th class="admin-grid-year">Year</th>
+            <th>Country</th>
+            <th class="admin-grid-wide">YouTube Link</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="intakeReviewBody"></tbody>
+      </table>
+    </div>
+    <div class="admin-fill-links-actions">
+      <button type="button" class="submit-form-btn" id="intakeReviewCopyBtn">Copy 0 rows</button>
+      <button type="button" class="admin-row-btn" id="intakeReviewCancelBtn">Cancel</button>
+      <p class="admin-status">Paste into Admin &rarr; Bulk Import (Preview, then Commit as usual).</p>
     </div>
   </div>
 </div>
@@ -77,6 +103,6 @@
 </div>
 </div>
 </div>
-<script src="admin-intake.js?v=6.15.3"></script>
+<script src="admin-intake.js?v=6.16.0"></script>
 </body>
 </html>

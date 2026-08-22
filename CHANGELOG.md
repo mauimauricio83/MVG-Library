@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.16.0 — current
+- Weekly Intake gained a review step: clicking "Review N selected" now opens an editable grid (same .admin-grid pattern as Manage Entries' Grid view) with Artist, Song Title, Director, Category, Year, Country, and YouTube Link per selected candidate, plus a Remove button per row -- fix the title auto-split or fill in missing details before copying, instead of only catching mistakes after pasting into Bulk Import.
+- Fixed a pre-existing bug in `.admin-fill-links-card[hidden]` (shared by this and the existing Fill Missing Links admin tool) -- the class's own `display: flex` was silently overriding the browser's `[hidden] { display: none }` default, so toggling `.hidden = true` on either card did nothing.
+
 ## v6.15.3 — current
 - Weekly Intake: search now sorts by relevance instead of upload date. "Music video" is generic enough that new matching uploads (a lot of them noise) land every few minutes, so a strict date sort buried real candidates from a few days back under the last several hours -- confirmed this against a real report of videos showing up on youtube.com's own search but not here. Relevance still respects the days-back window as a hard cutoff, it just ranks within it instead of by recency, matching how youtube.com's own search behaves by default. This can't fully close the gap though -- the public API's ranking is a cruder text/tag index than the signals (personalization, channel authority, etc.) the actual youtube.com search box uses, so some videos it surfaces still won't show up here.
 

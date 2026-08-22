@@ -43,7 +43,11 @@
     loadMoreRow: document.getElementById("intakeLoadMoreRow"),
     loadMoreBtn: document.getElementById("intakeLoadMoreBtn"),
     copyRow: document.getElementById("intakeCopyRow"),
-    copyBtn: document.getElementById("intakeCopyBtn")
+    reviewOpenBtn: document.getElementById("intakeReviewOpenBtn"),
+    reviewSection: document.getElementById("intakeReviewSection"),
+    reviewBody: document.getElementById("intakeReviewBody"),
+    reviewCopyBtn: document.getElementById("intakeReviewCopyBtn"),
+    reviewCancelBtn: document.getElementById("intakeReviewCancelBtn")
   };
 
   function escapeHtml(str) {
@@ -315,19 +319,68 @@
   function updateCopyBar() {
     var count = selectedVideoIds().length;
     els.copyRow.hidden = count === 0;
-    els.copyBtn.textContent = "Copy " + count + " selected row" + (count === 1 ? "" : "s");
+    els.reviewOpenBtn.textContent = "Review " + count + " selected";
   }
 
-  function buildBulkImportText(videoIds) {
-    var rows = videoIds.map(function (id) {
+  // Selected candidates land here for a final editable pass -- same
+  // .admin-grid markup/behavior as Manage Entries' Grid view -- before
+  // they're turned into the Bulk Import paste block. Populated fresh each
+  // time Review is opened, so re-picking a different selection doesn't
+  // carry over stale edits from a previous review pass.
+  var reviewRows = []; // {videoId, artist, song, director, category, year, country, youtube}
+
+  function openReview() {
+    var ids = selectedVideoIds();
+    if (!ids.length) return;
+    reviewRows = ids.map(function (id) {
       var r = results.filter(function (x) { return x.videoId === id; })[0];
-      if (!r) return null;
       var split = splitArtistSong(r.title);
       var year = r.publishedAt ? new Date(r.publishedAt).getFullYear() : "";
-      var youtubeUrl = "https://www.youtube.com/watch?v=" + r.videoId;
-      return [split.artist, split.song, youtubeUrl, "Music Video", year].join("\t");
-    }).filter(Boolean);
-    return ["Artist\tSong Title\tYouTube Link\tCategory\tYear"].concat(rows).join("\n");
+      return {
+        videoId: id,
+        artist: split.artist,
+        song: split.song,
+        director: "",
+        category: "Music Video",
+        year: String(year),
+        country: "",
+        youtube: "https://www.youtube.com/watch?v=" + id
+      };
+    });
+    renderReviewGrid();
+    els.copyRow.hidden = true;
+    els.reviewSection.hidden = false;
+    els.reviewSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  var REVIEW_FIELDS = ["artist", "song", "director", "category", "year", "country", "youtube"];
+
+  function renderReviewGrid() {
+    els.reviewBody.innerHTML = reviewRows.map(function (row, i) {
+      return "<tr>" +
+        '<td><input type="text" data-index="' + i + '" data-field="artist" value="' + escapeHtml(row.artist) + '"></td>' +
+        '<td><input type="text" data-index="' + i + '" data-field="song" value="' + escapeHtml(row.song) + '"></td>' +
+        '<td><input type="text" data-index="' + i + '" data-field="director" value="' + escapeHtml(row.director) + '"></td>' +
+        '<td><input type="text" data-index="' + i + '" data-field="category" value="' + escapeHtml(row.category) + '"></td>' +
+        '<td class="admin-grid-year"><input type="text" data-index="' + i + '" data-field="year" value="' + escapeHtml(row.year) + '"></td>' +
+        '<td><input type="text" data-index="' + i + '" data-field="country" value="' + escapeHtml(row.country) + '"></td>' +
+        '<td class="admin-grid-wide"><input type="text" data-index="' + i + '" data-field="youtube" value="' + escapeHtml(row.youtube) + '"></td>' +
+        '<td><button type="button" class="admin-row-btn admin-row-btn-danger" data-remove-index="' + i + '">Remove</button></td>' +
+      "</tr>";
+    }).join("");
+    updateReviewCopyBtn();
+  }
+
+  function updateReviewCopyBtn() {
+    els.reviewCopyBtn.textContent = "Copy " + reviewRows.length + " row" + (reviewRows.length === 1 ? "" : "s");
+    els.reviewCopyBtn.disabled = reviewRows.length === 0;
+  }
+
+  function buildBulkImportText(rows) {
+    var lines = rows.map(function (row) {
+      return REVIEW_FIELDS.map(function (f) { return row[f] || ""; }).join("\t");
+    });
+    return ["Artist\tSong Title\tDirector\tCategory\tYear\tCountry\tYouTube Link"].concat(lines).join("\n");
   }
 
   els.signInBtn.addEventListener("click", function () {
@@ -352,12 +405,34 @@
     downloadCoverArt(videoId, filenameBase, btn);
   });
 
-  els.copyBtn.addEventListener("click", function () {
-    var ids = selectedVideoIds();
-    if (!ids.length) return;
-    var text = buildBulkImportText(ids);
+  els.reviewOpenBtn.addEventListener("click", openReview);
+
+  els.reviewBody.addEventListener("input", function (e) {
+    var field = e.target.getAttribute("data-field");
+    if (!field) return;
+    var i = parseInt(e.target.getAttribute("data-index"), 10);
+    if (reviewRows[i]) reviewRows[i][field] = e.target.value;
+  });
+
+  els.reviewBody.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-remove-index]");
+    if (!btn) return;
+    var i = parseInt(btn.getAttribute("data-remove-index"), 10);
+    reviewRows.splice(i, 1);
+    renderReviewGrid();
+  });
+
+  els.reviewCancelBtn.addEventListener("click", function () {
+    els.reviewSection.hidden = true;
+    updateCopyBar();
+  });
+
+  els.reviewCopyBtn.addEventListener("click", function () {
+    if (!reviewRows.length) return;
+    var count = reviewRows.length;
+    var text = buildBulkImportText(reviewRows);
     navigator.clipboard.writeText(text).then(function () {
-      setStatus("Copied " + ids.length + " row" + (ids.length === 1 ? "" : "s") + " -- paste into Admin → Bulk Import.");
+      setStatus("Copied " + count + " row" + (count === 1 ? "" : "s") + " -- paste into Admin → Bulk Import.");
     }).catch(function () {
       setStatus("Couldn't copy automatically -- select and copy the rows manually.", true);
     });

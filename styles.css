@@ -5387,6 +5387,14 @@ body.is-searching #viewersChoiceSection {
   gap: 10px;
 }
 
+/* Same footgun as .admin-entries-list[hidden] above -- [hidden] and this
+   class are equal-specificity selectors, so without this override the
+   class's own `display: flex` (loaded after the browser's UA stylesheet)
+   wins the tie and setting .hidden = true silently does nothing. */
+.admin-fill-links-card[hidden] {
+  display: none;
+}
+
 .admin-fill-links-title {
   font-size: 1.05rem;
   font-weight: 700;
