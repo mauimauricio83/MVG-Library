@@ -40,6 +40,8 @@
     showShortsCheckbox: document.getElementById("intakeShowShortsCheckbox"),
     status: document.getElementById("intakeStatus"),
     results: document.getElementById("intakeResults"),
+    loadMoreRow: document.getElementById("intakeLoadMoreRow"),
+    loadMoreBtn: document.getElementById("intakeLoadMoreBtn"),
     copyRow: document.getElementById("intakeCopyRow"),
     copyBtn: document.getElementById("intakeCopyBtn")
   };
@@ -81,7 +83,9 @@
   }
 
   var knownYouTubeIds = null; // Set, built once after admin auth confirms
-  var results = []; // last search results, each: {videoId, title, channel, publishedAt, thumb, seconds, isDuplicate, isShort}
+  var results = []; // accumulated across pages, each: {videoId, title, channel, publishedAt, thumb, seconds, isDuplicate, isShort}
+  var nextPageToken = null;
+  var currentPublishedAfter = null;
 
   function setStatus(text, isError) {
     els.status.textContent = text || "";
@@ -99,11 +103,12 @@
     });
   }
 
-  function ytSearchList(publishedAfter) {
+  function ytSearchList(publishedAfter, pageToken) {
     var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date&maxResults=50" +
       "&q=" + encodeURIComponent("music video") +
       "&publishedAfter=" + encodeURIComponent(publishedAfter) +
-      "&key=" + encodeURIComponent(YOUTUBE_API_KEY);
+      "&key=" + encodeURIComponent(YOUTUBE_API_KEY) +
+      (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
     return fetch(url).then(function (res) {
       if (!res.ok) throw new Error("YouTube search failed (" + res.status + ")");
       return res.json();
@@ -126,23 +131,39 @@
     });
   }
 
-  function runSearch() {
-    var days = Math.max(1, Math.min(30, parseInt(els.daysInput.value, 10) || 7));
-    var publishedAfter = new Date(Date.now() - days * 86400000).toISOString();
+  function summarizeStatus() {
+    var visibleCount = countVisible();
+    var dupeCount = results.filter(function (r) { return r.isDuplicate; }).length;
+    var shortCount = results.filter(function (r) { return r.isShort && !r.isDuplicate; }).length;
+    var hiddenBits = [];
+    if (dupeCount) hiddenBits.push(dupeCount + " already in catalog");
+    if (shortCount) hiddenBits.push(shortCount + " Shorts");
+    var hiddenNote = (!els.showDupesCheckbox.checked || !els.showShortsCheckbox.checked) && hiddenBits.length
+      ? " (" + hiddenBits.join(", ") + " hidden -- toggle above to reveal)"
+      : "";
+    setStatus(results.length + " result" + (results.length === 1 ? "" : "s") + " fetched, " + visibleCount + " shown" + hiddenNote + ".");
+  }
 
-    els.searchBtn.disabled = true;
-    setStatus("Searching the last " + days + " day" + (days === 1 ? "" : "s") + "…");
-    els.results.innerHTML = "";
-    els.copyRow.hidden = true;
+  function countVisible() {
+    var showDupes = els.showDupesCheckbox.checked;
+    var showShorts = els.showShortsCheckbox.checked;
+    return results.filter(function (r) {
+      return (showDupes || !r.isDuplicate) && (showShorts || !r.isShort);
+    }).length;
+  }
 
-    ytSearchList(publishedAfter).then(function (searchJson) {
+  function fetchPage(pageToken) {
+    return ytSearchList(currentPublishedAfter, pageToken).then(function (searchJson) {
       var items = searchJson.items || [];
       var ids = items.map(function (item) { return item.id.videoId; }).filter(Boolean);
+      nextPageToken = searchJson.nextPageToken || null;
       return ytVideoDurations(ids).then(function (durations) {
-        results = items.map(function (item) {
+        var existingIds = new Set(results.map(function (r) { return r.videoId; }));
+        items.forEach(function (item) {
           var videoId = item.id.videoId;
+          if (!videoId || existingIds.has(videoId)) return;
           var seconds = durations[videoId] || 0;
-          return {
+          results.push({
             videoId: videoId,
             title: item.snippet.title,
             channel: item.snippet.channelTitle,
@@ -151,16 +172,84 @@
             seconds: seconds,
             isShort: seconds > 0 && seconds < 90,
             isDuplicate: knownYouTubeIds.has(videoId)
-          };
+          });
         });
         renderResults();
-        setStatus(results.length + " result" + (results.length === 1 ? "" : "s") + " found.");
+        summarizeStatus();
+        els.loadMoreRow.hidden = !nextPageToken;
       });
-    }).catch(function (err) {
+    });
+  }
+
+  function runSearch() {
+    var days = Math.max(1, Math.min(30, parseInt(els.daysInput.value, 10) || 7));
+    currentPublishedAfter = new Date(Date.now() - days * 86400000).toISOString();
+    results = [];
+    nextPageToken = null;
+
+    els.searchBtn.disabled = true;
+    setStatus("Searching the last " + days + " day" + (days === 1 ? "" : "s") + "…");
+    els.results.innerHTML = "";
+    els.copyRow.hidden = true;
+    els.loadMoreRow.hidden = true;
+
+    fetchPage(null).catch(function (err) {
       setStatus(err.message || "Search failed.", true);
     }).then(function () {
       els.searchBtn.disabled = false;
     });
+  }
+
+  function loadMore() {
+    if (!nextPageToken) return;
+    els.loadMoreBtn.disabled = true;
+    setStatus("Loading more…");
+    fetchPage(nextPageToken).catch(function (err) {
+      setStatus(err.message || "Load more failed.", true);
+    }).then(function () {
+      els.loadMoreBtn.disabled = false;
+    });
+  }
+
+  // YouTube's CDN serves maxresdefault.jpg for every video, but it isn't
+  // part of the search API's snippet.thumbnails (which tops out around
+  // 480x360) -- fetched directly here instead. Unavailable videos don't
+  // 404 on this endpoint, they return a small gray placeholder, so a size
+  // check picks the fallback (sddefault, then hqdefault) instead of just
+  // trusting a 200. Cross-origin, so a plain <a download> wouldn't force
+  // a save -- fetched as a blob and downloaded via an object URL instead.
+  var COVER_ART_SIZES = ["maxresdefault", "sddefault", "hqdefault"];
+  function downloadCoverArt(videoId, filenameBase, btn) {
+    var originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "…";
+
+    function tryNext(i) {
+      if (i >= COVER_ART_SIZES.length) {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        setStatus("Couldn't fetch cover art for that video.", true);
+        return;
+      }
+      var url = "https://i.ytimg.com/vi/" + videoId + "/" + COVER_ART_SIZES[i] + ".jpg";
+      fetch(url).then(function (res) {
+        if (!res.ok) throw new Error("not found");
+        return res.blob();
+      }).then(function (blob) {
+        if (blob.size < 2000) throw new Error("placeholder image"); // unavailable-size stand-in, not a real thumbnail
+        var objectUrl = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = filenameBase + ".jpg";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }).catch(function () { tryNext(i + 1); });
+    }
+    tryNext(0);
   }
 
   function renderResults() {
@@ -171,7 +260,7 @@
     });
 
     if (!visible.length) {
-      els.results.innerHTML = '<p class="admin-empty">' + (results.length ? "Nothing to show -- try Show already-added / Show Shorts, or search again." : "No results yet -- run a search.") + "</p>";
+      els.results.innerHTML = '<p class="admin-empty">' + (results.length ? "Nothing to show -- try Show already-added / Show Shorts, or Load more." : "No results yet -- run a search.") + "</p>";
       updateCopyBar();
       return;
     }
@@ -199,6 +288,7 @@
             '<div class="intake-result-meta">' + escapeHtml(r.channel) + " &middot; " + escapeHtml(publishedDate) +
               (r.seconds ? " &middot; " + formatDuration(r.seconds) : "") + "</div>" +
           "</div>" +
+          '<button type="button" class="admin-row-btn intake-result-cover-btn" data-video-id="' + escapeHtml(r.videoId) + '" title="Download hi-res cover art">Cover art</button>' +
         "</div>"
       );
     }).join("");
@@ -236,10 +326,19 @@
   });
 
   els.searchBtn.addEventListener("click", runSearch);
-  els.showDupesCheckbox.addEventListener("change", renderResults);
-  els.showShortsCheckbox.addEventListener("change", renderResults);
+  els.loadMoreBtn.addEventListener("click", loadMore);
+  els.showDupesCheckbox.addEventListener("change", function () { renderResults(); summarizeStatus(); });
+  els.showShortsCheckbox.addEventListener("change", function () { renderResults(); summarizeStatus(); });
   els.results.addEventListener("change", function (e) {
     if (e.target.classList.contains("intake-result-check")) updateCopyBar();
+  });
+  els.results.addEventListener("click", function (e) {
+    var btn = e.target.closest(".intake-result-cover-btn");
+    if (!btn) return;
+    var videoId = btn.getAttribute("data-video-id");
+    var r = results.filter(function (x) { return x.videoId === videoId; })[0];
+    var filenameBase = r ? splitArtistSong(r.title).song.replace(/[^a-z0-9]+/gi, "-").slice(0, 60) || videoId : videoId;
+    downloadCoverArt(videoId, filenameBase, btn);
   });
 
   els.copyBtn.addEventListener("click", function () {

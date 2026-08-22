@@ -5497,6 +5497,18 @@ body.is-searching #viewersChoiceSection {
   color: var(--text-muted);
 }
 
+.intake-result-cover-btn {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.intake-load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
 .intake-copy-bar {
   position: sticky;
   bottom: 12px;

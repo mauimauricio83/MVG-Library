@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.15.2 — current
+- Weekly Intake: the status line now says exactly how many results were fetched vs. shown vs. hidden (already-in-catalog / Shorts) -- "50 found, only 10 shown" wasn't a bug, it was heavy default filtering with no explanation. Added a "Load 50 more" button (paginates via the API's nextPageToken) for when the visible pile is thin, since a generic term like "music video" is dominated by Shorts/dupes and order=date + a 50-per-page cap means widening the day range alone often doesn't surface more. Also added a "Cover art" button per result that downloads the video's hi-res (maxresdefault, falling back to lower sizes when unavailable) thumbnail.
+
 ## v6.15.1 — current
 - Weekly Intake: Shorts (under 90s) are now hidden by default, same as already-catalogued videos, behind a "Show Shorts" toggle -- they were showing up badged but still cluttering the list. Each result's thumbnail and title now link straight to the video on YouTube (opens in a new tab) so you can actually watch it before deciding, without that click also toggling its selection checkbox.
 
