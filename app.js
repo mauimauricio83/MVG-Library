@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.9.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.9.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -6111,7 +6111,7 @@
     { key: "country", label: "Country" },
     { key: "genres", label: "Genres (comma-separated)" },
     { key: "description", label: "Description" },
-    { key: "flavorTextOverride", label: "Flavor Text Override (FTO)" },
+    { key: "flavorTextOverride", label: "Card Text Override" },
     { key: "youtube", label: "YouTube Link" },
     { key: "vimeo", label: "Vimeo Link" },
     { key: "mvg", label: "MVG Link (Instagram Reel)" }

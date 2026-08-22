@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.9.3 — current
+- Renamed the "Flavor Text Override (FTO)" option in Suggest an edit's field dropdown to "Card Text Override" -- clearer for visitors who don't know the FTO shorthand. The underlying field name (flavorTextOverride) and every other label for it are unchanged.
+
 ## v6.9.2 — current
 - Fixed "Suggest an edit" doing nothing on click: the Report an issue popover menu is appended to `document.body` (so it can float above the lightbox), not inside the lightbox itself, so the lightbox's own delegated click listener never saw clicks on it -- only a separate document-level listener did, and that one only closed the menu. Moved the actual "open the Suggest an edit modal" handling into that document-level listener, where the click can actually be seen. Also added Flavor Text Override (FTO) to the list of fields Suggest an edit can propose changes to.
 
