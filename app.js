@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.8.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.9.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -10971,15 +10971,28 @@
     return rest + " " + surname;
   }
 
-  // Fills a tinted bar (title/type-line bars) by layering the border color
-  // at low alpha over the cream panel underneath it, rather than hand-
-  // picking a light-tint hex per genre color.
-  function drawCardTintedBar(ctx, x, y, w, h, tint) {
-    roundRectPath(ctx, x, y, w, h, 10);
-    ctx.fillStyle = tint;
-    ctx.globalAlpha = 0.16;
+  // Fills a bar/box with a low-alpha dark scrim -- just enough to lift text
+  // legibility off the blurred cover-art panel behind it without hiding it;
+  // deliberately mostly see-through (20% opaque / 80% transparent) so that
+  // backdrop stays visible rather than reading as a solid box.
+  function drawCardScrimBar(ctx, x, y, w, h, radius) {
+    roundRectPath(ctx, x, y, w, h, radius == null ? 10 : radius);
+    ctx.fillStyle = "rgba(10,8,6,0.2)";
     ctx.fill();
-    ctx.globalAlpha = 1;
+  }
+
+  // Cover-fit crop (like CSS background-size: cover) -- scales the image up
+  // just enough to fill the target box on its shorter axis, then centers
+  // and lets the longer axis overflow, so the box is always fully covered
+  // with no letterboxing. `overscan` inflates the fill slightly beyond the
+  // box so a blur filter applied afterward doesn't soften/fade the edges
+  // right at the visible boundary (blur samples past the image's own drawn
+  // edge, which would otherwise show as a faint fade at the panel's rim).
+  function drawCoverFitImage(ctx, img, x, y, w, h, overscan) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    var scale = Math.max(w / iw, h / ih) * (overscan || 1);
+    var dw = iw * scale, dh = ih * scale;
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
   }
 
   // Top-to-bottom gradient fill for the outer border, using the genre
@@ -11044,10 +11057,30 @@
 
       var panelX = CARD_BORDER, panelY = CARD_BORDER;
       var panelW = CARD_W - CARD_BORDER * 2, panelH = CARD_H - CARD_BORDER * 2;
-      var panelDark = darkenColor("#F3EFE4", 0.65);
+      var panelDark = "rgba(247,243,232,0.35)";
       roundRectPath(ctx, panelX, panelY, panelW, panelH, cardPx(24));
-      ctx.fillStyle = "#F3EFE4";
-      ctx.fill();
+
+      // Panel background is the video's own cover art, cropped to fill,
+      // blurred/darkened/desaturated so it reads as texture rather than a
+      // competing image, then washed with the genre color so it still ties
+      // into the border. Falls back to a flat dark tint (no blur needed --
+      // there's nothing to blur) when there's no thumbnail to work with.
+      ctx.save();
+      ctx.clip();
+      if (thumbImg) {
+        ctx.filter = "blur(" + cardPx(24) + "px) saturate(35%) brightness(55%)";
+        drawCoverFitImage(ctx, thumbImg, panelX, panelY, panelW, panelH, 1.15);
+        ctx.filter = "none";
+        ctx.fillStyle = borderColors[0];
+        ctx.globalAlpha = 0.38;
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = darkenColor(borderColors[0], 0.35);
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+      }
+      ctx.restore();
+
       ctx.strokeStyle = panelDark;
       ctx.lineWidth = cardPx(2);
       ctx.stroke();
@@ -11058,14 +11091,14 @@
       var cursorY = panelY + pad;
 
       var titleBarH = cardPx(64);
-      drawCardTintedBar(ctx, contentX, cursorY, contentW, titleBarH, borderColors[0]);
+      drawCardScrimBar(ctx, contentX, cursorY, contentW, titleBarH);
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
       ctx.textBaseline = "middle";
       var titleBarMidY = cursorY + titleBarH / 2;
       ctx.font = "600 " + cardPx(30) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#2A2620";
+      ctx.fillStyle = "#F7F3E8";
       var artistText = row.artist || "";
       ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       var artistMaxW = contentW * 0.4;
@@ -11078,7 +11111,7 @@
       ctx.fillText(titleText, contentX + cardPx(16), titleBarMidY);
       if (artistText) {
         ctx.font = cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#5A5348";
+        ctx.fillStyle = "rgba(247,243,232,0.72)";
         ctx.textAlign = "right";
         ctx.fillText(artistText, contentX + contentW - cardPx(16), titleBarMidY);
       }
@@ -11097,12 +11130,12 @@
       cursorY += artH + cardPx(14);
 
       var typeBarH = cardPx(48);
-      drawCardTintedBar(ctx, contentX, cursorY, contentW, typeBarH, borderColors[0]);
+      drawCardScrimBar(ctx, contentX, cursorY, contentW, typeBarH);
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
       ctx.stroke();
       ctx.font = "600 " + cardPx(22) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#2A2620";
+      ctx.fillStyle = "#F7F3E8";
       ctx.textAlign = "left";
       var typeLineText = row.director ? "Directed by " + displayName(row.director) : (row.category || "Music Video");
       ctx.fillText(truncateToWidth(ctx, typeLineText, contentW - cardPx(32)), contentX + cardPx(16), cursorY + typeBarH / 2);
@@ -11112,7 +11145,7 @@
       var boxY = cursorY;
       var boxH = panelY + panelH - pad - bottomReserve - cursorY;
       roundRectPath(ctx, contentX, boxY, contentW, boxH, cardPx(10));
-      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillStyle = "rgba(10,8,6,0.2)";
       ctx.fill();
       ctx.strokeStyle = accentDark;
       ctx.lineWidth = cardPx(1.5);
@@ -11156,13 +11189,13 @@
           var pillColor = genreCardColor(g);
           roundRectPath(ctx, pillX, pillY, pillW, pillH, cardPx(13));
           ctx.fillStyle = pillColor;
-          ctx.globalAlpha = 0.18;
+          ctx.globalAlpha = 0.32;
           ctx.fill();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = darkenColor(pillColor, 0.45);
           ctx.lineWidth = cardPx(1);
           ctx.stroke();
-          ctx.fillStyle = "#2A2620";
+          ctx.fillStyle = "#F7F3E8";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.font = cardPx(17) + "px -apple-system, BlinkMacSystemFont, sans-serif";
@@ -11175,7 +11208,7 @@
         var textBlockY = textAreaY + (textAreaH - textLines.length * lineH) / 2;
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = usingDescription ? "#443F36" : "#5A5348";
+        ctx.fillStyle = usingDescription ? "rgba(247,243,232,0.92)" : "rgba(247,243,232,0.8)";
         ctx.font = usingDescription ? "italic " + cardPx(22) + "px Georgia, serif" : cardPx(20) + "px -apple-system, BlinkMacSystemFont, sans-serif";
         textLines.forEach(function (line, i) {
           ctx.fillText(line, contentX + boxPad, textBlockY + cardPx(19) + i * lineH);
@@ -11194,7 +11227,7 @@
 
       var bottomY = panelY + panelH - pad;
       ctx.font = cardPx(18) + "px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#847C6C";
+      ctx.fillStyle = "rgba(247,243,232,0.6)";
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       var metaText = [row.category, row.year].filter(Boolean).join(" · ");

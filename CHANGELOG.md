@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.9.0 — current
+- Trading card panel background is now the video's own cover art -- cropped to fill, blurred, darkened, desaturated, and washed with the genre color -- instead of a flat cream fill. The title bar, type-line bar, and description/facts box are now a mostly see-through dark scrim (20% opaque) over that background instead of solid panels, and all card text switched from dark-on-cream to light-on-dark to match.
+
 ## v6.8.3 — current
 - Trading cards are now 1080x1350 (4:5) instead of 750x1050 (5:7, the original MTG card proportions) -- 5:7 falls outside Instagram's allowed portrait range, so a downloaded card would get auto-cropped when posted to a feed. Every hand-tuned pixel size in the card layout (borders, bar heights, padding, font sizes, the logo badge) scales proportionally with the new width, so the design itself is unchanged, just wider.
 
