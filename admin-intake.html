@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
+<title>Intake — MVG Library Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css?v=6.15.0">
+<link rel="stylesheet" href="hub.css?v=6.15.0">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  /* .hub-page already carries its own max-width/padding for the reading
+     width -- .app's default padding (from styles.css, needed only for its
+     sidebar-sharing flex behavior) would otherwise double up with it. */
+  .app { padding: 0; }
+  .hub-page { max-width: 980px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<script src="site-nav.js?v=6.15.0"></script>
+<div class="app">
+<div class="hub-page">
+
+<h1>Weekly Intake</h1>
+<p class="admin-status">Recent YouTube uploads matching "music video", cross-checked against the catalog so you can triage this week's picks faster. You still choose what's worth covering.</p>
+
+<div id="intakeSignedOut">
+  <button type="button" class="submit-form-btn" id="intakeSignInBtn">Sign in with Google</button>
+</div>
+
+<div id="intakeUnauthorized" hidden>
+  <p class="admin-status is-error">This page is for MVG Library admins only. <a href="index.html">Back to the library</a>.</p>
+</div>
+
+<div id="intakeApp" hidden>
+  <div class="admin-fill-links-card">
+    <div class="admin-fill-links-actions">
+      <label>Days back
+        <input type="number" id="intakeDaysInput" min="1" max="30" value="7" class="admin-search intake-days-input">
+      </label>
+      <button type="button" class="submit-form-btn" id="intakeSearchBtn">Search</button>
+      <label class="admin-form-checkbox">
+        <input type="checkbox" id="intakeShowDupesCheckbox"> Show already-added
+      </label>
+    </div>
+    <p class="admin-status" id="intakeStatus"></p>
+  </div>
+
+  <div id="intakeResults" class="intake-results"></div>
+
+  <div class="admin-fill-links-card intake-copy-bar" id="intakeCopyRow" hidden>
+    <div class="admin-fill-links-actions">
+      <button type="button" class="submit-form-btn" id="intakeCopyBtn">Copy 0 selected rows</button>
+      <p class="admin-status">Paste into Admin &rarr; Bulk Import (Preview, check the parsed Artist/Song/Year, then Commit as usual).</p>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+<script src="admin-intake.js?v=6.15.0"></script>
+</body>
+</html>

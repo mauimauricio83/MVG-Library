@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.15.0 — current
+- Added `admin-intake.html`, a standalone admin-only page for weekly video intake: searches YouTube for recent "music video" uploads (default last 7 days, adjustable 1-30), cross-checks results against the catalog to gray out anything already added, flags likely Shorts by duration, and lets you copy selected picks as a ready-to-paste Bulk Import block (Artist/Song split off the title, YouTube link, Category, Year). Reuses the existing YouTube Data API key and the existing Bulk Import pipeline as-is -- this only speeds up finding and triaging candidates, not the judgment call of what's worth covering.
+
 ## v6.14.2 — current
 - Fixed the trading card's blank-box MVG watermark rendering as a square -- it now gets the same circular clip as the small logo badge in the footer.
 

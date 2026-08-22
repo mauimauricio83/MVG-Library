@@ -5403,6 +5403,74 @@ body.is-searching #viewersChoiceSection {
   flex-wrap: wrap;
 }
 
+/* Weekly Intake page (admin-intake.html) -- reuses .admin-fill-links-card
+   for the controls bar and .admin-badge for the "already in catalog"/
+   "Short" flags; this is just the result-card grid it doesn't have an
+   existing equivalent for. */
+.intake-days-input {
+  width: 60px;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.intake-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.intake-result-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.intake-result-card.is-duplicate {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.intake-result-check {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.intake-result-thumb {
+  flex: 0 0 auto;
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--border);
+}
+
+.intake-result-info {
+  min-width: 0;
+}
+
+.intake-result-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.intake-result-meta {
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.intake-copy-bar {
+  position: sticky;
+  bottom: 12px;
+}
+
 .admin-dupe-group {
   margin-bottom: 14px;
   padding: 8px 10px;
