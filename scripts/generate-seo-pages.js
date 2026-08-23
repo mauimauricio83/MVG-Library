@@ -17,7 +17,7 @@ const path = require("path");
 // truth. Rows arrive already in this script's target shape, so no more
 // header-column mapping is needed here.
 const SNAPSHOT_URL = "https://firebasestorage.googleapis.com/v0/b/mvg-library.firebasestorage.app/o/catalog%2Fsnapshot.json?alt=media";
-const SITE_URL = "https://mauimauricio83.github.io/MVG-Library";
+const SITE_URL = "https://themusicvideoguy.com";
 const ROOT = path.join(__dirname, "..");
 // Most directors/artists only have one entry in the sheet — a one-video hub
 // page is exactly the thin-content problem hub pages were meant to avoid.
