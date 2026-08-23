@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.21.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.22.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -337,6 +337,10 @@
     adminBlogImageBtn: document.getElementById("adminBlogImageBtn"),
     adminBlogVideoBtn: document.getElementById("adminBlogVideoBtn"),
     adminBlogInlineImageInput: document.getElementById("adminBlogInlineImageInput"),
+    blogVideoPickerModal: document.getElementById("blogVideoPickerModal"),
+    blogVideoPickerClose: document.getElementById("blogVideoPickerClose"),
+    adminBlogVideoSearch: document.getElementById("adminBlogVideoSearch"),
+    adminBlogVideoResults: document.getElementById("adminBlogVideoResults"),
     adminBlogSaveDraftBtn: document.getElementById("adminBlogSaveDraftBtn"),
     adminBlogPublishBtn: document.getElementById("adminBlogPublishBtn"),
     adminBlogCancelBtn: document.getElementById("adminBlogCancelBtn"),
@@ -817,6 +821,7 @@
     closePodcastModal();
     closeAdminModal();
     closeSuggestEditModal();
+    closeBlogVideoPickerModal();
     closeBlogEditorPage();
     closeHeaderMenu();
   }
@@ -9351,28 +9356,105 @@
     els.adminBlogInlineImageInput.click();
   });
 
-  // contenteditable="false" on the wrapper makes it an atomic "island" --
-  // selectable and deletable as one unit, same as how the browser already
-  // treats an <img>, but you can't click inside and start typing into the
-  // iframe. Reuses extractYouTubeId()/extractVimeoId() (see getRowVideoRef()
-  // above), the same parsing the catalog's own video fields go through.
+  // "+ Video" searches the catalog instead of taking a raw YouTube/Vimeo
+  // URL -- a picked video's cover art gets inserted as a card linking to
+  // that video's own lightbox hash (lightboxHash(), the same deep link the
+  // "Copy link" share button produces), rather than embedding a bare
+  // iframe. Clicking the card on the public post opens the site's real
+  // lightbox on top of the page instead of navigating away (see the click
+  // handler added in news.html); an admin without JS, or opening the link
+  // in a new tab, still lands on a working lightbox via the deep link.
   els.adminBlogVideoBtn.addEventListener("click", function () {
-    var url = window.prompt("YouTube or Vimeo video URL:", "https://");
-    if (!url) return;
-    var ytId = extractYouTubeId(url);
-    var vimeoId = !ytId ? extractVimeoId(url) : null;
-    var src = ytId
-      ? "https://www.youtube.com/embed/" + ytId
-      : vimeoId
-        ? "https://player.vimeo.com/video/" + vimeoId
-        : null;
-    if (!src) {
-      alert("Couldn't recognize that as a YouTube or Vimeo link.");
-      return;
-    }
-    restoreBlogBodySelection();
-    document.execCommand("insertHTML", false,
-      '<div class="blog-video-embed" contenteditable="false"><iframe src="' + src + '" title="Embedded video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>');
+    els.adminBlogVideoSearch.value = "";
+    els.adminBlogVideoResults.innerHTML = "";
+    els.blogVideoPickerModal.hidden = false;
+    els.adminBlogVideoSearch.focus();
+  });
+
+  function closeBlogVideoPickerModal() {
+    if (els.blogVideoPickerModal.hidden) return;
+    els.blogVideoPickerModal.hidden = true;
+  }
+
+  els.blogVideoPickerClose.addEventListener("click", closeBlogVideoPickerModal);
+  els.blogVideoPickerModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeBlogVideoPickerModal();
+  });
+
+  function renderBlogVideoPickerResults() {
+    var query = els.adminBlogVideoSearch.value.trim().toLowerCase();
+    if (!query) { els.adminBlogVideoResults.innerHTML = ""; return; }
+    var rows = state.rows.filter(function (r) {
+      return hasVideo(r) && (r.artist + " " + r.song + " " + (r.director || "")).toLowerCase().indexOf(query) !== -1;
+    }).slice(0, 25);
+    if (!rows.length) { els.adminBlogVideoResults.innerHTML = '<p class="admin-empty">No matches.</p>'; return; }
+    els.adminBlogVideoResults.innerHTML = rows.map(function (r) {
+      return (
+        '<div class="admin-row">' +
+          '<div class="admin-row-main">' +
+            '<div class="admin-row-title">' + escapeHtml(r.artist) + " — " + escapeHtml(r.song) + "</div>" +
+            '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + "</div>" +
+          "</div>" +
+          '<div class="admin-row-actions">' +
+            '<button type="button" class="admin-row-btn" data-blog-video-insert="' + escapeHtml(r.rowNum) + '">Insert</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  els.adminBlogVideoSearch.addEventListener("input", renderBlogVideoPickerResults);
+
+  // YouTube's thumbnail URL is predictable by ID; Vimeo's isn't, so it
+  // reuses whatever vimeoThumb was already cached at import time, falling
+  // back to a fresh oEmbed call (same fallback fetchVimeoThumbnail() covers
+  // for the admin cover-art download feature).
+  function blogVideoCardThumbUrl(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(null);
+    if (ref.provider === "youtube") return Promise.resolve("https://i.ytimg.com/vi/" + ref.id + "/hqdefault.jpg");
+    return row.vimeoThumb ? Promise.resolve(row.vimeoThumb) : fetchVimeoThumbnail(ref.id);
+  }
+
+  // The card's provider/videoid/title/artist/director are baked into its
+  // own data attributes at insert time -- news.html's lightbox reads them
+  // straight off the clicked element, no fetch needed. The alternative
+  // (looking the row up live) doesn't work for a signed-out blog reader:
+  // the `videos` collection is admin-read-only (firestore.rules), and the
+  // public site's own full-catalog snapshot is a ~24MB JSON, both wrong
+  // for "open one video's lightbox from a blog post."
+  function insertBlogVideoCard(row) {
+    var insertBtn = els.adminBlogVideoResults.querySelector('[data-blog-video-insert="' + row.rowNum + '"]');
+    if (insertBtn) { insertBtn.disabled = true; insertBtn.textContent = "…"; }
+    var videoRef = getRowVideoRef(row);
+    blogVideoCardThumbUrl(row).then(function (thumbUrl) {
+      var label = (row.artist ? row.artist + " — " : "") + (row.song || "Untitled");
+      var href = location.origin + "/" + lightboxHash(row);
+      var imgHtml = thumbUrl ? '<img src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy">' : "";
+      restoreBlogBodySelection();
+      document.execCommand("insertHTML", false,
+        '<div class="blog-video-card" contenteditable="false">' +
+          '<a href="' + escapeHtml(href) + '" class="blog-video-card-link"' +
+            ' data-provider="' + escapeHtml(videoRef ? videoRef.provider : "") + '"' +
+            ' data-videoid="' + escapeHtml(videoRef ? videoRef.id : "") + '"' +
+            ' data-title="' + escapeHtml(row.song || "Untitled") + '"' +
+            ' data-artist="' + escapeHtml(row.artist || "") + '"' +
+            ' data-director="' + escapeHtml(row.director || "") + '"' +
+            ' target="_blank" rel="noopener">' +
+            imgHtml +
+            '<span class="blog-video-card-play">&#9658;</span>' +
+            '<span class="blog-video-card-caption">' + escapeHtml(label) + "</span>" +
+          "</a>" +
+        "</div>");
+      closeBlogVideoPickerModal();
+    });
+  }
+
+  els.adminBlogVideoResults.addEventListener("click", function (e) {
+    var insertBtn = e.target.closest("[data-blog-video-insert]");
+    if (!insertBtn) return;
+    var row = findRowByNum(insertBtn.getAttribute("data-blog-video-insert"));
+    if (row) insertBlogVideoCard(row);
   });
 
   els.adminBlogInlineImageInput.addEventListener("change", function () {

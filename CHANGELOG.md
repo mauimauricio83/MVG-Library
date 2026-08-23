@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.22.0 — current
+- Blog editor's "+ Video" button now searches the catalog instead of taking a raw YouTube/Vimeo URL -- picking a result inserts a cover-art card (thumbnail + play icon + caption) linking to that video's own lightbox, instead of embedding a bare iframe. Clicking the card on a published post opens the site's real lightbox on top of the post itself (via news.html's own lightweight lightbox) rather than navigating away, so readers stay on the blog entry; the card's href is still a real deep link (`/#song-slug-rowNum`) for anyone opening it in a new tab or with JS off. Provider/video ID/title/artist/director are baked into the card's own data attributes at insert time, since a live per-video lookup isn't an option for a signed-out reader (the `videos` collection is admin-read-only, and the alternative -- the public site's full catalog snapshot -- is a ~24MB JSON).
+
 ## v6.21.0 — current
 - Added an admin-only "Download cover art" action to all three video-viewing surfaces (public lightbox, TV Mode, Manage Entries' row-preview modal) -- pulls the video's own YouTube thumbnail (tries maxresdefault down through sddefault/hqdefault, since not every video has the largest size) or its cached/oEmbed-resolved Vimeo thumbnail, and downloads it as a JPG. Same fetch-as-blob approach admin-intake.js and Manage Entries' Fill Missing Links preview already use, since a plain cross-origin `<a download>` doesn't actually force a save.
 

@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.21.0">
+<link rel="stylesheet" href="styles.css?v=6.22.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1302,12 +1302,23 @@
       <button type="button" id="adminBlogLinkBtn" title="Link (works on text or a selected image)">Link</button>
       <button type="button" id="adminBlogUnlinkBtn" title="Remove link">Unlink</button>
       <button type="button" id="adminBlogImageBtn" title="Insert image here">+ Image</button>
-      <button type="button" id="adminBlogVideoBtn" title="Embed a YouTube or Vimeo video here">+ Video</button>
+      <button type="button" id="adminBlogVideoBtn" title="Insert a video from the catalog here">+ Video</button>
     </div>
     <div class="blog-editor-body" id="adminBlogBodyInput" contenteditable="true"></div>
     <input type="file" id="adminBlogInlineImageInput" accept="image/*" hidden>
     <p class="admin-status" id="adminBlogFormStatus" hidden></p>
   </form>
+</div>
+
+<div class="lightbox" id="blogVideoPickerModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Insert a video">
+    <button type="button" class="lightbox-close" id="blogVideoPickerClose" aria-label="Close">&times;</button>
+    <h2 class="submit-form-title">Insert a video</h2>
+    <p class="admin-bulk-hint">Search the catalog and pick a video -- its cover art gets inserted as a card that links to its lightbox on the site.</p>
+    <input type="search" id="adminBlogVideoSearch" class="admin-search" placeholder="Search artist, song, or director…">
+    <div class="admin-entries-list" id="adminBlogVideoResults"></div>
+  </div>
 </div>
 
 <div class="lightbox" id="suggestEditModal" hidden>
@@ -1376,6 +1387,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.21.0"></script>
+<script src="app.js?v=6.22.0"></script>
 </body>
 </html>

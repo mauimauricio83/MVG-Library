@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=6.21.0">
+<link rel="stylesheet" href="styles.css?v=6.22.0">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>
 <style>
   :root {
@@ -474,7 +474,7 @@
 <body>
 
 <div class="shell">
-<script src="site-nav.js?v=6.21.0"></script>
+<script src="site-nav.js?v=6.22.0"></script>
 <div class="app">
 
 <main id="blogMain">
@@ -586,6 +586,77 @@
     for (var i = 0; i < n; i++) out += skeletonCommentHtml();
     return out;
   }
+
+  // ---- In-page video lightbox ---------------------------------------------
+  // Blog posts can embed a catalog video as a cover-art card (inserted by
+  // the admin blog editor's "+ Video" picker, see app.js's
+  // insertBlogVideoCard()) instead of a bare iframe. Its href is a real
+  // deep link (works with JS off, middle-click, or landing here from
+  // outside the site) but a normal click is intercepted below to open a
+  // lightweight lightbox right on top of the post instead of navigating
+  // to index.html -- the whole point being to stay on the blog entry.
+  // Provider/videoid/title/artist/director are read straight off the
+  // card's own data attributes (baked in at insert time) -- a live lookup
+  // isn't an option for a signed-out reader: the `videos` collection is
+  // admin-read-only, and the public site's own catalog snapshot is a
+  // ~24MB JSON, both wrong for "open one video from a blog post."
+  function ensureVideoLightboxEl() {
+    var el = document.getElementById("blogVideoLightbox");
+    if (el) return el;
+    el = document.createElement("div");
+    el.className = "lightbox";
+    el.id = "blogVideoLightbox";
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="lightbox-backdrop"></div>' +
+      '<div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Video">' +
+        '<button type="button" class="lightbox-close" aria-label="Close">&times;</button>' +
+        '<div class="lightbox-content" id="blogVideoLightboxContent"></div>' +
+      "</div>";
+    document.body.appendChild(el);
+    el.addEventListener("click", function (e) {
+      if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeVideoLightbox();
+    });
+    return el;
+  }
+
+  function closeVideoLightbox() {
+    var el = document.getElementById("blogVideoLightbox");
+    if (!el || el.hidden) return;
+    el.hidden = true;
+    document.getElementById("blogVideoLightboxContent").innerHTML = ""; // stops playback
+    document.body.style.overflow = "";
+  }
+
+  function openVideoLightbox(linkEl) {
+    var el = ensureVideoLightboxEl();
+    var contentEl = document.getElementById("blogVideoLightboxContent");
+    var provider = linkEl.getAttribute("data-provider");
+    var videoId = linkEl.getAttribute("data-videoid");
+    var title = linkEl.getAttribute("data-title") || "";
+    var artist = linkEl.getAttribute("data-artist") || "";
+    var director = linkEl.getAttribute("data-director") || "";
+    var src = provider === "youtube" ? "https://www.youtube.com/embed/" + videoId + "?autoplay=1"
+      : provider === "vimeo" ? "https://player.vimeo.com/video/" + videoId + "?autoplay=1"
+      : null;
+    var videoHtml = src
+      ? '<div class="blog-video-embed"><iframe src="' + src + '" title="' + escapeHtml(title) +
+        '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>'
+      : '<p class="empty-state">No video available for this entry.</p>';
+    var sub = artist ? '<p class="post-meta">' + escapeHtml(artist) + (director ? " · Dir. " + escapeHtml(director) : "") + "</p>" : "";
+    contentEl.innerHTML =
+      videoHtml +
+      '<div class="lightbox-body">' +
+      '<h2 class="lightbox-title">' + escapeHtml(title || "(untitled)") + "</h2>" +
+      sub +
+      "</div>";
+    el.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeVideoLightbox();
+  });
 
   function formatDate(ts) {
     if (!ts || !ts.toDate) return "";
@@ -826,6 +897,12 @@
   }
 
   main.addEventListener("click", function (e) {
+    var videoCardLink = e.target.closest(".blog-video-card-link");
+    if (videoCardLink) {
+      e.preventDefault();
+      openVideoLightbox(videoCardLink);
+      return;
+    }
     if (e.target.closest("#commentSignInBtn")) {
       auth.signInWithPopup(googleProvider).catch(function (err) {
         console.error("Sign-in failed:", err);
