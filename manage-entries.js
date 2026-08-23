@@ -87,6 +87,19 @@
     });
   }
 
+  // The YouTube Data API returns snippet.title/channelTitle HTML-entity-
+  // encoded (a video literally titled '...& ...' comes back as the text
+  // "...&amp; ..."), which would otherwise show up literally (assigning
+  // it to .textContent doesn't decode entities either) -- decode once at
+  // ingestion. <textarea> is used rather than a <div> because its content
+  // model is plain text, not HTML -- entities decode but nothing (e.g. a
+  // stray "<script>") can execute.
+  function decodeHtmlEntities(str) {
+    var el = document.createElement("textarea");
+    el.innerHTML = str;
+    return el.value;
+  }
+
   // Same regexes as app.js's extractYouTubeId()/extractVimeoId() -- duplicated
   // for the same reason as firebaseConfig above (no shared module system).
   function extractYouTubeId(url) {
@@ -882,7 +895,7 @@
     }).then(function (data) {
       var item = data.items && data.items[0];
       if (!item) return null;
-      return { videoId: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle };
+      return { videoId: item.id.videoId, title: decodeHtmlEntities(item.snippet.title), channel: decodeHtmlEntities(item.snippet.channelTitle) };
     });
   }
 

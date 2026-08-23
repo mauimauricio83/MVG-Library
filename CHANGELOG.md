@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.19.2 — current
+- Fixed video titles/channel names showing literal HTML entities (e.g. "Sonny Fodera &amp;amp; Becky Hill", "Ain&amp;#39;t It Fun") in Weekly Intake's search results and Manage Entries' Fill Missing Links auto-fill. The YouTube Data API returns `snippet.title`/`channelTitle` HTML-entity-encoded -- our own escaping (or in Fill Links' case, plain `.textContent`, which doesn't decode entities either) was then displaying that encoding literally instead of the real character. Decoded once at ingestion in both places now, so downstream escaping/display only ever runs on the real plain-text title.
+
 ## v6.19.1 — current
 - Fixed the installed Android app (TWA) showing browser chrome (URL bar/share/overflow menu) instead of running full-screen. Root cause: `manifest.json`'s `start_url`/`id`/`scope`/icon paths all still pointed at `/MVG-Library/`, a stale path from before the site moved to its own domain -- the site actually serves from `/`, so every real page load was technically outside the manifest's declared scope, which is what makes Chrome fall back to showing browser UI instead of trusting the page as the installed app.
 

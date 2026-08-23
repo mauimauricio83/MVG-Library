@@ -56,6 +56,20 @@
     });
   }
 
+  // The YouTube Data API returns snippet.title/channelTitle HTML-entity-
+  // encoded (a video literally titled '...& ...' comes back as the text
+  // "...&amp; ..."), so escapeHtml() above would double-escape it into
+  // "&amp;amp;" if applied directly -- decode once at ingestion so every
+  // downstream use (rendering, the review grid, the copied TSV) works
+  // with the real plain-text title. <textarea> is used rather than a
+  // <div> because its content model is plain text, not HTML -- entities
+  // decode but nothing (e.g. a stray "<script>") can execute.
+  function decodeHtmlEntities(str) {
+    var el = document.createElement("textarea");
+    el.innerHTML = str;
+    return el.value;
+  }
+
   // Same regex as app.js:4118 (extractYouTubeId) -- duplicated for the
   // same reason as firebaseConfig above.
   function extractYouTubeId(url) {
@@ -180,8 +194,8 @@
           var seconds = durations[videoId] || 0;
           results.push({
             videoId: videoId,
-            title: item.snippet.title,
-            channel: item.snippet.channelTitle,
+            title: decodeHtmlEntities(item.snippet.title),
+            channel: decodeHtmlEntities(item.snippet.channelTitle),
             publishedAt: item.snippet.publishedAt,
             thumb: item.snippet.thumbnails && (item.snippet.thumbnails.medium || item.snippet.thumbnails.default).url,
             seconds: seconds,
