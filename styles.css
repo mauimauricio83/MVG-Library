@@ -5240,6 +5240,7 @@ body.is-searching #viewersChoiceSection {
 
 .admin-grid-wrap {
   margin-top: 12px;
+  margin-bottom: 20px; /* room for .admin-grid-bottom-scrollbar so it doesn't sit over the last row */
   overflow-x: auto;
   overflow-y: auto;
 }
@@ -5290,6 +5291,24 @@ body.is-searching #viewersChoiceSection {
   color: var(--text-faint);
   padding: 0 2px;
   font-size: 0.78rem;
+}
+
+/* Mirrors .admin-grid-wrap's horizontal scrollbar at the bottom of the
+   viewport (manage-entries.js keeps them scroll-synced) so it's usable
+   without scrolling all the way down to the table's own bottom edge. */
+.admin-grid-bottom-scrollbar {
+  position: fixed;
+  bottom: 0;
+  height: 14px;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 40;
+}
+
+.admin-grid-bottom-scrollbar > div {
+  height: 1px;
 }
 
 .admin-grid {
@@ -5395,6 +5414,43 @@ body.is-searching #viewersChoiceSection {
 
 .admin-grid td select {
   width: 108px;
+}
+
+/* Description/Flavor Text -- collapsed to a truncated single line by
+   default (same footprint as a wide text input), expands into a proper
+   multi-line box on focus/click so the full text is actually readable
+   and editable, then collapses back on blur. */
+.admin-grid td textarea.admin-grid-expand {
+  width: 220px;
+  height: 28px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: inherit;
+  resize: none;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.admin-grid td textarea.admin-grid-expand:hover {
+  border-color: var(--border);
+}
+
+.admin-grid td textarea.admin-grid-expand:focus {
+  position: relative;
+  z-index: 5;
+  width: 340px;
+  height: 140px;
+  white-space: pre-wrap;
+  overflow: auto;
+  border-color: var(--accent);
+  background: var(--surface);
+  outline: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .admin-grid-check {

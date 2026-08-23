@@ -47,7 +47,9 @@
     gridLastBtn: document.getElementById("meGridLastBtn"),
     previewModal: document.getElementById("mePreviewModal"),
     previewClose: document.getElementById("mePreviewClose"),
-    previewBody: document.getElementById("mePreviewBody")
+    previewBody: document.getElementById("mePreviewBody"),
+    bottomScrollbar: document.getElementById("meBottomScrollbar"),
+    bottomScrollbarInner: document.getElementById("meBottomScrollbarInner")
   };
 
   function escapeHtml(str) {
@@ -165,6 +167,7 @@
   // sort: "string" | "number" | "bool" -- see compareRows() above.
   var GRID_COLUMNS = [
     { key: "rowNum", label: "Row", type: "rownum", sort: "number" },
+    { key: "youtube", label: "YouTube Link", type: "youtube", sort: "string", cls: "admin-grid-wide" },
     { key: "artist", label: "Artist", type: "text", sort: "string" },
     { key: "song", label: "Song", type: "text", sort: "string" },
     { key: "director", label: "Director", type: "text", sort: "string" },
@@ -183,11 +186,10 @@
     { key: "genres", label: "Genres", type: "genres", sort: "string" },
     { key: "releaseDate", label: "Release Date", type: "text", sort: "string" },
     { key: "submitterEmail", label: "Submitter Email", type: "text", sort: "string" },
-    { key: "description", label: "Description", type: "text", sort: "string", cls: "admin-grid-wide" },
-    { key: "flavorTextOverride", label: "Flavor Text", type: "text", sort: "string", cls: "admin-grid-wide" },
+    { key: "description", label: "Description", type: "textarea", sort: "string", cls: "admin-grid-wide" },
+    { key: "flavorTextOverride", label: "Flavor Text", type: "textarea", sort: "string", cls: "admin-grid-wide" },
     { key: "vimeo", label: "Vimeo Link", type: "text", sort: "string", cls: "admin-grid-wide" },
-    { key: "mvg", label: "MVG Link", type: "text", sort: "string", cls: "admin-grid-wide" },
-    { key: "youtube", label: "YouTube Link", type: "youtube", sort: "string", cls: "admin-grid-wide" }
+    { key: "mvg", label: "MVG Link", type: "text", sort: "string", cls: "admin-grid-wide" }
   ];
 
   var gridAllRows = [];
@@ -220,6 +222,12 @@
         return '<td class="admin-grid-check"><input type="checkbox" data-field="' + col.key + '"' + (r[col.key] ? " checked" : "") + "></td>";
       case "genres":
         return '<td><input type="text" data-field="genres" value="' + escapeHtml((r.genres || []).join(", ")) + '" placeholder="Pop, Synthpop"></td>';
+      case "textarea":
+        // Collapsed to a single truncated line by default, expands to a
+        // proper multi-line box on focus/click (see the :focus rule in
+        // styles.css) -- for Description/Flavor Text, which regularly run
+        // well past what a single-line input can show.
+        return '<td' + (col.cls ? ' class="' + col.cls + '"' : "") + '><textarea data-field="' + col.key + '" class="admin-grid-expand">' + escapeHtml(r[col.key] || "") + "</textarea></td>";
       case "youtube":
         return '<td class="admin-grid-wide admin-grid-link-cell">' +
           '<input type="text" data-field="youtube" value="' + escapeHtml(r.youtube || "") + '">' +
@@ -276,6 +284,7 @@
       els.gridPagerLabel.textContent = "";
       els.gridPageNumbers.innerHTML = "";
       els.gridFirstBtn.disabled = els.gridPrevBtn.disabled = els.gridNextBtn.disabled = els.gridLastBtn.disabled = true;
+      els.bottomScrollbar.hidden = true;
       return;
     }
     var totalPages = gridTotalPages();
@@ -287,7 +296,46 @@
     els.gridPageNumbers.innerHTML = pageNumbersHtml(totalPages);
     els.gridFirstBtn.disabled = els.gridPrevBtn.disabled = gridPage === 0;
     els.gridLastBtn.disabled = els.gridNextBtn.disabled = gridPage >= totalPages - 1;
+    syncBottomScrollbar();
   }
+
+  // A native horizontal scrollbar on .admin-grid-wrap only shows up at
+  // the bottom edge of the TABLE, which is often off-screen below the
+  // fold -- this mirrors it as a bar fixed to the bottom of the viewport
+  // instead, kept the same width/position as the actual scrollable area
+  // (.hub-page) so it lines up whether the sidebar is collapsed or
+  // expanded, and scroll-synced both ways with the real grid.
+  var syncingGridScroll = false;
+
+  function syncBottomScrollbar() {
+    if (!gridMode) return;
+    els.bottomScrollbar.hidden = gridAllRows.length === 0;
+    els.bottomScrollbarInner.style.width = els.gridTable.scrollWidth + "px";
+    var rect = document.querySelector(".hub-page").getBoundingClientRect();
+    els.bottomScrollbar.style.left = rect.left + "px";
+    els.bottomScrollbar.style.width = rect.width + "px";
+  }
+
+  els.gridWrap.addEventListener("scroll", function () {
+    if (syncingGridScroll) return;
+    syncingGridScroll = true;
+    els.bottomScrollbar.scrollLeft = els.gridWrap.scrollLeft;
+    syncingGridScroll = false;
+  });
+
+  els.bottomScrollbar.addEventListener("scroll", function () {
+    if (syncingGridScroll) return;
+    syncingGridScroll = true;
+    els.gridWrap.scrollLeft = els.bottomScrollbar.scrollLeft;
+    syncingGridScroll = false;
+  });
+
+  window.addEventListener("resize", syncBottomScrollbar);
+  // Sidebar collapse/expand (site-nav.js toggling .header-links.is-open)
+  // changes .hub-page's left edge without firing any event we can listen
+  // for directly -- a class-attribute observer catches it instead.
+  var sidebarEl = document.querySelector(".header-links");
+  if (sidebarEl) new MutationObserver(syncBottomScrollbar).observe(sidebarEl, { attributes: true, attributeFilter: ["class"] });
 
   function flashGridCell(el, ok) {
     el.classList.remove("save-ok", "save-error");
@@ -346,7 +394,7 @@
   });
 
   els.gridTable.addEventListener("focusout", function (e) {
-    var input = e.target.closest('input[type="text"][data-field]');
+    var input = e.target.closest('input[type="text"][data-field], textarea[data-field]');
     if (!input) return;
     var rowNum = input.closest("tr").getAttribute("data-rownum");
     var field = input.getAttribute("data-field");
@@ -411,6 +459,7 @@
     els.gridHint.hidden = !gridMode;
     els.gridWrap.hidden = !gridMode;
     els.entriesList.hidden = gridMode;
+    if (!gridMode) els.bottomScrollbar.hidden = true;
     renderEntries();
   });
 

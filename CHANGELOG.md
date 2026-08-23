@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.18.1 — current
+- Manage Entries' Grid view: YouTube Link moved to the second column (right after Row). Description and Flavor Text are now expandable textareas -- collapsed to a truncated single line by default, expand into a proper multi-line box on click/focus so long text is actually readable and editable, then collapse back on blur. Added a horizontal scrollbar fixed to the bottom of the viewport, scroll-synced with the table -- with 24 columns the native scrollbar sat at the table's own bottom edge, often well below the fold.
+
 ## v6.18.0 — current
 - Manage Entries' Grid view: click any column header to sort by it (click again to reverse) -- applies to List view's ordering too, they share one sort. Pager gained page-number buttons (windowed around the current page, since the full catalog is ~180 pages) plus First/Last, not just Prev/Next. Grid now shows every field, not just the dozen that fit before -- Studio, Producer, DP, Choreographer, Release Date, Submitter Email, Description, Flavor Text, Vimeo, and MVG links joined Artist/Song/Director/Category/Year/Feature/Spotlight/Sponsored/Backdoor/Editor/Country/Genres/YouTube. The YouTube column's link now opens in a new tab instead of being plain text inside the edit box. Clicking a row number (List or Grid) opens a lightweight in-page video preview -- embed, title, credits, description -- without leaving Manage Entries.
 
