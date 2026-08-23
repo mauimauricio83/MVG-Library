@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.19.1 — current
+- Fixed the installed Android app (TWA) showing browser chrome (URL bar/share/overflow menu) instead of running full-screen. Root cause: `manifest.json`'s `start_url`/`id`/`scope`/icon paths all still pointed at `/MVG-Library/`, a stale path from before the site moved to its own domain -- the site actually serves from `/`, so every real page load was technically outside the manifest's declared scope, which is what makes Chrome fall back to showing browser UI instead of trusting the page as the installed app.
+
 ## v6.19.0 — current
 - Data Health and Fill Missing Links moved out of the admin popup entirely and now live exclusively on Manage Entries -- "Data Health" is gone from the admin landing menu. Duplicate Videos / Missing Video Link / Broken Links are now clickable stat buttons: clicking one filters List/Grid down to just those rows (combined with the search box) instead of Data Health rendering its own separate read-only lists, so you get full sorting/inline-editing on the flagged entries themselves. Broken Links still requires an explicit "Scan for Broken Links" (stoppable, same throttled concurrent check as before); Duplicates/Missing Link are computed instantly the moment entries load.
 - Fill Missing Links is now a modal on Manage Entries (its own "Fill Missing Links" button, shown whenever there are missing-link entries) -- same one-at-a-time queue, Skip/Save & Next/Delete/Search/Auto-Fill behavior as before, with a lighter plain-iframe preview instead of the full player used elsewhere on the site.
