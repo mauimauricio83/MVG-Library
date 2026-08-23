@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.19.3 — current
+- Weekly Intake's Review grid gained a "Search" button per row -- opens a Google search for Artist + Song Title + "country of origin" in a new tab, for a quick lookup while filling in the Country field before copying to Bulk Import.
+
 ## v6.19.2 — current
 - Fixed video titles/channel names showing literal HTML entities (e.g. "Sonny Fodera &amp;amp; Becky Hill", "Ain&amp;#39;t It Fun") in Weekly Intake's search results and Manage Entries' Fill Missing Links auto-fill. The YouTube Data API returns `snippet.title`/`channelTitle` HTML-entity-encoded -- our own escaping (or in Fill Links' case, plain `.textContent`, which doesn't decode entities either) was then displaying that encoding literally instead of the real character. Decoded once at ingestion in both places now, so downstream escaping/display only ever runs on the real plain-text title.
 

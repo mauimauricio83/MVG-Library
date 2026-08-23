@@ -379,6 +379,7 @@
         '<td class="admin-grid-year"><input type="text" data-index="' + i + '" data-field="year" value="' + escapeHtml(row.year) + '"></td>' +
         '<td><input type="text" data-index="' + i + '" data-field="country" value="' + escapeHtml(row.country) + '"></td>' +
         '<td class="admin-grid-wide"><input type="text" data-index="' + i + '" data-field="youtube" value="' + escapeHtml(row.youtube) + '"></td>' +
+        '<td><button type="button" class="admin-row-btn" data-search-index="' + i + '" title="Search Artist + Song + &quot;country of origin&quot; on Google">Search</button></td>' +
         '<td><button type="button" class="admin-row-btn admin-row-btn-danger" data-remove-index="' + i + '">Remove</button></td>' +
       "</tr>";
     }).join("");
@@ -429,6 +430,14 @@
   });
 
   els.reviewBody.addEventListener("click", function (e) {
+    var searchBtn = e.target.closest("[data-search-index]");
+    if (searchBtn) {
+      var row = reviewRows[parseInt(searchBtn.getAttribute("data-search-index"), 10)];
+      if (!row) return;
+      var query = [row.artist, row.song, "country of origin"].filter(Boolean).join(" ");
+      window.open("https://www.google.com/search?q=" + encodeURIComponent(query), "_blank", "noopener");
+      return;
+    }
     var btn = e.target.closest("[data-remove-index]");
     if (!btn) return;
     var i = parseInt(btn.getAttribute("data-remove-index"), 10);
