@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.23.2 — current
+- The remaining two spots that still linked to `news.html?post=<slug>` (homepage's blog sidebar, and the single-post view's own "Previous Articles" sidebar) now point at the static `/blog/<slug>/` page too, matching the listing page fixed in v6.23.1 -- every on-site link to a post is unified on the one shareable, social-unfurling-friendly URL format now.
+
 ## v6.23.1 — current
 - News.html's own listing page (both the big cards and the compact list below them) now links each post straight to its static `/blog/<slug>/` page instead of `news.html?post=<slug>` -- copy-pasting a link from the listing page (e.g. to share on Facebook/X) now gets a URL that actually unfurls with the real title/image, instead of the client-rendered shell that always showed blank. Homepage sidebar and the single-post view's "Previous Articles" sidebar are intentionally left on the old format for now (narrower ask). Trade-off: a post shared from the listing within the first few hours of publishing (before the next SEO build runs) will 404 until that build lands -- worth keeping in mind when publishing something you plan to share immediately, same as any other freshly-added catalog entry's hub page today.
 

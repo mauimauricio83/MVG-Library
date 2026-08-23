@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.23.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.23.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -3891,7 +3891,7 @@
     var extraPosts = posts.slice(NEWS_CARD_COUNT);
 
     els.blogLatestCards.innerHTML = cardPosts.map(function (post) {
-      var url = "news.html?post=" + encodeURIComponent(post.slug);
+      var url = "blog/" + encodeURIComponent(post.slug) + "/";
       var thumb = post.coverImageURL
         ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
         : "";
@@ -3908,7 +3908,7 @@
 
     if (extraPosts.length) {
       els.blogLatestExtra.innerHTML = extraPosts.map(function (post) {
-        var url = "news.html?post=" + encodeURIComponent(post.slug);
+        var url = "blog/" + encodeURIComponent(post.slug) + "/";
         var thumb = post.coverImageURL
           ? '<img src="' + escapeHtml(post.coverImageURL) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">'
           : "";
