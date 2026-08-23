@@ -174,6 +174,8 @@ async function fetchBlogPosts() {
         title: fsString(f, "title"),
         slug: fsString(f, "slug"),
         excerpt: fsString(f, "excerpt"),
+        body: fsString(f, "body"),
+        coverImageURL: fsString(f, "coverImageURL"),
         authorName: fsString(f, "authorName") || "The Music Video Guy",
         date: fsDate(f, "publishedAt") || fsDate(f, "createdAt")
       };
@@ -237,8 +239,20 @@ function videoListItem(row, otherField, depth) {
   );
 }
 
-function page(title, description, canonical, bodyHtml, jsonLd, depth) {
+// ogExtra lets a page opt into richer social-card fields (blog posts pass
+// their cover image + published time/author; director/artist/video pages
+// leave it undefined and just get the baseline og:type=website + a plain
+// twitter:card=summary they didn't have before -- free, no behavior change).
+function page(title, description, canonical, bodyHtml, jsonLd, depth, ogExtra) {
+  ogExtra = ogExtra || {};
   const rootPrefix = "../".repeat(depth);
+  const twitterTags = ogExtra.image
+    ? '<meta name="twitter:card" content="summary_large_image">\n' +
+      '<meta name="twitter:image" content="' + escapeHtml(ogExtra.image) + '">\n'
+    : '<meta name="twitter:card" content="summary">\n';
+  const articleTags =
+    (ogExtra.publishedTime ? '<meta property="article:published_time" content="' + ogExtra.publishedTime + '">\n' : "") +
+    (ogExtra.author ? '<meta property="article:author" content="' + escapeHtml(ogExtra.author) + '">\n' : "");
   return (
     "<!DOCTYPE html>\n" +
     '<html lang="en">\n<head>\n' +
@@ -249,10 +263,16 @@ function page(title, description, canonical, bodyHtml, jsonLd, depth) {
     '<meta name="description" content="' + escapeHtml(description) + '">\n' +
     '<meta name="robots" content="index, follow">\n' +
     '<link rel="canonical" href="' + canonical + '">\n' +
+    '<meta property="og:site_name" content="MVG Library">\n' +
     '<meta property="og:title" content="' + escapeHtml(title) + '">\n' +
     '<meta property="og:description" content="' + escapeHtml(description) + '">\n' +
-    '<meta property="og:type" content="website">\n' +
+    '<meta property="og:type" content="' + (ogExtra.type || "website") + '">\n' +
     '<meta property="og:url" content="' + canonical + '">\n' +
+    (ogExtra.image ? '<meta property="og:image" content="' + escapeHtml(ogExtra.image) + '">\n' : "") +
+    articleTags +
+    '<meta name="twitter:title" content="' + escapeHtml(title) + '">\n' +
+    '<meta name="twitter:description" content="' + escapeHtml(description) + '">\n' +
+    twitterTags +
     '<link rel="stylesheet" href="' + rootPrefix + 'styles.css">\n' +
     '<link rel="stylesheet" href="' + rootPrefix + 'hub.css">\n' +
     '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>\n' +
@@ -408,6 +428,69 @@ function videoPage(row, canonical, depth, directorSlug, artistSlug) {
   return page(title + " | MVG Library", description, canonical, body, jsonLd, depth);
 }
 
+// Crude but fine for a build-time excerpt fallback (no DOM here) -- only
+// used when the admin left the excerpt field blank.
+function stripHtml(html) {
+  return String(html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncate(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen - 1).replace(/\s+\S*$/, "") + "…";
+}
+
+// Static, crawlable counterpart to news.html's client-rendered
+// news.html?post=<slug> view -- the whole point being that social
+// unfurlers and non-JS crawlers never run the Firestore fetch that page
+// depends on, so they'd otherwise only ever see the generic "News — MVG
+// Library" shell. This page carries the real title/description/og:image/
+// article JSON-LD plus the actual post body, and links onward to
+// news.html?post=<slug> for anyone who wants to comment.
+function blogPostPage(post, canonical, depth) {
+  const rootPrefix = "../".repeat(depth);
+  const description = post.excerpt || truncate(stripHtml(post.body), 155);
+  const dateIso = post.date ? post.date.toISOString() : undefined;
+  const dateDisplay = post.date
+    ? post.date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "";
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description,
+    url: canonical,
+    mainEntityOfPage: canonical,
+    author: { "@type": "Person", name: post.authorName }
+  };
+  if (dateIso) jsonLd.datePublished = dateIso;
+  if (post.coverImageURL) jsonLd.image = post.coverImageURL;
+
+  const cover = post.coverImageURL
+    ? '<img class="blog-post-cover" src="' + escapeHtml(post.coverImageURL) + '" alt="">\n'
+    : "";
+  const meta = escapeHtml(post.authorName) + (dateDisplay ? " · " + escapeHtml(dateDisplay) : "");
+
+  const body =
+    '<a class="hub-back" href="' + rootPrefix + 'news.html">&larr; MVG Library News</a>\n' +
+    cover +
+    "<h1>" + escapeHtml(post.title) + "</h1>\n" +
+    '<p class="blog-post-meta">' + meta + "</p>\n" +
+    '<div class="blog-post-body">' + (post.body || "") + "</div>\n" +
+    '<p class="blog-post-discuss"><a href="' + rootPrefix + "news.html?post=" + encodeURIComponent(post.slug) + '">Join the discussion &rarr;</a></p>\n';
+
+  return page(post.title + " | MVG Library News", description, canonical, body, jsonLd, depth, {
+    type: "article",
+    image: post.coverImageURL || undefined,
+    publishedTime: dateIso,
+    author: post.authorName
+  });
+}
+
 function indexPage(kind, groups, depth) {
   const entries = [...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
   const list = entries
@@ -468,7 +551,7 @@ async function main() {
 
   const sitemapUrls = [SITE_URL + "/"];
 
-  ["directors", "artists", "videos"].forEach((kind) => {
+  ["directors", "artists", "videos", "blog"].forEach((kind) => {
     const dir = path.join(ROOT, kind);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir, { recursive: true });
@@ -507,9 +590,24 @@ async function main() {
   }
 
   sitemapUrls.push(SITE_URL + "/news.html");
+
+  // Slugs are meant to be unique (the admin blog editor enforces it), but
+  // uniqueSlug() is a cheap defensive backstop against two posts somehow
+  // sharing one -- same reasoning as videoSlugByRowNum above.
+  const usedBlogSlugs = new Set();
+  const blogSlugByPost = new Map();
   blogPosts.forEach((p) => {
-    sitemapUrls.push(SITE_URL + "/news.html?post=" + encodeURIComponent(p.slug));
+    blogSlugByPost.set(p, uniqueSlug(slugify(p.slug), usedBlogSlugs));
   });
+
+  for (const post of blogPosts) {
+    const slug = blogSlugByPost.get(post);
+    const dir = path.join(ROOT, "blog", slug);
+    fs.mkdirSync(dir, { recursive: true });
+    const canonical = SITE_URL + "/blog/" + slug + "/";
+    fs.writeFileSync(path.join(dir, "index.html"), blogPostPage(post, canonical, 2));
+    sitemapUrls.push(canonical);
+  }
 
   const sitemap =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -570,7 +668,7 @@ async function main() {
     .slice()
     .sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
   const blogRssItems = blogPostsSorted.map((p) => {
-    const link = SITE_URL + "/news.html?post=" + encodeURIComponent(p.slug);
+    const link = SITE_URL + "/blog/" + blogSlugByPost.get(p) + "/";
     const pubDate = (p.date || buildTime).toUTCString();
     return (
       "  <item>\n" +
@@ -598,8 +696,9 @@ async function main() {
 
   console.log(
     "Generated " + directorGroups.size + " director pages, " + artistGroups.size + " artist pages, " +
-    videoRows.length + " video pages, sitemap.xml with " + sitemapUrls.length + " URLs, " +
-    "rss.xml with " + rssItems.length + " items, and blog-rss.xml with " + blogRssItems.length + " items."
+    videoRows.length + " video pages, " + blogPosts.length + " blog post pages, sitemap.xml with " +
+    sitemapUrls.length + " URLs, rss.xml with " + rssItems.length + " items, and blog-rss.xml with " +
+    blogRssItems.length + " items."
   );
 }
 

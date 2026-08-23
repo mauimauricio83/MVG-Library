@@ -165,3 +165,88 @@ body {
 .video-links a:hover {
   text-decoration: underline;
 }
+
+/* Per-post landing pages (/blog/<slug>/) -- body content is the post's
+   real saved HTML (see blogPostPage() in generate-seo-pages.js), same as
+   news.html's .post-body, so headings/lists/blockquotes/.blog-video-card
+   etc. all need the same treatment that page already gives them. */
+
+.blog-post-cover {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin: 0 0 20px;
+  background: var(--accent-soft);
+}
+
+.blog-post-meta {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  margin: 0 0 22px;
+}
+
+.blog-post-body {
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.blog-post-body img {
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+  margin: 18px 0;
+}
+
+.blog-post-body h1 {
+  font-size: 1.5rem;
+  margin: 1.1em 0 0.4em;
+}
+
+.blog-post-body h2 {
+  font-size: 1.25rem;
+  margin: 1.1em 0 0.4em;
+}
+
+.blog-post-body h3 {
+  font-size: 1.08rem;
+  margin: 1.1em 0 0.4em;
+}
+
+.blog-post-body p {
+  margin: 0 0 1em;
+}
+
+.blog-post-body ul,
+.blog-post-body ol {
+  margin: 0 0 1em;
+  padding-left: 1.5em;
+}
+
+.blog-post-body blockquote {
+  margin: 0 0 1em;
+  padding: 6px 18px;
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.blog-post-body a {
+  color: var(--accent);
+}
+
+.blog-post-discuss {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.blog-post-discuss a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.blog-post-discuss a:hover {
+  text-decoration: underline;
+}
