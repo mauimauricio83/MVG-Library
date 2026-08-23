@@ -699,6 +699,56 @@
     return '<p class="admin-empty">No recognized YouTube or Vimeo link.</p>';
   }
 
+  // Same approach as app.js's downloadCoverArt() -- maxresdefault with a
+  // fallback chain (YouTube's CDN returns a small gray placeholder rather
+  // than a 404 for sizes that don't exist), fetched as a blob since the
+  // cross-origin image can't be forced to save via a plain <a download>.
+  var COVER_ART_SIZES = ["maxresdefault", "sddefault", "hqdefault"];
+
+  function downloadCoverArt(row, btn) {
+    var originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "…";
+    var filenameBase = ((row.artist ? row.artist + "-" : "") + (row.song || "cover")).replace(/[^a-z0-9]+/gi, "-").slice(0, 60) || "cover";
+
+    function finish() {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+    function saveBlob(blob) {
+      var objectUrl = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filenameBase + ".jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+    }
+
+    var videoRef = getRowVideoRef(row);
+    if (videoRef && videoRef.provider === "youtube") {
+      (function tryNext(i) {
+        if (i >= COVER_ART_SIZES.length) { finish(); return; }
+        fetch("https://i.ytimg.com/vi/" + videoRef.id + "/" + COVER_ART_SIZES[i] + ".jpg")
+          .then(function (res) { if (!res.ok) throw new Error("not found"); return res.blob(); })
+          .then(function (blob) {
+            if (blob.size < 2000) throw new Error("placeholder image");
+            saveBlob(blob);
+            finish();
+          })
+          .catch(function () { tryNext(i + 1); });
+      })(0);
+    } else if (videoRef && videoRef.provider === "vimeo") {
+      (row.vimeoThumb ? Promise.resolve(row.vimeoThumb) : fetchVimeoThumbnail(videoRef.id)).then(function (url) {
+        if (!url) { finish(); return; }
+        return fetch(url).then(function (res) { return res.blob(); }).then(function (blob) { saveBlob(blob); finish(); });
+      }).catch(finish);
+    } else {
+      finish();
+    }
+  }
+
   function openPreview(rowNum) {
     var row = findRowByNum(rowNum);
     if (!row) return;
@@ -706,9 +756,13 @@
       embedHtml(row) +
       '<h2 class="admin-form-title">' + escapeHtml(row.artist) + " — " + escapeHtml(row.song) + "</h2>" +
       '<p class="admin-row-sub">#' + escapeHtml(row.rowNum) + (row.director ? " · " + escapeHtml(row.director) : "") + "</p>" +
-      (row.description ? "<p>" + escapeHtml(row.description) + "</p>" : "");
+      (row.description ? "<p>" + escapeHtml(row.description) + "</p>" : "") +
+      '<button type="button" class="admin-row-btn" id="mePreviewCoverBtn">Download cover art</button>';
     els.previewModal.hidden = false;
     document.body.style.overflow = "hidden";
+    document.getElementById("mePreviewCoverBtn").addEventListener("click", function () {
+      downloadCoverArt(row, this);
+    });
   }
 
   function closePreview() {

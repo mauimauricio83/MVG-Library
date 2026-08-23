@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.20.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.21.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -152,6 +152,7 @@
     tvPowerSwitch: document.getElementById("tvPowerSwitch"),
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
     tvAdminDeleteBtn: document.getElementById("tvAdminDeleteBtn"),
+    tvAdminCoverBtn: document.getElementById("tvAdminCoverBtn"),
     tvFavBtn: document.getElementById("tvFavBtn"),
     tvVoteBtn: document.getElementById("tvVoteBtn"),
     tvWidenBtn: document.getElementById("tvWidenBtn"),
@@ -4196,6 +4197,65 @@
       .catch(function () { return null; });
   }
 
+  // Admin-only "Download cover art" (lightbox, TV Mode) -- same approach
+  // manage-entries.js/admin-intake.js already use: YouTube's CDN serves
+  // maxresdefault.jpg per video but doesn't 404 when it's unavailable (a
+  // small gray placeholder comes back instead), so a size check picks the
+  // fallback (sddefault, then hqdefault) rather than trusting a 200.
+  // Cross-origin, so a plain <a download> wouldn't force a save -- fetched
+  // as a blob and downloaded via an object URL instead. Vimeo has no
+  // predictable thumbnail URL by ID, so it reuses whatever vimeoThumb was
+  // already resolved at import time, falling back to a fresh oEmbed call.
+  var COVER_ART_SIZES = ["maxresdefault", "sddefault", "hqdefault"];
+
+  function downloadCoverArtBlob(blob, filenameBase) {
+    var objectUrl = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filenameBase + ".jpg";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+  }
+
+  function downloadCoverArt(row, btn) {
+    var originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "…";
+    var filenameBase = ((row.artist ? row.artist + "-" : "") + (row.song || "cover")).replace(/[^a-z0-9]+/gi, "-").slice(0, 60) || "cover";
+
+    function finish() {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+
+    var videoRef = getRowVideoRef(row);
+    if (videoRef && videoRef.provider === "youtube") {
+      (function tryNext(i) {
+        if (i >= COVER_ART_SIZES.length) { finish(); return; }
+        fetch("https://i.ytimg.com/vi/" + videoRef.id + "/" + COVER_ART_SIZES[i] + ".jpg")
+          .then(function (res) { if (!res.ok) throw new Error("not found"); return res.blob(); })
+          .then(function (blob) {
+            if (blob.size < 2000) throw new Error("placeholder image"); // unavailable-size stand-in, not a real thumbnail
+            downloadCoverArtBlob(blob, filenameBase);
+            finish();
+          })
+          .catch(function () { tryNext(i + 1); });
+      })(0);
+    } else if (videoRef && videoRef.provider === "vimeo") {
+      (row.vimeoThumb ? Promise.resolve(row.vimeoThumb) : fetchVimeoThumbnail(videoRef.id)).then(function (url) {
+        if (!url) { finish(); return; }
+        return fetch(url).then(function (res) { return res.blob(); }).then(function (blob) {
+          downloadCoverArtBlob(blob, filenameBase);
+          finish();
+        });
+      }).catch(finish);
+    } else {
+      finish();
+    }
+  }
+
   function teardownTV() {
     teardownChannelMode();
     if (stopArmedStaticNoise) { stopArmedStaticNoise(); stopArmedStaticNoise = null; }
@@ -4226,6 +4286,7 @@
     els.tvInfoBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
+    els.tvAdminCoverBtn.hidden = true;
     els.tvInfoPanel.hidden = true;
   }
 
@@ -4864,6 +4925,7 @@
     els.tvFavBtn.textContent = fav ? "♥" : "♡";
     els.tvAdminEditBtn.hidden = !adminUiActive();
     els.tvAdminDeleteBtn.hidden = !adminUiActive();
+    els.tvAdminCoverBtn.hidden = !adminUiActive();
     els.tvInfoPanel.innerHTML = tvInfoMarkup(row);
 
     // NOT populated/shown here directly -- this runs at the very top of
@@ -5165,6 +5227,7 @@
     els.tvPlaylistBtn.hidden = true;
     els.tvAdminEditBtn.hidden = true;
     els.tvAdminDeleteBtn.hidden = true;
+    els.tvAdminCoverBtn.hidden = true;
     els.tvInfoPanel.innerHTML = '<h3 class="tv-info-title">' + escapeHtml(item.title || "(untitled)") + "</h3>";
   }
 
@@ -5972,6 +6035,12 @@
     deleteRowByAdmin(row.rowNum, label, closeTVModal);
   });
 
+  els.tvAdminCoverBtn.addEventListener("click", function () {
+    var row = state.tv.queue[state.tv.index];
+    if (!row) return;
+    downloadCoverArt(row, els.tvAdminCoverBtn);
+  });
+
   els.tvModal.addEventListener("click", function (e) {
     if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
@@ -6426,6 +6495,9 @@
     var adminDeleteBtn = adminUiActive()
       ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">' + ICON_TRASH + ' Delete</button>'
       : "";
+    var adminCoverBtn = adminUiActive()
+      ? '<button type="button" class="lightbox-admin-cover-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Download cover art (admin)" aria-label="Download cover art">⬇ Cover art</button>'
+      : "";
 
     els.lightboxContent.innerHTML =
       '<div class="ad-placeholder" id="lightboxAdPlaceholder" hidden></div>' +
@@ -6436,6 +6508,7 @@
       '<div class="lightbox-title-actions">' +
       adminEditBtn +
       adminDeleteBtn +
+      adminCoverBtn +
       '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
       lightboxVoteBtnHtml(row) +
       '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
@@ -7513,6 +7586,7 @@
     els.topBarAdminBtn.hidden = !adminUiActive();
     if (els.tvAdminEditBtn) els.tvAdminEditBtn.hidden = !adminUiActive();
     if (els.tvAdminDeleteBtn) els.tvAdminDeleteBtn.hidden = !adminUiActive();
+    if (els.tvAdminCoverBtn) els.tvAdminCoverBtn.hidden = !adminUiActive();
     if (!els.msgBoardPanel.hidden) renderMsgBoardMessages(msgBoardLastDocs);
   }
 
@@ -11703,6 +11777,12 @@
     var adminDeleteBtn = e.target.closest(".lightbox-admin-delete-btn");
     if (adminDeleteBtn) {
       deleteRowFromLightbox(adminDeleteBtn.getAttribute("data-rownum"), adminDeleteBtn.getAttribute("data-label"));
+      return;
+    }
+    var adminCoverBtn = e.target.closest(".lightbox-admin-cover-btn");
+    if (adminCoverBtn) {
+      var coverRow = findRowByNum(adminCoverBtn.getAttribute("data-rownum"));
+      if (coverRow) downloadCoverArt(coverRow, adminCoverBtn);
       return;
     }
     var favBtn = e.target.closest(".lightbox-fav-btn");

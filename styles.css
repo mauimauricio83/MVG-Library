@@ -4538,6 +4538,30 @@ body.is-searching #viewersChoiceSection {
   color: #fff;
 }
 
+.lightbox-admin-cover-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lightbox-admin-cover-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.lightbox-admin-cover-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .lightbox-report-menu-btn {
   flex: 0 0 auto;
   height: 26px;

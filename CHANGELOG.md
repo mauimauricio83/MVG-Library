@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.21.0 — current
+- Added an admin-only "Download cover art" action to all three video-viewing surfaces (public lightbox, TV Mode, Manage Entries' row-preview modal) -- pulls the video's own YouTube thumbnail (tries maxresdefault down through sddefault/hqdefault, since not every video has the largest size) or its cached/oEmbed-resolved Vimeo thumbnail, and downloads it as a JPG. Same fetch-as-blob approach admin-intake.js and Manage Entries' Fill Missing Links preview already use, since a plain cross-origin `<a download>` doesn't actually force a save.
+
 ## v6.20.0 — current
 - Renamed "Weekly Intake" to just "Intake" throughout (page title was already this; page heading and admin landing menu link now match).
 - Intake's Review grid now pulls each video's real YouTube description into a Description field (same expand-on-click textarea as Description/Flavor Text on Manage Entries' Grid) -- previously blank, left for manual entry. Fetched via the same videos.list call already used for duration/Shorts detection (added `part=snippet`, no extra request). Multi-line descriptions are TSV-quoted when copied so they don't get misread as extra rows on the Bulk Import side.
