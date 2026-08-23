@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.19.0 — current
+- Data Health and Fill Missing Links moved out of the admin popup entirely and now live exclusively on Manage Entries -- "Data Health" is gone from the admin landing menu. Duplicate Videos / Missing Video Link / Broken Links are now clickable stat buttons: clicking one filters List/Grid down to just those rows (combined with the search box) instead of Data Health rendering its own separate read-only lists, so you get full sorting/inline-editing on the flagged entries themselves. Broken Links still requires an explicit "Scan for Broken Links" (stoppable, same throttled concurrent check as before); Duplicates/Missing Link are computed instantly the moment entries load.
+- Fill Missing Links is now a modal on Manage Entries (its own "Fill Missing Links" button, shown whenever there are missing-link entries) -- same one-at-a-time queue, Skip/Save & Next/Delete/Search/Auto-Fill behavior as before, with a lighter plain-iframe preview instead of the full player used elsewhere on the site.
+
 ## v6.18.1 — current
 - Manage Entries' Grid view: YouTube Link moved to the second column (right after Row). Description and Flavor Text are now expandable textareas -- collapsed to a truncated single line by default, expand into a proper multi-line box on click/focus so long text is actually readable and editable, then collapse back on blur. Added a horizontal scrollbar fixed to the bottom of the viewport, scroll-synced with the table -- with 24 columns the native scrollbar sat at the table's own bottom edge, often well below the fold.
 

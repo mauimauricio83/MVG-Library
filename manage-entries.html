@@ -13,8 +13,8 @@
 <title>Manage Entries — MVG Library Admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="styles.css?v=6.18.1">
-<link rel="stylesheet" href="hub.css?v=6.18.1">
+<link rel="stylesheet" href="styles.css?v=6.19.0">
+<link rel="stylesheet" href="hub.css?v=6.19.0">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -29,7 +29,7 @@
 </head>
 <body>
 <div class="shell">
-<script src="site-nav.js?v=6.18.1"></script>
+<script src="site-nav.js?v=6.19.0"></script>
 <div class="app">
 <div class="hub-page">
 
@@ -52,8 +52,21 @@
       <a class="admin-row-btn" href="index.html?admin=add">+ Add Entry</a>
     </div>
   </div>
+  <div class="admin-fill-links-card" id="meHealthBar">
+    <div class="admin-fill-links-actions">
+      <button type="button" class="admin-row-btn" id="meHealthDupesBtn">Duplicate Videos: <span id="meDupeCount">0</span></button>
+      <button type="button" class="admin-row-btn" id="meHealthNoVideoBtn">Missing Video Link: <span id="meNoVideoCount">0</span></button>
+      <button type="button" class="admin-row-btn" id="meGoFillLinksBtn" hidden>Fill Missing Links</button>
+      <button type="button" class="admin-row-btn" id="meHealthBrokenBtn">Broken Links: <span id="meBrokenCount">0</span></button>
+      <button type="button" class="admin-row-btn" id="meScanBrokenBtn">Scan for Broken Links</button>
+      <button type="button" class="admin-row-btn admin-row-btn-danger" id="meScanStopBtn" hidden>Stop Scan</button>
+    </div>
+    <p class="admin-bulk-hint" id="meScanProgress" hidden></p>
+  </div>
+
   <input type="search" id="meSearchInput" class="admin-search" placeholder="Search artist, song, director, country, genre, credits…">
   <p class="admin-status" id="meStatus" hidden></p>
+  <p class="admin-status" id="meFilterStatus" hidden></p>
   <p class="admin-grid-hint" id="meGridHint" hidden>Editing here saves straight to the database as you go, but the live site won't show your changes until you hit <strong>Publish</strong> above -- edit as many rows as you like, then publish once at the end.</p>
   <div class="admin-entries-list" id="meEntriesList"></div>
   <div class="admin-grid-wrap" id="meGridWrap" hidden>
@@ -85,6 +98,39 @@
   </div>
 </div>
 
-<script src="manage-entries.js?v=6.18.1"></script>
+<div class="lightbox" id="meFillLinksModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel" id="meFillLinksPanel">
+    <button type="button" class="lightbox-close" id="meFillLinksClose" aria-label="Close">&times;</button>
+    <h2 class="admin-form-title">Fill Missing Links (<span id="meFillLinksRemaining">0</span> left)</h2>
+    <p class="admin-bulk-hint">Saves write straight to the database but don't go live until you Publish -- this queue doesn't auto-publish after every single save.</p>
+    <p class="admin-status" id="meFillLinksStatus" hidden></p>
+
+    <div class="admin-fill-links-card" id="meFillLinksCard">
+      <div class="admin-fill-links-title" id="meFillLinksTitle"></div>
+      <div class="admin-fill-links-sub" id="meFillLinksSub"></div>
+      <div class="admin-fill-links-actions">
+        <button type="button" class="admin-row-btn" id="meFillLinksSearchBtn">Search YouTube for this video</button>
+        <button type="button" class="admin-row-btn" id="meFillLinksAutoFillBtn">Auto-Fill Top Result</button>
+      </div>
+      <p class="admin-bulk-hint" id="meFillLinksAutoFillNote" hidden></p>
+      <input type="url" id="meFillLinksInput" class="admin-search" placeholder="Paste the YouTube or Vimeo link here…">
+      <p class="admin-status is-error" id="meFillLinksError" hidden></p>
+      <div class="admin-channel-preview-box" id="meFillLinksPreview" hidden></div>
+      <div class="admin-fill-links-actions">
+        <button type="button" class="submit-form-btn" id="meFillLinksSaveBtn">Save &amp; Next</button>
+        <button type="button" class="admin-row-btn" id="meFillLinksSkipBtn">Skip</button>
+        <button type="button" class="admin-row-btn admin-row-btn-danger" id="meFillLinksDeleteBtn">Delete Entry</button>
+      </div>
+    </div>
+    <p class="admin-empty" id="meFillLinksDone" hidden>No entries left in this queue.</p>
+
+    <div class="admin-fill-links-actions">
+      <button type="button" class="admin-row-btn" id="meFillLinksPublishBtn">Publish Now</button>
+    </div>
+  </div>
+</div>
+
+<script src="manage-entries.js?v=6.19.0"></script>
 </body>
 </html>

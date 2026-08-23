@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.18.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.19.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -50,18 +50,6 @@
   // Settings.
   var functionsClient = firebase.functions();
 
-  // Powers the Fill Missing Links queue's optional "Auto-Fill Top Result"
-  // button (search.list against the real YouTube Data API v3, not just
-  // oEmbed lookup/validation like the rest of the site uses). Blank by
-  // default -- the button stays hidden until this is set. To enable: create
-  // a Google Cloud project, enable "YouTube Data API v3", create an API key,
-  // and restrict it (HTTP referrers) to this site's origin(s) before pasting
-  // it in here -- same "safe to be public once restricted" model as
-  // firebaseConfig.apiKey above, Firebase's own key. Free quota is 10,000
-  // units/day; search.list costs 100 units/call, so ~100 lookups/day before
-  // it 403s for the rest of the day (no auto-billing past that -- Google
-  // requires a manual quota-increase request, not a pay-per-call bump).
-  var YOUTUBE_SEARCH_API_KEY = "AIzaSyBCjFAxZEVXdDWC_HLQnZCV0ihXW-B2eBk";
   var googleProvider = new firebase.auth.GoogleAuthProvider();
   var currentUser = null;
   // Opt-in: whether to attach this person's display name to a vote (see
@@ -354,38 +342,6 @@
     adminGoChannelBtn: document.getElementById("adminGoChannelBtn"),
     adminChannelView: document.getElementById("adminChannelView"),
     adminChannelBackBtn: document.getElementById("adminChannelBackBtn"),
-    adminGoDataToolsBtn: document.getElementById("adminGoDataToolsBtn"),
-    adminDataToolsView: document.getElementById("adminDataToolsView"),
-    adminDataToolsBackBtn: document.getElementById("adminDataToolsBackBtn"),
-    adminDataToolsStatus: document.getElementById("adminDataToolsStatus"),
-    adminDupeCount: document.getElementById("adminDupeCount"),
-    adminDupeList: document.getElementById("adminDupeList"),
-    adminNoVideoCount: document.getElementById("adminNoVideoCount"),
-    adminNoVideoList: document.getElementById("adminNoVideoList"),
-    adminBrokenCount: document.getElementById("adminBrokenCount"),
-    adminBrokenList: document.getElementById("adminBrokenList"),
-    adminScanBrokenBtn: document.getElementById("adminScanBrokenBtn"),
-    adminScanStopBtn: document.getElementById("adminScanStopBtn"),
-    adminScanProgress: document.getElementById("adminScanProgress"),
-    adminGoFillLinksBtn: document.getElementById("adminGoFillLinksBtn"),
-    adminFillLinksView: document.getElementById("adminFillLinksView"),
-    adminFillLinksBackBtn: document.getElementById("adminFillLinksBackBtn"),
-    adminFillLinksRemaining: document.getElementById("adminFillLinksRemaining"),
-    adminFillLinksPublishBtn: document.getElementById("adminFillLinksPublishBtn"),
-    adminFillLinksStatus: document.getElementById("adminFillLinksStatus"),
-    adminFillLinksCard: document.getElementById("adminFillLinksCard"),
-    adminFillLinksTitle: document.getElementById("adminFillLinksTitle"),
-    adminFillLinksSub: document.getElementById("adminFillLinksSub"),
-    adminFillLinksSearchBtn: document.getElementById("adminFillLinksSearchBtn"),
-    adminFillLinksAutoFillBtn: document.getElementById("adminFillLinksAutoFillBtn"),
-    adminFillLinksAutoFillNote: document.getElementById("adminFillLinksAutoFillNote"),
-    adminFillLinksPreview: document.getElementById("adminFillLinksPreview"),
-    adminFillLinksInput: document.getElementById("adminFillLinksInput"),
-    adminFillLinksError: document.getElementById("adminFillLinksError"),
-    adminFillLinksSaveBtn: document.getElementById("adminFillLinksSaveBtn"),
-    adminFillLinksSkipBtn: document.getElementById("adminFillLinksSkipBtn"),
-    adminFillLinksDeleteBtn: document.getElementById("adminFillLinksDeleteBtn"),
-    adminFillLinksDone: document.getElementById("adminFillLinksDone"),
     adminGoVoteRoundsBtn: document.getElementById("adminGoVoteRoundsBtn"),
     adminVoteRoundsView: document.getElementById("adminVoteRoundsView"),
     adminVoteRoundsBackBtn: document.getElementById("adminVoteRoundsBackBtn"),
@@ -1052,17 +1008,6 @@
     isAdmin: false,
     viewAsNormie: loadAdminNormiePref(), // per-device pref, see adminUiActive()
     adminRows: [],
-    // Rows the most recent Data Health broken-link scan flagged -- kept
-    // separate from adminRows itself so a delete elsewhere (Manage Entries,
-    // the lightbox) can prune a row out of this list too instead of it
-    // lingering until the next full rescan.
-    adminBrokenRows: [],
-    // The Fill Missing Links queue -- rows still needing a video link,
-    // shifted off the front one at a time. Skip rotates a row to the back
-    // instead of dropping it, so it comes back around later in the same
-    // session rather than being lost until the next visit.
-    adminFillLinksQueue: [],
-    adminFillLinksFilledCount: 0,
     adminBulkParsed: [],
     // { feature, spotlight } of the row currently loaded into the admin
     // edit form, or null when adding new -- captured at load time so the
@@ -8050,8 +7995,6 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
@@ -8065,8 +8008,6 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
@@ -8079,8 +8020,6 @@
     els.adminBulkView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
@@ -8093,8 +8032,6 @@
     els.adminBulkView.hidden = true;
     els.adminSuggestionsView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
@@ -8108,42 +8045,10 @@
     els.adminSuggestionsView.hidden = true;
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
     els.adminChannelView.hidden = false;
-  }
-
-  function showAdminDataToolsView() {
-    els.adminLandingView.hidden = true;
-    els.adminForm.hidden = true;
-    els.adminBulkView.hidden = true;
-    els.adminSuggestionsView.hidden = true;
-    els.adminVerificationsView.hidden = true;
-    els.adminBlogListView.hidden = true;
-    els.adminChannelView.hidden = true;
-    els.adminFillLinksView.hidden = true;
-    els.adminVoteRoundsView.hidden = true;
-    els.adminGraphicsView.hidden = true;
-    els.adminUsernamesView.hidden = true;
-    els.adminDataToolsView.hidden = false;
-  }
-
-  function showAdminFillLinksView() {
-    els.adminLandingView.hidden = true;
-    els.adminForm.hidden = true;
-    els.adminBulkView.hidden = true;
-    els.adminSuggestionsView.hidden = true;
-    els.adminVerificationsView.hidden = true;
-    els.adminBlogListView.hidden = true;
-    els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminVoteRoundsView.hidden = true;
-    els.adminGraphicsView.hidden = true;
-    els.adminUsernamesView.hidden = true;
-    els.adminFillLinksView.hidden = false;
   }
 
   function showAdminVoteRoundsView() {
@@ -8154,8 +8059,6 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = false;
   }
 
@@ -8167,8 +8070,6 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = false;
   }
@@ -8181,8 +8082,6 @@
     els.adminVerificationsView.hidden = true;
     els.adminBlogListView.hidden = true;
     els.adminChannelView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = false;
@@ -9568,7 +9467,6 @@
     // no in-modal list to go back to anymore, so send them back to that
     // page instead.
     if (state.adminReturnView === "list") location.href = "manage-entries.html";
-    else if (state.adminReturnView === "dataTools") showAdminDataToolsView();
     else showAdminLanding();
   }
 
@@ -9586,10 +9484,6 @@
         return reserved;
       });
     });
-  }
-
-  function findAdminRowByNum(rowNum) {
-    return state.adminRows.filter(function (r) { return r.rowNum === rowNum; })[0] || null;
   }
 
   // Updates the already-loaded state.adminRows in place instead of re-reading
@@ -9623,8 +9517,6 @@
   function showAdminForm(row) {
     els.adminLandingView.hidden = true;
     els.adminBulkView.hidden = true;
-    els.adminDataToolsView.hidden = true;
-    els.adminFillLinksView.hidden = true;
     els.adminVoteRoundsView.hidden = true;
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
@@ -10066,348 +9958,6 @@
     els.adminModal.hidden = true;
     unlockBodyScroll();
   }
-
-  // Shared by every Data Health list below (Manage Entries' own list moved
-  // to manage-entries.html, which has its own copy of this markup) --
-  // same row markup, same Edit/Delete buttons, all handled by the one
-  // delegated data-admin-action click listener on els.adminModal.
-  function adminRowHtml(r) {
-    var badges = "";
-    if (r.feature) badges += '<span class="admin-badge">Feature</span>';
-    if (r.spotlight) badges += '<span class="admin-badge">Maui\'s Picks</span>';
-    if (r.sponsored) badges += '<span class="admin-badge admin-badge-sponsored">Sponsored</span>';
-    if (r.backdoor) badges += '<span class="admin-badge admin-badge-backdoor">Backdoor</span>';
-    return (
-      '<div class="admin-row" data-rownum="' + r.rowNum + '">' +
-        '<div class="admin-row-main">' +
-          '<div class="admin-row-title">' + escapeHtml(r.artist) + ' — ' + escapeHtml(r.song) + '</div>' +
-          '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + '</div>' +
-        '</div>' +
-        '<div class="admin-row-actions">' +
-          '<button type="button" class="admin-row-btn" data-admin-action="edit" data-rownum="' + r.rowNum + '">Edit</button>' +
-          '<button type="button" class="admin-row-btn admin-row-btn-danger" data-admin-action="delete" data-rownum="' + r.rowNum + '">Delete</button>' +
-        '</div>' +
-      '</div>'
-    );
-  }
-
-
-  // ---- Data Health: duplicate videos, missing links, broken links ------
-  // All three read off state.adminRows -- goAdminDataTools() below always
-  // (re)loads it fresh with its own `videos` read rather than assuming
-  // it's already populated.
-
-  // Two rows pointing at the same YouTube/Vimeo video ID -- almost always
-  // an accidental double-submission/double-import rather than a real
-  // distinct entry, so grouped by exact ID match (not fuzzy artist/song
-  // matching, which would flag legitimate covers/remixes as false positives).
-  function findDuplicateVideoGroups(rows) {
-    var byKey = {};
-    rows.forEach(function (r) {
-      var ref = getRowVideoRef(r);
-      if (!ref) return;
-      var key = ref.provider + ":" + ref.id;
-      (byKey[key] = byKey[key] || []).push(r);
-    });
-    return Object.keys(byKey)
-      .map(function (k) { return byKey[k]; })
-      .filter(function (group) { return group.length > 1; })
-      .sort(function (a, b) { return b.length - a.length; });
-  }
-
-  function renderAdminDataToolsInstant() {
-    var dupeGroups = findDuplicateVideoGroups(state.adminRows);
-    els.adminDupeCount.textContent = dupeGroups.length;
-    els.adminDupeList.innerHTML = dupeGroups.length
-      ? dupeGroups.map(function (group) {
-          var ref = getRowVideoRef(group[0]);
-          return (
-            '<div class="admin-dupe-group">' +
-              '<div class="admin-dupe-group-label">Same ' + ref.provider + ' video, ' + group.length + " entries</div>" +
-              group.map(adminRowHtml).join("") +
-            "</div>"
-          );
-        }).join("")
-      : '<p class="admin-empty">No duplicate videos found.</p>';
-
-    var noVideoRows = state.adminRows.filter(function (r) { return !hasVideo(r); });
-    els.adminNoVideoCount.textContent = noVideoRows.length;
-    els.adminNoVideoList.innerHTML = noVideoRows.length
-      ? noVideoRows.map(adminRowHtml).join("")
-      : '<p class="admin-empty">Every entry has a recognized YouTube or Vimeo link.</p>';
-    els.adminGoFillLinksBtn.hidden = !noVideoRows.length;
-  }
-
-  function goAdminDataTools() {
-    state.adminReturnView = "dataTools";
-    els.adminBrokenList.innerHTML = "";
-    els.adminBrokenCount.textContent = "0";
-    els.adminScanProgress.hidden = true;
-    els.adminScanStopBtn.hidden = true;
-    els.adminScanBrokenBtn.hidden = false;
-    els.adminScanBrokenBtn.disabled = false;
-    showAdminDataToolsView();
-    els.adminDataToolsStatus.textContent = "Loading catalog…";
-    els.adminDataToolsStatus.className = "admin-status";
-    els.adminDataToolsStatus.hidden = false;
-    return db.collection("videos").get().then(function (snap) {
-      state.adminRows = snap.docs.map(function (doc) { return doc.data(); });
-      els.adminDataToolsStatus.hidden = true;
-      renderAdminDataToolsInstant();
-    }).catch(function (err) {
-      console.error("Data Health load failed:", err);
-      els.adminDataToolsStatus.textContent = "Couldn't load entries: " + err.message;
-      els.adminDataToolsStatus.className = "admin-status is-error";
-    });
-  }
-
-  // ---- Fill Missing Links queue -----------------------------------------
-  // A fast, one-at-a-time review flow for the Missing Video Link rows --
-  // deliberately NOT automated matching (no YouTube Data API key, no risk
-  // of silently attaching the wrong video to an entry). Search opens a new
-  // tab pre-queried with the entry's Artist + Song; the admin pastes back
-  // whichever result is actually correct.
-
-  function goAdminFillLinks() {
-    state.adminReturnView = "dataTools";
-    state.adminFillLinksQueue = state.adminRows.filter(function (r) { return !hasVideo(r); });
-    state.adminFillLinksFilledCount = 0;
-    els.adminFillLinksAutoFillBtn.hidden = !YOUTUBE_SEARCH_API_KEY;
-    showAdminFillLinksView();
-    renderFillLinksCard();
-  }
-
-  function renderFillLinksCard() {
-    els.adminFillLinksRemaining.textContent = state.adminFillLinksQueue.length;
-    els.adminFillLinksInput.value = "";
-    els.adminFillLinksError.hidden = true;
-    els.adminFillLinksAutoFillNote.hidden = true;
-    teardownFillLinksPreview();
-
-    if (!state.adminFillLinksQueue.length) {
-      els.adminFillLinksCard.hidden = true;
-      els.adminFillLinksDone.hidden = false;
-      return;
-    }
-    els.adminFillLinksCard.hidden = false;
-    els.adminFillLinksDone.hidden = true;
-
-    var row = state.adminFillLinksQueue[0];
-    els.adminFillLinksTitle.textContent = row.artist + " — " + row.song;
-    els.adminFillLinksSub.textContent = "#" + row.rowNum +
-      (row.director ? " · " + row.director : "") +
-      (row.year ? " · " + row.year : "") +
-      (row.category ? " · " + row.category : "");
-    els.adminFillLinksInput.focus();
-  }
-
-  // ---- Fill Links: live preview player -----------------------------------
-  // Same free createVideoPlayer() wrapper used everywhere else on the site
-  // (lightbox, TV Mode, Channel Mode's admin Live View) -- just pointed at
-  // whatever's currently in the paste field, so there's no API cost here,
-  // only the auto-fill search below actually calls a metered endpoint.
-  var adminFillLinksPreviewPlayer = null;
-  var adminFillLinksPreviewDebounce = null;
-
-  function teardownFillLinksPreview() {
-    if (adminFillLinksPreviewDebounce) { clearTimeout(adminFillLinksPreviewDebounce); adminFillLinksPreviewDebounce = null; }
-    if (adminFillLinksPreviewPlayer && adminFillLinksPreviewPlayer.destroy) {
-      try { adminFillLinksPreviewPlayer.destroy(); } catch (e) {}
-    }
-    adminFillLinksPreviewPlayer = null;
-    els.adminFillLinksPreview.hidden = true;
-    els.adminFillLinksPreview.innerHTML = "";
-  }
-
-  function updateFillLinksPreview() {
-    if (adminFillLinksPreviewPlayer && adminFillLinksPreviewPlayer.destroy) {
-      try { adminFillLinksPreviewPlayer.destroy(); } catch (e) {}
-    }
-    adminFillLinksPreviewPlayer = null;
-    var url = els.adminFillLinksInput.value.trim();
-    var ytId = extractYouTubeId(url);
-    var vimeoId = !ytId ? extractVimeoId(url) : null;
-    if (!ytId && !vimeoId) {
-      els.adminFillLinksPreview.hidden = true;
-      els.adminFillLinksPreview.innerHTML = "";
-      return;
-    }
-    els.adminFillLinksPreview.hidden = false;
-    // YT.Player/Vimeo.Player each consume+replace their target element, so
-    // a fresh inner div is needed every time rather than reusing one --
-    // same pattern the lightbox and Channel Mode rebuild their own target
-    // divs with on every track change.
-    els.adminFillLinksPreview.innerHTML = '<div id="adminFillLinksPreviewTarget"></div>';
-    var ref = ytId ? { provider: "youtube", id: ytId } : { provider: "vimeo", id: vimeoId };
-    createVideoPlayer("adminFillLinksPreviewTarget", ref, {
-      isStale: function () { return els.adminFillLinksInput.value.trim() !== url; },
-      onReady: function (player) { adminFillLinksPreviewPlayer = player; }
-    });
-  }
-
-  els.adminFillLinksInput.addEventListener("input", function () {
-    if (adminFillLinksPreviewDebounce) clearTimeout(adminFillLinksPreviewDebounce);
-    adminFillLinksPreviewDebounce = setTimeout(updateFillLinksPreview, 600);
-  });
-
-  // ---- Fill Links: optional auto-fill via the real YouTube search API ----
-  // Only reachable when YOUTUBE_SEARCH_API_KEY is set (see its comment near
-  // firebaseConfig) -- the button itself stays hidden otherwise. Drops the
-  // top result straight into the paste field and previews it immediately;
-  // still requires a human Save & Next to confirm it's actually correct.
-  function fetchYouTubeTopResult(query) {
-    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&type=video&q=" +
-      encodeURIComponent(query) + "&key=" + encodeURIComponent(YOUTUBE_SEARCH_API_KEY);
-    return fetch(url).then(function (res) {
-      if (!res.ok) return res.json().then(function (body) {
-        var reason = body && body.error && body.error.errors && body.error.errors[0] && body.error.errors[0].reason;
-        throw new Error(reason === "quotaExceeded" ? "Daily search quota used up -- try again tomorrow, or keep using Search + paste." : "YouTube search failed (" + res.status + ").");
-      });
-      return res.json();
-    }).then(function (data) {
-      var item = data.items && data.items[0];
-      if (!item) return null;
-      return { videoId: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle };
-    });
-  }
-
-  function triggerFillLinksAutoFill() {
-    var row = state.adminFillLinksQueue[0];
-    if (!row || !YOUTUBE_SEARCH_API_KEY) return;
-    var query = (row.artist + " " + row.song).trim() + " music video";
-    els.adminFillLinksAutoFillBtn.disabled = true;
-    els.adminFillLinksAutoFillNote.hidden = true;
-    els.adminFillLinksError.hidden = true;
-    fetchYouTubeTopResult(query).then(function (result) {
-      // The queue may have moved on (Skip/Delete/another Save) while this
-      // request was in flight -- discard a now-stale result rather than
-      // filling in the wrong entry's field.
-      if (state.adminFillLinksQueue[0] !== row) return;
-      if (!result) {
-        els.adminFillLinksError.textContent = "No YouTube results for that search.";
-        els.adminFillLinksError.hidden = false;
-        return;
-      }
-      els.adminFillLinksInput.value = "https://www.youtube.com/watch?v=" + result.videoId;
-      els.adminFillLinksAutoFillNote.textContent = 'Top result: "' + result.title + '" -- ' + result.channel + ". Check the preview below before saving.";
-      els.adminFillLinksAutoFillNote.hidden = false;
-      updateFillLinksPreview();
-    }).catch(function (err) {
-      if (state.adminFillLinksQueue[0] !== row) return;
-      console.error("YouTube auto-fill search failed:", err);
-      els.adminFillLinksError.textContent = err.message;
-      els.adminFillLinksError.hidden = false;
-    }).finally(function () {
-      els.adminFillLinksAutoFillBtn.disabled = false;
-    });
-  }
-
-  els.adminFillLinksAutoFillBtn.addEventListener("click", triggerFillLinksAutoFill);
-
-  els.adminGoFillLinksBtn.addEventListener("click", goAdminFillLinks);
-  els.adminFillLinksBackBtn.addEventListener("click", function () {
-    showAdminDataToolsView();
-    renderAdminDataToolsInstant();
-  });
-
-  els.adminFillLinksSearchBtn.addEventListener("click", function () {
-    var row = state.adminFillLinksQueue[0];
-    if (!row) return;
-    var query = (row.artist + " " + row.song).trim() + " music video";
-    window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), "_blank", "noopener");
-  });
-
-  els.adminFillLinksSkipBtn.addEventListener("click", function () {
-    if (!state.adminFillLinksQueue.length) return;
-    // Rotate to the back rather than dropping it -- comes back around
-    // later in the same session instead of being lost until next visit.
-    state.adminFillLinksQueue.push(state.adminFillLinksQueue.shift());
-    renderFillLinksCard();
-  });
-
-  els.adminFillLinksDeleteBtn.addEventListener("click", function () {
-    var row = state.adminFillLinksQueue[0];
-    if (!row) return;
-    var label = row.artist + " — " + row.song;
-    if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
-    db.collection("videos").doc(row.rowNum).delete().then(function () {
-      removeAdminRowLocal(row.rowNum);
-      state.adminFillLinksQueue.shift();
-      state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== row.rowNum; });
-      renderFillLinksCard();
-      els.adminFillLinksStatus.textContent = 'Deleted "' + label + '". Not yet published -- use Publish Now when you\'re done.';
-      els.adminFillLinksStatus.className = "admin-status";
-      els.adminFillLinksStatus.hidden = false;
-    }).catch(function (err) {
-      console.error("Admin delete failed:", err);
-      els.adminFillLinksStatus.textContent = "Delete failed: " + err.message;
-      els.adminFillLinksStatus.className = "admin-status is-error";
-      els.adminFillLinksStatus.hidden = false;
-    });
-  });
-
-  function saveFillLinksEntry() {
-    var row = state.adminFillLinksQueue[0];
-    if (!row) return;
-    var url = els.adminFillLinksInput.value.trim();
-    var ytId = extractYouTubeId(url);
-    var vimeoId = !ytId ? extractVimeoId(url) : null;
-    if (!ytId && !vimeoId) {
-      els.adminFillLinksError.textContent = "That doesn't look like a YouTube or Vimeo link.";
-      els.adminFillLinksError.hidden = false;
-      return;
-    }
-
-    els.adminFillLinksSaveBtn.disabled = true;
-    var doc = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-    var thumbPromise = Promise.resolve();
-    if (ytId) {
-      doc.youtube = url;
-    } else {
-      doc.vimeo = url;
-      thumbPromise = fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) doc.vimeoThumb = thumb; });
-    }
-
-    thumbPromise.then(function () {
-      return db.collection("videos").doc(row.rowNum).set(doc, { merge: true });
-    }).then(function () {
-      // Not upsertAdminRowLocal() -- that replaces the whole cached row from
-      // a complete doc object (what the Add/Edit form always has); here
-      // `doc` is a deliberately partial patch, so merge the new fields
-      // directly onto the existing cached row instead.
-      var cached = findAdminRowByNum(row.rowNum);
-      if (cached) { cached.youtube = doc.youtube || cached.youtube; cached.vimeo = doc.vimeo || cached.vimeo; if (doc.vimeoThumb) cached.vimeoThumb = doc.vimeoThumb; }
-      state.adminFillLinksQueue.shift();
-      state.adminFillLinksFilledCount++;
-      els.adminFillLinksStatus.textContent = "Filled " + state.adminFillLinksFilledCount + " so far this session. Not yet published -- use Publish Now when you're done.";
-      els.adminFillLinksStatus.className = "admin-status";
-      els.adminFillLinksStatus.hidden = false;
-      renderFillLinksCard();
-      // Save & Next queues up the next entry's top result automatically --
-      // still just a suggestion sitting in the field/preview, not saved on
-      // its own, so the human-confirms-before-saving guarantee holds either
-      // way. No-ops if the key isn't configured (button stays hidden then).
-      triggerFillLinksAutoFill();
-    }).catch(function (err) {
-      console.error("Fill Links save failed:", err);
-      els.adminFillLinksError.textContent = "Save failed: " + err.message;
-      els.adminFillLinksError.hidden = false;
-    }).finally(function () {
-      els.adminFillLinksSaveBtn.disabled = false;
-    });
-  }
-
-  els.adminFillLinksSaveBtn.addEventListener("click", saveFillLinksEntry);
-  els.adminFillLinksInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { e.preventDefault(); saveFillLinksEntry(); }
-  });
-
-  els.adminFillLinksPublishBtn.addEventListener("click", function () {
-    els.adminFillLinksPublishBtn.disabled = true;
-    runAdminPublish(els.adminFillLinksStatus).then(function () {
-      els.adminFillLinksPublishBtn.disabled = false;
-    });
-  });
 
   // ---- Vote leaderboard (admin, read-only) --------------------------------
   // Voting is open to any catalog video (not an admin-curated shortlist --
@@ -11747,129 +11297,7 @@
     }
   });
 
-  // Lightweight existence/embeddability check via each provider's own
-  // public oEmbed endpoint -- same one already used for Vimeo thumbnails
-  // (fetchVimeoThumbnail()) -- instead of spinning up a real IFrame/Vimeo
-  // player per row (what the Channel Mode duration resolver does), since a
-  // full-catalog scan means checking thousands of rows and a bare HTTP
-  // request is far cheaper than a player instance. A non-ok response means
-  // the video's been removed, made private, or had embedding disabled by
-  // its owner. Network hiccups resolve as "ok" rather than "broken" --
-  // a flaky connection shouldn't get an entry misreported and possibly
-  // deleted by mistake.
-  function checkRowLinkOk(row) {
-    var ref = getRowVideoRef(row);
-    if (!ref) return Promise.resolve(true);
-    var oembedUrl = ref.provider === "youtube"
-      ? "https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + ref.id)
-      : "https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id);
-    return fetch(oembedUrl).then(function (res) { return res.ok; }).catch(function () { return true; });
-  }
-
-  var DATA_TOOLS_SCAN_CONCURRENCY = 8;
-  var adminScanStopped = false;
-
-  function renderAdminBroken() {
-    els.adminBrokenCount.textContent = state.adminBrokenRows.length;
-    els.adminBrokenList.innerHTML = state.adminBrokenRows.length
-      ? state.adminBrokenRows.map(adminRowHtml).join("")
-      : '<p class="admin-empty">No broken links found yet.</p>';
-  }
-
-  function scanForBrokenLinks() {
-    var candidates = state.adminRows.filter(hasVideo);
-    if (!candidates.length) return;
-    adminScanStopped = false;
-    state.adminBrokenRows = [];
-    var total = candidates.length;
-    var checked = 0;
-    var nextIndex = 0;
-
-    els.adminScanBrokenBtn.hidden = true;
-    els.adminScanStopBtn.hidden = false;
-    els.adminScanProgress.hidden = false;
-
-    function reportProgress() {
-      els.adminScanProgress.textContent = "Checked " + checked + " / " + total + " -- " + state.adminBrokenRows.length + " broken so far…";
-    }
-
-    function worker() {
-      if (adminScanStopped || nextIndex >= candidates.length) return Promise.resolve();
-      var row = candidates[nextIndex++];
-      return checkRowLinkOk(row).then(function (ok) {
-        checked++;
-        if (!ok) { state.adminBrokenRows.push(row); renderAdminBroken(); }
-        reportProgress();
-        return worker();
-      });
-    }
-
-    reportProgress();
-    renderAdminBroken();
-    var pool = [];
-    for (var i = 0; i < DATA_TOOLS_SCAN_CONCURRENCY; i++) pool.push(worker());
-    Promise.all(pool).then(function () {
-      els.adminScanStopBtn.hidden = true;
-      els.adminScanBrokenBtn.hidden = false;
-      els.adminScanProgress.textContent = (adminScanStopped ? "Stopped after " : "Finished -- ") +
-        "checking " + checked + " / " + total + ". " + state.adminBrokenRows.length + " broken link" + (state.adminBrokenRows.length === 1 ? "" : "s") + " found.";
-    });
-  }
-
-  els.adminGoDataToolsBtn.addEventListener("click", goAdminDataTools);
-  els.adminDataToolsBackBtn.addEventListener("click", showAdminLanding);
-  els.adminScanBrokenBtn.addEventListener("click", scanForBrokenLinks);
-  els.adminScanStopBtn.addEventListener("click", function () {
-    adminScanStopped = true;
-    els.adminScanStopBtn.hidden = true;
-    els.adminScanBrokenBtn.hidden = false;
-  });
-
   els.openAdminBtn.addEventListener("click", openAdminModal);
-
-  els.adminModal.addEventListener("click", function (e) {
-    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) {
-      dismissTopModal();
-      return;
-    }
-    var editBtn = e.target.closest('[data-admin-action="edit"]');
-    if (editBtn) {
-      showAdminForm(findAdminRowByNum(editBtn.getAttribute("data-rownum")));
-      return;
-    }
-    var deleteBtn = e.target.closest('[data-admin-action="delete"]');
-    if (deleteBtn) {
-      var rowNum = deleteBtn.getAttribute("data-rownum");
-      var row = findAdminRowByNum(rowNum);
-      var label = row ? row.artist + " — " + row.song : "entry #" + rowNum;
-      if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
-      // Only Data Health's own lists (duplicates/no-video/broken) render a
-      // delete button through this modal anymore -- Manage Entries' List
-      // view (the only other caller) moved to manage-entries.html.
-      function reportStatus(text, isError) {
-        els.adminDataToolsStatus.textContent = text;
-        els.adminDataToolsStatus.className = "admin-status" + (isError ? " is-error" : "");
-        els.adminDataToolsStatus.hidden = !text;
-      }
-      db.collection("videos").doc(rowNum).delete().then(function () {
-        removeAdminRowLocal(rowNum);
-        renderAdminDataToolsInstant();
-        state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
-        renderAdminBroken();
-        reportStatus('Deleted "' + label + '". Publishing…');
-        return publishSnapshot().then(function (result) {
-          reportStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
-        }).catch(function (err) {
-          console.error("Publish failed:", err);
-          reportStatus('Deleted "' + label + '". (Publish failed: ' + err.message + " -- use the Publish button to retry.)", true);
-        });
-      }).catch(function (err) {
-        console.error("Admin delete failed:", err);
-        reportStatus("Delete failed: " + err.message, true);
-      });
-    }
-  });
-
 
   function updateAdminBadge(el, count) {
     el.textContent = String(count);
@@ -12039,21 +11467,6 @@
         } else if (state.adminReturnView === "list") {
           publishPromise.catch(function () {}); // fire-and-forget, no status UI left to show it on
           location.href = "manage-entries.html";
-        } else if (state.adminReturnView === "dataTools") {
-          upsertAdminRowLocal(rowNum, doc);
-          // The edit may have fixed the flagged link -- drop it from the
-          // broken list rather than leaving a stale entry until the next
-          // full rescan re-confirms it either way.
-          state.adminBrokenRows = state.adminBrokenRows.filter(function (r) { return r.rowNum !== rowNum; });
-          showAdminDataToolsView();
-          renderAdminDataToolsInstant();
-          renderAdminBroken();
-          els.adminDataToolsStatus.textContent = label + " Publishing…";
-          els.adminDataToolsStatus.className = "admin-status";
-          els.adminDataToolsStatus.hidden = false;
-          publishPromise.then(function (text) {
-            els.adminDataToolsStatus.textContent = text;
-          });
         } else {
           upsertAdminRowLocal(rowNum, doc);
           showAdminLanding();

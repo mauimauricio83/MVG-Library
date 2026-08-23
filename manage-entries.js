@@ -49,7 +49,36 @@
     previewClose: document.getElementById("mePreviewClose"),
     previewBody: document.getElementById("mePreviewBody"),
     bottomScrollbar: document.getElementById("meBottomScrollbar"),
-    bottomScrollbarInner: document.getElementById("meBottomScrollbarInner")
+    bottomScrollbarInner: document.getElementById("meBottomScrollbarInner"),
+    filterStatus: document.getElementById("meFilterStatus"),
+    dupeCount: document.getElementById("meDupeCount"),
+    noVideoCount: document.getElementById("meNoVideoCount"),
+    brokenCount: document.getElementById("meBrokenCount"),
+    healthDupesBtn: document.getElementById("meHealthDupesBtn"),
+    healthNoVideoBtn: document.getElementById("meHealthNoVideoBtn"),
+    healthBrokenBtn: document.getElementById("meHealthBrokenBtn"),
+    goFillLinksBtn: document.getElementById("meGoFillLinksBtn"),
+    scanBrokenBtn: document.getElementById("meScanBrokenBtn"),
+    scanStopBtn: document.getElementById("meScanStopBtn"),
+    scanProgress: document.getElementById("meScanProgress"),
+    fillLinksModal: document.getElementById("meFillLinksModal"),
+    fillLinksClose: document.getElementById("meFillLinksClose"),
+    fillLinksRemaining: document.getElementById("meFillLinksRemaining"),
+    fillLinksStatus: document.getElementById("meFillLinksStatus"),
+    fillLinksCard: document.getElementById("meFillLinksCard"),
+    fillLinksTitle: document.getElementById("meFillLinksTitle"),
+    fillLinksSub: document.getElementById("meFillLinksSub"),
+    fillLinksSearchBtn: document.getElementById("meFillLinksSearchBtn"),
+    fillLinksAutoFillBtn: document.getElementById("meFillLinksAutoFillBtn"),
+    fillLinksAutoFillNote: document.getElementById("meFillLinksAutoFillNote"),
+    fillLinksInput: document.getElementById("meFillLinksInput"),
+    fillLinksError: document.getElementById("meFillLinksError"),
+    fillLinksPreview: document.getElementById("meFillLinksPreview"),
+    fillLinksSaveBtn: document.getElementById("meFillLinksSaveBtn"),
+    fillLinksSkipBtn: document.getElementById("meFillLinksSkipBtn"),
+    fillLinksDeleteBtn: document.getElementById("meFillLinksDeleteBtn"),
+    fillLinksDone: document.getElementById("meFillLinksDone"),
+    fillLinksPublishBtn: document.getElementById("meFillLinksPublishBtn")
   };
 
   function escapeHtml(str) {
@@ -68,6 +97,29 @@
   function extractVimeoId(url) {
     var m = String(url || "").match(/vimeo\.com\/(?:video\/|channels\/[^/]+\/|groups\/[^/]+\/videos\/|)(\d+)/);
     return m ? m[1] : null;
+  }
+
+  // Same as app.js's getRowVideoRef()/hasVideo() -- youtube wins if a row
+  // somehow has both.
+  function getRowVideoRef(row) {
+    var ytId = extractYouTubeId(row && row.youtube);
+    if (ytId) return { provider: "youtube", id: ytId };
+    var vimeoId = extractVimeoId(row && row.vimeo);
+    if (vimeoId) return { provider: "vimeo", id: vimeoId };
+    return null;
+  }
+
+  function hasVideo(row) {
+    return !!getRowVideoRef(row);
+  }
+
+  // Same as app.js's fetchVimeoThumbnail() -- Vimeo has no predictable
+  // thumbnail URL the way YouTube does, so it's resolved once via oEmbed.
+  function fetchVimeoThumbnail(vimeoId) {
+    return fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + vimeoId))
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) { return (data && data.thumbnail_url) || null; })
+      .catch(function () { return null; });
   }
 
   function setStatus(text, isError) {
@@ -118,6 +170,151 @@
 
   var gridMode = false;
 
+  // ---- Data Health -- click a stat to filter List/Grid down to just those
+  // rows, instead of Data Health rendering its own separate read-only
+  // lists the way it used to inside the admin popup. Combines with the
+  // free-text search rather than replacing it.
+  var healthFilter = null; // null | "duplicates" | "noVideo" | "broken"
+  var healthFilterRowNums = null; // Set, or null when no filter is active
+  var brokenRows = []; // populated by a Broken Links scan, see scanForBrokenLinks() below
+
+  // Two rows pointing at the same YouTube/Vimeo video ID -- almost always
+  // an accidental double-submission/double-import. Same grouping as
+  // app.js's findDuplicateVideoGroups().
+  function findDuplicateVideoGroups(rows) {
+    var byKey = {};
+    rows.forEach(function (r) {
+      var ref = getRowVideoRef(r);
+      if (!ref) return;
+      var key = ref.provider + ":" + ref.id;
+      (byKey[key] = byKey[key] || []).push(r);
+    });
+    return Object.keys(byKey).map(function (k) { return byKey[k]; }).filter(function (g) { return g.length > 1; });
+  }
+
+  function renderHealthCounts() {
+    var dupeRowNums = [];
+    findDuplicateVideoGroups(adminRows).forEach(function (group) {
+      group.forEach(function (r) { dupeRowNums.push(r.rowNum); });
+    });
+    var noVideoRows = adminRows.filter(function (r) { return !hasVideo(r); });
+    els.dupeCount.textContent = dupeRowNums.length;
+    els.noVideoCount.textContent = noVideoRows.length;
+    els.brokenCount.textContent = brokenRows.length;
+    els.goFillLinksBtn.hidden = !noVideoRows.length;
+  }
+
+  function clearHealthFilter() {
+    healthFilter = null;
+    healthFilterRowNums = null;
+    els.filterStatus.hidden = true;
+    renderEntries();
+  }
+
+  // Always applies `kind` (as opposed to toggling) -- used both by the
+  // stat-button click handler and to refresh an already-active filter's
+  // row set after a scan finishes or an edit changes membership.
+  function applyHealthFilter(kind) {
+    healthFilter = kind;
+    var rowNums;
+    var label;
+    if (kind === "duplicates") {
+      rowNums = [];
+      findDuplicateVideoGroups(adminRows).forEach(function (group) { group.forEach(function (r) { rowNums.push(r.rowNum); }); });
+      label = "duplicate video";
+    } else if (kind === "noVideo") {
+      rowNums = adminRows.filter(function (r) { return !hasVideo(r); }).map(function (r) { return r.rowNum; });
+      label = "missing-link";
+    } else {
+      rowNums = brokenRows.map(function (r) { return r.rowNum; });
+      label = "broken-link";
+    }
+    healthFilterRowNums = new Set(rowNums);
+    els.filterStatus.innerHTML = "Showing " + rowNums.length + " " + label + " entr" + (rowNums.length === 1 ? "y" : "ies") +
+      ' -- <button type="button" class="admin-grid-rownum-btn" id="meClearFilterBtn">Clear filter</button>';
+    els.filterStatus.hidden = false;
+    renderEntries();
+  }
+
+  function toggleHealthFilter(kind) {
+    if (healthFilter === kind) clearHealthFilter();
+    else applyHealthFilter(kind);
+  }
+
+  els.healthDupesBtn.addEventListener("click", function () { toggleHealthFilter("duplicates"); });
+  els.healthNoVideoBtn.addEventListener("click", function () { toggleHealthFilter("noVideo"); });
+  els.healthBrokenBtn.addEventListener("click", function () { toggleHealthFilter("broken"); });
+  els.filterStatus.addEventListener("click", function (e) {
+    if (e.target.closest("#meClearFilterBtn")) clearHealthFilter();
+  });
+
+  // ---- Broken Links scan --------------------------------------------------
+  // Same approach as app.js's checkRowLinkOk()/scanForBrokenLinks(): a
+  // lightweight oEmbed existence check per video (cheaper than spinning up
+  // a real player for thousands of rows), 8-way concurrent worker pool,
+  // stoppable via a flag. Network hiccups resolve as "ok" rather than
+  // "broken" so a flaky connection can't get an entry misreported.
+  function checkRowLinkOk(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(true);
+    var oembedUrl = ref.provider === "youtube"
+      ? "https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + ref.id)
+      : "https://vimeo.com/api/oembed.json?url=" + encodeURIComponent("https://vimeo.com/" + ref.id);
+    return fetch(oembedUrl).then(function (res) { return res.ok; }).catch(function () { return true; });
+  }
+
+  var SCAN_CONCURRENCY = 8;
+  var scanStopped = false;
+
+  function scanForBrokenLinks() {
+    var candidates = adminRows.filter(hasVideo);
+    if (!candidates.length) return;
+    scanStopped = false;
+    brokenRows = [];
+    var total = candidates.length;
+    var checked = 0;
+    var nextIndex = 0;
+
+    els.scanBrokenBtn.hidden = true;
+    els.scanStopBtn.hidden = false;
+    els.scanProgress.hidden = false;
+
+    function reportProgress() {
+      els.scanProgress.textContent = "Checked " + checked + " / " + total + " -- " + brokenRows.length + " broken so far…";
+    }
+
+    function worker() {
+      if (scanStopped || nextIndex >= candidates.length) return Promise.resolve();
+      var row = candidates[nextIndex++];
+      return checkRowLinkOk(row).then(function (ok) {
+        checked++;
+        if (!ok) { brokenRows.push(row); els.brokenCount.textContent = brokenRows.length; }
+        reportProgress();
+        return worker();
+      });
+    }
+
+    reportProgress();
+    var pool = [];
+    for (var i = 0; i < SCAN_CONCURRENCY; i++) pool.push(worker());
+    Promise.all(pool).then(function () {
+      els.scanStopBtn.hidden = true;
+      els.scanBrokenBtn.hidden = false;
+      els.scanProgress.textContent = (scanStopped ? "Stopped after " : "Finished -- ") +
+        "checking " + checked + " / " + total + ". " + brokenRows.length + " broken link" + (brokenRows.length === 1 ? "" : "s") + " found.";
+      // Refresh in case the Broken Links filter was already active from a
+      // previous scan -- otherwise it'd keep showing the stale result set.
+      if (healthFilter === "broken") applyHealthFilter("broken");
+    });
+  }
+
+  els.scanBrokenBtn.addEventListener("click", scanForBrokenLinks);
+  els.scanStopBtn.addEventListener("click", function () {
+    scanStopped = true;
+    els.scanStopBtn.hidden = true;
+    els.scanBrokenBtn.hidden = false;
+  });
+
   // Shared by List and Grid -- clicking a Grid column header (see
   // GRID_COLUMNS/gridHeaderHtml below) changes this and re-sorts both,
   // even though List has no per-column headers of its own to click.
@@ -142,6 +339,7 @@
   function filteredRows() {
     var query = els.searchInput.value.trim().toLowerCase();
     var rows = adminRows.filter(function (r) {
+      if (healthFilterRowNums && !healthFilterRowNums.has(r.rowNum)) return false;
       return !query || searchHaystack(r).indexOf(query) !== -1;
     });
     return rows.slice().sort(compareRows);
@@ -376,6 +574,13 @@
       if (row) row[field] = storedValue;
       flashGridCell(cellEl, true);
       if (field === "youtube") updateYoutubeLinkCell(cellEl, storedValue);
+      // A youtube/vimeo edit can change this row's Duplicate/Missing-Link/
+      // Broken membership -- refresh the counts, and the active filter's
+      // row set if one of those three is currently applied.
+      if (field === "youtube" || field === "vimeo") {
+        renderHealthCounts();
+        if (healthFilter) applyHealthFilter(healthFilter);
+      }
     }).catch(function (err) {
       console.error("Grid save failed:", err);
       flashGridCell(cellEl, false);
@@ -521,7 +726,9 @@
     if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
     db.collection("videos").doc(rowNum).delete().then(function () {
       adminRows = adminRows.filter(function (r) { return r.rowNum !== rowNum; });
-      renderEntries();
+      brokenRows = brokenRows.filter(function (r) { return r.rowNum !== rowNum; });
+      renderHealthCounts();
+      if (healthFilter) applyHealthFilter(healthFilter); else renderEntries();
       setStatus('Deleted "' + label + '". Publishing…');
       return publishSnapshot().then(function (result) {
         setStatus('Deleted "' + label + '". Published ' + result.count + " entries to the live site.");
@@ -593,12 +800,247 @@
     return db.collection("videos").get().then(function (snap) {
       adminRows = snap.docs.map(function (doc) { return doc.data(); });
       setStatus(adminRows.length + " entries loaded.");
+      renderHealthCounts();
       renderEntries();
     }).catch(function (err) {
       console.error("Admin load failed:", err);
       setStatus("Couldn't load entries: " + err.message, true);
     });
   }
+
+  // ---- Fill Missing Links ------------------------------------------------
+  // Same design as app.js's version: a one-at-a-time queue (always
+  // operates on index [0]), Skip rotates to the back instead of dropping
+  // it, Save & Next writes a partial merge doc directly (no batching, no
+  // auto-publish -- same manual "Publish Now" Grid edits already use) then
+  // auto-triggers the next auto-fill search. The live preview while
+  // pasting a link reuses embedHtml() (a plain iframe) rather than
+  // app.js's createVideoPlayer() -- that's shared IFrame-API
+  // infrastructure built for the lightbox/TV Mode/Channel Mode and is too
+  // heavy to duplicate here just to look at a pasted link.
+  var YOUTUBE_SEARCH_API_KEY = "AIzaSyBCjFAxZEVXdDWC_HLQnZCV0ihXW-B2eBk";
+  var fillLinksQueue = [];
+  var fillLinksFilledCount = 0;
+
+  function renderFillLinksCard() {
+    els.fillLinksRemaining.textContent = fillLinksQueue.length;
+    els.fillLinksInput.value = "";
+    els.fillLinksError.hidden = true;
+    els.fillLinksAutoFillNote.hidden = true;
+    els.fillLinksPreview.hidden = true;
+    els.fillLinksPreview.innerHTML = "";
+
+    if (!fillLinksQueue.length) {
+      els.fillLinksCard.hidden = true;
+      els.fillLinksDone.hidden = false;
+      return;
+    }
+    els.fillLinksCard.hidden = false;
+    els.fillLinksDone.hidden = true;
+
+    var row = fillLinksQueue[0];
+    els.fillLinksTitle.textContent = row.artist + " — " + row.song;
+    els.fillLinksSub.textContent = "#" + row.rowNum +
+      (row.director ? " · " + row.director : "") +
+      (row.year ? " · " + row.year : "") +
+      (row.category ? " · " + row.category : "");
+    els.fillLinksInput.focus();
+  }
+
+  var fillLinksPreviewDebounce = null;
+
+  function updateFillLinksPreview() {
+    var url = els.fillLinksInput.value.trim();
+    var ytId = extractYouTubeId(url);
+    var vimeoId = !ytId ? extractVimeoId(url) : null;
+    if (!ytId && !vimeoId) {
+      els.fillLinksPreview.hidden = true;
+      els.fillLinksPreview.innerHTML = "";
+      return;
+    }
+    els.fillLinksPreview.hidden = false;
+    els.fillLinksPreview.innerHTML = embedHtml({ youtube: ytId ? url : "", vimeo: vimeoId ? url : "" });
+  }
+
+  els.fillLinksInput.addEventListener("input", function () {
+    if (fillLinksPreviewDebounce) clearTimeout(fillLinksPreviewDebounce);
+    fillLinksPreviewDebounce = setTimeout(updateFillLinksPreview, 600);
+  });
+
+  // Same YouTube Data API v3 search.list call as admin-intake.js/app.js's
+  // original Fill Links auto-fill -- referrer-restricted key, ~100 free
+  // calls/day.
+  function fetchYouTubeTopResult(query) {
+    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&type=video&q=" +
+      encodeURIComponent(query) + "&key=" + encodeURIComponent(YOUTUBE_SEARCH_API_KEY);
+    return fetch(url).then(function (res) {
+      if (!res.ok) return res.json().then(function (body) {
+        var reason = body && body.error && body.error.errors && body.error.errors[0] && body.error.errors[0].reason;
+        throw new Error(reason === "quotaExceeded" ? "Daily search quota used up -- try again tomorrow, or keep using Search + paste." : "YouTube search failed (" + res.status + ").");
+      });
+      return res.json();
+    }).then(function (data) {
+      var item = data.items && data.items[0];
+      if (!item) return null;
+      return { videoId: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle };
+    });
+  }
+
+  function triggerFillLinksAutoFill() {
+    var row = fillLinksQueue[0];
+    if (!row) return;
+    var query = (row.artist + " " + row.song).trim() + " music video";
+    els.fillLinksAutoFillBtn.disabled = true;
+    els.fillLinksAutoFillNote.hidden = true;
+    els.fillLinksError.hidden = true;
+    fetchYouTubeTopResult(query).then(function (result) {
+      if (fillLinksQueue[0] !== row) return; // queue moved on while this was in flight
+      if (!result) {
+        els.fillLinksError.textContent = "No YouTube results for that search.";
+        els.fillLinksError.hidden = false;
+        return;
+      }
+      els.fillLinksInput.value = "https://www.youtube.com/watch?v=" + result.videoId;
+      els.fillLinksAutoFillNote.textContent = 'Top result: "' + result.title + '" -- ' + result.channel + ". Check the preview below before saving.";
+      els.fillLinksAutoFillNote.hidden = false;
+      updateFillLinksPreview();
+    }).catch(function (err) {
+      if (fillLinksQueue[0] !== row) return;
+      console.error("YouTube auto-fill search failed:", err);
+      els.fillLinksError.textContent = err.message;
+      els.fillLinksError.hidden = false;
+    }).finally(function () {
+      els.fillLinksAutoFillBtn.disabled = false;
+    });
+  }
+
+  els.fillLinksAutoFillBtn.addEventListener("click", triggerFillLinksAutoFill);
+
+  function openFillLinksModal() {
+    fillLinksQueue = adminRows.filter(function (r) { return !hasVideo(r); });
+    fillLinksFilledCount = 0;
+    els.fillLinksModal.hidden = false;
+    document.body.style.overflow = "hidden";
+    renderFillLinksCard();
+  }
+
+  function closeFillLinksModal() {
+    els.fillLinksModal.hidden = true;
+    els.fillLinksPreview.innerHTML = "";
+    document.body.style.overflow = "";
+    renderHealthCounts();
+    if (healthFilter) applyHealthFilter(healthFilter); else renderEntries();
+  }
+
+  els.goFillLinksBtn.addEventListener("click", openFillLinksModal);
+  els.fillLinksClose.addEventListener("click", closeFillLinksModal);
+  els.fillLinksModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closeFillLinksModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !els.fillLinksModal.hidden) closeFillLinksModal();
+  });
+
+  els.fillLinksSearchBtn.addEventListener("click", function () {
+    var row = fillLinksQueue[0];
+    if (!row) return;
+    var query = (row.artist + " " + row.song).trim() + " music video";
+    window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), "_blank", "noopener");
+  });
+
+  els.fillLinksSkipBtn.addEventListener("click", function () {
+    if (!fillLinksQueue.length) return;
+    fillLinksQueue.push(fillLinksQueue.shift());
+    renderFillLinksCard();
+  });
+
+  els.fillLinksDeleteBtn.addEventListener("click", function () {
+    var row = fillLinksQueue[0];
+    if (!row) return;
+    var label = row.artist + " — " + row.song;
+    if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+    db.collection("videos").doc(row.rowNum).delete().then(function () {
+      adminRows = adminRows.filter(function (r) { return r.rowNum !== row.rowNum; });
+      brokenRows = brokenRows.filter(function (r) { return r.rowNum !== row.rowNum; });
+      fillLinksQueue.shift();
+      renderHealthCounts();
+      renderFillLinksCard();
+      els.fillLinksStatus.textContent = 'Deleted "' + label + '". Not yet published -- use Publish Now when you\'re done.';
+      els.fillLinksStatus.className = "admin-status";
+      els.fillLinksStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Delete failed:", err);
+      els.fillLinksStatus.textContent = "Delete failed: " + err.message;
+      els.fillLinksStatus.className = "admin-status is-error";
+      els.fillLinksStatus.hidden = false;
+    });
+  });
+
+  function saveFillLinksEntry() {
+    var row = fillLinksQueue[0];
+    if (!row) return;
+    var url = els.fillLinksInput.value.trim();
+    var ytId = extractYouTubeId(url);
+    var vimeoId = !ytId ? extractVimeoId(url) : null;
+    if (!ytId && !vimeoId) {
+      els.fillLinksError.textContent = "That doesn't look like a YouTube or Vimeo link.";
+      els.fillLinksError.hidden = false;
+      return;
+    }
+
+    els.fillLinksSaveBtn.disabled = true;
+    var doc = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    var thumbPromise = Promise.resolve();
+    if (ytId) {
+      doc.youtube = url;
+    } else {
+      doc.vimeo = url;
+      thumbPromise = fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) doc.vimeoThumb = thumb; });
+    }
+
+    thumbPromise.then(function () {
+      return db.collection("videos").doc(row.rowNum).set(doc, { merge: true });
+    }).then(function () {
+      var cached = findRowByNum(row.rowNum);
+      if (cached) { cached.youtube = doc.youtube || cached.youtube; cached.vimeo = doc.vimeo || cached.vimeo; if (doc.vimeoThumb) cached.vimeoThumb = doc.vimeoThumb; }
+      fillLinksQueue.shift();
+      fillLinksFilledCount++;
+      renderHealthCounts();
+      els.fillLinksStatus.textContent = "Filled " + fillLinksFilledCount + " so far this session. Not yet published -- use Publish Now when you're done.";
+      els.fillLinksStatus.className = "admin-status";
+      els.fillLinksStatus.hidden = false;
+      renderFillLinksCard();
+      triggerFillLinksAutoFill();
+    }).catch(function (err) {
+      console.error("Fill Links save failed:", err);
+      els.fillLinksError.textContent = "Save failed: " + err.message;
+      els.fillLinksError.hidden = false;
+    }).finally(function () {
+      els.fillLinksSaveBtn.disabled = false;
+    });
+  }
+
+  els.fillLinksSaveBtn.addEventListener("click", saveFillLinksEntry);
+  els.fillLinksInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); saveFillLinksEntry(); }
+  });
+
+  els.fillLinksPublishBtn.addEventListener("click", function () {
+    els.fillLinksPublishBtn.disabled = true;
+    setStatus("Publishing snapshot…");
+    publishSnapshot().then(function (result) {
+      els.fillLinksStatus.textContent = "Published " + result.count + " entries to the live site.";
+      els.fillLinksStatus.className = "admin-status";
+      els.fillLinksStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Publish failed:", err);
+      els.fillLinksStatus.textContent = "Publish failed: " + err.message;
+      els.fillLinksStatus.className = "admin-status is-error";
+      els.fillLinksStatus.hidden = false;
+    }).finally(function () {
+      els.fillLinksPublishBtn.disabled = false;
+    });
+  });
 
   auth.onAuthStateChanged(function (user) {
     els.signedOut.hidden = !!user;
