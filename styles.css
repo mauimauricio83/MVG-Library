@@ -5257,6 +5257,41 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.8rem;
 }
 
+.admin-grid-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.admin-grid-page-btn {
+  min-width: 26px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.admin-grid-page-btn:hover {
+  border-color: var(--accent);
+}
+
+.admin-grid-page-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.admin-grid-page-ellipsis {
+  color: var(--text-faint);
+  padding: 0 2px;
+  font-size: 0.78rem;
+}
+
 .admin-grid {
   border-collapse: collapse;
   font-size: 0.82rem;
@@ -5277,6 +5312,15 @@ body.is-searching #viewersChoiceSection {
   border-bottom: 1px solid var(--border);
 }
 
+.admin-grid th.admin-grid-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-grid th.admin-grid-sortable:hover {
+  color: var(--accent);
+}
+
 .admin-grid td {
   padding: 3px 4px;
   border-bottom: 1px solid var(--border);
@@ -5286,6 +5330,35 @@ body.is-searching #viewersChoiceSection {
 .admin-grid-rownum {
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.admin-grid-rownum-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-grid-link-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-grid-open-link {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.admin-grid-open-link:hover {
+  color: var(--accent);
 }
 
 .admin-grid td input[type="text"],
@@ -5826,6 +5899,16 @@ body.is-searching #viewersChoiceSection {
 .admin-form {
   max-height: 100%;
   overflow-y: auto;
+}
+
+/* Manage Entries' row-number preview (manage-entries.html) -- a lightweight
+   in-page video check, not the full public lightbox. */
+.admin-preview-embed {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: 8px;
 }
 
 .admin-form-title {

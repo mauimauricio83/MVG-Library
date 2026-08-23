@@ -40,14 +40,32 @@
     gridWrap: document.getElementById("meGridWrap"),
     gridTable: document.getElementById("meGridTable"),
     gridPagerLabel: document.getElementById("meGridPagerLabel"),
+    gridPageNumbers: document.getElementById("meGridPageNumbers"),
+    gridFirstBtn: document.getElementById("meGridFirstBtn"),
     gridPrevBtn: document.getElementById("meGridPrevBtn"),
-    gridNextBtn: document.getElementById("meGridNextBtn")
+    gridNextBtn: document.getElementById("meGridNextBtn"),
+    gridLastBtn: document.getElementById("meGridLastBtn"),
+    previewModal: document.getElementById("mePreviewModal"),
+    previewClose: document.getElementById("mePreviewClose"),
+    previewBody: document.getElementById("mePreviewBody")
   };
 
   function escapeHtml(str) {
     return String(str || "").replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  // Same regexes as app.js's extractYouTubeId()/extractVimeoId() -- duplicated
+  // for the same reason as firebaseConfig above (no shared module system).
+  function extractYouTubeId(url) {
+    var m = String(url || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+    return m ? m[1] : null;
+  }
+
+  function extractVimeoId(url) {
+    var m = String(url || "").match(/vimeo\.com\/(?:video\/|channels\/[^/]+\/|groups\/[^/]+\/videos\/|)(\d+)/);
+    return m ? m[1] : null;
   }
 
   function setStatus(text, isError) {
@@ -73,7 +91,7 @@
       '<div class="admin-row" data-rownum="' + escapeHtml(r.rowNum) + '">' +
         '<div class="admin-row-main">' +
           '<div class="admin-row-title">' + escapeHtml(r.artist) + " — " + escapeHtml(r.song) + "</div>" +
-          '<div class="admin-row-sub">#' + escapeHtml(r.rowNum) + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + "</div>" +
+          '<div class="admin-row-sub"><button type="button" class="admin-grid-rownum-btn" data-preview-rownum="' + escapeHtml(r.rowNum) + '">#' + escapeHtml(r.rowNum) + "</button>" + (r.director ? " · " + escapeHtml(r.director) : "") + " " + badges + "</div>" +
         "</div>" +
         '<div class="admin-row-actions">' +
           '<a class="admin-row-btn" href="index.html?admin=edit&row=' + encodeURIComponent(r.rowNum) + '">Edit</a>' +
@@ -98,12 +116,33 @@
 
   var gridMode = false;
 
+  // Shared by List and Grid -- clicking a Grid column header (see
+  // GRID_COLUMNS/gridHeaderHtml below) changes this and re-sorts both,
+  // even though List has no per-column headers of its own to click.
+  var sortField = "rowNum";
+  var sortDir = "desc";
+
+  function sortValue(r, field) {
+    return field === "genres" ? (r.genres || []).join(", ") : r[field];
+  }
+
+  function compareRows(a, b) {
+    var col = GRID_COLUMNS.filter(function (c) { return c.key === sortField; })[0];
+    var sortType = col ? col.sort : "string";
+    var av = sortValue(a, sortField), bv = sortValue(b, sortField);
+    var cmp;
+    if (sortType === "number") cmp = (parseFloat(av) || 0) - (parseFloat(bv) || 0);
+    else if (sortType === "bool") cmp = (av ? 1 : 0) - (bv ? 1 : 0);
+    else cmp = String(av || "").toLowerCase().localeCompare(String(bv || "").toLowerCase());
+    return sortDir === "desc" ? -cmp : cmp;
+  }
+
   function filteredRows() {
     var query = els.searchInput.value.trim().toLowerCase();
     var rows = adminRows.filter(function (r) {
       return !query || searchHaystack(r).indexOf(query) !== -1;
     });
-    return rows.slice().sort(function (a, b) { return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10); });
+    return rows.slice().sort(compareRows);
   }
 
   function renderEntries() {
@@ -119,8 +158,38 @@
 
   // ---- Grid view -----------------------------------------------------
   var GRID_CATEGORIES = ["Music Video", "Dance", "Montage", "DVD", "Live", "Installation", "Short", "Docu"];
-  var GRID_CHECKBOX_FIELDS = ["feature", "spotlight", "sponsored", "backdoor"];
   var GRID_PAGE_SIZE = 75; // same DOM-size rationale as the original: 13k live inputs at once is what made this slow
+
+  // Drives header, cell rendering, and sorting all from one place instead
+  // of three separate hardcoded lists that'd inevitably drift out of sync.
+  // sort: "string" | "number" | "bool" -- see compareRows() above.
+  var GRID_COLUMNS = [
+    { key: "rowNum", label: "Row", type: "rownum", sort: "number" },
+    { key: "artist", label: "Artist", type: "text", sort: "string" },
+    { key: "song", label: "Song", type: "text", sort: "string" },
+    { key: "director", label: "Director", type: "text", sort: "string" },
+    { key: "category", label: "Category", type: "select", sort: "string" },
+    { key: "year", label: "Year", type: "text", sort: "number", cls: "admin-grid-year" },
+    { key: "feature", label: "Feature", type: "checkbox", sort: "bool" },
+    { key: "spotlight", label: "Spotlight", type: "checkbox", sort: "bool" },
+    { key: "sponsored", label: "Sponsored", type: "checkbox", sort: "bool" },
+    { key: "backdoor", label: "Backdoor", type: "checkbox", sort: "bool" },
+    { key: "studio", label: "Studio", type: "text", sort: "string" },
+    { key: "producer", label: "Producer", type: "text", sort: "string" },
+    { key: "dp", label: "DP", type: "text", sort: "string" },
+    { key: "editor", label: "Editor", type: "text", sort: "string" },
+    { key: "choreographer", label: "Choreographer", type: "text", sort: "string" },
+    { key: "country", label: "Country", type: "text", sort: "string" },
+    { key: "genres", label: "Genres", type: "genres", sort: "string" },
+    { key: "releaseDate", label: "Release Date", type: "text", sort: "string" },
+    { key: "submitterEmail", label: "Submitter Email", type: "text", sort: "string" },
+    { key: "description", label: "Description", type: "text", sort: "string", cls: "admin-grid-wide" },
+    { key: "flavorTextOverride", label: "Flavor Text", type: "text", sort: "string", cls: "admin-grid-wide" },
+    { key: "vimeo", label: "Vimeo Link", type: "text", sort: "string", cls: "admin-grid-wide" },
+    { key: "mvg", label: "MVG Link", type: "text", sort: "string", cls: "admin-grid-wide" },
+    { key: "youtube", label: "YouTube Link", type: "youtube", sort: "string", cls: "admin-grid-wide" }
+  ];
+
   var gridAllRows = [];
   var gridPage = 0;
 
@@ -131,30 +200,71 @@
       }).join("");
   }
 
+  function gridHeaderHtml() {
+    return "<tr>" + GRID_COLUMNS.map(function (col) {
+      var arrow = sortField === col.key ? (sortDir === "asc" ? " ▲" : " ▼") : "";
+      return '<th class="admin-grid-sortable" data-sort-key="' + col.key + '">' + escapeHtml(col.label) + arrow + "</th>";
+    }).join("") + "</tr>";
+  }
+
+  // Row number opens the lightweight in-page video preview (see
+  // openPreview()) rather than being plain text -- everything else keeps
+  // the same live <input>/<select> editing as before.
+  function gridCellHtml(r, col) {
+    switch (col.type) {
+      case "rownum":
+        return '<td class="admin-grid-rownum"><button type="button" class="admin-grid-rownum-btn" data-preview-rownum="' + escapeHtml(r.rowNum) + '">#' + escapeHtml(r.rowNum) + "</button></td>";
+      case "select":
+        return '<td><select data-field="category">' + gridCategoryOptionsHtml(r.category) + "</select></td>";
+      case "checkbox":
+        return '<td class="admin-grid-check"><input type="checkbox" data-field="' + col.key + '"' + (r[col.key] ? " checked" : "") + "></td>";
+      case "genres":
+        return '<td><input type="text" data-field="genres" value="' + escapeHtml((r.genres || []).join(", ")) + '" placeholder="Pop, Synthpop"></td>';
+      case "youtube":
+        return '<td class="admin-grid-wide admin-grid-link-cell">' +
+          '<input type="text" data-field="youtube" value="' + escapeHtml(r.youtube || "") + '">' +
+          (r.youtube ? '<a class="admin-grid-open-link" href="' + escapeHtml(r.youtube) + '" target="_blank" rel="noopener noreferrer" title="Open">&#8599;</a>' : "") +
+          "</td>";
+      default:
+        return '<td' + (col.cls ? ' class="' + col.cls + '"' : "") + '><input type="text" data-field="' + col.key + '" value="' + escapeHtml(r[col.key] || "") + '"></td>';
+    }
+  }
+
   function gridRowHtml(r) {
-    return (
-      '<tr data-rownum="' + escapeHtml(r.rowNum) + '">' +
-        '<td class="admin-grid-rownum">#' + escapeHtml(r.rowNum) + "</td>" +
-        '<td><input type="text" data-field="artist" value="' + escapeHtml(r.artist || "") + '"></td>' +
-        '<td><input type="text" data-field="song" value="' + escapeHtml(r.song || "") + '"></td>' +
-        '<td><input type="text" data-field="director" value="' + escapeHtml(r.director || "") + '"></td>' +
-        '<td><select data-field="category">' + gridCategoryOptionsHtml(r.category) + "</select></td>" +
-        '<td><input type="text" class="admin-grid-year" data-field="year" value="' + escapeHtml(r.year || "") + '"></td>' +
-        GRID_CHECKBOX_FIELDS.map(function (f) {
-          return '<td class="admin-grid-check"><input type="checkbox" data-field="' + f + '"' + (r[f] ? " checked" : "") + "></td>";
-        }).join("") +
-        '<td><input type="text" data-field="editor" value="' + escapeHtml(r.editor || "") + '"></td>' +
-        '<td><input type="text" data-field="country" value="' + escapeHtml(r.country || "") + '"></td>' +
-        '<td><input type="text" data-field="genres" value="' + escapeHtml((r.genres || []).join(", ")) + '" placeholder="Pop, Synthpop"></td>' +
-        '<td class="admin-grid-wide"><input type="text" data-field="youtube" value="' + escapeHtml(r.youtube || "") + '"></td>' +
-      "</tr>"
-    );
+    return '<tr data-rownum="' + escapeHtml(r.rowNum) + '">' + GRID_COLUMNS.map(function (col) { return gridCellHtml(r, col); }).join("") + "</tr>";
   }
 
   function renderGrid(rows) {
     gridAllRows = rows;
     gridPage = 0;
     renderGridPage();
+  }
+
+  function gridTotalPages() {
+    return Math.max(1, Math.ceil(gridAllRows.length / GRID_PAGE_SIZE));
+  }
+
+  // Windowed page-number list (current ±2, plus first/last with an
+  // ellipsis gap) -- at ~180 pages for the full catalog, listing every
+  // page number would be its own scroll problem.
+  function pageNumbersHtml(totalPages) {
+    var current = gridPage + 1; // 1-indexed for display
+    var windowStart = Math.max(1, current - 2);
+    var windowEnd = Math.min(totalPages, current + 2);
+    var parts = [];
+    function pageBtn(p) {
+      return '<button type="button" class="admin-grid-page-btn' + (p === current ? " is-active" : "") + '" data-page="' + (p - 1) + '">' + p + "</button>";
+    }
+    if (windowStart > 1) {
+      parts.push(pageBtn(1));
+      if (windowStart > 2) parts.push('<span class="admin-grid-page-ellipsis">…</span>');
+    }
+    for (var p = windowStart; p <= windowEnd; p++) parts.push(pageBtn(p));
+    if (windowEnd < totalPages) {
+      if (windowEnd < totalPages - 1) parts.push('<span class="admin-grid-page-ellipsis">…</span>');
+      parts.push(pageBtn(totalPages));
+    }
+    return parts.join("");
   }
 
   function renderGridPage() {
@@ -164,31 +274,46 @@
     if (!rows.length) {
       els.gridTable.innerHTML = '<caption class="admin-empty">No matching entries.</caption>';
       els.gridPagerLabel.textContent = "";
-      els.gridPrevBtn.disabled = true;
-      els.gridNextBtn.disabled = true;
+      els.gridPageNumbers.innerHTML = "";
+      els.gridFirstBtn.disabled = els.gridPrevBtn.disabled = els.gridNextBtn.disabled = els.gridLastBtn.disabled = true;
       return;
     }
-    var totalPages = Math.max(1, Math.ceil(rows.length / GRID_PAGE_SIZE));
+    var totalPages = gridTotalPages();
     gridPage = Math.max(0, Math.min(gridPage, totalPages - 1));
     var start = gridPage * GRID_PAGE_SIZE;
     var pageRows = rows.slice(start, start + GRID_PAGE_SIZE);
-    els.gridTable.innerHTML =
-      "<thead><tr>" +
-        "<th>Row</th><th>Artist</th><th>Song</th><th>Director</th><th>Category</th><th>Year</th>" +
-        "<th>Feature</th><th>Spotlight</th><th>Sponsored</th><th>Backdoor</th><th>Editor</th>" +
-        "<th>Country</th><th>Genres</th><th>YouTube Link</th>" +
-      "</tr></thead><tbody>" +
-      pageRows.map(gridRowHtml).join("") +
-      "</tbody>";
+    els.gridTable.innerHTML = "<thead>" + gridHeaderHtml() + "</thead><tbody>" + pageRows.map(gridRowHtml).join("") + "</tbody>";
     els.gridPagerLabel.textContent = (start + 1) + "–" + (start + pageRows.length) + " of " + rows.length;
-    els.gridPrevBtn.disabled = gridPage === 0;
-    els.gridNextBtn.disabled = gridPage >= totalPages - 1;
+    els.gridPageNumbers.innerHTML = pageNumbersHtml(totalPages);
+    els.gridFirstBtn.disabled = els.gridPrevBtn.disabled = gridPage === 0;
+    els.gridLastBtn.disabled = els.gridNextBtn.disabled = gridPage >= totalPages - 1;
   }
 
   function flashGridCell(el, ok) {
     el.classList.remove("save-ok", "save-error");
     void el.offsetWidth; // reflow so re-adding the class restarts the animation
     el.classList.add(ok ? "save-ok" : "save-error");
+  }
+
+  // Keeps the YouTube column's "open in new tab" link in sync after an
+  // edit, without a full grid re-render (which would also toss focus).
+  function updateYoutubeLinkCell(inputEl, url) {
+    var cell = inputEl.closest("td");
+    var link = cell.querySelector(".admin-grid-open-link");
+    if (url) {
+      if (!link) {
+        link = document.createElement("a");
+        link.className = "admin-grid-open-link";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.title = "Open";
+        link.innerHTML = "&#8599;";
+        cell.appendChild(link);
+      }
+      link.href = url;
+    } else if (link) {
+      link.remove();
+    }
   }
 
   function saveGridField(cellEl, rowNum, field, value) {
@@ -202,6 +327,7 @@
       var row = findRowByNum(rowNum);
       if (row) row[field] = storedValue;
       flashGridCell(cellEl, true);
+      if (field === "youtube") updateYoutubeLinkCell(cellEl, storedValue);
     }).catch(function (err) {
       console.error("Grid save failed:", err);
       flashGridCell(cellEl, false);
@@ -231,6 +357,33 @@
     saveGridField(input, rowNum, field, value);
   });
 
+  els.gridTable.addEventListener("click", function (e) {
+    var th = e.target.closest("th[data-sort-key]");
+    if (th) {
+      var key = th.getAttribute("data-sort-key");
+      if (sortField === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+      else { sortField = key; sortDir = "asc"; }
+      renderEntries();
+      return;
+    }
+    var previewBtn = e.target.closest("[data-preview-rownum]");
+    if (previewBtn) openPreview(previewBtn.getAttribute("data-preview-rownum"));
+  });
+
+  els.gridPageNumbers.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-page]");
+    if (!btn) return;
+    gridPage = parseInt(btn.getAttribute("data-page"), 10);
+    renderGridPage();
+    els.gridWrap.scrollTop = 0;
+  });
+
+  els.gridFirstBtn.addEventListener("click", function () {
+    gridPage = 0;
+    renderGridPage();
+    els.gridWrap.scrollTop = 0;
+  });
+
   els.gridPrevBtn.addEventListener("click", function () {
     if (gridPage <= 0) return;
     gridPage--;
@@ -240,6 +393,12 @@
 
   els.gridNextBtn.addEventListener("click", function () {
     gridPage++;
+    renderGridPage();
+    els.gridWrap.scrollTop = 0;
+  });
+
+  els.gridLastBtn.addEventListener("click", function () {
+    gridPage = gridTotalPages() - 1;
     renderGridPage();
     els.gridWrap.scrollTop = 0;
   });
@@ -255,8 +414,56 @@
     renderEntries();
   });
 
+  // ---- Row-number video preview -----------------------------------------
+  // Deliberately lightweight (embed + title/credits/description, not the
+  // full public lightbox with comments/related videos/etc.) -- this is a
+  // quick "what am I looking at" check while editing, not a replacement
+  // for the real video page. Stays on this page rather than navigating
+  // away, unlike Edit/Add/Bulk Import which jump back to index.html.
+  function embedHtml(row) {
+    var ytId = extractYouTubeId(row.youtube);
+    if (ytId) {
+      return '<iframe src="https://www.youtube.com/embed/' + ytId + '?autoplay=1" title="Video preview" allow="autoplay; encrypted-media" allowfullscreen class="admin-preview-embed"></iframe>';
+    }
+    var vimeoId = extractVimeoId(row.vimeo);
+    if (vimeoId) {
+      return '<iframe src="https://player.vimeo.com/video/' + vimeoId + '?autoplay=1" title="Video preview" allow="autoplay; fullscreen" allowfullscreen class="admin-preview-embed"></iframe>';
+    }
+    return '<p class="admin-empty">No recognized YouTube or Vimeo link.</p>';
+  }
+
+  function openPreview(rowNum) {
+    var row = findRowByNum(rowNum);
+    if (!row) return;
+    els.previewBody.innerHTML =
+      embedHtml(row) +
+      '<h2 class="admin-form-title">' + escapeHtml(row.artist) + " — " + escapeHtml(row.song) + "</h2>" +
+      '<p class="admin-row-sub">#' + escapeHtml(row.rowNum) + (row.director ? " · " + escapeHtml(row.director) : "") + "</p>" +
+      (row.description ? "<p>" + escapeHtml(row.description) + "</p>" : "");
+    els.previewModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closePreview() {
+    els.previewModal.hidden = true;
+    els.previewBody.innerHTML = ""; // clears the iframe so playback actually stops
+    document.body.style.overflow = "";
+  }
+
+  els.previewModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) closePreview();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !els.previewModal.hidden) closePreview();
+  });
+
   // ---- Delete ----------------------------------------------------------
   els.entriesList.addEventListener("click", function (e) {
+    var previewBtn = e.target.closest("[data-preview-rownum]");
+    if (previewBtn) {
+      openPreview(previewBtn.getAttribute("data-preview-rownum"));
+      return;
+    }
     var btn = e.target.closest("[data-delete-rownum]");
     if (!btn) return;
     var rowNum = btn.getAttribute("data-delete-rownum");

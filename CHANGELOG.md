@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.18.0 — current
+- Manage Entries' Grid view: click any column header to sort by it (click again to reverse) -- applies to List view's ordering too, they share one sort. Pager gained page-number buttons (windowed around the current page, since the full catalog is ~180 pages) plus First/Last, not just Prev/Next. Grid now shows every field, not just the dozen that fit before -- Studio, Producer, DP, Choreographer, Release Date, Submitter Email, Description, Flavor Text, Vimeo, and MVG links joined Artist/Song/Director/Category/Year/Feature/Spotlight/Sponsored/Backdoor/Editor/Country/Genres/YouTube. The YouTube column's link now opens in a new tab instead of being plain text inside the edit box. Clicking a row number (List or Grid) opens a lightweight in-page video preview -- embed, title, credits, description -- without leaving Manage Entries.
+
 ## v6.17.0 — current
 - Manage Entries moved out of the admin popup into its own standalone page (`manage-entries.html`), same treatment Weekly Intake got -- full List/Grid browsing, search, and inline Grid editing, reached via a plain link from the admin landing menu instead of loading inside `#adminModal`. The Add/Edit form and Bulk Import stayed in the popup (they're shared with the public lightbox's admin Edit button and TV Mode, not exclusive to Manage Entries) -- the new page's Edit/Add/Bulk Import actions jump back into index.html via `?admin=edit&row=<n>` / `?admin=add` / `?admin=bulk` instead of duplicating that form's country/genre widgets, Vimeo thumbnail resolution, and row-reservation logic a second time.
 - Added a "Weekly Intake" link to the admin landing menu -- it existed as a page but had no way to reach it from inside the site.
