@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.22.1 — current
+- Fixed: the blog editor's new "Insert a video" picker (v6.22.0) opened but rendered invisibly behind the still-open blog editor page -- `.blog-editor-page` sits at z-index 1100, above the generic `.lightbox` class's 1000 the picker was using. Gave the picker its own z-index (1150) so it actually shows up on top.
+
 ## v6.22.0 — current
 - Blog editor's "+ Video" button now searches the catalog instead of taking a raw YouTube/Vimeo URL -- picking a result inserts a cover-art card (thumbnail + play icon + caption) linking to that video's own lightbox, instead of embedding a bare iframe. Clicking the card on a published post opens the site's real lightbox on top of the post itself (via news.html's own lightweight lightbox) rather than navigating away, so readers stay on the blog entry; the card's href is still a real deep link (`/#song-slug-rowNum`) for anyone opening it in a new tab or with JS off. Provider/video ID/title/artist/director are baked into the card's own data attributes at insert time, since a live per-video lookup isn't an option for a signed-out reader (the `videos` collection is admin-read-only, and the alternative -- the public site's full catalog snapshot -- is a ~24MB JSON).
 

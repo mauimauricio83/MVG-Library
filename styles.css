@@ -6067,6 +6067,14 @@ body.is-searching #viewersChoiceSection {
   background: var(--bg);
 }
 
+/* #blogVideoPickerModal opens on top of the blog editor page above --
+   .lightbox's own z-index (1000) sits below .blog-editor-page's (1100),
+   so without this override the picker would open "successfully" but
+   render fully hidden behind the still-open editor. */
+#blogVideoPickerModal {
+  z-index: 1150;
+}
+
 .blog-editor-page[hidden] {
   display: none;
 }
