@@ -2,6 +2,14 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.20.0 — current
+- Renamed "Weekly Intake" to just "Intake" throughout (page title was already this; page heading and admin landing menu link now match).
+- Intake's Review grid now pulls each video's real YouTube description into a Description field (same expand-on-click textarea as Description/Flavor Text on Manage Entries' Grid) -- previously blank, left for manual entry. Fetched via the same videos.list call already used for duration/Shorts detection (added `part=snippet`, no extra request). Multi-line descriptions are TSV-quoted when copied so they don't get misread as extra rows on the Bulk Import side.
+- Intake's "Copy N rows" is now "Send N rows to Bulk Import" -- instead of copying to the clipboard and telling you to go paste it, it opens Admin → Bulk Import with the rows already pasted in and Previewed, ready to Commit. Still copies to clipboard too as a fallback.
+- Fixed: clicking "Load 50 more" (or toggling Show already-added/Show Shorts) in Intake was silently unchecking every already-selected result, since selection only ever lived as checkbox .checked state in DOM that gets fully rebuilt on every re-render. Selection now lives in its own tracked set, so it survives any re-render.
+- Latest Submissions gained a "Load 50 more" button next to "See all", styled as a neutral/gray secondary action -- pulls the next batch of most-recent eligible submissions into the strip/grid.
+- Fixed a handful of remaining stale `mauimauricio83.github.io/MVG-Library` URLs in index.html/news.html (canonical link, og:url, JSON-LD, RSS feed links) missed by the manifest.json/SEO-generator fixes earlier -- same leftover-subpath issue, different files.
+
 ## v6.19.3 — current
 - Weekly Intake's Review grid gained a "Search" button per row -- opens a Google search for Artist + Song Title + "country of origin" in a new tab, for a quick lookup while filling in the Country field before copying to Bulk Import.
 

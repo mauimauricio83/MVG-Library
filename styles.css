@@ -1879,6 +1879,44 @@ html, body {
   display: none;
 }
 
+/* Holds both See all (desktop-only, hidden via .media-strip-see-more
+   itself at narrower widths) and Load more (visible at every width) --
+   flexbox centers whichever of the two is actually showing, same as
+   plain auto-margins did when Load more was the only child. */
+.media-strip-more-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Unlike .media-strip-see-more (desktop-only -- it toggles the grid-vs-
+   horizontal-strip layout that only applies at that width), this just
+   grows the pool size, so it stays visible at every width. Gray/neutral
+   rather than See all's accent color so the two don't read as equally
+   weighted actions. */
+.media-strip-load-more {
+  display: block;
+  margin: 0;
+  padding: 8px 22px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.media-strip-load-more:hover {
+  border-color: var(--text-muted);
+}
+
+.media-strip-load-more:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* While actively searching (state.query non-empty -- see render()'s
    is-searching toggle), Featured/Discover/Viewer's Choice just push the
    results the user is looking for further down (Viewer's Choice alone
@@ -1990,6 +2028,13 @@ body.is-searching #viewersChoiceSection {
     color: #fff;
     font-size: 0.85rem;
     cursor: pointer;
+  }
+
+  /* Inside .media-strip-more-row (currently just Latest Submissions,
+     paired with Load more), the row's own margin-top/gap handle spacing
+     instead. */
+  .media-strip-more-row .media-strip-see-more {
+    margin: 0;
   }
 
   .media-strip-see-more:hover {
@@ -7089,6 +7134,10 @@ body.is-searching #viewersChoiceSection {
     color: #fff;
     font-size: 0.85rem;
     cursor: pointer;
+  }
+
+  #latestStrip .media-strip-more-row .media-strip-see-more {
+    margin: 0;
   }
 
   #latestStrip .media-strip-see-more:hover,

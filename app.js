@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.19.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.20.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -186,6 +186,7 @@
     latestCollapseBtn: document.getElementById("latestCollapseBtn"),
     featuredCollapseBtn: document.getElementById("featuredCollapseBtn"),
     latestSeeMoreBtn: document.getElementById("latestSeeMoreBtn"),
+    latestLoadMoreBtn: document.getElementById("latestLoadMoreBtn"),
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
     spotlightSidebar: document.getElementById("spotlightSidebar"),
     spotlightCards: document.getElementById("spotlightCards"),
@@ -2322,6 +2323,11 @@
   setupSeeMore(els.favoritesStrip, els.favoritesSeeMoreBtn);
 
   var latestPool = [];
+  // Every eligible row, newest first -- the weighted sample below only
+  // picks LATEST_STRIP_COUNT of these for the initial render; "Load 50
+  // more" (loadMoreLatest()) just keeps pulling further down this same
+  // list, past whatever's already in latestPool.
+  var latestEligibleSorted = [];
   // A pure top-N-by-rowNum cutoff meant Latest Submissions could go
   // wall-to-wall a single big bulk import until enough newer individual
   // submissions pushed it out -- same problem the word cloud has (see
@@ -2335,6 +2341,7 @@
       .map(function (r) { return { row: r, n: parseInt(r.rowNum, 10) }; })
       .sort(function (a, b) { return b.n - a.n; })
       .map(function (x) { return x.row; });
+    latestEligibleSorted = newestFirst;
 
     var topPool = newestFirst.slice(0, LATEST_TOP_POOL_SIZE);
     var topPicks = shuffle(topPool).slice(0, LATEST_TOP_RANDOM_COUNT);
@@ -2350,7 +2357,30 @@
       return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10);
     });
     latestStrip.render(latestPool);
+    updateLatestLoadMoreBtn();
   }
+
+  // Plain "next 50 newest, not already shown" -- doesn't re-apply the
+  // age-bucket weighting above (that exists specifically to keep a single
+  // bulk import from dominating the very first impression; once someone's
+  // deliberately asking for more, a predictable newest-first continuation
+  // is more useful than another weighted shuffle).
+  function updateLatestLoadMoreBtn() {
+    els.latestLoadMoreBtn.hidden = latestPool.length >= latestEligibleSorted.length;
+  }
+
+  function loadMoreLatest() {
+    var shownSet = {};
+    latestPool.forEach(function (r) { shownSet[r.rowNum] = true; });
+    var more = latestEligibleSorted.filter(function (r) { return !shownSet[r.rowNum]; }).slice(0, LATEST_STRIP_COUNT);
+    latestPool = latestPool.concat(more).sort(function (a, b) {
+      return parseInt(b.rowNum, 10) - parseInt(a.rowNum, 10);
+    });
+    latestStrip.render(latestPool);
+    updateLatestLoadMoreBtn();
+  }
+
+  els.latestLoadMoreBtn.addEventListener("click", loadMoreLatest);
 
   var featuredPool = [];
   function renderFeaturedStrip(rows) {
@@ -7370,6 +7400,18 @@
       state.adminReturnView = "list";
       openAdminModalChrome();
       showAdminBulk();
+      // Intake's "Send N rows to Bulk Import" button (admin-intake.js)
+      // stashes its built TSV here before navigating -- showAdminBulk()
+      // above always resets the textarea to empty, so this has to run
+      // after it, not before. Cleared immediately so a reload of this same
+      // URL (already stripped of ?admin=bulk, but a browser back/forward
+      // could still land here) doesn't silently repopulate stale rows.
+      var pending = sessionStorage.getItem("mvgIntakeBulkPaste");
+      if (pending) {
+        sessionStorage.removeItem("mvgIntakeBulkPaste");
+        els.adminBulkTextarea.value = pending;
+        els.adminBulkPreviewBtn.click();
+      }
     }
   }
 

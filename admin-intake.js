@@ -1,4 +1,4 @@
-// Weekly Intake — standalone admin page (admin-intake.html), not part of
+// Intake — standalone admin page (admin-intake.html), not part of
 // the app.js SPA. Kept as its own small script rather than folding into
 // app.js since it doesn't need the 13k-video fetch, TV Mode, or any of the
 // public-site machinery -- just Firebase Auth + a `videos` collection read
@@ -103,6 +103,11 @@
   var knownYouTubeIds = null; // Set, built once after admin auth confirms
   var results = []; // accumulated across pages, each: {videoId, title, channel, publishedAt, thumb, seconds, isDuplicate, isShort}
   var nextPageToken = null;
+  // Selection lives here, not just as checkbox .checked state in the DOM --
+  // renderResults() rebuilds the whole list's innerHTML on every Load More/
+  // filter-toggle, which would otherwise silently drop anything already
+  // checked.
+  var selectedIds = new Set();
   var currentPublishedAfter = null;
 
   function setStatus(text, isError) {
@@ -144,17 +149,24 @@
     });
   }
 
-  function ytVideoDurations(ids) {
+  // Also pulls the full description here (part=snippet alongside
+  // contentDetails, same request/quota cost) -- search.list's own
+  // snippet.description is truncated to ~100 chars, not enough to be
+  // useful as the catalog's Description field.
+  function ytVideoDetails(ids) {
     if (!ids.length) return Promise.resolve({});
-    var url = "https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=" +
+    var url = "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=" +
       ids.join(",") + "&key=" + encodeURIComponent(YOUTUBE_API_KEY);
     return fetch(url).then(function (res) {
-      if (!res.ok) throw new Error("YouTube durations lookup failed (" + res.status + ")");
+      if (!res.ok) throw new Error("YouTube details lookup failed (" + res.status + ")");
       return res.json();
     }).then(function (json) {
       var byId = {};
       (json.items || []).forEach(function (item) {
-        byId[item.id] = parseIso8601Duration(item.contentDetails && item.contentDetails.duration);
+        byId[item.id] = {
+          seconds: parseIso8601Duration(item.contentDetails && item.contentDetails.duration),
+          description: decodeHtmlEntities((item.snippet && item.snippet.description) || "")
+        };
       });
       return byId;
     });
@@ -186,18 +198,20 @@
       var items = searchJson.items || [];
       var ids = items.map(function (item) { return item.id.videoId; }).filter(Boolean);
       nextPageToken = searchJson.nextPageToken || null;
-      return ytVideoDurations(ids).then(function (durations) {
+      return ytVideoDetails(ids).then(function (details) {
         var existingIds = new Set(results.map(function (r) { return r.videoId; }));
         items.forEach(function (item) {
           var videoId = item.id.videoId;
           if (!videoId || existingIds.has(videoId)) return;
-          var seconds = durations[videoId] || 0;
+          var detail = details[videoId] || {};
+          var seconds = detail.seconds || 0;
           results.push({
             videoId: videoId,
             title: decodeHtmlEntities(item.snippet.title),
             channel: decodeHtmlEntities(item.snippet.channelTitle),
             publishedAt: item.snippet.publishedAt,
             thumb: item.snippet.thumbnails && (item.snippet.thumbnails.medium || item.snippet.thumbnails.default).url,
+            description: detail.description || "",
             seconds: seconds,
             isShort: seconds > 0 && seconds < 90,
             isDuplicate: knownYouTubeIds.has(videoId)
@@ -215,6 +229,7 @@
     currentPublishedAfter = new Date(Date.now() - days * 86400000).toISOString();
     results = [];
     nextPageToken = null;
+    selectedIds.clear();
 
     els.searchBtn.disabled = true;
     setStatus("Searching the last " + days + " day" + (days === 1 ? "" : "s") + "…");
@@ -303,11 +318,12 @@
       if (r.isDuplicate) badges += '<span class="admin-badge">Already in catalog</span>';
       if (r.isShort) badges += '<span class="admin-badge admin-badge-sponsored">Short</span>';
       var disabled = r.isDuplicate ? "disabled" : "";
+      var checked = selectedIds.has(r.videoId) ? "checked" : "";
       var publishedDate = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : "";
       var watchUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(r.videoId);
       return (
         '<div class="intake-result-card' + (r.isDuplicate ? " is-duplicate" : "") + '">' +
-          '<input type="checkbox" class="intake-result-check" data-video-id="' + escapeHtml(r.videoId) + '" ' + disabled + '>' +
+          '<input type="checkbox" class="intake-result-check" data-video-id="' + escapeHtml(r.videoId) + '" ' + disabled + " " + checked + '>' +
           '<a class="intake-result-thumb-link" href="' + escapeHtml(watchUrl) + '" target="_blank" rel="noopener noreferrer" aria-label="Watch on YouTube">' +
             '<img class="intake-result-thumb" src="' + escapeHtml(r.thumb || "") + '" alt="" loading="lazy">' +
             '<span class="intake-result-play">&#9654;</span>' +
@@ -326,8 +342,7 @@
   }
 
   function selectedVideoIds() {
-    return Array.prototype.slice.call(els.results.querySelectorAll(".intake-result-check:checked"))
-      .map(function (el) { return el.getAttribute("data-video-id"); });
+    return Array.from(selectedIds);
   }
 
   function updateCopyBar() {
@@ -358,6 +373,7 @@
         category: "Music Video",
         year: String(year),
         country: "",
+        description: r.description || "",
         youtube: "https://www.youtube.com/watch?v=" + id
       };
     });
@@ -367,7 +383,7 @@
     els.reviewSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  var REVIEW_FIELDS = ["artist", "song", "director", "category", "year", "country", "youtube"];
+  var REVIEW_FIELDS = ["artist", "song", "director", "category", "year", "country", "description", "youtube"];
 
   function renderReviewGrid() {
     els.reviewBody.innerHTML = reviewRows.map(function (row, i) {
@@ -378,6 +394,11 @@
         '<td><input type="text" data-index="' + i + '" data-field="category" value="' + escapeHtml(row.category) + '"></td>' +
         '<td class="admin-grid-year"><input type="text" data-index="' + i + '" data-field="year" value="' + escapeHtml(row.year) + '"></td>' +
         '<td><input type="text" data-index="' + i + '" data-field="country" value="' + escapeHtml(row.country) + '"></td>' +
+        // Collapsed to a truncated single line by default, expands into a
+        // proper multi-line box on focus/click -- same .admin-grid-expand
+        // behavior Manage Entries' Grid view uses for Description/Flavor
+        // Text, since a YouTube description can easily run to paragraphs.
+        '<td class="admin-grid-wide"><textarea data-index="' + i + '" data-field="description" class="admin-grid-expand">' + escapeHtml(row.description) + "</textarea></td>" +
         '<td class="admin-grid-wide"><input type="text" data-index="' + i + '" data-field="youtube" value="' + escapeHtml(row.youtube) + '"></td>' +
         '<td><button type="button" class="admin-row-btn" data-search-index="' + i + '" title="Search Artist + Song + &quot;country of origin&quot; on Google">Search</button></td>' +
         '<td><button type="button" class="admin-row-btn admin-row-btn-danger" data-remove-index="' + i + '">Remove</button></td>' +
@@ -387,15 +408,24 @@
   }
 
   function updateReviewCopyBtn() {
-    els.reviewCopyBtn.textContent = "Copy " + reviewRows.length + " row" + (reviewRows.length === 1 ? "" : "s");
+    els.reviewCopyBtn.textContent = "Send " + reviewRows.length + " row" + (reviewRows.length === 1 ? "" : "s") + " to Bulk Import";
     els.reviewCopyBtn.disabled = reviewRows.length === 0;
+  }
+
+  // Descriptions regularly contain newlines/tabs (YouTube descriptions are
+  // multi-line) -- quote-wrap and double-escape any embedded quotes, same
+  // CSV/TSV convention Papa.parse (Bulk Import's parser) already expects,
+  // so a multi-line description doesn't get misread as extra rows.
+  function tsvField(value) {
+    var str = String(value || "");
+    return /[\t\n\r"]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
   }
 
   function buildBulkImportText(rows) {
     var lines = rows.map(function (row) {
-      return REVIEW_FIELDS.map(function (f) { return row[f] || ""; }).join("\t");
+      return REVIEW_FIELDS.map(function (f) { return tsvField(row[f]); }).join("\t");
     });
-    return ["Artist\tSong Title\tDirector\tCategory\tYear\tCountry\tYouTube Link"].concat(lines).join("\n");
+    return ["Artist\tSong Title\tDirector\tCategory\tYear\tCountry\tDescription\tYouTube Link"].concat(lines).join("\n");
   }
 
   els.signInBtn.addEventListener("click", function () {
@@ -409,7 +439,10 @@
   els.showDupesCheckbox.addEventListener("change", function () { renderResults(); summarizeStatus(); });
   els.showShortsCheckbox.addEventListener("change", function () { renderResults(); summarizeStatus(); });
   els.results.addEventListener("change", function (e) {
-    if (e.target.classList.contains("intake-result-check")) updateCopyBar();
+    if (!e.target.classList.contains("intake-result-check")) return;
+    var videoId = e.target.getAttribute("data-video-id");
+    if (e.target.checked) selectedIds.add(videoId); else selectedIds.delete(videoId);
+    updateCopyBar();
   });
   els.results.addEventListener("click", function (e) {
     var btn = e.target.closest(".intake-result-cover-btn");
@@ -452,13 +485,13 @@
 
   els.reviewCopyBtn.addEventListener("click", function () {
     if (!reviewRows.length) return;
-    var count = reviewRows.length;
     var text = buildBulkImportText(reviewRows);
-    navigator.clipboard.writeText(text).then(function () {
-      setStatus("Copied " + count + " row" + (count === 1 ? "" : "s") + " -- paste into Admin → Bulk Import.");
-    }).catch(function () {
-      setStatus("Couldn't copy automatically -- select and copy the rows manually.", true);
-    });
+    // Best-effort clipboard copy too -- harmless if it works, and a
+    // fallback to paste manually if the sessionStorage handoff below
+    // doesn't take for some reason (e.g. storage blocked).
+    navigator.clipboard.writeText(text).catch(function () {});
+    sessionStorage.setItem("mvgIntakeBulkPaste", text);
+    location.href = "index.html?admin=bulk";
   });
 
   auth.onAuthStateChanged(function (user) {

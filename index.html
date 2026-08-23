@@ -23,12 +23,12 @@
 <title>MVG Library — Music Video Database by Director, Artist &amp; Song</title>
 <meta name="description" content="Browse 12,500+ music videos by director, artist, or song — full credits, YouTube links, and behind-the-scenes details from The Music Video Guy.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://mauimauricio83.github.io/MVG-Library/">
-<link rel="alternate" type="application/rss+xml" title="MVG Library — Latest Submissions" href="https://mauimauricio83.github.io/MVG-Library/rss.xml">
+<link rel="canonical" href="https://themusicvideoguy.com/">
+<link rel="alternate" type="application/rss+xml" title="MVG Library — Latest Submissions" href="https://themusicvideoguy.com/rss.xml">
 <meta property="og:title" content="MVG Library — Music Video Database">
 <meta property="og:description" content="Browse 12,500+ music videos by director, artist, or song — full credits, YouTube links, and behind-the-scenes details from The Music Video Guy.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://mauimauricio83.github.io/MVG-Library/">
+<meta property="og:url" content="https://themusicvideoguy.com/">
 <meta property="og:site_name" content="MVG Library">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="icons/icon-192.png">
@@ -39,13 +39,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.19.3">
+<link rel="stylesheet" href="styles.css?v=6.20.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "MVG Library",
-  "url": "https://mauimauricio83.github.io/MVG-Library/",
+  "url": "https://themusicvideoguy.com/",
   "description": "A reference database of music videos, directors, and artists — browsable by director, artist, or song.",
   "publisher": {
     "@type": "Organization",
@@ -382,7 +382,10 @@
       <div class="media-strip-track" id="latestStripTrack"></div>
       <button type="button" class="media-strip-arrow" id="latestStripNext" aria-label="Show next">›</button>
     </div>
-    <button type="button" class="media-strip-see-more" id="latestSeeMoreBtn">See all ▾</button>
+    <div class="media-strip-more-row">
+      <button type="button" class="media-strip-see-more" id="latestSeeMoreBtn">See all ▾</button>
+      <button type="button" class="media-strip-load-more" id="latestLoadMoreBtn" hidden>Load 50 more</button>
+    </div>
   </section>
 
   <div id="status" class="status"></div>
@@ -701,7 +704,7 @@
         <p class="admin-bulk-hint">Manage Entries loads and searches the full catalog. Add Entry and Bulk Import don't -- pick those directly if you're just adding new videos.</p>
         <div class="admin-landing-actions">
           <a class="submit-form-btn" id="adminGoManageBtn" href="manage-entries.html">Manage Entries</a>
-          <a class="admin-row-btn" href="admin-intake.html">Weekly Intake</a>
+          <a class="admin-row-btn" href="admin-intake.html">Intake</a>
           <button type="button" class="admin-row-btn" id="adminGoAddBtn">+ Add Entry</button>
           <button type="button" class="admin-row-btn" id="adminGoBulkBtn">Bulk Import</button>
           <button type="button" class="admin-row-btn" id="adminGoPublishBtn">Publish</button>
@@ -1372,6 +1375,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.19.3"></script>
+<script src="app.js?v=6.20.0"></script>
 </body>
 </html>
