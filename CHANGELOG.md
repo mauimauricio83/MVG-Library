@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.27.2 — current
+- Fixed: fullscreen 16:9 was showing a blank reserved sidebar strip instead of going truly full-width. Cause was a CSS specificity bug -- the rule reserving the 280px side-panel column used `:has(#tvSidePanelSlot:not(:empty))`, and an id selector inside `:has()` pulls in id-level specificity, which beat the plain-class `.tv-fs-root:fullscreen` override regardless of source order. Switched to the element's class instead and gave the "no panel in plain fullscreen" rule its own higher-specificity selector so it wins unconditionally.
+- The side panel's content (dial/genre list/custom list/channel pane) is now vertically centered in its column instead of stuck at the top with dead space below -- most noticeable in fullscreen 4:3, where the column is much taller than the Era dial itself.
+
 ## v6.27.1 — current
 - TV Mode's Eras dial: the Years/Eras/Decades lever moved from beside the ring to a horizontal bar below it, so the ring itself can use the dial's full column width instead of sharing it with a 54px-wide lever -- noticeably bigger, easier to read/tap.
 - TV Mode's Genre tab is now a single column instead of two -- full genre names (e.g. "Electronic/Dance") no longer truncate to fit a cramped half-width tile.

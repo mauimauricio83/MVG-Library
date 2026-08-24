@@ -4358,6 +4358,7 @@ body.is-searching #viewersChoiceSection {
 .tv-side-panel {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -4430,9 +4431,22 @@ body.is-searching #viewersChoiceSection {
 @media (min-width: 641px) {
   /* The right column only exists when the slot actually has content
      (:has()), so windowed non-TV lightboxes elsewhere are unaffected and
-     there's no separate JS-driven layout toggle needed. */
-  .tv-fs-root:has(#tvSidePanelSlot:not(:empty)) {
+     there's no separate JS-driven layout toggle needed. Selector uses the
+     CLASS (not #tvSidePanelSlot's id) deliberately -- an id inside :has()
+     pulls in id-level specificity, which then beat .tv-fs-root:fullscreen
+     below regardless of source order, leaving 16:9 fullscreen with a
+     reserved-but-empty 280px column (a visibly blank sidebar) instead of
+     actually going full-width. */
+  .tv-fs-root:has(.tv-side-panel-slot:not(:empty)) {
     grid-template-columns: 1fr 280px;
+  }
+
+  /* Wins over the :has() rule above via higher specificity (not source
+     order) whenever fullscreen but NOT the 4:3 mode that wants the panel
+     back -- see the comment on that :has() rule for why this had to be
+     specificity-based rather than "just place it later." */
+  .tv-fs-root:fullscreen:not(.tv-fs-4-3) {
+    grid-template-columns: 1fr;
   }
 
   .tv-side-panel-slot:not(:empty) {
