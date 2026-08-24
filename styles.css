@@ -217,15 +217,44 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 
-/* Light theme: a flat lavender instead of the glow -- the same soft tint
-   --accent-soft already uses for hover states there, so it stays a
-   deliberate design choice rather than a new one-off color. The glow
-   reads fine against dark theme's near-black bg but looked more like an
-   uneven smudge against light theme's near-white bg, so light theme gets
-   its own simpler treatment instead of trying to make one gradient work
-   for both. */
+/* Light theme: previously a flat lavender (--accent-soft) here, but that
+   read as washed-out/pale against the rest of the light UI. Deliberately
+   NOT theme-reactive instead -- a fixed dark purple gradient (plus the
+   same accent-purple glow dark theme's own .top-bar uses, just over a
+   purple base instead of near-black) regardless of the light/dark
+   toggle, so the bar reads as a consistent brand element rather than
+   "theme-following." Fixed hex values on purpose, not --bg/--accent,
+   since those are light-theme colors here and would defeat the point.
+   Child text/icons need their own overrides below since --text/
+   --text-muted/--brand-yellow are light-theme (dark-on-light) colors
+   that would be unreadable against this now-dark background. */
 :root[data-theme="light"] .top-bar {
-  background: var(--accent-soft);
+  background:
+    radial-gradient(ellipse 45% 320% at 50% 50%, rgba(168, 85, 247, 0.35), transparent 80%),
+    linear-gradient(135deg, #1c0f33, #2a1150);
+  border-bottom: 1px solid #3b1568;
+}
+
+:root[data-theme="light"] .top-bar-title {
+  color: #f5e300;
+}
+
+:root[data-theme="light"] .top-bar .header-icon-btn {
+  color: #f1f1f2;
+}
+
+:root[data-theme="light"] .top-bar-search {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="light"] .top-bar-search input {
+  color: #f1f1f2;
+}
+
+:root[data-theme="light"] .top-bar-search-icon,
+:root[data-theme="light"] .top-bar-search-clear {
+  color: #a5a5ad;
 }
 
 /* First-visit gate for signed-out visitors -- see WELCOME_SEEN_KEY in

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.24.1 — current
+- Light theme's top bar was a flat pale lavender that read as washed-out. It's now a fixed dark purple gradient (with the same accent-purple glow dark theme's own bar already uses) regardless of the light/dark toggle, so it reads as a deliberate brand element instead of a theme-following one -- title/icons/search recolored to match. Dark theme's top bar is untouched.
+
 ## v6.24.0 — current
 - Fixed: the admin panel modal had no click handler on its own close button or backdrop at all -- every other modal on the site wires that (see `els.settingsModal`'s identical listener), this one was just missing it, so only Escape ever closed it.
 - Settings and Admin now work from every page that shares the lightweight `site-nav.js` header (news.html, support.html, the static `/blog/`, `/videos/`, `/artists/`, `/directors/` pages, ...), not just index.html. Settings deep-links to `index.html?settings=1`, which now opens the modal automatically on arrival; a new Admin menu item does the same via `index.html?admin=menu`, though it stays hidden by default since `site-nav.js` itself has no Firebase/auth of its own -- a host page that already does its own admin check (currently news.html) reveals it via a small exposed hook (`window.mvgSiteNav.showAdmin()`) once that check resolves true.
