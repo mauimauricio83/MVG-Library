@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.24.1">
+<link rel="stylesheet" href="styles.css?v=6.25.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -815,6 +815,9 @@
         <div class="admin-toolbar">
           <button type="button" class="admin-row-btn" id="adminVoteRoundsBackBtn">&larr; Back</button>
           <h2 class="recent-title">Vote Leaderboard</h2>
+          <div class="admin-toolbar-actions">
+            <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminResetAllVotesBtn">Reset ALL votes</button>
+          </div>
         </div>
         <p class="admin-bulk-hint">Voting is open to any catalog video from the Vote button on the site -- there's no round to manage here, just the live standings, for deciding what's worth featuring on Instagram. Currently free to vote; no payment is collected.</p>
         <p class="admin-status" id="adminVoteRoundsStatus" hidden></p>
@@ -1387,6 +1390,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.24.1"></script>
+<script src="app.js?v=6.25.0"></script>
 </body>
 </html>

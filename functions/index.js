@@ -115,6 +115,63 @@ exports.resetVideoVotes = onCall(async (request) => {
   return { ok: true, talliesCleared: tallySnap.size };
 });
 
+// Admin-only: same operation as resetVideoVotes above, applied to every
+// video at once -- for starting a fresh voting round rather than
+// correcting one video. Deletes the entire voterTallies collection (not
+// just one video's slice of it) in chunked batches since it can exceed
+// Firestore's 500-writes-per-batch limit, then zeroes count/topVoter/
+// latestVoter on every videoVotes doc (merge, not delete -- same
+// reasoning as resetVideoVotes: a doc that still exists at count:0 keeps
+// future topVoter comparisons starting clean instead of comparing
+// against nothing). Doesn't touch voteEvents (audit trail) or
+// retired/daysInTop/voteHallOfFame (a separate, non-destructive concept
+// -- see unretireVideo for reversing that instead).
+exports.resetAllVotes = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const adminDoc = await db.collection("admins").doc(request.auth.uid).get();
+  if (!adminDoc.exists) throw new HttpsError("permission-denied", "Admin only.");
+
+  async function deleteAllDocs(query) {
+    let deleted = 0;
+    for (;;) {
+      const snap = await query.limit(450).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      snap.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += snap.size;
+    }
+    return deleted;
+  }
+
+  const talliesDeleted = await deleteAllDocs(db.collection("voterTallies"));
+
+  const votesSnap = await db.collection("videoVotes").get();
+  let videosReset = 0;
+  let batch = db.batch();
+  let opsInBatch = 0;
+  const commits = [];
+  votesSnap.forEach((doc) => {
+    batch.set(doc.ref, {
+      count: 0,
+      topVoter: FieldValue.delete(),
+      latestVoter: FieldValue.delete()
+    }, { merge: true });
+    videosReset++;
+    opsInBatch++;
+    if (opsInBatch >= 450) {
+      commits.push(batch.commit());
+      batch = db.batch();
+      opsInBatch = 0;
+    }
+  });
+  if (opsInBatch > 0) commits.push(batch.commit());
+  await Promise.all(commits);
+
+  return { ok: true, videosReset, talliesDeleted };
+});
+
 // ---- Vote retirement / Hall of Fame (dormant -- see VOTE_RETIREMENT_PLAN.md) ----
 // Modeled on MTV TRL's retirement rule: a video that camps in the top N
 // long enough gets permanently retired from active competition and

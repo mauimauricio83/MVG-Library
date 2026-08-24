@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.24.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.25.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -353,6 +353,7 @@
     adminVoteRoundsBackBtn: document.getElementById("adminVoteRoundsBackBtn"),
     adminVoteRoundsStatus: document.getElementById("adminVoteRoundsStatus"),
     adminVoteRoundHistory: document.getElementById("adminVoteRoundHistory"),
+    adminResetAllVotesBtn: document.getElementById("adminResetAllVotesBtn"),
     adminRetirementTopN: document.getElementById("adminRetirementTopN"),
     adminRetirementDays: document.getElementById("adminRetirementDays"),
     adminRunRetirementCheckBtn: document.getElementById("adminRunRetirementCheckBtn"),
@@ -3767,7 +3768,11 @@
   }
 
   function renderViewersChoice(entries) {
-    if (!entries.length) {
+    // A "Reset ALL votes" (resetVideoVotes/resetAllVotes in
+    // functions/index.js) zeroes videoVotes docs rather than deleting
+    // them, so entries.length alone can still be > 0 right after a
+    // reset -- check for an actual vote among them, not just any docs.
+    if (!entries.length || !entries.some(function (v) { return v.count > 0; })) {
       els.viewersChoiceSection.hidden = true;
       return;
     }
@@ -10345,6 +10350,35 @@
       els.adminVoteRoundsStatus.className = "admin-status is-error";
       els.adminVoteRoundsStatus.hidden = false;
       btn.disabled = false;
+    });
+  });
+
+  // Calls the resetAllVotes Cloud Function (functions/index.js) -- same
+  // operation as the per-video "Reset to 0" button above, applied to
+  // every video at once. The live leaderboard listener above picks up
+  // the reset automatically; the homepage's own Viewer's Choice section
+  // hides itself once every count is back to 0 (see renderViewersChoice).
+  els.adminResetAllVotesBtn.addEventListener("click", function () {
+    if (!window.confirm(
+      "Reset ALL votes site-wide back to 0?\n\n" +
+      "This clears the vote count, top voter, and latest voter for EVERY " +
+      "video, and cannot be undone. Past individual votes stay recorded " +
+      "internally but no longer count toward anything. Viewer's Choice " +
+      "will disappear from the homepage until new votes come in."
+    )) return;
+    els.adminResetAllVotesBtn.disabled = true;
+    functionsClient.httpsCallable("resetAllVotes")({}).then(function (result) {
+      var data = result.data || {};
+      els.adminVoteRoundsStatus.textContent = "Reset " + (data.videosReset || 0) + " video(s), cleared " + (data.talliesDeleted || 0) + " voter tally record(s).";
+      els.adminVoteRoundsStatus.className = "admin-status";
+      els.adminVoteRoundsStatus.hidden = false;
+    }).catch(function (err) {
+      console.error("Resetting all votes failed:", err);
+      els.adminVoteRoundsStatus.textContent = "Couldn't reset all votes: " + err.message;
+      els.adminVoteRoundsStatus.className = "admin-status is-error";
+      els.adminVoteRoundsStatus.hidden = false;
+    }).finally(function () {
+      els.adminResetAllVotesBtn.disabled = false;
     });
   });
 

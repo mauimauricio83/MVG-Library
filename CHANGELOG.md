@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.25.0 — current
+- Admin can now reset votes site-wide, not just one video at a time. New "Reset ALL votes" button in the Vote Leaderboard admin view (`resetAllVotes` Cloud Function, admin-only) -- same operation as the existing per-video "Reset to 0", applied to every video: zeroes count/topVoter/latestVoter and clears every voterTallies record, leaves voteEvents (the audit trail) and retirement/Hall of Fame status untouched.
+- Fixed: the homepage's Viewer's Choice section could stay visible showing 5 entries all reading "0 votes" after a reset, since the reset zeroes videoVotes docs rather than deleting them -- the section's hide check only ever looked at whether any docs existed, not whether any of them actually had votes. Now hides itself whenever every visible entry is at 0, same as if there were no docs at all.
+
 ## v6.24.1 — current
 - Light theme's top bar was a flat pale lavender that read as washed-out. It's now a fixed dark purple gradient (with the same accent-purple glow dark theme's own bar already uses) regardless of the light/dark toggle, so it reads as a deliberate brand element instead of a theme-following one -- title/icons/search recolored to match. Dark theme's top bar is untouched.
 
