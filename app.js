@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.25.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.26.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -156,6 +156,7 @@
     tvFavBtn: document.getElementById("tvFavBtn"),
     tvVoteBtn: document.getElementById("tvVoteBtn"),
     tvWidenBtn: document.getElementById("tvWidenBtn"),
+    tvFullscreenBtn: document.getElementById("tvFullscreenBtn"),
     tvCcBtn: document.getElementById("tvCcBtn"),
     tvShareBtn: document.getElementById("tvShareBtn"),
     tvInfoBtn: document.getElementById("tvInfoBtn"),
@@ -976,7 +977,7 @@
     // muted keeps that first play() call within policy; unmuting via the
     // Mute button afterward is a real click and is allowed, same as it
     // always was clicking YouTube's own play icon before controls:false.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: true, volume: 100, ccEnabled: false },
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: true, volume: 100, ccEnabled: false, fullscreenAspect: "16:9" },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -4291,6 +4292,7 @@
     els.tvPlaylistBtn.hidden = true;
     els.tvCropBtn.hidden = true;
     els.tvWidenBtn.hidden = true;
+    els.tvFullscreenBtn.hidden = true;
     els.tvCcBtn.hidden = true;
     els.tvShareBtn.hidden = true;
     els.tvInfoBtn.hidden = true;
@@ -4845,6 +4847,28 @@
     }
   });
 
+  // Separate listener (rather than folding into the orientation one above)
+  // since that one bails out early on browsers with no Orientation Lock
+  // API -- this needs to run everywhere. Shows/hides the fullscreen HUD
+  // and resets the 4:3/16:9 choice back to its 16:9 default on exit, same
+  // "starts fresh next time" reasoning as not persisting it at all.
+  document.addEventListener("fullscreenchange", function () {
+    var el = document.fullscreenElement;
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    var hud = document.getElementById("tvFsHud");
+    if (el && frame && el === frame) {
+      if (hud) hud.hidden = false;
+      showTVFsHud();
+    } else {
+      stopTVFsHudAutoHide();
+      if (hud) { hud.hidden = true; hud.classList.remove("is-hidden"); }
+      if (frame) frame.classList.remove("tv-fs-4-3");
+      var cropBtn = document.getElementById("tvFsCropBtn");
+      if (cropBtn) cropBtn.classList.remove("is-active");
+      state.tv.fullscreenAspect = "16:9";
+    }
+  });
+
   // The logo/lower-third live inside this template (rebuilt fresh on
   // every provider switch/fresh player create, see loadTVTrack()/
   // loadChannelTrackAt()) rather than being cached in `els` the way most
@@ -4853,12 +4877,37 @@
   // wherever they're needed instead (see showTVLowerThird() etc.).
   // Same-provider track reuse (loadVideoById/loadVideo) never touches
   // this innerHTML at all, so they persist untouched across those.
+  // tvOsdMute/tvOsdVolume are the classic TV-remote on-screen-display
+  // indicators (see showTVMuteOsd()/showTVVolumeOsd() below); tvFsHud is
+  // the minimal auto-hiding control bar shown only while
+  // .video-embed-frame is the fullscreen element (see enterTVFullscreen()
+  // and the fullscreenchange listener) -- its buttons are wired via a
+  // single delegated listener on els.videoBox (see below) rather than
+  // per-element listeners, since this whole block gets torn down and
+  // rebuilt on every provider switch.
   var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div>' +
     '<img class="tv-channel-logo" id="tvChannelLogo" src="icons/icon-192.png" alt="">' +
     '<div class="tv-lower-third" id="tvLowerThird" hidden>' +
       '<div class="tv-lower-third-artist" id="tvLowerThirdArtist"></div>' +
       '<div class="tv-lower-third-song" id="tvLowerThirdSong"></div>' +
       '<div class="tv-lower-third-director" id="tvLowerThirdDirector"></div>' +
+    "</div>" +
+    '<div class="tv-osd tv-osd-mute" id="tvOsdMute" hidden>MUTE</div>' +
+    '<div class="tv-osd tv-osd-volume" id="tvOsdVolume" hidden>' +
+      '<div class="tv-osd-volume-label">VOLUME</div>' +
+      '<div class="tv-osd-volume-bar"><div class="tv-osd-volume-fill" id="tvOsdVolumeFill"></div></div>' +
+    "</div>" +
+    '<div class="tv-fs-hud" id="tvFsHud" hidden>' +
+      '<div class="tv-fs-hud-row">' +
+        '<button type="button" class="tv-fs-hud-btn" id="tvFsPrevBtn" aria-label="Previous" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="5" width="3" height="14" rx="1"/><path d="M18 5 8 12l10 7V5Z"/></svg></button>' +
+        '<button type="button" class="tv-fs-hud-btn" id="tvFsPlayPauseBtn" aria-label="Pause" title="Pause"></button>' +
+        '<button type="button" class="tv-fs-hud-btn" id="tvFsSkipBtn" aria-label="Next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5l10 7-10 7V5Z"/><rect x="17" y="5" width="3" height="14" rx="1"/></svg></button>' +
+        '<button type="button" class="tv-fs-hud-btn" id="tvFsMuteBtn" aria-label="Mute" title="Mute"></button>' +
+        '<input type="range" class="tv-fs-hud-volume" id="tvFsVolumeSlider" min="0" max="100" value="100" aria-label="Volume">' +
+        '<span class="tv-fs-hud-spacer"></span>' +
+        '<button type="button" class="tv-fs-hud-btn tv-fs-hud-aspect" id="tvFsCropBtn" aria-label="Toggle 4:3" title="Toggle 4:3">4:3</button>' +
+        '<button type="button" class="tv-fs-hud-btn" id="tvFsExitBtn" aria-label="Exit fullscreen" title="Exit fullscreen">⤡</button>' +
+      "</div>" +
     "</div>";
   var TV_PLAYER_TARGET_HTML = '<div class="video-embed-frame">' + TV_PLAYER_TARGET_INNER_HTML + '</div>';
 
@@ -4897,6 +4946,77 @@
     els.tvWidenBtn.textContent = isLarge ? "⤡" : "⤢";
     els.tvWidenBtn.title = isLarge ? "Shrink player" : "Widen player";
   }
+
+  // ---- Fullscreen mode (our own overlaid, auto-hiding controls) ---------
+  // requestFullscreen() targets .video-embed-frame itself (not the bare
+  // iframe, which is what double-clicking the underlying YouTube/Vimeo
+  // player would trigger natively) -- that frame already contains
+  // #tvFsHud (see TV_PLAYER_TARGET_INNER_HTML), so the HUD becomes part
+  // of what's actually fullscreen instead of being stranded behind it.
+  els.tvFullscreenBtn.addEventListener("click", function () {
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    if (frame && frame.requestFullscreen) frame.requestFullscreen().catch(function () {});
+  });
+
+  var tvFsHudHideTimer = null;
+  var TV_FS_HUD_HIDE_MS = 3000;
+
+  // YouTube-style: visible on entry/activity, fades after a pause. Only
+  // ever called while actually fullscreen (see the fullscreenchange
+  // listener and the activity listeners below), so there's no separate
+  // "are we fullscreen" guard needed here.
+  function showTVFsHud() {
+    var hud = document.getElementById("tvFsHud");
+    if (hud) hud.classList.remove("is-hidden");
+    if (tvFsHudHideTimer) clearTimeout(tvFsHudHideTimer);
+    tvFsHudHideTimer = setTimeout(function () {
+      tvFsHudHideTimer = null;
+      var el = document.getElementById("tvFsHud");
+      if (el) el.classList.add("is-hidden");
+    }, TV_FS_HUD_HIDE_MS);
+  }
+
+  function stopTVFsHudAutoHide() {
+    if (tvFsHudHideTimer) { clearTimeout(tvFsHudHideTimer); tvFsHudHideTimer = null; }
+  }
+
+  // Deliberately separate from state.tv.crop/applyTVCrop() above -- that's
+  // a windowed-mode "zoom in and clip the sides to fill a 4:3 box" effect;
+  // this is a fullscreen-only "shrink the video to fit inside a 4:3 box,
+  // pillarboxed with the brand gradient" effect. Different visual result,
+  // different context, so kept as its own state rather than overloading
+  // one flag for both (see .tv-fs-4-3 in styles.css for the actual CSS).
+  function toggleTVFullscreenAspect() {
+    state.tv.fullscreenAspect = state.tv.fullscreenAspect === "4:3" ? "16:9" : "4:3";
+    var frame = els.videoBox.querySelector(".video-embed-frame");
+    var isFourThree = state.tv.fullscreenAspect === "4:3";
+    if (frame) frame.classList.toggle("tv-fs-4-3", isFourThree);
+    var btn = document.getElementById("tvFsCropBtn");
+    if (btn) btn.classList.toggle("is-active", isFourThree);
+  }
+
+  // Single delegated listener rather than per-button ones -- #tvFsHud's
+  // whole subtree gets rebuilt on every provider switch (same reasoning
+  // as tvLowerThird), so per-element listeners would need re-attaching
+  // every time; delegating to els.videoBox (never itself replaced) means
+  // they just keep working across rebuilds for free.
+  els.videoBox.addEventListener("click", function (e) {
+    if (e.target.closest("#tvFsPlayPauseBtn")) { setTVPlaying(!state.tv.isPlaying); showTVFsHud(); return; }
+    if (e.target.closest("#tvFsMuteBtn")) { setTVMuted(!state.tv.isMuted); showTVFsHud(); return; }
+    if (e.target.closest("#tvFsPrevBtn")) { previousTV(); showTVFsHud(); return; }
+    if (e.target.closest("#tvFsSkipBtn")) { advanceTV(); showTVFsHud(); return; }
+    if (e.target.closest("#tvFsCropBtn")) { toggleTVFullscreenAspect(); showTVFsHud(); return; }
+    if (e.target.closest("#tvFsExitBtn")) { if (document.fullscreenElement) document.exitFullscreen(); return; }
+  });
+  els.videoBox.addEventListener("input", function (e) {
+    if (e.target.id === "tvFsVolumeSlider") setTVVolume(parseInt(e.target.value, 10));
+  });
+  els.videoBox.addEventListener("mousemove", function () {
+    if (document.fullscreenElement) showTVFsHud();
+  });
+  els.videoBox.addEventListener("touchstart", function () {
+    if (document.fullscreenElement) showTVFsHud();
+  }, { passive: true });
 
   // startPaused: when set, the new track loads cued (first frame, not
   // playing) instead of autoplaying -- used when filters change mid-track
@@ -5570,6 +5690,15 @@
     var label = state.tv.isPlaying ? "Pause" : "Play";
     els.tvPlayPauseBtn.title = label;
     els.tvPlayPauseBtn.setAttribute("aria-label", label);
+    // Fullscreen HUD's twin button -- looked up fresh, same reasoning as
+    // tvLowerThird's own elements (this whole block gets rebuilt on every
+    // provider switch, so a cached els reference would go stale).
+    var fsBtn = document.getElementById("tvFsPlayPauseBtn");
+    if (fsBtn) {
+      fsBtn.innerHTML = els.tvPlayPauseBtn.innerHTML;
+      fsBtn.title = label;
+      fsBtn.setAttribute("aria-label", label);
+    }
   }
 
   function updateTVMuteUI() {
@@ -5577,6 +5706,36 @@
     var label = state.tv.isMuted ? "Unmute" : "Mute";
     els.tvMuteBtn.title = label;
     els.tvMuteBtn.setAttribute("aria-label", label);
+    var fsBtn = document.getElementById("tvFsMuteBtn");
+    if (fsBtn) {
+      fsBtn.innerHTML = els.tvMuteBtn.innerHTML;
+      fsBtn.title = label;
+      fsBtn.setAttribute("aria-label", label);
+    }
+    var osd = document.getElementById("tvOsdMute");
+    if (osd) osd.hidden = !state.tv.isMuted;
+  }
+
+  // Classic TV/DVD-remote on-screen volume indicator -- a green bar (fill
+  // width = volume%) with a "VOLUME" label, shown on every change and
+  // auto-hidden a beat after the last one (not tied to fullscreen -- the
+  // main volume slider triggers it too). MUTE's own OSD (above) is
+  // persistent instead of auto-hiding, since losing track of "am I still
+  // muted" would be worse than a lingering label.
+  var tvVolumeOsdHideTimer = null;
+  var TV_VOLUME_OSD_HIDE_MS = 1500;
+  function showTVVolumeOsd(vol) {
+    var osd = document.getElementById("tvOsdVolume");
+    var fill = document.getElementById("tvOsdVolumeFill");
+    if (!osd || !fill) return;
+    fill.style.width = Math.max(0, Math.min(100, vol)) + "%";
+    osd.hidden = false;
+    if (tvVolumeOsdHideTimer) clearTimeout(tvVolumeOsdHideTimer);
+    tvVolumeOsdHideTimer = setTimeout(function () {
+      tvVolumeOsdHideTimer = null;
+      var el = document.getElementById("tvOsdVolume");
+      if (el) el.hidden = true;
+    }, TV_VOLUME_OSD_HIDE_MS);
   }
 
   function setTVPlaying(playing) {
@@ -5616,6 +5775,10 @@
       }
     }
     if (vol > 0 && state.tv.isMuted) setTVMuted(false);
+    els.tvVolumeSlider.value = vol;
+    var fsSlider = document.getElementById("tvFsVolumeSlider");
+    if (fsSlider) fsSlider.value = vol;
+    showTVVolumeOsd(vol);
   }
 
   function updateTVCcUI() {
@@ -5814,6 +5977,7 @@
     els.tvPlaylistBtn.hidden = false;
     els.tvCropBtn.hidden = false;
     els.tvWidenBtn.hidden = false;
+    els.tvFullscreenBtn.hidden = !document.fullscreenEnabled;
     els.tvCcBtn.hidden = false;
     els.tvShareBtn.hidden = false;
     // Channel Mode is the one TV state actually worth deep-linking to

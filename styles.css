@@ -4194,6 +4194,177 @@ body.is-searching #viewersChoiceSection {
   font-weight: 600;
 }
 
+/* Classic TV/DVD-remote on-screen display indicators (see
+   showTVVolumeOsd()/updateTVMuteUI() in app.js) -- MUTE persists the
+   whole time audio is muted; VOLUME shows on every change and fades a
+   beat after the last one. Both anchored with percentage insets against
+   .video-embed-frame, same reasoning as .tv-lower-third above: that
+   keeps them correctly positioned across both the windowed 4:3 crop
+   (.is-crop-4-3) and the fullscreen one (.tv-fs-4-3) without needing a
+   separate rule for either. */
+.tv-osd {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.tv-osd-mute {
+  top: 6%;
+  right: 5%;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ff3b3b;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.tv-osd-volume {
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(280px, 60%);
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  text-align: center;
+}
+
+.tv-osd-volume-label {
+  margin-bottom: 6px;
+  color: #4ade80;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.tv-osd-volume-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.tv-osd-volume-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #4ade80;
+  transition: width 0.1s linear;
+}
+
+/* Fullscreen mode's own minimal, auto-hiding control bar (see
+   enterTVFullscreen-equivalent wiring/showTVFsHud() in app.js) -- only
+   ever in the DOM's flow while .video-embed-frame is the actual
+   fullscreen element (JS toggles the [hidden] attribute on
+   fullscreenchange); .is-hidden fades it out after a few seconds of
+   inactivity rather than removing it, so the fade transition has
+   something to animate. */
+.tv-fs-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.tv-fs-hud.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tv-fs-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tv-fs-hud-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.tv-fs-hud-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tv-fs-hud-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tv-fs-hud-aspect {
+  width: auto;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tv-fs-hud-aspect.is-active {
+  background: var(--accent);
+}
+
+.tv-fs-hud-volume {
+  width: 90px;
+  flex: 0 0 auto;
+  accent-color: #4ade80;
+}
+
+.tv-fs-hud-spacer {
+  flex: 1 1 auto;
+}
+
+/* Fullscreen aspect handling -- default (no .tv-fs-4-3) fills the whole
+   fullscreen viewport edge to edge (16:9-ish; plain black letterboxing
+   if the screen isn't exactly 16:9, same as any video player). .tv-fs-4-3
+   instead shrinks the video to fit a real 4:3 box and lets the brand
+   gradient (same purple-on-black land.html/top-bar already use) show
+   through the pillarbox bars on the sides, per explicit request --
+   deliberately NOT the same effect as the windowed .is-crop-4-3 above
+   (that one zooms in and clips edges; this one shows the whole frame,
+   just smaller). */
+.video-embed-frame:fullscreen {
+  width: 100%;
+  height: 100%;
+  padding-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.video-embed-frame:fullscreen iframe {
+  position: static;
+  width: 100%;
+  height: 100%;
+}
+
+.video-embed-frame.tv-fs-4-3:fullscreen {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 8%, rgba(168, 85, 247, 0.35), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 85% 95%, rgba(74, 13, 143, 0.5), transparent 65%),
+    #0b0b0f;
+}
+
+.video-embed-frame.tv-fs-4-3:fullscreen iframe {
+  width: min(100%, calc(100vh * 4 / 3));
+  height: min(100%, calc(100vw * 3 / 4));
+}
+
 .lightbox {
   position: fixed;
   inset: 0;
