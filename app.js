@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.27.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.27.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4943,6 +4943,11 @@
     if (frame) frame.classList.toggle("is-crop-4-3", isCropped);
     els.tvCropBtn.classList.toggle("is-active", isCropped);
     els.tvCropBtn.title = isCropped ? "Restore 16:9" : "Crop to 4:3";
+    // A 4:3<->16:9 switch reshapes/resizes the whole panel -- if the
+    // viewer had scrolled down (e.g. deep into the side panel's Genre
+    // list), snap back to the top so the video is what they land on,
+    // not wherever they happened to be scrolled to.
+    if (els.tvPanel) els.tvPanel.scrollTop = 0;
   }
 
   // Same widen/shrink toggle as the video-detail lightbox's
@@ -4954,6 +4959,9 @@
     if (els.tvPanel) els.tvPanel.classList.toggle("size-large", isLarge);
     els.tvWidenBtn.textContent = isLarge ? "⤡" : "⤢";
     els.tvWidenBtn.title = isLarge ? "Shrink player" : "Widen player";
+    // Same "keep the video front and center" reasoning as applyTVCrop()
+    // above -- big<->small also reshapes the whole panel.
+    if (els.tvPanel) els.tvPanel.scrollTop = 0;
   }
 
   // ---- Fullscreen mode (our own overlaid, auto-hiding controls) ---------

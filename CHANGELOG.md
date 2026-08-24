@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.27.1 — current
+- TV Mode's Eras dial: the Years/Eras/Decades lever moved from beside the ring to a horizontal bar below it, so the ring itself can use the dial's full column width instead of sharing it with a 54px-wide lever -- noticeably bigger, easier to read/tap.
+- TV Mode's Genre tab is now a single column instead of two -- full genre names (e.g. "Electronic/Dance") no longer truncate to fit a cramped half-width tile.
+- Toggling 4:3<->16:9 (windowed crop) or big<->small (widen/shrink) now scrolls TV Mode's panel back to the top -- previously, if you'd scrolled down (e.g. browsing a long Genre list in the side panel), the video could end up out of view after either toggle instead of front and center.
+
 ## v6.27.0 — current
 - TV Mode's static/tuning flash (previously only shown on Channel Mode track changes) now flashes briefly on every track change -- Skip, Previous, first play, and era/genre/custom filter changes all funnel through the same `loadTVTrack()`, so one added call covers all of them.
 - On desktop, Genre/Era/Custom/Channel now live in a panel on the right side of the player (like a CRT TV's channel-changer) instead of stacked below it -- applies to small mode, big mode, and the new fullscreen 4:3 mode. Fullscreen's default 16:9 mode stays minimal (no side panel), per explicit request. The modal itself widens to make room rather than shrinking the video to fit. Mobile is untouched -- the side panel is desktop-only (`min-width: 641px`), same footprint as before below that. Required moving what `requestFullscreen()` targets from just the video frame to a new wrapper (`#tvFsRoot`) that also contains the side panel slot, since a fullscreen element's siblings aren't rendered while it's active -- the panel has to actually be inside what goes fullscreen to show up there at all.

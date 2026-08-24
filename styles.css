@@ -2340,6 +2340,7 @@ body.is-searching #viewersChoiceSection {
    need any CSS beyond centering the button on that point. */
 .tv-year-dial:not([hidden]) {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -2348,14 +2349,15 @@ body.is-searching #viewersChoiceSection {
 }
 
 /* Switches which bucket list the ring shows (see activeYearBuckets() in
-   app.js) -- three stacked options read as a vertical lever/switch rather
-   than a horizontal tab row, distinct from the Genre/Era tabs below. */
+   app.js) -- a horizontal bar below the ring rather than a vertical
+   lever beside it, so the ring itself can use the dial's full column
+   width instead of sharing it with a 54px-wide lever. */
 .tv-year-lever {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 0 0 auto;
-  width: 54px;
-  align-self: stretch;
+  width: 100%;
+  max-width: 210px;
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
@@ -2365,17 +2367,17 @@ body.is-searching #viewersChoiceSection {
 .tv-year-lever-opt {
   flex: 1;
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 4px 2px;
+  padding: 6px 2px;
   cursor: pointer;
 }
 
 .tv-year-lever-opt:last-child {
-  border-bottom: none;
+  border-right: none;
 }
 
 .tv-year-lever-opt.is-active {
@@ -2561,7 +2563,7 @@ body.is-searching #viewersChoiceSection {
    take a full row of its own within .filters-row's flex-wrap layout. */
 .tv-genre-grid:not([hidden]) {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px;
   flex: 1 0 100%;
 }
