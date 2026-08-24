@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.26.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.27.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -137,6 +137,9 @@
     mvgOnlyToggle: document.getElementById("mvgOnlyToggle"),
     filtersGroup: document.getElementById("filtersGroup"),
     tvModal: document.getElementById("tvModal"),
+    tvFsRoot: document.getElementById("tvFsRoot"),
+    tvSidePanel: document.getElementById("tvSidePanel"),
+    tvSidePanelSlot: document.getElementById("tvSidePanelSlot"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
@@ -4600,6 +4603,7 @@
     els.genreTip.hidden = true;
     els.savePlaylistBtn.hidden = true; // Search-only -- nothing to "save as playlist" in TV Mode
     els.tvFilterTabs.hidden = false;
+    els.tvSidePanel.hidden = false;
     state.tvActiveTab = "era";
     updateTVFilterTabUI();
     renderTVYearDial(state.rows);
@@ -4623,6 +4627,7 @@
     els.genreTip.hidden = false;
     els.savePlaylistBtn.hidden = false;
     els.tvFilterTabs.hidden = true;
+    els.tvSidePanel.hidden = true;
     buildYearOptions(state.rows);
     buildGenreOptions(state.rows);
     els.yearFilter.value = state.year;
@@ -4639,6 +4644,10 @@
     if (!els.tvModal.hidden) return;
     closeLightbox();
     els.tvFiltersSlot.appendChild(els.filtersGroup);
+    // Pulled out separately (rather than left nested inside filtersGroup)
+    // so it can sit in its own grid column beside the video instead of
+    // stacking below it -- see .tv-side-panel-slot in styles.css.
+    els.tvSidePanelSlot.appendChild(els.tvSidePanel);
     enterTVFilterMode();
     els.tvModal.hidden = false;
     els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
@@ -4674,6 +4683,7 @@
     state.tvCustomPool = null;
     state.tvCustomPlaylistId = null;
     exitTVFilterMode();
+    els.filtersGroup.appendChild(els.tvSidePanel); // restore its nesting inside filtersGroup before moving that back
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
     unlockBodyScroll();
@@ -4854,15 +4864,14 @@
   // "starts fresh next time" reasoning as not persisting it at all.
   document.addEventListener("fullscreenchange", function () {
     var el = document.fullscreenElement;
-    var frame = els.videoBox.querySelector(".video-embed-frame");
     var hud = document.getElementById("tvFsHud");
-    if (el && frame && el === frame) {
+    if (el && el === els.tvFsRoot) {
       if (hud) hud.hidden = false;
       showTVFsHud();
     } else {
       stopTVFsHudAutoHide();
       if (hud) { hud.hidden = true; hud.classList.remove("is-hidden"); }
-      if (frame) frame.classList.remove("tv-fs-4-3");
+      els.tvFsRoot.classList.remove("tv-fs-4-3");
       var cropBtn = document.getElementById("tvFsCropBtn");
       if (cropBtn) cropBtn.classList.remove("is-active");
       state.tv.fullscreenAspect = "16:9";
@@ -4879,9 +4888,9 @@
   // this innerHTML at all, so they persist untouched across those.
   // tvOsdMute/tvOsdVolume are the classic TV-remote on-screen-display
   // indicators (see showTVMuteOsd()/showTVVolumeOsd() below); tvFsHud is
-  // the minimal auto-hiding control bar shown only while
-  // .video-embed-frame is the fullscreen element (see enterTVFullscreen()
-  // and the fullscreenchange listener) -- its buttons are wired via a
+  // the minimal auto-hiding control bar shown only while #tvFsRoot is the
+  // fullscreen element (see els.tvFullscreenBtn's click handler and the
+  // fullscreenchange listener) -- its buttons are wired via a
   // single delegated listener on els.videoBox (see below) rather than
   // per-element listeners, since this whole block gets torn down and
   // rebuilt on every provider switch.
@@ -4948,14 +4957,14 @@
   }
 
   // ---- Fullscreen mode (our own overlaid, auto-hiding controls) ---------
-  // requestFullscreen() targets .video-embed-frame itself (not the bare
-  // iframe, which is what double-clicking the underlying YouTube/Vimeo
-  // player would trigger natively) -- that frame already contains
-  // #tvFsHud (see TV_PLAYER_TARGET_INNER_HTML), so the HUD becomes part
-  // of what's actually fullscreen instead of being stranded behind it.
+  // requestFullscreen() targets #tvFsRoot (not the bare iframe, which is
+  // what double-clicking the underlying YouTube/Vimeo player would
+  // trigger natively, and not just .video-embed-frame either) -- #tvFsRoot
+  // wraps both the video frame (which already contains #tvFsHud, see
+  // TV_PLAYER_TARGET_INNER_HTML) AND #tvSidePanelSlot, so the side panel
+  // can also come along for the 4:3 fullscreen mode (see styles.css).
   els.tvFullscreenBtn.addEventListener("click", function () {
-    var frame = els.videoBox.querySelector(".video-embed-frame");
-    if (frame && frame.requestFullscreen) frame.requestFullscreen().catch(function () {});
+    if (els.tvFsRoot.requestFullscreen) els.tvFsRoot.requestFullscreen().catch(function () {});
   });
 
   var tvFsHudHideTimer = null;
@@ -4988,9 +4997,8 @@
   // one flag for both (see .tv-fs-4-3 in styles.css for the actual CSS).
   function toggleTVFullscreenAspect() {
     state.tv.fullscreenAspect = state.tv.fullscreenAspect === "4:3" ? "16:9" : "4:3";
-    var frame = els.videoBox.querySelector(".video-embed-frame");
     var isFourThree = state.tv.fullscreenAspect === "4:3";
-    if (frame) frame.classList.toggle("tv-fs-4-3", isFourThree);
+    els.tvFsRoot.classList.toggle("tv-fs-4-3", isFourThree);
     var btn = document.getElementById("tvFsCropBtn");
     if (btn) btn.classList.toggle("is-active", isFourThree);
   }
@@ -5080,6 +5088,15 @@
   // YouTube track followed by a Vimeo one, or vice versa) can't reuse the
   // other SDK's player, so it tears down and rebuilds the target div fresh.
   function loadTVTrack(row, startPaused) {
+    // Same brief static/tuning flash loadChannelTrackAt() shows on every
+    // Channel track change -- deferred a tick for the same reason: this
+    // function can still synchronously rebuild .video-embed-frame's
+    // innerHTML further down (provider switch/fresh player create),
+    // which would otherwise wipe the flash the instant it's appended.
+    // Covers advanceTV()/previousTV() (skip/previous), playArmedTV()
+    // (first play), and refreshTVPoolIfActive() (era/genre/custom filter
+    // changes) -- every one of them funnels through here.
+    setTimeout(showChannelTuningFlash, 0);
     var ref = getRowVideoRef(row);
     if (!ref) {
       advanceTV();

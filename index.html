@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.26.0">
+<link rel="stylesheet" href="styles.css?v=6.27.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -315,6 +315,18 @@
         <select id="yearFilter" class="filter-select" aria-label="Filter by release year"></select>
         <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
       </div>
+    </div>
+    <!-- Genre/Era/Custom/Channel: a separate sibling from .filters-row (not
+         nested inside it) so it can be relocated as its own unit -- see
+         #tvSidePanelSlot inside #tvModal below, and openTVModal()/
+         applyTVSidePanelSlot() in app.js. -->
+    <div class="tv-side-panel" id="tvSidePanel" hidden>
+      <div class="tv-filter-tabs" id="tvFilterTabs" hidden>
+        <button type="button" class="tv-filter-tab" data-tab="genre">Genre</button>
+        <button type="button" class="tv-filter-tab" data-tab="era">Era</button>
+        <button type="button" class="tv-filter-tab" data-tab="custom">Custom</button>
+        <button type="button" class="tv-filter-tab" data-tab="channel">📻 Channel</button>
+      </div>
       <div class="tv-year-dial" id="tvYearDial" hidden>
         <div class="tv-year-lever" id="tvYearLever">
           <button type="button" class="tv-year-lever-opt" data-granularity="years">Years</button>
@@ -331,12 +343,6 @@
       <div class="tv-channel-pane" id="tvChannelPane" hidden>
         <p class="tv-channel-status" id="tvChannelStatus">Tuning in…</p>
         <div class="tv-channel-comments" id="tvChannelComments"></div>
-      </div>
-      <div class="tv-filter-tabs" id="tvFilterTabs" hidden>
-        <button type="button" class="tv-filter-tab" data-tab="genre">Genre</button>
-        <button type="button" class="tv-filter-tab" data-tab="era">Era</button>
-        <button type="button" class="tv-filter-tab" data-tab="custom">Custom</button>
-        <button type="button" class="tv-filter-tab" data-tab="channel">📻 Channel</button>
       </div>
     </div>
   </div>
@@ -630,14 +636,26 @@
   <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="TV Mode">
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="lightbox-content">
-      <section class="video-embed" id="videoEmbed">
-        <div class="video-embed-box" id="videoEmbedBox"></div>
-      </section>
-      <div class="tv-seek-row" id="tvSeekRow" hidden>
-        <span class="tv-seek-time" id="tvSeekTime">0:00 / 0:00</span>
-        <input type="range" class="tv-seek-bar" id="tvSeekBar" min="0" max="0" value="0" aria-label="Seek">
+      <!-- Fullscreen targets THIS (see els.tvFsRoot.requestFullscreen() in
+           app.js), not .video-embed-frame -- #tvSidePanelSlot needs to be
+           included in what actually goes fullscreen for the 4:3 side-panel
+           mode, and it lives as a sibling of #videoEmbed, not nested
+           inside the video frame itself. -->
+      <div class="tv-fs-root" id="tvFsRoot">
+        <section class="video-embed" id="videoEmbed">
+          <div class="video-embed-box" id="videoEmbedBox"></div>
+        </section>
+        <div class="tv-seek-row" id="tvSeekRow" hidden>
+          <span class="tv-seek-time" id="tvSeekTime">0:00 / 0:00</span>
+          <input type="range" class="tv-seek-bar" id="tvSeekBar" min="0" max="0" value="0" aria-label="Seek">
+        </div>
+        <div id="tvFiltersSlot"></div>
+        <!-- #tvSidePanel (Genre/Era/Custom/Channel) gets moved in here by
+             openTVModal() -- see applyTVSidePanelLayout()'s CSS comment in
+             styles.css for how visibility varies by windowed/fullscreen
+             and 4:3/16:9. -->
+        <div class="tv-side-panel-slot" id="tvSidePanelSlot"></div>
       </div>
-      <div id="tvFiltersSlot"></div>
       <div class="ad-placeholder" id="tvAdPlaceholder" hidden></div>
     </div>
   </div>
@@ -1391,6 +1409,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.26.0"></script>
+<script src="app.js?v=6.27.0"></script>
 </body>
 </html>

@@ -4328,18 +4328,74 @@ body.is-searching #viewersChoiceSection {
   flex: 1 1 auto;
 }
 
+/* ---- TV Mode side panel (Genre/Era/Custom/Channel) + fullscreen -------
+   #tvFsRoot wraps the video stack (video/seek-row/toggle-row-slot) and
+   #tvSidePanelSlot. The side-by-side layout (small mode/big mode/4:3
+   fullscreen all get it; 16:9 fullscreen stays minimal, per explicit
+   request) is desktop-only -- see the min-width:641px block below; on
+   mobile #tvFsRoot just stays single-column and the side panel content
+   stacks in normal flow order, same footprint as before this feature. */
+.tv-fs-root {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Pinned to column 1 explicitly -- without this, grid auto-placement
+   (which fills row by row, left to right) starts dropping these into
+   column 2 underneath the side panel once it runs out of column-1 rows
+   to reuse, since #tvSidePanelSlot's own row-span (below) can only ever
+   reach however many explicit row tracks exist, not "all of them,
+   whatever that ends up being." */
+#videoEmbed,
+#tvSeekRow,
+#tvFiltersSlot {
+  grid-column: 1;
+}
+
+.tv-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* Fullscreen aspect handling -- default (no .tv-fs-4-3) fills the whole
    fullscreen viewport edge to edge (16:9-ish; plain black letterboxing
-   if the screen isn't exactly 16:9, same as any video player). .tv-fs-4-3
-   instead shrinks the video to fit a real 4:3 box and lets the brand
-   gradient (same purple-on-black land.html/top-bar already use) show
-   through the pillarbox bars on the sides, per explicit request --
-   deliberately NOT the same effect as the windowed .is-crop-4-3 above
-   (that one zooms in and clips edges; this one shows the whole frame,
-   just smaller). */
-.video-embed-frame:fullscreen {
+   if the screen isn't exactly 16:9, same as any video player) and hides
+   the side panel/seek row/toggle row entirely -- #tvFsHud (see above)
+   replaces their function while fullscreen. .tv-fs-4-3 instead shrinks
+   the video to fit a real 4:3 box and lets the brand gradient (same
+   purple-on-black land.html/top-bar already use) show through the
+   pillarbox bars on the sides -- on desktop it also brings the side
+   panel back for a deliberately richer "CRT console" feel, distinct
+   from the minimal 16:9 fullscreen mode (see the min-width block below
+   for that half; this base rule is the mobile-safe default: no side
+   panel to make room for, so the pillarbox math is plain vw/vh here).
+   Deliberately NOT the same effect as the windowed .is-crop-4-3 above
+   either (that one zooms in and clips edges; this one shows the whole
+   frame, just smaller). */
+.tv-fs-root:fullscreen {
   width: 100%;
   height: 100%;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.tv-fs-root:fullscreen #tvSeekRow,
+.tv-fs-root:fullscreen #tvFiltersSlot,
+.tv-fs-root:fullscreen .tv-side-panel-slot {
+  display: none;
+}
+
+.tv-fs-root:fullscreen #videoEmbed,
+.tv-fs-root:fullscreen .video-embed-box,
+.tv-fs-root:fullscreen .video-embed-frame {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.tv-fs-root:fullscreen .video-embed-frame {
   padding-top: 0;
   display: flex;
   align-items: center;
@@ -4347,22 +4403,79 @@ body.is-searching #viewersChoiceSection {
   background: #000;
 }
 
-.video-embed-frame:fullscreen iframe {
+.tv-fs-root:fullscreen .video-embed-frame iframe {
   position: static;
   width: 100%;
   height: 100%;
 }
 
-.video-embed-frame.tv-fs-4-3:fullscreen {
+.tv-fs-root.tv-fs-4-3:fullscreen .video-embed-frame {
   background:
     radial-gradient(ellipse 90% 70% at 50% 8%, rgba(168, 85, 247, 0.35), transparent 60%),
     radial-gradient(ellipse 70% 60% at 85% 95%, rgba(74, 13, 143, 0.5), transparent 65%),
     #0b0b0f;
 }
 
-.video-embed-frame.tv-fs-4-3:fullscreen iframe {
+/* Classic min()-of-vw/vh "fit a fixed aspect box inside the viewport"
+   trick -- mobile-safe default (no side panel eating into the width, see
+   above), overridden below on desktop where the 4:3 mode's side panel
+   does. */
+.tv-fs-root.tv-fs-4-3:fullscreen .video-embed-frame iframe {
   width: min(100%, calc(100vh * 4 / 3));
   height: min(100%, calc(100vw * 3 / 4));
+}
+
+@media (min-width: 641px) {
+  /* The right column only exists when the slot actually has content
+     (:has()), so windowed non-TV lightboxes elsewhere are unaffected and
+     there's no separate JS-driven layout toggle needed. */
+  .tv-fs-root:has(#tvSidePanelSlot:not(:empty)) {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .tv-side-panel-slot:not(:empty) {
+    grid-column: 2;
+    /* "span 10" rather than 1/-1 -- -1 only reaches the last EXPLICIT row
+       line, and .tv-fs-root has no grid-template-rows, so 1/-1 actually
+       meant "span exactly 1 row." An oversized span request just clamps
+       to however many rows column 1's content (video/seek-row/toggle-row)
+       actually ends up needing, which is what "reach the bottom" means
+       here in practice. */
+    grid-row: 1 / span 10;
+    min-height: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* These widgets (dial/genre grid/tabs) were built for the old
+     full-width .filters-row -- mostly already responsive (max-width/
+     aspect-ratio-based) so they hold up fine at 280px, except the
+     4-across tab row, which reads better wrapped into 2x2 here than
+     squeezed to ~4 buttons at ~65px each. */
+  .tv-side-panel .tv-filter-tabs:not([hidden]) {
+    flex-wrap: wrap;
+  }
+
+  .tv-side-panel .tv-filter-tab {
+    flex: 1 1 40%;
+  }
+
+  .tv-fs-root.tv-fs-4-3:fullscreen {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .tv-fs-root.tv-fs-4-3:fullscreen .tv-side-panel-slot:not(:empty) {
+    display: block;
+    max-height: 100%;
+  }
+
+  /* Overrides the mobile-safe default above -- the side panel actually
+     eats into the available width here, so plain 100vw would overshoot
+     into/under it. */
+  .tv-fs-root.tv-fs-4-3:fullscreen .video-embed-frame iframe {
+    width: min(calc(100vw - 280px), calc(100vh * 4 / 3));
+    height: min(100vh, calc((100vw - 280px) * 3 / 4));
+  }
 }
 
 .lightbox {
@@ -4400,6 +4513,20 @@ body.is-searching #viewersChoiceSection {
 
 .lightbox-panel.size-large {
   max-width: 1080px;
+}
+
+/* Widens the modal itself to make room for the side panel rather than
+   shrinking the video into whatever budget the normal small/large sizes
+   already had -- same :has()-driven, no-JS-toggle-needed approach as
+   .tv-fs-root's own column above. */
+@media (min-width: 641px) {
+  #tvModal .lightbox-panel:has(#tvSidePanelSlot:not(:empty)) {
+    max-width: 1010px;
+  }
+
+  #tvModal .lightbox-panel.size-large:has(#tvSidePanelSlot:not(:empty)) {
+    max-width: 1370px;
+  }
 }
 
 .lightbox-close {
