@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.28.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.28.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -9723,6 +9723,11 @@
     openAdminModalChrome();
     els.adminFormTitle.textContent = "Loading…";
     els.adminFormSaveBtn.disabled = true;
+    // showAdminForm(null) just rendered an EMPTY form while this fetch is in
+    // flight -- clicking "Search YouTube for this video" in that window reads
+    // blank Artist/Song fields and searches for just "music video". Disabled
+    // until the real row data lands (showAdminForm(doc.data()) re-enables it).
+    els.adminYoutubeSearchBtn.disabled = true;
     db.collection("videos").doc(rowNum).get().then(function (doc) {
       if (!doc.exists) {
         els.adminFormTitle.textContent = "Entry not found";
@@ -9871,9 +9876,15 @@
     els.adminGraphicsView.hidden = true;
     els.adminUsernamesView.hidden = true;
     els.adminForm.hidden = false;
-    els.adminForm.scrollTop = 0;
+    // The form itself doesn't scroll -- .lightbox-panel (its ancestor) does
+    // (see styles.css), so resetting the form's own scrollTop was a no-op
+    // that left the panel wherever a previous admin session had scrolled it,
+    // e.g. reopening Edit Entry mid-scroll from a prior long form. Same
+    // pattern every other modal already uses (openAdminModalChrome() etc).
+    els.adminModal.querySelector(".lightbox-panel").scrollTop = 0;
     els.adminFormStatus.hidden = true;
     els.adminFormSaveBtn.disabled = false;
+    els.adminYoutubeSearchBtn.disabled = false;
     els.adminFormTitle.textContent = row ? "Edit Entry" : "Add Entry";
     els.adminForm.reset();
     state.adminFormOriginal = row ? { feature: !!row.feature, spotlight: !!row.spotlight, sponsored: !!row.sponsored } : null;
@@ -12460,6 +12471,16 @@
     var m = location.hash.match(/^#(?:.*-)?(\d+)$/);
     if (!m || !state.rows.length) return;
     var rowNum = decodeURIComponent(m[1]);
+    // finishLoad() (and therefore this) can run twice in quick succession --
+    // once for a cached snapshot, again once the network fetch wins the race
+    // (see fetchData()) -- and openLightbox() isn't idempotent: it calls
+    // lockBodyScroll() unconditionally every time. Without this guard, the
+    // second call re-locks scroll with no matching second close, leaving the
+    // page unscrollable forever after the lightbox is closed. Comparing
+    // against the already-open row (rather than remembering the hash) still
+    // lets a genuine reopen of the same video later work normally, since
+    // closing always clears state.lightboxRowNum first.
+    if (state.lightboxRowNum === rowNum) return;
     var row = findRowByNum(rowNum);
     if (!row) return;
     openLightbox(row);

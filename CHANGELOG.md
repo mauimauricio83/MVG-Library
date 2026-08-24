@@ -2,6 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.28.2 — current
+- Fixed: opening a video via a deep link (e.g. "Open in the MVG Library" from an SEO hub/video page) and then closing it with a backdrop click could leave the whole page permanently unscrollable. Root cause: `fetchData()` races a cached-snapshot render against the network fetch, and both paths call the same deep-link-opening code -- with a cache already warm (any return visit), it ran twice, calling the lightbox's scroll-lock twice for one close. `applyDeepLinkFromHash()` now skips re-opening a row that's already the open lightbox.
+- Fixed: the admin Edit Entry form could open scrolled to the middle of the modal instead of the top -- it was resetting scrollTop on the form element itself, but the form doesn't scroll, its `.lightbox-panel` ancestor does (same pattern every other modal already uses correctly).
+- Fixed: clicking "Search YouTube for this video" on Edit Entry could search for just "music video" instead of the actual title -- editing an entry opens an empty form first while the real data loads from Firestore, and clicking the button in that window read blank Artist/Song fields. The button is now disabled until the entry's data has actually loaded.
+
 ## v6.28.1 — current
 - Reverted the v6.28.0 upper third entirely. Live testing found it didn't actually solve the problem it was built for -- YouTube's own title/channel overlay still peeked through at the start of playback (the upper third only ever showed on pause, not on load), and separately it was judged too visually intrusive on its own merits. Rather than iterate further, removed the whole feature (markup, JS staging/population logic, CSS) and let YouTube's native title overlay show unmodified, same as before any of this session's title-overlay work.
 
