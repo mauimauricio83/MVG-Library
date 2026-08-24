@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.28.1 — current
+- Reverted the v6.28.0 upper third entirely. Live testing found it didn't actually solve the problem it was built for -- YouTube's own title/channel overlay still peeked through at the start of playback (the upper third only ever showed on pause, not on load), and separately it was judged too visually intrusive on its own merits. Rather than iterate further, removed the whole feature (markup, JS staging/population logic, CSS) and let YouTube's native title overlay show unmodified, same as before any of this session's title-overlay work.
+
 ## v6.28.0 — current
 - Replaced TV Mode's old lower third (song/artist/director card that briefly flashed at track start/end) with a new upper third that shows instead exactly while paused. Purpose: YouTube's own embed shows its title/channel overlay whenever paused -- `controls:0` suppresses the scrubber/buttons but not that, and there's no player param that does -- so rather than fight it, the new upper third is a solid purple-on-black bar that covers it, appearing at precisely the moment YouTube's own overlay would otherwise peek through underneath. Removed the old lower third entirely (its timers, end-of-track trigger, and CSS) rather than keeping both.
 
