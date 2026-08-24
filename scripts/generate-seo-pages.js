@@ -278,9 +278,16 @@ function page(title, description, canonical, bodyHtml, jsonLd, depth, ogExtra) {
     '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>\n' +
     (jsonLd ? '<script type="application/ld+json">\n' + JSON.stringify(jsonLd, null, 2) + "\n</script>\n" : "") +
     "</head>\n<body>\n" +
+    // .shell/script/.app is site-nav.js's required DOM shape (see its own
+    // usage comment) -- gives every hub page the same real header/menu
+    // (Home, TV Mode, Settings, Sign in, ...) instead of just a bare
+    // "back to MVG Library" link, same chrome news.html/support.html have.
+    '<div class="shell">\n' +
+    '<script src="' + rootPrefix + 'site-nav.js"></script>\n' +
+    '<div class="app">\n' +
     '<div class="hub-page">\n' +
     bodyHtml +
-    "\n</div>\n</body>\n</html>\n"
+    "\n</div>\n</div>\n</div>\n</body>\n</html>\n"
   );
 }
 

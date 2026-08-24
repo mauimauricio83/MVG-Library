@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.23.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.24.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -7455,6 +7455,19 @@
   window.addEventListener("hashchange", applySubmitHash);
   applySubmitHash();
 
+  // Lets other pages that share site-nav.js's lightweight header (news.html,
+  // support.html, the /blog/<slug>/ static pages, ...) deep-link straight
+  // into Settings instead of just landing on the homepage -- e.g.
+  // index.html?settings=1. Same reasoning as applySubmitHash(): doesn't
+  // need auth or state.rows, so it runs unconditionally at load.
+  function applySettingsQueryParam() {
+    var params = new URLSearchParams(location.search);
+    if (params.get("settings") !== "1") return;
+    history.replaceState(null, "", location.pathname + location.hash);
+    openSettingsModal();
+  }
+  applySettingsQueryParam();
+
   // manage-entries.html's Edit/Add/Bulk Import links jump back here rather
   // than duplicating the Add/Edit form or Bulk Import pipeline on that
   // page -- ?admin=edit&row=<rowNum> / ?admin=add / ?admin=bulk. Only
@@ -7467,7 +7480,12 @@
     var admin = params.get("admin");
     if (!admin) return;
     history.replaceState(null, "", location.pathname + location.hash);
-    if (admin === "edit") {
+    if (admin === "menu") {
+      // Plain "open the admin panel" deep link -- site-nav.js's Admin
+      // menu item (news.html, /blog/<slug>/, ...) points here since those
+      // pages have no admin UI of their own to open in place.
+      openAdminModal();
+    } else if (admin === "edit") {
       var rowNum = params.get("row");
       if (rowNum) openAdminEditForRow(rowNum);
     } else if (admin === "add") {
@@ -10156,6 +10174,14 @@
     els.adminModal.hidden = true;
     unlockBodyScroll();
   }
+
+  // Missing entirely before -- every other lightbox-style modal wires its
+  // own close-button/backdrop clicks (see els.settingsModal's identical
+  // listener above), this one never did, so only Escape (the shared
+  // keydown handler further down) ever closed it.
+  els.adminModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
 
   // ---- Vote leaderboard (admin, read-only) --------------------------------
   // Voting is open to any catalog video (not an admin-curated shortlist --

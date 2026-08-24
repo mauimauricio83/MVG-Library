@@ -28,15 +28,15 @@
       '<button type="button" class="header-icon-btn" id="headerMenuBtn" aria-label="Menu" aria-expanded="false" aria-controls="headerLinks">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
       '</button>' +
-      '<a class="top-bar-home-link" href="index.html" aria-label="MVG Library home">' +
-        '<img class="app-header-logo" src="icons/icon-192.png" alt="" width="32" height="32">' +
+      '<a class="top-bar-home-link" href="/index.html" aria-label="MVG Library home">' +
+        '<img class="app-header-logo" src="/icons/icon-192.png" alt="" width="32" height="32">' +
         '<h1 class="top-bar-title">MUSIC VIDEO LIBRARY</h1>' +
       '</a>' +
       '<div class="top-bar-actions">' +
-        '<a class="header-icon-btn" href="index.html" aria-label="Settings" title="Settings">' +
+        '<a class="header-icon-btn" href="/index.html?settings=1" aria-label="Settings" title="Settings">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>' +
         '</a>' +
-        '<a class="header-icon-btn" href="index.html" aria-label="Sign in" title="Sign in">' +
+        '<a class="header-icon-btn" href="/index.html" aria-label="Sign in" title="Sign in">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>' +
         '</a>' +
       '</div>' +
@@ -49,33 +49,33 @@
         '<button type="button" class="nav-mode-btn is-active" id="navModeWatchBtn" data-mode="watch" aria-pressed="true">Watch</button>' +
         '<button type="button" class="nav-mode-btn" id="navModeConnectBtn" data-mode="connect" aria-pressed="false">Connect</button>' +
       '</div>' +
-      '<a class="submit-link" href="index.html" data-nav-mode="watch">' +
+      '<a class="submit-link" href="/index.html" data-nav-mode="watch">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>' +
         '<span class="header-links-label">Home</span>' +
       '</a>' +
-      '<a class="submit-link" href="index.html" data-nav-mode="watch">' +
+      '<a class="submit-link" href="/index.html" data-nav-mode="watch">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 21h8M12 19v2M7 3l5 3 5-3"/></svg></span>' +
         '<span class="header-links-label">TV Mode</span>' +
       '</a>' +
-      '<a class="submit-link" href="index.html" data-nav-mode="watch">' +
+      '<a class="submit-link" href="/index.html" data-nav-mode="watch">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9Z"/></svg></span>' +
         '<span class="header-links-label">Favorites</span>' +
       '</a>' +
-      '<a class="submit-link" href="index.html" data-nav-mode="watch">' +
+      '<a class="submit-link" href="/index.html" data-nav-mode="watch">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>' +
         '<span class="header-links-label">Playlists</span>' +
       '</a>' +
-      '<a class="submit-link" href="index.html" data-nav-mode="connect">' +
+      '<a class="submit-link" href="/index.html" data-nav-mode="connect">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 5.9"/><path d="M18.5 14a5.5 5.5 0 0 1 3.5 5.9"/></svg></span>' +
         '<span class="header-links-label">Profiles</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="index.html#submit">' +
+      '<a class="submit-link" href="/index.html#submit">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>' +
         '<span class="header-links-label">Submit music video</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="index.html">' +
+      '<a class="submit-link" href="/index.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>' +
         '<span class="header-links-label">Recently Viewed</span>' +
       '</a>' +
@@ -85,27 +85,32 @@
         '<span class="header-links-label">Discord</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="news.html">' +
+      '<a class="submit-link" href="/news.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5a2 2 0 0 0 2 2h5"/><path d="M6 3h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M9 13h6M9 17h6"/></svg></span>' +
         '<span class="header-links-label">News</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="index.html">' +
+      '<a class="submit-link" href="/index.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M6.5 15.5c3.5-1.2 7.5-.9 10.5 1"/><path d="M6 12c4-1.3 9-1 12.5 1.2"/><path d="M5.5 8.5c4.5-1.4 10-1 14 1.5"/></svg></span>' +
         '<span class="header-links-label">Podcast</span>' +
       '</a>' +
       '<span class="header-links-sep">&middot;</span>' +
-      '<a class="submit-link" href="support.html">' +
+      '<a class="submit-link" href="/support.html">' +
         '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.6c0 4.5-8.8 10.2-8.8 10.2S3.2 13.1 3.2 8.6a4.6 4.6 0 0 1 8.8-1.8 4.6 4.6 0 0 1 8.8 1.8Z"/></svg></span>' +
         '<span class="header-links-label">Support!</span>' +
       '</a>' +
       '<div class="header-account-area">' +
-        '<a class="submit-link" href="index.html">' +
+        '<a class="submit-link" href="/index.html?settings=1">' +
           '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg></span>' +
           '<span class="header-links-label">Settings</span>' +
         '</a>' +
         '<span class="header-links-sep">&middot;</span>' +
-        '<a class="submit-link" href="index.html">' +
+        '<a class="submit-link" href="/index.html?admin=menu" id="siteNavAdminLink" hidden>' +
+          '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z"/><path d="m9 12 2 2 4-4"/></svg></span>' +
+          '<span class="header-links-label">Admin</span>' +
+        '</a>' +
+        '<span class="header-links-sep" id="siteNavAdminSep" hidden>&middot;</span>' +
+        '<a class="submit-link" href="/index.html">' +
           '<span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg></span>' +
           '<span class="header-links-label">Sign in</span>' +
         '</a>' +
@@ -131,12 +136,12 @@
   // reproduced statically here. SITE_VERSION isn't read from app.js (no
   // shared module system, no build step), so bump it by hand alongside
   // APP_VERSION in app.js when that changes.
-  var SITE_VERSION = "6.23.2";
+  var SITE_VERSION = "6.24.0";
   var FOOTER_HTML =
     '<footer class="app-footer">' +
-      '<a href="land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
+      '<a href="/land.html" class="cloud-link land-link" aria-label="Land"><span>l</span><span>a</span><span>n</span><span>d</span></a>' +
       '<span class="app-footer-text">v' + SITE_VERSION + ' &middot; Created by MnC &middot; 2026</span>' +
-      '<a href="cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>' +
+      '<a href="/cloud.html" class="cloud-link" aria-label="Word Cloud"><span>c</span><span>l</span><span>o</span><span>u</span><span>d</span></a>' +
     "</footer>";
 
   function appendFooter() {
@@ -236,4 +241,18 @@
   }
   watchBtn.addEventListener("click", function () { setNavMode("watch"); });
   connectBtn.addEventListener("click", function () { setNavMode("connect"); });
+
+  // This script deliberately never touches Firebase (see the file header
+  // comment), so it has no way to know if the current visitor is an admin
+  // -- the Admin menu item starts hidden and stays that way unless a host
+  // page that DOES already run its own admin check (news.html, currently)
+  // calls this once that check resolves true.
+  window.mvgSiteNav = {
+    showAdmin: function () {
+      var link = document.getElementById("siteNavAdminLink");
+      var sep = document.getElementById("siteNavAdminSep");
+      if (link) link.hidden = false;
+      if (sep) sep.hidden = false;
+    }
+  };
 })();
