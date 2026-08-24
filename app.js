@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.27.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.28.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4274,7 +4274,6 @@
     teardownChannelMode();
     if (stopArmedStaticNoise) { stopArmedStaticNoise(); stopArmedStaticNoise = null; }
     stopTVSeekPoll();
-    hideTVLowerThirdNow();
     state.tv.active = false;
     state.tv.started = false;
     if (state.tv.player && state.tv.player.destroy) {
@@ -4902,12 +4901,12 @@
     }
   });
 
-  // The logo/lower-third live inside this template (rebuilt fresh on
+  // The logo/upper-third live inside this template (rebuilt fresh on
   // every provider switch/fresh player create, see loadTVTrack()/
   // loadChannelTrackAt()) rather than being cached in `els` the way most
   // elements are -- a cached reference would go stale the instant this
   // innerHTML gets replaced. Looked up fresh via document.getElementById
-  // wherever they're needed instead (see showTVLowerThird() etc.).
+  // wherever they're needed instead (see updateTVPlayPauseUI() etc.).
   // Same-provider track reuse (loadVideoById/loadVideo) never touches
   // this innerHTML at all, so they persist untouched across those.
   // tvOsdMute/tvOsdVolume are the classic TV-remote on-screen-display
@@ -4919,12 +4918,18 @@
   // per-element listeners, since this whole block gets torn down and
   // rebuilt on every provider switch.
   var TV_PLAYER_TARGET_INNER_HTML = '<div id="tvPlayerTarget"></div>' +
-    '<img class="tv-channel-logo" id="tvChannelLogo" src="icons/icon-192.png" alt="">' +
-    '<div class="tv-lower-third" id="tvLowerThird" hidden>' +
-      '<div class="tv-lower-third-artist" id="tvLowerThirdArtist"></div>' +
-      '<div class="tv-lower-third-song" id="tvLowerThirdSong"></div>' +
-      '<div class="tv-lower-third-director" id="tvLowerThirdDirector"></div>' +
+    // YouTube's own embed shows its title/channel overlay whenever the
+    // video is paused -- controls:0 suppresses the scrubber/buttons but
+    // not that, and there's no player param that does. Rather than fight
+    // it, this covers it: a solid purple-on-black bar shown exactly
+    // while paused (see updateTVPlayPauseUI()), i.e. precisely when
+    // YouTube's own overlay would otherwise be visible underneath.
+    '<div class="tv-upper-third" id="tvUpperThird" hidden>' +
+      '<div class="tv-upper-third-song" id="tvUpperThirdSong"></div>' +
+      '<div class="tv-upper-third-artist" id="tvUpperThirdArtist"></div>' +
+      '<div class="tv-upper-third-director" id="tvUpperThirdDirector"></div>' +
     "</div>" +
+    '<img class="tv-channel-logo" id="tvChannelLogo" src="icons/icon-192.png" alt="">' +
     '<div class="tv-osd tv-osd-mute" id="tvOsdMute" hidden>MUTE</div>' +
     '<div class="tv-osd tv-osd-volume" id="tvOsdVolume" hidden>' +
       '<div class="tv-osd-volume-label">VOLUME</div>' +
@@ -5037,7 +5042,7 @@
 
   // Single delegated listener rather than per-button ones -- #tvFsHud's
   // whole subtree gets rebuilt on every provider switch (same reasoning
-  // as tvLowerThird), so per-element listeners would need re-attaching
+  // as tvUpperThird), so per-element listeners would need re-attaching
   // every time; delegating to els.videoBox (never itself replaced) means
   // they just keep working across rebuilds for free.
   els.videoBox.addEventListener("click", function (e) {
@@ -5100,14 +5105,14 @@
 
     // NOT populated/shown here directly -- this runs at the very top of
     // loadTVTrack(), before a fresh player create rebuilds the video
-    // frame's innerHTML (which recreates tvLowerThird from scratch,
+    // frame's innerHTML (which recreates tvUpperThird from scratch,
     // wiping out anything set here in the same tick). Stashed instead
     // for applyTVPlaybackState() to apply once it's actually called --
     // every branch of loadTVTrack()/loadChannelTrackAt() reaches that
     // AFTER any frame rebuild has already happened, fresh-create
     // included (it fires from the player's own onReady, which is
     // necessarily after the synchronous rebuild that preceded it).
-    tvPendingLowerThird = {
+    tvPendingUpperThird = {
       artist: row.artist || "",
       song: '"' + (row.song || "(untitled)") + '"',
       director: row.director ? "Director: " + row.director : ""
@@ -5740,7 +5745,7 @@
     els.tvPlayPauseBtn.title = label;
     els.tvPlayPauseBtn.setAttribute("aria-label", label);
     // Fullscreen HUD's twin button -- looked up fresh, same reasoning as
-    // tvLowerThird's own elements (this whole block gets rebuilt on every
+    // tvUpperThird's own elements (this whole block gets rebuilt on every
     // provider switch, so a cached els reference would go stale).
     var fsBtn = document.getElementById("tvFsPlayPauseBtn");
     if (fsBtn) {
@@ -5748,6 +5753,11 @@
       fsBtn.title = label;
       fsBtn.setAttribute("aria-label", label);
     }
+    // Shown exactly while paused -- that's precisely when YouTube's own
+    // title/channel overlay appears underneath (see the markup comment
+    // on #tvUpperThird), so this both announces the track and covers it.
+    var upperThird = document.getElementById("tvUpperThird");
+    if (upperThird) upperThird.hidden = state.tv.isPlaying;
   }
 
   function updateTVMuteUI() {
@@ -5884,22 +5894,19 @@
     setTVPlaying(playing);
     setTVCaptions(state.tv.ccEnabled); // re-applied per track/provider -- neither SDK carries a caption choice across a loadVideoById/loadVideo call, let alone a fresh player
     startTVSeekPoll();
-    tvLowerThirdShownForEnd = false;
-    if (tvLowerThirdStartTimer) { clearTimeout(tvLowerThirdStartTimer); tvLowerThirdStartTimer = null; }
-    if (tvPendingLowerThird) {
-      var artistEl = document.getElementById("tvLowerThirdArtist");
-      var songEl = document.getElementById("tvLowerThirdSong");
-      var directorEl = document.getElementById("tvLowerThirdDirector");
-      if (artistEl && songEl && directorEl) {
-        artistEl.textContent = tvPendingLowerThird.artist;
-        songEl.textContent = tvPendingLowerThird.song;
-        directorEl.textContent = tvPendingLowerThird.director;
-        tvLowerThirdStartTimer = setTimeout(function () {
-          tvLowerThirdStartTimer = null;
-          showTVLowerThird();
-        }, TV_LOWER_THIRD_START_DELAY_MS);
+    if (tvPendingUpperThird) {
+      // The upper third's own visibility is play/pause-driven (see
+      // updateTVPlayPauseUI()), not a timer -- this just needs to keep
+      // its text populated whenever the track changes.
+      var upperSongEl = document.getElementById("tvUpperThirdSong");
+      var upperArtistEl = document.getElementById("tvUpperThirdArtist");
+      var upperDirectorEl = document.getElementById("tvUpperThirdDirector");
+      if (upperSongEl && upperArtistEl && upperDirectorEl) {
+        upperSongEl.textContent = tvPendingUpperThird.song;
+        upperArtistEl.textContent = tvPendingUpperThird.artist;
+        upperDirectorEl.textContent = tvPendingUpperThird.director;
       }
-      tvPendingLowerThird = null;
+      tvPendingUpperThird = null;
     }
   }
 
@@ -5922,17 +5929,12 @@
 
   var tvSeekPollTimer = null;
   var tvSeekDragging = false; // suppress poll updates while the viewer's own drag is in progress
-  var tvLowerThirdShownForEnd = false; // per-track guard so the end-of-track lower third fires exactly once
 
   function updateTVSeekUI(cur, dur) {
     if (tvSeekDragging || !dur) return;
     els.tvSeekBar.max = Math.floor(dur);
     els.tvSeekBar.value = Math.floor(cur);
     els.tvSeekTime.textContent = formatTVTime(cur) + " / " + formatTVTime(dur);
-    if (!tvLowerThirdShownForEnd && (dur - cur) > 0 && (dur - cur) <= TV_LOWER_THIRD_END_TRIGGER_SEC) {
-      tvLowerThirdShownForEnd = true;
-      showTVLowerThird();
-    }
   }
 
   function startTVSeekPoll() {
@@ -5971,46 +5973,14 @@
     tvSeekDragging = false;
   });
 
-  // ---- Lower third -------------------------------------------------------
-  // MTV-style song/artist/director card, shown briefly at the start of a
-  // track (see updateTVTrackDetails()) and again in the last few seconds
-  // before it ends (see updateTVSeekUI() above) -- not a standing title
-  // bar, since native controls (which used to show the title) are off
-  // now. Lives inside TV_PLAYER_TARGET_INNER_HTML, not `els`, since that
-  // markup gets rebuilt on provider switches -- see that var's comment.
-  var TV_LOWER_THIRD_VISIBLE_MS = 5000;
-  var TV_LOWER_THIRD_FADE_MS = 400;
-  // At track start it doesn't fade in until this long after playback begins,
-  // so it doesn't compete with the viewer's first glance at the video itself.
-  var TV_LOWER_THIRD_START_DELAY_MS = 5000;
-  // Total time the card is ever on screen at the end of a track (visible + fade)
-  // -- used to back into how early the end-of-track showing must trigger so it's
-  // fully cleared before TV_LOWER_THIRD_END_CLEAR_SEC remains.
-  var TV_LOWER_THIRD_END_ONSCREEN_SEC = (TV_LOWER_THIRD_VISIBLE_MS + TV_LOWER_THIRD_FADE_MS) / 1000;
-  var TV_LOWER_THIRD_END_CLEAR_SEC = 5; // last N seconds of a track must stay clear of the lower third
-  var TV_LOWER_THIRD_END_TRIGGER_SEC = TV_LOWER_THIRD_END_ONSCREEN_SEC + TV_LOWER_THIRD_END_CLEAR_SEC;
-  var tvLowerThirdTimer = null;
-  var tvLowerThirdStartTimer = null; // the track-start fade-in delay; cleared on teardown/track change so a stale timer can't fire onto the next track
-  var tvPendingLowerThird = null; // {song, meta} staged by updateTVTrackDetails(), applied by applyTVPlaybackState()
-
-  function showTVLowerThird() {
-    var el = document.getElementById("tvLowerThird");
-    if (!el) return;
-    if (tvLowerThirdTimer) clearTimeout(tvLowerThirdTimer);
-    el.hidden = false;
-    el.classList.remove("is-fading");
-    tvLowerThirdTimer = setTimeout(function () {
-      el.classList.add("is-fading");
-      setTimeout(function () { el.hidden = true; }, TV_LOWER_THIRD_FADE_MS);
-    }, TV_LOWER_THIRD_VISIBLE_MS);
-  }
-
-  function hideTVLowerThirdNow() {
-    if (tvLowerThirdStartTimer) { clearTimeout(tvLowerThirdStartTimer); tvLowerThirdStartTimer = null; }
-    if (tvLowerThirdTimer) { clearTimeout(tvLowerThirdTimer); tvLowerThirdTimer = null; }
-    var el = document.getElementById("tvLowerThird");
-    if (el) { el.hidden = true; el.classList.remove("is-fading"); }
-  }
+  // ---- Upper third ---------------------------------------------------
+  // Song/artist/director card that covers YouTube's own paused-state
+  // overlay (see the markup comment on #tvUpperThird / TV_PLAYER_TARGET_
+  // INNER_HTML) -- shown exactly while paused (updateTVPlayPauseUI()),
+  // not on a timer. Lives inside TV_PLAYER_TARGET_INNER_HTML, not `els`,
+  // since that markup gets rebuilt on provider switches -- see that
+  // var's comment.
+  var tvPendingUpperThird = null; // {song, meta} staged by updateTVTrackDetails(), applied by applyTVPlaybackState()
 
   // Shared by every TV Mode entry point that actually starts playback
   // (tuneChannelMode/playArmedTV/startTVMode) -- the same controls

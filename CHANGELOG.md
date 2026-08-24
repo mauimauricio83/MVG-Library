@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.28.0 — current
+- Replaced TV Mode's old lower third (song/artist/director card that briefly flashed at track start/end) with a new upper third that shows instead exactly while paused. Purpose: YouTube's own embed shows its title/channel overlay whenever paused -- `controls:0` suppresses the scrubber/buttons but not that, and there's no player param that does -- so rather than fight it, the new upper third is a solid purple-on-black bar that covers it, appearing at precisely the moment YouTube's own overlay would otherwise peek through underneath. Removed the old lower third entirely (its timers, end-of-track trigger, and CSS) rather than keeping both.
+
 ## v6.27.3 — current
 - Fixed two real bugs behind "switching fullscreen/windowed feels unpredictable," both reproduced live (via the Claude in Chrome extension controlling a real browser, since this environment's own sandboxed browser can't enter real fullscreen at all):
   1. Closing TV Mode while genuinely fullscreen (Escape, the X button, anything) never actually called `document.exitFullscreen()` -- the browser stayed in real fullscreen with its target element hidden/torn out from under it, rendering a blank/static view, and reopening TV Mode afterward inherited that orphaned state instead of starting clean. `closeTVModal()` now exits fullscreen first when it's active.

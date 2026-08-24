@@ -4145,54 +4145,49 @@ body.is-searching #viewersChoiceSection {
   pointer-events: none;
 }
 
-/* MTV-style lower third -- artist/"song"/director stack shown briefly at
-   the start of a track and again in its last few seconds (see
-   showTVLowerThird()/updateTVSeekUI() in app.js), not a standing title
-   bar. Real broadcast lower thirds are bare bold text with a drop
-   shadow for legibility, not a card/box -- no background here on
-   purpose. Inset from the edges (title-safe margins) rather than
-   flush/edge-to-edge. Fades out via .is-fading rather than disappearing
-   instantly.
-   4:3 crop mode (.video-embed-frame.is-crop-4-3) only changes the
-   FRAME's own box (padding-top 56.25% -> 75%, i.e. taller) and scales
-   the iframe *inside* it -- it can't reach this element at all (a
-   sibling of the iframe, positioned against the frame itself, not
-   nested inside that cross-origin document), so these percentage
-   insets already track the frame's new shape with no extra rule
-   needed. Kept as an explicit selector below anyway so that stays true
-   on purpose, not by accident, if the crop mechanism ever changes. */
-.tv-lower-third {
+/* Upper third -- song/artist/director stack shown exactly while paused
+   (see updateTVPlayPauseUI() in app.js), covering YouTube's own paused-
+   state title/channel overlay underneath (see the markup comment on
+   #tvUpperThird for why that can't just be disabled at the source).
+   Deliberately a solid-ish purple-on-black bar, not bare shadowed text
+   like a broadcast lower third -- the point here is opaque coverage, not
+   a subtle credit. Flush/edge-to-edge (not inset) since YouTube's own
+   overlay is too, and full coverage is the whole point. Fades to
+   transparent only at its own bottom edge for a soft line into the
+   video, not around its sides. */
+.tv-upper-third {
   position: absolute;
-  left: 5%;
-  right: 5%;
-  bottom: 6%;
-  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 16px 18px 26px;
+  background: linear-gradient(180deg, #0b0b0f 0%, #2a1150 65%, transparent 100%);
   pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.4s ease;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.7);
 }
 
-.tv-lower-third[hidden] {
+.tv-upper-third[hidden] {
   display: none;
 }
 
-.tv-lower-third.is-fading {
-  opacity: 0;
-}
-
-.tv-lower-third-artist,
-.tv-lower-third-song {
+.tv-upper-third-song {
   color: #fff;
   font-size: 1.3rem;
   font-weight: 700;
   line-height: 1.3;
 }
 
-.tv-lower-third-director {
+.tv-upper-third-artist {
   margin-top: 2px;
   color: rgba(255, 255, 255, 0.92);
   font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.tv-upper-third-director {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
@@ -4200,7 +4195,7 @@ body.is-searching #viewersChoiceSection {
    showTVVolumeOsd()/updateTVMuteUI() in app.js) -- MUTE persists the
    whole time audio is muted; VOLUME shows on every change and fades a
    beat after the last one. Both anchored with percentage insets against
-   .video-embed-frame, same reasoning as .tv-lower-third above: that
+   .video-embed-frame, same reasoning as .tv-upper-third above: that
    keeps them correctly positioned across both the windowed 4:3 crop
    (.is-crop-4-3) and the fullscreen one (.tv-fs-4-3) without needing a
    separate rule for either. */
