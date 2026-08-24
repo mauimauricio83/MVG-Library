@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.27.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.27.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4678,6 +4678,17 @@
 
   function closeTVModal() {
     if (els.tvModal.hidden) return;
+    // Closing while genuinely fullscreen (Escape, the X button, anything)
+    // without this left the Fullscreen API's state dangling on #tvFsRoot
+    // even after it (and everything inside it) got hidden/torn down out
+    // from under it -- confirmed live: the browser stayed in real
+    // fullscreen showing a blank/static view with nothing sensibly
+    // rendering in it, and reopening TV Mode afterward inherited that
+    // orphaned fullscreen state instead of starting clean. Fire-and-forget
+    // (same as els.tvFullscreenBtn's own requestFullscreen() call) --
+    // the fullscreenchange handler's own cleanup runs whenever this
+    // actually resolves, doesn't need to be awaited here.
+    if (document.fullscreenElement === els.tvFsRoot) document.exitFullscreen().catch(function () {});
     if (state.tv.active) teardownTV();
     els.videoBox.innerHTML = "";
     state.tvCustomPool = null;
@@ -4865,9 +4876,21 @@
   document.addEventListener("fullscreenchange", function () {
     var el = document.fullscreenElement;
     var hud = document.getElementById("tvFsHud");
+    var frame = els.videoBox.querySelector(".video-embed-frame");
     if (el && el === els.tvFsRoot) {
       if (hud) hud.hidden = false;
       showTVFsHud();
+      // The windowed "Crop to 4:3" toggle (applyTVCrop()/state.tv.crop) is
+      // a completely separate mechanism from fullscreen's own 4:3 state
+      // (tv-fs-4-3) -- confirmed live that leaving .is-crop-4-3 on while
+      // entering fullscreen combines badly: its own transform:
+      // translateX(-50%) still applies (transform isn't reset by our
+      // fullscreen rules, and left/right don't apply to position:static
+      // so they don't cancel it out), shifting the iframe half its own
+      // width off-screen -- half the video visible, the other half a
+      // blank black gap. Suspended for the duration of fullscreen;
+      // restored on exit below if it was on.
+      if (frame) frame.classList.remove("is-crop-4-3");
     } else {
       stopTVFsHudAutoHide();
       if (hud) { hud.hidden = true; hud.classList.remove("is-hidden"); }
@@ -4875,6 +4898,7 @@
       var cropBtn = document.getElementById("tvFsCropBtn");
       if (cropBtn) cropBtn.classList.remove("is-active");
       state.tv.fullscreenAspect = "16:9";
+      if (frame && state.tv.crop) frame.classList.add("is-crop-4-3");
     }
   });
 
@@ -12236,6 +12260,14 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
+    // Escape's native job is exiting fullscreen -- when that's actually
+    // in effect (TV Mode's own fullscreen), don't ALSO treat this same
+    // keypress as "close the modal underneath it." Confirmed live:
+    // without this guard, one Escape press exited fullscreen AND closed
+    // TV Mode entirely (dismissTopModal() -> history.back(), losing the
+    // #tv hash) in the same keystroke -- a second, separate Escape press
+    // is what should close the modal, same as it always has.
+    if (document.fullscreenElement) return;
     var anyOpen = !els.lightbox.hidden || !els.tvModal.hidden || !els.submitModal.hidden || !els.submitThanksModal.hidden ||
       !els.profileThanksModal.hidden ||
       !els.settingsModal.hidden ||

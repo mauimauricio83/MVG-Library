@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.27.3 — current
+- Fixed two real bugs behind "switching fullscreen/windowed feels unpredictable," both reproduced live (via the Claude in Chrome extension controlling a real browser, since this environment's own sandboxed browser can't enter real fullscreen at all):
+  1. Closing TV Mode while genuinely fullscreen (Escape, the X button, anything) never actually called `document.exitFullscreen()` -- the browser stayed in real fullscreen with its target element hidden/torn out from under it, rendering a blank/static view, and reopening TV Mode afterward inherited that orphaned state instead of starting clean. `closeTVModal()` now exits fullscreen first when it's active.
+  2. A single Escape press while fullscreen exited fullscreen AND closed the whole TV modal in the same keystroke (the global Escape handler didn't know the browser was already handling this keypress natively, so it independently ran `dismissTopModal()` too, navigating all the way back to the homepage). The handler now no-ops when `document.fullscreenElement` is set, leaving a normal second Escape press to close the modal, same as before this feature existed.
+- Fixed: entering fullscreen while the separate windowed "Crop to 4:3" toggle was also on left its leftover `transform: translateX(-50%)` active (fullscreen's own CSS never reset it), shifting the video half its own width off-screen -- half video, half blank black. The windowed crop is now suspended for the duration of fullscreen and restored on exit.
+
 ## v6.27.2 — current
 - Fixed: fullscreen 16:9 was showing a blank reserved sidebar strip instead of going truly full-width. Cause was a CSS specificity bug -- the rule reserving the 280px side-panel column used `:has(#tvSidePanelSlot:not(:empty))`, and an id selector inside `:has()` pulls in id-level specificity, which beat the plain-class `.tv-fs-root:fullscreen` override regardless of source order. Switched to the element's class instead and gave the "no panel in plain fullscreen" rule its own higher-specificity selector so it wins unconditionally.
 - The side panel's content (dial/genre list/custom list/channel pane) is now vertically centered in its column instead of stuck at the top with dead space below -- most noticeable in fullscreen 4:3, where the column is much taller than the Era dial itself.
