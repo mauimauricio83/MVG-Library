@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.29.0">
+<link rel="stylesheet" href="styles.css?v=6.30.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -380,18 +380,15 @@
        Empty/no-op today since that array starts empty. -->
   <div id="extraPicksSections"></div>
 
-  <aside class="blog-latest-sidebar" id="blogLatestSidebar" hidden>
-    <div class="spotlight-sidebar-title">News</div>
-    <div class="blog-latest-cards" id="blogLatestCards"></div>
-    <div class="blog-latest-extra" id="blogLatestExtra" hidden></div>
-  </aside>
-
   <div class="ad-placeholder">
     <a href="https://hisong.io/MUSICVIDEOGUY5" target="_blank" rel="noopener noreferrer">
       <img class="ad-image" src="https://images.squarespace-cdn.com/content/6280a1062dd56f7434ce1d85/205146cf-b9ae-4b31-874b-0bf0975d1b93/promocode.png?content-type=image%2Fpng" alt="Promo code — use code MUSICVIDEOGUY5">
     </a>
   </div>
 
+  <!-- Order below (Latest -> News -> Featured -> Discover) is deliberate,
+       set per Maui's request -- not alphabetical/arbitrary, so don't
+       reshuffle without asking. -->
   <section class="media-strip" id="latestStrip" hidden>
     <div class="media-strip-head">
       <button type="button" class="media-strip-collapse-btn" id="latestCollapseBtn" aria-label="Expand or collapse">
@@ -413,6 +410,12 @@
 
   <div id="status" class="status"></div>
   <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>
+
+  <aside class="blog-latest-sidebar" id="blogLatestSidebar" hidden>
+    <div class="spotlight-sidebar-title">News</div>
+    <div class="blog-latest-cards" id="blogLatestCards"></div>
+    <div class="blog-latest-extra" id="blogLatestExtra" hidden></div>
+  </aside>
 
   <section class="media-strip" id="featuredStrip" hidden>
     <div class="media-strip-head">
@@ -751,6 +754,32 @@
           <button type="button" class="admin-row-btn" id="adminGoGraphicsBtn">Social Graphics</button>
           <button type="button" class="admin-row-btn" id="adminGoUsernamesBtn">Username Moderation<span class="profile-requests-badge" id="adminFlaggedUsernamesBadge" hidden>0</span></button>
         </div>
+        <!-- Site-wide (every visitor, not just this device) homepage
+             section switches -- see startSiteConfigListener()/
+             applySiteConfigToggles() in app.js. Same settings-row/
+             settings-theme-toggle pattern Settings itself uses -- generic,
+             theme-aware classes, not scoped to #settingsModal. -->
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Viewer's Choice section</div>
+            <div class="settings-row-hint">Shown on the homepage when there are votes. Hide to remove it for everyone.</div>
+          </div>
+          <div class="settings-theme-toggle" id="adminViewersChoiceToggle" role="group" aria-label="Viewer's Choice visibility">
+            <button type="button" class="settings-theme-btn" data-visibility-choice="show">Show</button>
+            <button type="button" class="settings-theme-btn" data-visibility-choice="hide">Hide</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Featured section</div>
+            <div class="settings-row-hint">Shown on the homepage when there are Featured-flagged entries. Hide to remove it for everyone.</div>
+          </div>
+          <div class="settings-theme-toggle" id="adminFeaturedToggle" role="group" aria-label="Featured visibility">
+            <button type="button" class="settings-theme-btn" data-visibility-choice="show">Show</button>
+            <button type="button" class="settings-theme-btn" data-visibility-choice="hide">Hide</button>
+          </div>
+        </div>
+        <p class="admin-status" id="adminHomepageTogglesStatus" hidden></p>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
 
@@ -1431,6 +1460,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.29.0"></script>
+<script src="app.js?v=6.30.0"></script>
 </body>
 </html>

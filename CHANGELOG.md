@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.30.0 — current
+- Reordered the homepage: Viewer's Choice, Maui's Picks, Latest Submissions, News, Featured, Discover (Latest Submissions moved up from below Featured; News moved down from above Latest).
+- Added site-wide admin switches (Admin panel landing screen) to hide/show the Viewer's Choice and Featured sections for every visitor, not just this device -- a new `siteConfig/homepage` Firestore doc (public read, admin write, same shape as `channel/{id}`), listened to live so a toggle takes effect on already-open tabs too.
+
 ## v6.29.0 — current
 - Added optional genre preferences: a new onboarding step (right after Sign in/Continue as Guest) and a "Genres you like" row in Settings let you check off the genres you're into. Purely optional and editable anytime -- it only weights the homepage Discover section toward those genres (70% of picks lean preferred, still mixing in everything else, backfilled from the rest of the catalog if a narrow preference runs short), it never filters or drives search, browse, or TV Mode. No preference set means Discover behaves exactly as it always has.
 

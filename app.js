@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.29.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.30.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -465,6 +465,9 @@
     adminGoAddBtn: document.getElementById("adminGoAddBtn"),
     adminGoBulkBtn: document.getElementById("adminGoBulkBtn"),
     adminGoPublishBtn: document.getElementById("adminGoPublishBtn"),
+    adminViewersChoiceToggle: document.getElementById("adminViewersChoiceToggle"),
+    adminFeaturedToggle: document.getElementById("adminFeaturedToggle"),
+    adminHomepageTogglesStatus: document.getElementById("adminHomepageTogglesStatus"),
     adminLandingStatus: document.getElementById("adminLandingStatus"),
     adminForm: document.getElementById("adminForm"),
     adminFormTitle: document.getElementById("adminFormTitle"),
@@ -866,10 +869,13 @@
     // TV Mode now lives permanently inside #tvModal (a lightbox), not the
     // main content flow, so it's no longer part of this defensive
     // re-anchoring -- only Favorites still needs it. The ad banner has its
-    // own fixed spot further up (right after Spotlight, before Latest
-    // Submissions). Featured stays anchored after the jump nav.
+    // own fixed spot further up (right after Maui's Picks, before Latest
+    // Submissions). Featured stays anchored after News (see the homepage
+    // section order comment in index.html -- Latest -> News -> Featured ->
+    // Discover; this used to read "after the jump nav" back when Featured
+    // sat right after it, before that reorder).
     els.latestStrip.after(els.favoritesStrip);
-    els.jumpTop.after(els.featuredStrip);
+    els.blogLatestSidebar.after(els.featuredStrip);
   }
 
   function findRowByNum(rowNum) {
@@ -1025,6 +1031,12 @@
     selectedPlaylistId: null,
     isAdmin: false,
     viewAsNormie: loadAdminNormiePref(), // per-device pref, see adminUiActive()
+    // Site-wide (not per-device) homepage section toggles -- see
+    // siteConfig/homepage below, listened to live via onSnapshot so an
+    // admin flipping one updates every already-open tab, not just a
+    // future page load.
+    hideViewersChoice: false,
+    hideFeatured: false,
     adminRows: [],
     adminBulkParsed: [],
     // { feature, spotlight } of the row currently loaded into the admin
@@ -2457,6 +2469,7 @@
 
   var featuredPool = [];
   function renderFeaturedStrip(rows) {
+    if (state.hideFeatured) { els.featuredStrip.hidden = true; return; }
     featuredPool = shuffle(rows.filter(function (r) { return r.feature; }));
     featuredStrip.render(featuredPool);
   }
@@ -3833,12 +3846,18 @@
     );
   }
 
+  // Cached so the site-config listener (see startSiteConfigListener()) can
+  // re-render on an admin's hide/show toggle without needing a fresh votes
+  // snapshot -- the votes themselves haven't changed, just whether to show them.
+  var viewersChoiceLastEntries = [];
+
   function renderViewersChoice(entries) {
+    viewersChoiceLastEntries = entries;
     // A "Reset ALL votes" (resetVideoVotes/resetAllVotes in
     // functions/index.js) zeroes videoVotes docs rather than deleting
     // them, so entries.length alone can still be > 0 right after a
     // reset -- check for an actual vote among them, not just any docs.
-    if (!entries.length || !entries.some(function (v) { return v.count > 0; })) {
+    if (state.hideViewersChoice || !entries.length || !entries.some(function (v) { return v.count > 0; })) {
       els.viewersChoiceSection.hidden = true;
       return;
     }
@@ -3849,6 +3868,24 @@
     els.viewersChoiceRest.innerHTML = entries.slice(2, 5).map(function (v, i) {
       return viewersChoiceCardHtml(v, i + 3);
     }).join("");
+  }
+
+  // Site-wide (not per-device) homepage section visibility -- a single
+  // public-read, admin-write doc (see firestore.rules), same shape as
+  // channel/{id}. Listened to live so an admin's toggle (see
+  // applySiteConfigToggles()/adminViewersChoiceToggle/adminFeaturedToggle)
+  // takes effect on every already-open tab, not just a future page load.
+  function startSiteConfigListener() {
+    db.collection("siteConfig").doc("homepage").onSnapshot(function (doc) {
+      var data = doc.exists ? doc.data() : {};
+      state.hideViewersChoice = !!data.hideViewersChoice;
+      state.hideFeatured = !!data.hideFeatured;
+      applySiteConfigToggles();
+      renderViewersChoice(viewersChoiceLastEntries);
+      if (state.rows.length) renderFeaturedStrip(state.rows);
+    }, function (err) {
+      console.error("Site config load failed:", err);
+    });
   }
 
   function startViewersChoice() {
@@ -7850,6 +7887,45 @@
     saveAdminNormiePref(state.viewAsNormie);
     applyAdminNormieToggle();
     refreshAdminUiVisibility();
+  });
+
+  // Site-wide homepage section visibility -- see startSiteConfigListener()
+  // for the read side (siteConfig/homepage, live for every visitor). This
+  // is the admin-only write side: each toggle just merges its own field so
+  // clicking one never clobbers the other's current value.
+  function applySiteConfigToggles() {
+    Array.prototype.forEach.call(els.adminViewersChoiceToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-visibility-choice") === "hide") === state.hideViewersChoice);
+    });
+    Array.prototype.forEach.call(els.adminFeaturedToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-visibility-choice") === "hide") === state.hideFeatured);
+    });
+  }
+
+  function saveSiteConfig(patch) {
+    els.adminHomepageTogglesStatus.hidden = true;
+    db.collection("siteConfig").doc("homepage").set(patch, { merge: true }).catch(function (err) {
+      console.error("Site config save failed:", err);
+      els.adminHomepageTogglesStatus.textContent = "Couldn't save: " + err.message;
+      els.adminHomepageTogglesStatus.className = "admin-status is-error";
+      els.adminHomepageTogglesStatus.hidden = false;
+    });
+  }
+
+  els.adminViewersChoiceToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    state.hideViewersChoice = btn.getAttribute("data-visibility-choice") === "hide";
+    applySiteConfigToggles();
+    saveSiteConfig({ hideViewersChoice: state.hideViewersChoice });
+  });
+
+  els.adminFeaturedToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    state.hideFeatured = btn.getAttribute("data-visibility-choice") === "hide";
+    applySiteConfigToggles();
+    saveSiteConfig({ hideFeatured: state.hideFeatured });
   });
 
   function applyVoterNameToggle() {
@@ -12768,4 +12844,5 @@
   fetchData();
   fetchTopAds();
   fetchBlogLatest();
+  startSiteConfigListener();
 })();

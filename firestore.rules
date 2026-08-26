@@ -403,6 +403,17 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Site-wide (not per-device) homepage section visibility switches
+    // (Viewer's Choice, Featured -- see startSiteConfigListener() in
+    // app.js). Single doc, same public-read/admin-write shape as
+    // channel/{id} above -- every visitor needs it to decide what to
+    // render, only an admin can change it.
+    match /siteConfig/{id} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // Moderation flags for the message board. Readable by anyone so a
     // muted/banned visitor's own client can show why posting is blocked
     // (enforcement itself happens server-side via the /messages rule above,
