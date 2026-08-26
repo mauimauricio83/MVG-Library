@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.32.1 — current
+- TV Mode now remembers once you've unmuted it. A genuinely fresh browser still has to start muted (the first play() call happens inside YouTube/Vimeo's async onReady, outside any user gesture, so browsers can silently block it unmuted) -- but after your first real click on Mute, every later TV Mode session on that browser starts unmuted automatically, instead of making you re-click Mute every single time.
+
 ## v6.32.0 — current
 - My Queue is now its own homepage section, above Maui's Picks, hidden until you've actually added something to it.
 - Added a quick "+" add-to-playlist button to every video thumbnail site-wide (media strips, Maui's Picks, Discover, Viewer's Choice, the main grid/search results) -- barely visible at rest, full opacity on hover/focus, opens the same add-to-playlist popover the lightbox's own + button does. Fixed a bug this surfaced in the popover's own "click outside to close" handler, which didn't recognize the new button as part of the popover and was closing it in the same click that opened it.

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.32.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.32.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -964,6 +964,14 @@
   var LIGHTBOX_CROP_KEY = "mvg-lightbox-crop";
   var TV_CROP_KEY = "mvg-tv-crop";
   var TV_SIZE_KEY = "mvg-tv-size";
+  // Whether this browser has EVER unmuted TV Mode before -- see the
+  // isMuted comment on `state.tv` below for why a truly fresh instance
+  // still has to start muted regardless of this (an unmuted first
+  // playVideo() call happens outside any user gesture and risks the
+  // browser silently blocking it). Once set, never cleared by muting
+  // again later -- that's just "I want this one video quiet," not "go
+  // back to defaulting silent forever."
+  var TV_UNMUTED_KEY = "mvg-tv-unmuted";
 
   var state = {
     rows: [],
@@ -988,14 +996,21 @@
     // active: a track pool has been picked (armed or actually playing).
     // started: the viewer has pressed play -- a real YT player exists.
     // Armed-but-not-started is the "channel ready" static screen.
-    // isMuted starts true: the very first playVideo()/autoplay call always
-    // happens inside YouTube/Vimeo's own async onReady, not inside the
-    // click that armed TV Mode, so it can't carry a user-gesture flag --
-    // browsers silently block unmuted autoplay/play() without one. Starting
-    // muted keeps that first play() call within policy; unmuting via the
-    // Mute button afterward is a real click and is allowed, same as it
-    // always was clicking YouTube's own play icon before controls:false.
-    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: true, volume: 100, ccEnabled: false, fullscreenAspect: "16:9" },
+    // isMuted starts true for a browser that's never unmuted TV Mode
+    // before: the very first playVideo()/autoplay call always happens
+    // inside YouTube/Vimeo's own async onReady, not inside the click that
+    // armed TV Mode, so it can't carry a user-gesture flag -- browsers
+    // silently block unmuted autoplay/play() without one. Starting muted
+    // keeps that first play() call within policy; unmuting via the Mute
+    // button afterward is a real click and is allowed, same as it always
+    // was clicking YouTube's own play icon before controls:false.
+    // Once this browser has done that real-click unmute at least once
+    // (loadTVUnmutedPref()/saveTVUnmutedPref(), set from setTVMuted()),
+    // every later TV Mode instance defaults to unmuted straight away --
+    // no reason to keep making a returning visitor re-click Mute every
+    // single time just to satisfy a policy check their very first click
+    // already satisfied for good.
+    tv: { active: false, started: false, queue: [], index: 0, player: null, shellBuilt: false, crop: loadTVCropPref(), size: loadTVSizePref(), isPlaying: true, isMuted: !loadTVUnmutedPref(), volume: 100, ccEnabled: false, fullscreenAspect: "16:9" },
     // Whether the shared Year/Genre filters are currently showing TV Mode's
     // coarse buckets instead of the exact Search values -- see
     // enterTVFilterMode/exitTVFilterMode. homeYear/GenreBeforeTV hold the
@@ -1216,6 +1231,20 @@
   function saveTVCropPref(isCropped) {
     try {
       localStorage.setItem(TV_CROP_KEY, isCropped ? "1" : "0");
+    } catch (e) {}
+  }
+
+  function loadTVUnmutedPref() {
+    try {
+      return localStorage.getItem(TV_UNMUTED_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveTVUnmutedPref() {
+    try {
+      localStorage.setItem(TV_UNMUTED_KEY, "1");
     } catch (e) {}
   }
 
@@ -6050,6 +6079,7 @@
 
   function setTVMuted(muted) {
     state.tv.isMuted = muted;
+    if (!muted) saveTVUnmutedPref(); // real click, see loadTVUnmutedPref()'s comment on state.tv above
     var p = state.tv.player;
     if (p) {
       if (state.tv.playerProvider === "youtube") {
