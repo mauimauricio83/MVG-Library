@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.28.2">
+<link rel="stylesheet" href="styles.css?v=6.29.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -69,7 +69,7 @@
      the same "don't show again" flag. -->
 <div id="welcomeGate" class="welcome-gate" hidden>
   <div class="welcome-gate-thumbfield" id="welcomeGateThumbfield" aria-hidden="true"></div>
-  <div class="welcome-gate-stage">
+  <div class="welcome-gate-stage" id="welcomeGateMainStage">
     <img class="welcome-gate-logo" src="icons/icon-512.png" alt="" width="120" height="120">
     <h1 class="welcome-gate-title">MUSIC VIDEO LIBRARY</h1>
     <p class="welcome-gate-subtitle">Every music video, every credit, all in one place — searchable by director, artist, or song.</p>
@@ -95,6 +95,21 @@
       </div>
     </div>
     <p class="welcome-gate-note">Browsing and search work fine without signing in, too.</p>
+  </div>
+  <!-- Second step, shown after choosing Sign in/Guest above rather than
+       alongside it -- keeps the first screen's decision simple (one choice
+       at a time). Purely optional and skippable; feeds the Discover
+       section's weighting (see renderGenrePickGrid()/sampleDiscoverRows()
+       in app.js), never a hard filter -- same taste-lean idea whether set
+       here or edited later in Settings. -->
+  <div class="welcome-gate-stage welcome-gate-genre-stage" id="welcomeGateGenreStage" hidden>
+    <h2 class="welcome-gate-genre-title">What do you like?</h2>
+    <p class="welcome-gate-subtitle">Pick a few genres and Discover will lean toward them. Optional -- skip anytime, change it later in Settings.</p>
+    <div class="genre-pick-grid" id="welcomeGenrePickGrid"></div>
+    <div class="welcome-gate-actions">
+      <button type="button" class="welcome-gate-guest-btn" id="welcomeGenreSkipBtn">Skip for now</button>
+      <button type="button" class="welcome-gate-continue-btn" id="welcomeGenreContinueBtn">Continue</button>
+    </div>
   </div>
   <div class="welcome-gate-ad">
     <a href="https://hisong.io/MUSICVIDEOGUY5" target="_blank" rel="noopener noreferrer">
@@ -1033,6 +1048,13 @@
           <button type="button" class="settings-theme-btn" data-autoplay-choice="off">Off</button>
         </div>
       </div>
+      <div class="settings-row settings-row-genres">
+        <div>
+          <div class="settings-row-label">Genres you like</div>
+          <div class="settings-row-hint">Optional. Discover leans toward these, but still mixes in everything else.</div>
+        </div>
+        <div class="genre-pick-grid" id="settingsGenrePickGrid"></div>
+      </div>
       <div class="settings-row">
         <div>
           <div class="settings-row-label">Recently Viewed history</div>
@@ -1409,6 +1431,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.28.2"></script>
+<script src="app.js?v=6.29.0"></script>
 </body>
 </html>

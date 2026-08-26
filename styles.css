@@ -453,6 +453,91 @@ html, body {
   color: #6f6a7c;
 }
 
+.welcome-gate-genre-title {
+  font-family: "Archivo Black", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  color: #f5e300;
+  margin: 0;
+}
+
+/* Same pill/CTA look as .welcome-gate-google-btn, minus the icon gap --
+   kept as its own class rather than reused since "google-btn" on a plain
+   Continue button would be a misleading name. */
+.welcome-gate-continue-btn {
+  padding: 0.9em 1.8em;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  color: #18181b;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 34px rgba(168, 85, 247, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.welcome-gate-continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 46px rgba(168, 85, 247, 0.65);
+}
+
+/* Shared by the welcome gate's genre step and Settings' "Genres you like"
+   row (see renderGenrePickGrid() in app.js) -- same markup, two different
+   visual contexts, so the base rule below uses the normal theme-aware vars
+   (correct for Settings, which sits on the regular page) and the
+   .welcome-gate-scoped rule after it overrides those for the gate's own
+   always-dark bespoke palette (see .welcome-gate above). */
+.genre-pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.genre-pick-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.genre-pick-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.genre-pick-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.welcome-gate .genre-pick-grid {
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.welcome-gate .genre-pick-chip {
+  border-color: rgba(201, 166, 250, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8d3e0;
+}
+
+.welcome-gate .genre-pick-chip:hover {
+  border-color: #c9a6fa;
+  color: #fff;
+}
+
+.welcome-gate .genre-pick-chip.active {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: #fff;
+}
+
 /* Deliberately its own class rather than reusing .ad-placeholder --
    els.adPlaceholder in app.js resolves via document.querySelector(".ad-
    placeholder"), the FIRST match in the document, and this gate sits
@@ -6773,6 +6858,19 @@ body.is-searching #viewersChoiceSection {
 .settings-row-label {
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+/* The genre pill grid needs its own full-width line below the label/hint
+   rather than sitting beside them like every other row's compact control
+   (a toggle, a single button) -- overrides the base row's side-by-side
+   flex direction for just this one row. */
+.settings-row-genres {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings-row-genres .genre-pick-grid {
+  margin-top: 10px;
 }
 
 .settings-row-hint {

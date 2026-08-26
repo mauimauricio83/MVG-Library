@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.28.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.29.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -208,6 +208,12 @@
     welcomeGoogleBtn: document.getElementById("welcomeGoogleBtn"),
     welcomeGuestBtn: document.getElementById("welcomeGuestBtn"),
     welcomeGateThumbfield: document.getElementById("welcomeGateThumbfield"),
+    welcomeGateMainStage: document.getElementById("welcomeGateMainStage"),
+    welcomeGateGenreStage: document.getElementById("welcomeGateGenreStage"),
+    welcomeGenrePickGrid: document.getElementById("welcomeGenrePickGrid"),
+    welcomeGenreSkipBtn: document.getElementById("welcomeGenreSkipBtn"),
+    welcomeGenreContinueBtn: document.getElementById("welcomeGenreContinueBtn"),
+    settingsGenrePickGrid: document.getElementById("settingsGenrePickGrid"),
     topBarSignInBtn: document.getElementById("topBarSignInBtn"),
     signOutBtn: document.getElementById("signOutBtn"),
     headerAccount: document.getElementById("headerAccount"),
@@ -1300,6 +1306,56 @@
   var RECENT_KEY = "mvg-recently-viewed";
   var RECENT_MAX = 12;
   var SHARE_FAVORITES_KEY = "mvg-share-favorites";
+  // Optional taste signal (TV_GENRE_GROUPS keys, see above) collected at
+  // onboarding and editable later in Settings -- feeds sampleDiscoverRows()'
+  // weighting only, never a hard filter, and never drives search/browse/TV
+  // Mode. Same localStorage-first-then-Firestore-sync shape as favorites.
+  var PREFERRED_GENRES_KEY = "mvg-preferred-genres";
+
+  function loadPreferredGenres() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(PREFERRED_GENRES_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function savePreferredGenres(list) {
+    try {
+      localStorage.setItem(PREFERRED_GENRES_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  function togglePreferredGenre(key) {
+    var list = loadPreferredGenres();
+    var idx = list.indexOf(key);
+    if (idx === -1) list.push(key); else list.splice(idx, 1);
+    savePreferredGenres(list);
+    pushToFirestore();
+    return list;
+  }
+
+  // Shared by the welcome gate's genre step and Settings' "Genres you
+  // like" row -- same markup/behavior, two different mount points.
+  function renderGenrePickGrid(container) {
+    if (!container) return;
+    var selected = loadPreferredGenres();
+    container.innerHTML = TV_GENRE_GROUPS.map(function (g) {
+      return '<button type="button" class="genre-pick-chip' + (selected.indexOf(g.key) !== -1 ? " active" : "") + '" data-genre-key="' + g.key + '">' + escapeHtml(g.label) + "</button>";
+    }).join("");
+  }
+
+  function bindGenrePickGrid(container) {
+    if (!container) return;
+    container.addEventListener("click", function (e) {
+      var btn = e.target.closest(".genre-pick-chip");
+      if (!btn) return;
+      togglePreferredGenre(btn.getAttribute("data-genre-key"));
+      btn.classList.toggle("active");
+      if (state.rows.length) renderDiscoverSection(state.rows);
+    });
+  }
 
   function loadFavorites() {
     try {
@@ -1488,7 +1544,8 @@
     db.collection("users").doc(currentUser.uid).set({
       favorites: loadFavorites(),
       recentlyViewed: loadRecentlyViewed(),
-      playlists: loadPlaylists()
+      playlists: loadPlaylists(),
+      preferredGenres: loadPreferredGenres()
     }, { merge: true }).catch(function (err) {
       console.error("Firestore sync (push) failed:", err);
     });
@@ -1539,6 +1596,7 @@
       var remoteFavorites = Array.isArray(remote.favorites) ? remote.favorites : [];
       var remoteRecent = Array.isArray(remote.recentlyViewed) ? remote.recentlyViewed : [];
       var remotePlaylists = Array.isArray(remote.playlists) ? remote.playlists : [];
+      var remoteGenres = Array.isArray(remote.preferredGenres) ? remote.preferredGenres : [];
       showVoterName = !!remote.showVoterName;
       applyVoterNameToggle();
       voteCredits = typeof remote.voteCredits === "number" ? remote.voteCredits : 0;
@@ -1554,6 +1612,7 @@
         localFavorites.filter(function (id) { return remoteFavorites.indexOf(id) === -1; })
       );
       var mergedRecent = remoteRecent.length ? remoteRecent : localRecent;
+      var mergedGenres = remoteGenres.length ? remoteGenres : loadPreferredGenres();
       // Remote wins for a playlist that exists on both (by id); local-only
       // playlists (created signed-out, or on a device that hasn't synced
       // yet) get appended rather than dropped.
@@ -1567,12 +1626,15 @@
         localStorage.setItem(RECENT_KEY, JSON.stringify(mergedRecent.slice(0, RECENT_MAX)));
       } catch (e) {}
       savePlaylists(mergedPlaylists);
+      savePreferredGenres(mergedGenres);
 
       pushToFirestore();
       renderFavoritesStrip(state.rows);
       renderRecentList(state.rows);
       renderPlaylistsPage();
       renderTVCustomPane();
+      renderGenrePickGrid(els.settingsGenrePickGrid);
+      if (state.rows.length) renderDiscoverSection(state.rows);
     }).catch(function (err) {
       console.error("Firestore sync (pull) failed:", err);
     });
@@ -3845,13 +3907,47 @@
   // fewer than `count` unseen rows remain, starts a fresh lap through the
   // whole catalog instead of just dead-ending once everything's been shown
   // once -- the whole point of "unbounded".
+  //
+  // With preferred genres set (see PREFERRED_GENRES_KEY), the sample leans
+  // toward them at DISCOVER_PREFERRED_RATIO instead of picking uniformly --
+  // deliberately a WEIGHT, not a filter: the rest of the catalog stays
+  // mixed in, and a real preference never means fewer results (a short
+  // preferred pool gets backfilled from everything else). That's what
+  // keeps this an honest "no algorithm" section rather than a quiet
+  // recommendation engine wearing a browsing UI -- it's a taste you
+  // declared and can change anytime in Settings, not an engagement model
+  // guessing at you.
+  var DISCOVER_PREFERRED_RATIO = 0.7;
+
   function sampleDiscoverRows(count) {
     var pool = state.rows.filter(function (r) { return hasVideo(r) && !discoverShownSet[r.rowNum]; });
     if (pool.length < count) {
       discoverShownSet = {};
       pool = state.rows.filter(function (r) { return hasVideo(r); });
     }
-    return shuffle(pool).slice(0, count);
+
+    var preferred = loadPreferredGenres();
+    if (!preferred.length) return shuffle(pool).slice(0, count);
+
+    var preferredSet = {};
+    preferred.forEach(function (key) { preferredSet[key] = true; });
+    var preferredPool = [];
+    var otherPool = [];
+    pool.forEach(function (r) {
+      var isPreferred = tvGenreGroupsForRow(r).some(function (g) { return preferredSet[g]; });
+      (isPreferred ? preferredPool : otherPool).push(r);
+    });
+
+    var wantPreferred = Math.round(count * DISCOVER_PREFERRED_RATIO);
+    var picks = shuffle(preferredPool).slice(0, wantPreferred)
+      .concat(shuffle(otherPool).slice(0, count - Math.min(wantPreferred, preferredPool.length)));
+    if (picks.length < count) {
+      var used = {};
+      picks.forEach(function (r) { used[r.rowNum] = true; });
+      var leftover = pool.filter(function (r) { return !used[r.rowNum]; });
+      picks = picks.concat(shuffle(leftover).slice(0, count - picks.length));
+    }
+    return shuffle(picks);
   }
 
   function appendDiscoverRows(count) {
@@ -7936,6 +8032,7 @@
     applyAutoplayToggle(loadAutoplayPref());
     els.adminNormieRow.hidden = !state.isAdmin;
     applyAdminNormieToggle();
+    renderGenrePickGrid(els.settingsGenrePickGrid);
     els.settingsModal.hidden = false;
     els.settingsModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
@@ -12591,15 +12688,28 @@
     try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch (e) {}
   }
 
+  // Second step, shown after Sign in/Guest rather than alongside it -- one
+  // decision at a time. Optional/skippable either way; only ever feeds
+  // Discover's weighting (see sampleDiscoverRows()), never a hard filter.
+  function showWelcomeGenreStep() {
+    els.welcomeGateMainStage.hidden = true;
+    renderGenrePickGrid(els.welcomeGenrePickGrid);
+    els.welcomeGateGenreStage.hidden = false;
+  }
+
   els.welcomeGoogleBtn.addEventListener("click", function () {
     auth.signInWithPopup(googleProvider).then(function () {
-      dismissWelcomeGate();
+      showWelcomeGenreStep();
     }).catch(function (err) {
       console.error("Sign-in failed:", err);
     });
   });
 
-  els.welcomeGuestBtn.addEventListener("click", dismissWelcomeGate);
+  els.welcomeGuestBtn.addEventListener("click", showWelcomeGenreStep);
+  els.welcomeGenreSkipBtn.addEventListener("click", dismissWelcomeGate);
+  els.welcomeGenreContinueBtn.addEventListener("click", dismissWelcomeGate);
+  bindGenrePickGrid(els.welcomeGenrePickGrid);
+  bindGenrePickGrid(els.settingsGenrePickGrid);
 
   auth.onAuthStateChanged(function (user) {
     if (!welcomeGateChecked) {

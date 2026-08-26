@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.29.0 — current
+- Added optional genre preferences: a new onboarding step (right after Sign in/Continue as Guest) and a "Genres you like" row in Settings let you check off the genres you're into. Purely optional and editable anytime -- it only weights the homepage Discover section toward those genres (70% of picks lean preferred, still mixing in everything else, backfilled from the rest of the catalog if a narrow preference runs short), it never filters or drives search, browse, or TV Mode. No preference set means Discover behaves exactly as it always has.
+
 ## v6.28.2 — current
 - Fixed: opening a video via a deep link (e.g. "Open in the MVG Library" from an SEO hub/video page) and then closing it with a backdrop click could leave the whole page permanently unscrollable. Root cause: `fetchData()` races a cached-snapshot render against the network fetch, and both paths call the same deep-link-opening code -- with a cache already warm (any return visit), it ran twice, calling the lightbox's scroll-lock twice for one close. `applyDeepLinkFromHash()` now skips re-opening a row that's already the open lightbox.
 - Fixed: the admin Edit Entry form could open scrolled to the middle of the modal instead of the top -- it was resetting scrollTop on the form element itself, but the form doesn't scroll, its `.lightbox-panel` ancestor does (same pattern every other modal already uses correctly).
