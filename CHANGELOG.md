@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.33.1 — current
+- Reworked the desktop TV Mode side panel's relocated controls into three rows instead of one long stack: country filter + Clear filters; 4:3 + CC grouped together, then Vote; power switch + Report issue. Also fixed the Vote button's text sitting off-center once it got bigger -- its inherited fixed height was too short for the new padding, pushing "Vote" up instead of centering it.
+
 ## v6.33.0 — current
 - Fixed TV Mode's CC button showing the wrong state -- captions could be visibly playing while the button read "off," or vice versa. The enable path wasn't passing an explicit language to YouTube's captions API (an empty track selection doesn't reliably show anything), and the disable path relied on `unloadModule` alone, which doesn't reliably stop captions a fresh player started with on its own. Both paths now explicitly set/clear the caption track.
 - Desktop-only TV Mode layout: the power switch (bigger), Clear filters, country filter, Report issue, Vote (bigger), 4:3 (bigger), and CC controls now live in the side panel itself, below the Genre/Era/Custom/Channel tabs -- real relocated space, not a duplicate. Genre and Custom now scroll internally (capped to a fixed height) instead of stretching the whole panel taller, so there's room for the new section without disturbing Era's own full-height dial. Mobile is untouched -- everything stays exactly where it's always been.

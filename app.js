@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.33.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.33.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -141,6 +141,10 @@
     tvSidePanel: document.getElementById("tvSidePanel"),
     tvSidePanelSlot: document.getElementById("tvSidePanelSlot"),
     tvSidePanelControls: document.getElementById("tvSidePanelControls"),
+    tvSidePanelRow1: document.getElementById("tvSidePanelRow1"),
+    tvSidePanelRow2: document.getElementById("tvSidePanelRow2"),
+    tvSidePanelRow2Group: document.getElementById("tvSidePanelRow2Group"),
+    tvSidePanelRow3: document.getElementById("tvSidePanelRow3"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
@@ -4944,22 +4948,33 @@
   // time this ever runs, so putting it back (closeTVModal(), or the window
   // shrinking below the mobile breakpoint while TV Mode is still open) is
   // always exact regardless of how many times it's moved back and forth.
-  var TV_SIDE_PANEL_BORROWED_IDS = ["tvPowerSwitch", "clearFiltersBtn", "countryFilter", "tvReportLink", "tvVoteBtn", "tvCropBtn", "tvCcBtn"];
+  // Three rows: country filter + Clear filters; 4:3 + CC grouped tight
+  // then Vote; power switch + Report issue -- see the HTML comment above
+  // #tvSidePanelControls.
+  var TV_SIDE_PANEL_BORROWED = [
+    { id: "countryFilter", dest: "tvSidePanelRow1" },
+    { id: "clearFiltersBtn", dest: "tvSidePanelRow1" },
+    { id: "tvCropBtn", dest: "tvSidePanelRow2Group" },
+    { id: "tvCcBtn", dest: "tvSidePanelRow2Group" },
+    { id: "tvVoteBtn", dest: "tvSidePanelRow2" },
+    { id: "tvPowerSwitch", dest: "tvSidePanelRow3" },
+    { id: "tvReportLink", dest: "tvSidePanelRow3" }
+  ];
   var tvSidePanelBorrowedHomes = null;
   var tvSidePanelControlsMoved = false;
 
   function homeTVSidePanelBorrows() {
     if (tvSidePanelBorrowedHomes) return;
-    tvSidePanelBorrowedHomes = TV_SIDE_PANEL_BORROWED_IDS.map(function (id) {
-      var el = els[id];
-      return { el: el, parent: el.parentNode, nextSibling: el.nextSibling };
+    tvSidePanelBorrowedHomes = TV_SIDE_PANEL_BORROWED.map(function (b) {
+      var el = els[b.id];
+      return { el: el, dest: els[b.dest], parent: el.parentNode, nextSibling: el.nextSibling };
     });
   }
 
   function moveTVSidePanelControlsIn() {
     homeTVSidePanelBorrows();
     if (tvSidePanelControlsMoved) return;
-    tvSidePanelBorrowedHomes.forEach(function (h) { els.tvSidePanelControls.appendChild(h.el); });
+    tvSidePanelBorrowedHomes.forEach(function (h) { h.dest.appendChild(h.el); });
     tvSidePanelControlsMoved = true;
   }
 

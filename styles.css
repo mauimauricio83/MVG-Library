@@ -4478,12 +4478,30 @@ body.is-searching #viewersChoiceSection {
 .tv-side-panel-controls {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  gap: 16px;
   width: 100%;
   margin-top: auto;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+/* Each row spreads its (usually 2) direct children -- country filter vs.
+   Clear filters; the 4:3+CC group vs. Vote; power switch vs. Report
+   issue -- to opposite ends, matching the reference layout. */
+.tv-side-panel-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+/* Keeps 4:3 and CC adjacent as one unit within their row instead of also
+   being spread apart by the row's own space-between. */
+.tv-side-panel-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 640px) {
@@ -4519,15 +4537,24 @@ body.is-searching #viewersChoiceSection {
      room for it now that they're not squeezed into a single dense row
      under the video. transform:scale on the power switch (rather than
      resizing its internal track/knob/label pieces individually) keeps
-     its own proportions exactly as designed. */
+     its own proportions -- and its normal horizontal ON/OFF layout --
+     exactly as designed, just bigger. */
   .tv-side-panel-controls .tv-power-switch {
     transform: scale(1.35);
     transform-origin: left center;
-    margin: 6px 0 10px 6px;
   }
 
+  /* height:auto overrides the base .tv-vote-btn's fixed 28px -- left in
+     place, the extra padding below had nowhere to go inside a box too
+     short for it, pushing "Vote" up off-center instead of centering in a
+     box that actually fits it. inline-flex centering is a second,
+     independent safety net for the same thing. */
   .tv-side-panel-controls .tv-vote-btn {
-    padding: 10px 22px;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
     font-size: 1rem;
   }
 
