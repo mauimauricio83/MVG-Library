@@ -4469,6 +4469,75 @@ body.is-searching #viewersChoiceSection {
   gap: 10px;
 }
 
+/* Desktop-only home for the controls moveTVSidePanelControlsIn() (app.js)
+   relocates here -- power switch, Clear filters, country filter, Report
+   issue, Vote, 4:3, CC. Empty (and so invisible, no explicit hide needed)
+   on mobile, since nothing ever moves into it there; the max-width query
+   below is just a defensive belt-and-suspenders match for the same
+   breakpoint isMobileViewport() uses in JS. */
+.tv-side-panel-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .tv-side-panel-controls {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) {
+  /* Era's dial (.tv-year-dial) is left alone -- centered in whatever
+     height .tv-side-panel ends up with, same as before -- and its
+     natural footprint is what #tvSidePanelControls' bottom-pinned space
+     is sized against. Genre/Custom/Channel could each run much longer
+     than that (the genre grid is 10 rows; Custom lists an entire
+     playlist), so instead of letting whichever one is open stretch the
+     whole panel taller than Era ever would, they scroll internally at
+     the same 320px cap .tv-channel-comments (styles.css, further up)
+     already uses for exactly this reason. align-items:flex-start swaps
+     out .tv-custom-pane's centered empty-state layout once there's a
+     real (potentially scrolling) list to show instead. */
+  .tv-genre-grid:not([hidden]) {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .tv-custom-pane:not([hidden]) {
+    max-height: 320px;
+    overflow-y: auto;
+    align-items: flex-start;
+  }
+
+  /* Bigger, easier-to-hit versions of the same controls -- there's real
+     room for it now that they're not squeezed into a single dense row
+     under the video. transform:scale on the power switch (rather than
+     resizing its internal track/knob/label pieces individually) keeps
+     its own proportions exactly as designed. */
+  .tv-side-panel-controls .tv-power-switch {
+    transform: scale(1.35);
+    transform-origin: left center;
+    margin: 6px 0 10px 6px;
+  }
+
+  .tv-side-panel-controls .tv-vote-btn {
+    padding: 10px 22px;
+    font-size: 1rem;
+  }
+
+  .tv-side-panel-controls .tv-crop-btn {
+    height: 38px;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+}
+
 /* Fullscreen aspect handling -- default (no .tv-fs-4-3) fills the whole
    fullscreen viewport edge to edge (16:9-ish; plain black letterboxing
    if the screen isn't exactly 16:9, same as any video player) and hides

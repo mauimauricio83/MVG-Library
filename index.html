@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.32.1">
+<link rel="stylesheet" href="styles.css?v=6.33.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -359,6 +359,14 @@
         <p class="tv-channel-status" id="tvChannelStatus">Tuning in…</p>
         <div class="tv-channel-comments" id="tvChannelComments"></div>
       </div>
+      <!-- Desktop only -- the power switch, Clear filters, country filter,
+           Report issue, Vote, 4:3, and CC controls are physically MOVED in
+           here from their normal spot in .filters-toggle-row/.filters-row
+           (see moveTVSidePanelControlsIn()/moveTVSidePanelControlsHome() in
+           app.js), which also puts them back for mobile or when TV Mode
+           closes. Empty on mobile -- nothing ever gets moved into it there,
+           so it takes no space. -->
+      <div class="tv-side-panel-controls" id="tvSidePanelControls"></div>
     </div>
   </div>
 
@@ -1484,6 +1492,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.32.1"></script>
+<script src="app.js?v=6.33.0"></script>
 </body>
 </html>

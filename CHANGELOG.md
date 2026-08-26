@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.33.0 — current
+- Fixed TV Mode's CC button showing the wrong state -- captions could be visibly playing while the button read "off," or vice versa. The enable path wasn't passing an explicit language to YouTube's captions API (an empty track selection doesn't reliably show anything), and the disable path relied on `unloadModule` alone, which doesn't reliably stop captions a fresh player started with on its own. Both paths now explicitly set/clear the caption track.
+- Desktop-only TV Mode layout: the power switch (bigger), Clear filters, country filter, Report issue, Vote (bigger), 4:3 (bigger), and CC controls now live in the side panel itself, below the Genre/Era/Custom/Channel tabs -- real relocated space, not a duplicate. Genre and Custom now scroll internally (capped to a fixed height) instead of stretching the whole panel taller, so there's room for the new section without disturbing Era's own full-height dial. Mobile is untouched -- everything stays exactly where it's always been.
+
 ## v6.32.1 — current
 - TV Mode now remembers once you've unmuted it. A genuinely fresh browser still has to start muted (the first play() call happens inside YouTube/Vimeo's async onReady, outside any user gesture, so browsers can silently block it unmuted) -- but after your first real click on Mute, every later TV Mode session on that browser starts unmuted automatically, instead of making you re-click Mute every single time.
 

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.32.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.33.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -140,6 +140,7 @@
     tvFsRoot: document.getElementById("tvFsRoot"),
     tvSidePanel: document.getElementById("tvSidePanel"),
     tvSidePanelSlot: document.getElementById("tvSidePanelSlot"),
+    tvSidePanelControls: document.getElementById("tvSidePanelControls"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
@@ -4931,6 +4932,59 @@
     els.genreFilter.value = state.genre;
   }
 
+  // Desktop-only: the power switch, Clear filters, country filter, Report
+  // issue, Vote, 4:3, and CC controls physically relocate from their normal
+  // spot in .filters-toggle-row/.filters-row into the side panel's own
+  // #tvSidePanelControls, below the Genre/Era/Custom/Channel tab content --
+  // real, actual, dedicated space, not just a duplicate/clone (which would
+  // mean two Vote buttons, two 4:3 buttons, etc. to keep in sync everywhere
+  // else in the codebase that touches them). Mobile keeps them exactly
+  // where they've always been; nothing here ever runs there. Each
+  // element's original {parent, nextSibling} is captured once, the first
+  // time this ever runs, so putting it back (closeTVModal(), or the window
+  // shrinking below the mobile breakpoint while TV Mode is still open) is
+  // always exact regardless of how many times it's moved back and forth.
+  var TV_SIDE_PANEL_BORROWED_IDS = ["tvPowerSwitch", "clearFiltersBtn", "countryFilter", "tvReportLink", "tvVoteBtn", "tvCropBtn", "tvCcBtn"];
+  var tvSidePanelBorrowedHomes = null;
+  var tvSidePanelControlsMoved = false;
+
+  function homeTVSidePanelBorrows() {
+    if (tvSidePanelBorrowedHomes) return;
+    tvSidePanelBorrowedHomes = TV_SIDE_PANEL_BORROWED_IDS.map(function (id) {
+      var el = els[id];
+      return { el: el, parent: el.parentNode, nextSibling: el.nextSibling };
+    });
+  }
+
+  function moveTVSidePanelControlsIn() {
+    homeTVSidePanelBorrows();
+    if (tvSidePanelControlsMoved) return;
+    tvSidePanelBorrowedHomes.forEach(function (h) { els.tvSidePanelControls.appendChild(h.el); });
+    tvSidePanelControlsMoved = true;
+  }
+
+  function moveTVSidePanelControlsHome() {
+    if (!tvSidePanelControlsMoved || !tvSidePanelBorrowedHomes) return;
+    tvSidePanelBorrowedHomes.forEach(function (h) {
+      if (h.nextSibling && h.nextSibling.parentNode === h.parent) h.parent.insertBefore(h.el, h.nextSibling);
+      else h.parent.appendChild(h.el);
+    });
+    tvSidePanelControlsMoved = false;
+  }
+
+  // Called after opening (and on resize while still open) -- decides
+  // in vs. home purely from the current viewport, same breakpoint the
+  // side panel's own desktop-vs-stacked CSS uses.
+  function applyTVSidePanelControlsLayout() {
+    if (els.tvModal.hidden) return;
+    if (isMobileViewport()) moveTVSidePanelControlsHome();
+    else moveTVSidePanelControlsIn();
+  }
+
+  window.addEventListener("resize", function () {
+    if (!els.tvModal.hidden) applyTVSidePanelControlsLayout();
+  });
+
   // TV Mode is a lightbox (matching the video lightbox's default size) that
   // bundles the shared filters and the ad banner in with the player, rather
   // than living inline on the page -- opening it borrows #filtersGroup from
@@ -4947,6 +5001,7 @@
     els.tvSidePanelSlot.appendChild(els.tvSidePanel);
     enterTVFilterMode();
     els.tvModal.hidden = false;
+    applyTVSidePanelControlsLayout();
     els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
     lockBodyScroll();
     pushModalHistory();
@@ -4991,6 +5046,7 @@
     state.tvCustomPool = null;
     state.tvCustomPlaylistId = null;
     exitTVFilterMode();
+    moveTVSidePanelControlsHome(); // before the moves below, or these would get carried into #tvSidePanelControls's new resting spot instead of back to their real homes
     els.filtersGroup.appendChild(els.tvSidePanel); // restore its nesting inside filtersGroup before moving that back
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
@@ -6127,9 +6183,23 @@
       if (state.tv.playerProvider === "youtube") {
         if (enabled) {
           if (p.loadModule) p.loadModule("captions");
+          // {} here (instead of an explicit language, per the comment
+          // above) doesn't reliably select a real track -- loadModule
+          // fires and the button goes active, but no caption text
+          // actually renders, so a session that toggled CC once already
+          // and then judged "on" by whether text was showing could easily
+          // read the states backwards.
+          if (p.setOption) p.setOption("captions", "track", { languageCode: "en" });
+        } else {
+          // unloadModule() alone doesn't reliably stop captions that are
+          // already showing -- a fresh player can start with YouTube's own
+          // default caption state (independent of anything we've called),
+          // and our very first setTVCaptions(false) on that track then had
+          // no real track selection to unload in the first place. Clearing
+          // the track explicitly is the actual "turn off" -- unloadModule
+          // on top just tidies up the module itself.
           if (p.setOption) p.setOption("captions", "track", {});
-        } else if (p.unloadModule) {
-          p.unloadModule("captions");
+          if (p.unloadModule) p.unloadModule("captions");
         }
       } else if (enabled) {
         if (p.enableTextTrack) p.enableTextTrack("en").catch(function () {});
