@@ -1933,6 +1933,34 @@ html, body {
   z-index: 1;
 }
 
+/* One-click remove (see createMediaStrip()'s opts.onRemove in app.js) --
+   Playlists' detail strip only, so My Queue gets the same easy per-item
+   removal YouTube's Watch Later has. Always visible (not hover-only) so it
+   works on touch, same reasoning as the vote button overlay above; top-right
+   keeps it clear of the vote button's bottom-right and the sponsored
+   badge's top-left. */
+.media-strip-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.media-strip-remove-btn:hover {
+  background: #c4293f;
+}
+
 .media-vote-btn:hover {
   filter: brightness(0.92);
 }

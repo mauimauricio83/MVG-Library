@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.30.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.31.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1447,6 +1447,7 @@
   }
 
   function renamePlaylist(id, name) {
+    if (id === MY_QUEUE_ID) return; // fixed name, see MY_QUEUE_ID below -- UI already hides the Rename button for it
     var list = loadPlaylists();
     for (var i = 0; i < list.length; i++) {
       if (list[i].id === id) {
@@ -1460,9 +1461,47 @@
   }
 
   function deletePlaylist(id) {
+    if (id === MY_QUEUE_ID) return; // can't delete My Queue, same as YouTube's Watch Later -- UI already hides the Delete button for it
     var list = loadPlaylists().filter(function (p) { return p.id !== id; });
     savePlaylists(list);
     pushToFirestore();
+  }
+
+  // "My Queue" -- YouTube's Watch Later, copied: a special playlist that
+  // always exists, always sorts first everywhere playlists are listed, and
+  // can't be renamed or deleted. It's otherwise a completely normal
+  // playlist entry (same rowNums-array shape) so every existing playlist
+  // function (findPlaylist, togglePlaylistEntry, the add-to-playlist
+  // popover, TV Mode's Custom pane, etc.) already works with it for free --
+  // this only adds the "always exists" and "always first" guarantees.
+  var MY_QUEUE_ID = "my-queue";
+  var MY_QUEUE_NAME = "My Queue";
+
+  // Idempotent -- safe to call as often as needed (finishLoad() alone can
+  // run twice, see fetchData()'s cache-then-network race). Prepends rather
+  // than appends so it's first even before any display-time sort runs.
+  function ensureMyQueue() {
+    var list = loadPlaylists();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === MY_QUEUE_ID) return;
+    }
+    list.unshift({ id: MY_QUEUE_ID, name: MY_QUEUE_NAME, rowNums: [], updatedAt: Date.now() });
+    savePlaylists(list);
+  }
+
+  // Every UI that lists playlists (the add-to-playlist popover, the
+  // Playlists page's chip row) should read through this instead of
+  // loadPlaylists() directly, so My Queue sorts first regardless of
+  // storage order -- a Firestore merge (syncFromFirestore()) could
+  // otherwise put a remote playlist ahead of it.
+  function loadPlaylistsForDisplay() {
+    var list = loadPlaylists();
+    var queue = null;
+    var rest = [];
+    list.forEach(function (p) {
+      if (p.id === MY_QUEUE_ID) queue = p; else rest.push(p);
+    });
+    return queue ? [queue].concat(rest) : rest;
   }
 
   // One-time default playlists, seeded for every browser/account the
@@ -1638,6 +1677,7 @@
         localStorage.setItem(RECENT_KEY, JSON.stringify(mergedRecent.slice(0, RECENT_MAX)));
       } catch (e) {}
       savePlaylists(mergedPlaylists);
+      ensureMyQueue(); // in case neither side had one yet (pre-feature account, fresh device)
       savePreferredGenres(mergedGenres);
 
       pushToFirestore();
@@ -1855,6 +1895,7 @@
     renderFavoritesStrip(state.rows);
     renderSpotlightSidebar(state.rows);
     renderExtraPicksSections(state.rows);
+    ensureMyQueue();
     seedDefaultPlaylists(state.rows);
     startViewersChoice();
     renderDiscoverSection(state.rows);
@@ -2311,12 +2352,16 @@
   }
 
   // Shared factory for the arrow-paginated media strips (Latest Submissions,
-  // Featured, Favorites). opts.emptyMessage keeps the section visible (with
-  // that message in place of cards) instead of hiding it when there's no
-  // data -- for Favorites, now its own dedicated page rather than a Home
-  // section that only shows up once you have favorites. opts.showDescription
-  // adds a clamped description line per card (Favorites only, at the user's
-  // request -- Latest/Featured stay as they were).
+  // Featured, Favorites, Playlists). opts.emptyMessage keeps the section
+  // visible (with that message in place of cards) instead of hiding it when
+  // there's no data -- for Favorites, now its own dedicated page rather
+  // than a Home section that only shows up once you have favorites.
+  // opts.showDescription adds a clamped description line per card
+  // (Favorites/Playlists only, at the user's request -- Latest/Featured
+  // stay as they were). opts.onRemove(rowNum) adds a small per-card ✕
+  // button (top-right of the thumb) for one-click removal -- Playlists'
+  // detail strip is the only caller today, so My Queue gets the same easy
+  // removal YouTube's Watch Later has, but any strip can opt in.
   function createMediaStrip(sectionEl, opts) {
     opts = opts || {};
     var track = sectionEl.querySelector(".media-strip-track");
@@ -2332,6 +2377,11 @@
       var voteBtn = e.target.closest(".media-vote-btn");
       if (voteBtn) {
         voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
+        return;
+      }
+      var removeBtn = e.target.closest(".media-strip-remove-btn");
+      if (removeBtn) {
+        if (opts.onRemove) opts.onRemove(removeBtn.getAttribute("data-row"));
         return;
       }
       var card = e.target.closest(".media-strip-card");
@@ -2368,9 +2418,12 @@
               ? '<span class="sponsored-badge">Sponsored</span>'
               : "";
             var voteBtn = opts.showVoteButton ? mediaVoteBtnHtml(row.rowNum, "media-vote-btn--overlay") : "";
+            var removeBtn = opts.onRemove
+              ? '<button type="button" class="media-strip-remove-btn" data-row="' + escapeHtml(row.rowNum) + '" title="Remove" aria-label="Remove from list">✕</button>'
+              : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + removeBtn + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
                 descLine +
@@ -2529,18 +2582,35 @@
   // the favorites data functions). The page has two levels: a chip row
   // listing every playlist, and a detail strip (reusing createMediaStrip(),
   // same as Favorites) for whichever one's selected.
+
+  // Small clock icon marking My Queue in both the chip row and the
+  // add-to-playlist popover -- same plain-stroke-SVG convention as
+  // ICON_TRASH etc. elsewhere.
+  var ICON_QUEUE_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
+
   var playlistDetailStrip = createMediaStrip(els.playlistDetail, {
     emptyMessage: "Empty playlist, waiting for its first track — the + button on any video will do it.",
-    showDescription: true
+    showDescription: true,
+    // Per-card remove (see createMediaStrip()'s opts.onRemove) -- the easy
+    // one-click removal My Queue needs (YouTube's Watch Later has the same
+    // affordance); every other playlist gets it too for free since they
+    // all share this one strip instance.
+    onRemove: function (rowNum) {
+      togglePlaylistEntry(state.selectedPlaylistId, rowNum);
+      renderPlaylistDetail();
+      refreshPlaylistUIAfterChange();
+    }
   });
 
   function renderPlaylistsPage() {
-    var list = loadPlaylists();
+    var list = loadPlaylistsForDisplay();
     els.playlistsEmptyMsg.hidden = !!list.length;
     els.playlistsChipRow.innerHTML = list.map(function (p) {
       var active = p.id === state.selectedPlaylistId ? " is-active" : "";
+      var isQueue = p.id === MY_QUEUE_ID;
+      var nameHtml = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(p.name);
       return '<button type="button" class="playlists-chip' + active + '" data-id="' + escapeHtml(p.id) + '">' +
-        escapeHtml(p.name) + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
+        nameHtml + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
     }).join("");
 
     if (!list.length) {
@@ -2559,7 +2629,12 @@
       els.playlistDetail.hidden = true;
       return;
     }
-    els.playlistDetailName.textContent = playlist.name;
+    var isQueue = playlist.id === MY_QUEUE_ID;
+    els.playlistDetailName.innerHTML = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(playlist.name);
+    // Fixed name, can't be deleted -- same as YouTube's Watch Later (see
+    // renamePlaylist()/deletePlaylist()'s own MY_QUEUE_ID guards).
+    els.playlistRenameBtn.hidden = isQueue;
+    els.playlistDeleteBtn.hidden = isQueue;
     var rows = playlist.rowNums.map(findRowByNum).filter(Boolean);
     playlistDetailStrip.render(rows);
     Array.prototype.forEach.call(els.playlistsChipRow.querySelectorAll(".playlists-chip"), function (chip) {
@@ -2639,16 +2714,18 @@
   var addPlaylistRowNum = null;
 
   function renderAddPlaylistList() {
-    var list = loadPlaylists();
+    var list = loadPlaylistsForDisplay();
     if (!list.length) {
       els.addPlaylistList.innerHTML = '<p class="add-playlist-empty">No playlists yet -- create one below.</p>';
       return;
     }
     els.addPlaylistList.innerHTML = list.map(function (p) {
       var inIt = p.rowNums.indexOf(addPlaylistRowNum) !== -1;
+      var isQueue = p.id === MY_QUEUE_ID;
+      var nameHtml = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(p.name);
       return '<button type="button" class="add-playlist-item' + (inIt ? " is-in" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
         '<span class="add-playlist-item-check">' + (inIt ? "✓" : "") + '</span>' +
-        '<span class="add-playlist-item-name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="add-playlist-item-name">' + nameHtml + '</span>' +
         '<span class="add-playlist-item-count">' + p.rowNums.length + "</span>" +
         "</button>";
     }).join("");
@@ -3649,15 +3726,16 @@
 
   // ---- TV Mode's Custom tab: pick a playlist as the channel's source ---
   function renderTVCustomPane() {
-    var list = loadPlaylists();
+    var list = loadPlaylistsForDisplay();
     if (!list.length) {
       els.tvCustomList.innerHTML = '<p class="tv-custom-empty">No playlists yet. Add videos to one via the + button on a video, or save a search as a playlist from the Search page.</p>';
       return;
     }
     els.tvCustomList.innerHTML = list.map(function (p) {
       var active = state.tvCustomPlaylistId === p.id ? " is-active" : "";
+      var nameHtml = (p.id === MY_QUEUE_ID ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(p.name);
       return '<button type="button" class="tv-custom-item' + active + '" data-id="' + escapeHtml(p.id) + '">' +
-        '<span class="tv-custom-item-name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="tv-custom-item-name">' + nameHtml + '</span>' +
         '<span class="tv-custom-item-count">' + p.rowNums.length + "</span>" +
         "</button>";
     }).join("");

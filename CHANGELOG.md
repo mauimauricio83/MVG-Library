@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.31.0 — current
+- Added "My Queue" -- YouTube's Watch Later, copied: a special playlist that always exists, always sorts first in the add-to-playlist popover/Playlists page/TV Mode's Custom pane, and can't be renamed or deleted. Also added one-click per-video removal to the Playlists detail view (a small ✕ on each card) so clearing out My Queue -- or any playlist -- doesn't require reopening each video's own + menu to uncheck it.
+
 ## v6.30.0 — current
 - Reordered the homepage: Viewer's Choice, Maui's Picks, Latest Submissions, News, Featured, Discover (Latest Submissions moved up from below Featured; News moved down from above Latest).
 - Added site-wide admin switches (Admin panel landing screen) to hide/show the Viewer's Choice and Featured sections for every visitor, not just this device -- a new `siteConfig/homepage` Firestore doc (public read, admin write, same shape as `channel/{id}`), listened to live so a toggle takes effect on already-open tabs too.
