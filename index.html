@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.33.1">
+<link rel="stylesheet" href="styles.css?v=6.34.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -288,7 +288,7 @@
         <span class="save-playlist-btn-label">Create Playlist</span>
         <span class="save-playlist-btn-icon" aria-hidden="true">+</span>
       </button>
-      <div class="tv-playback-controls">
+      <div class="tv-playback-controls" id="tvPlaybackControls">
         <button type="button" class="tv-playback-btn" id="tvPrevBtn" hidden aria-label="Previous" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><rect x="4" y="5" width="3" height="14" rx="1"/><path d="M18 5 8 12l10 7V5Z"/></svg></button>
         <button type="button" class="tv-playback-btn" id="tvPlayPauseBtn" hidden aria-label="Pause" title="Pause"></button>
         <button type="button" class="tv-playback-btn" id="tvSkipBtn" hidden aria-label="Next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M6 5l10 7-10 7V5Z"/><rect x="17" y="5" width="3" height="14" rx="1"/></svg></button>
@@ -319,7 +319,7 @@
         <div class="category-filters" id="categoryFilters"></div>
         <span class="info-tip" tabindex="0" data-tip="Selecting more than one category narrows results to entries matching all of them, not any one.">ⓘ</span>
       </div>
-      <div class="filters-row-right">
+      <div class="filters-row-right" id="filtersRowRight">
         <label class="mvg-only-toggle" id="mvgOnlyLabel">
           <input type="checkbox" id="mvgOnlyToggle">
           MVG Reels only
@@ -712,6 +712,13 @@
              styles.css for how visibility varies by windowed/fullscreen
              and 4:3/16:9. -->
         <div class="tv-side-panel-slot" id="tvSidePanelSlot"></div>
+        <!-- Mobile-only destination for Report issue (see TV_RELOCATE in
+             app.js) -- after Genre/Era/Custom/Channel, bottom right.
+             Pinned to column 1 like #videoEmbed/#tvSeekRow/#tvFiltersSlot
+             above so it can't get auto-placed into column 2 (the side
+             panel's own column) on desktop, where it's unused (Report
+             issue's desktop destination is inside the side panel itself). -->
+        <div id="tvMobileReportSlot"></div>
       </div>
       <div class="ad-placeholder" id="tvAdPlaceholder" hidden></div>
     </div>
@@ -1499,6 +1506,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.33.1"></script>
+<script src="app.js?v=6.34.0"></script>
 </body>
 </html>

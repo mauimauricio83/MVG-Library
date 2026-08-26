@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.0 — current
+- Rearranged TV Mode's mobile layout so playback controls sit right after the timecode/progress bar, matching how it already read on desktop: Add to Playlist now joins the playback row right after the volume slider (putting it directly before Favorite too), Clear filters moved next to the country filter, and Report issue dropped to the very end, after the Genre/Era/Custom/Channel section. Desktop's own side-panel layout (shipped last version) is unaffected -- this is a separate, mobile-only rearrangement (`TV_RELOCATE` in app.js) that puts everything back exactly where it started the moment the window crosses back to desktop width or TV Mode closes.
+
 ## v6.33.1 — current
 - Reworked the desktop TV Mode side panel's relocated controls into three rows instead of one long stack: country filter + Clear filters; 4:3 + CC grouped together, then Vote; power switch + Report issue. Also fixed the Vote button's text sitting off-center once it got bigger -- its inherited fixed height was too short for the new padding, pushing "Vote" up instead of centering it.
 

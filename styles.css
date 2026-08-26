@@ -4458,8 +4458,18 @@ body.is-searching #viewersChoiceSection {
    whatever that ends up being." */
 #videoEmbed,
 #tvSeekRow,
-#tvFiltersSlot {
+#tvFiltersSlot,
+#tvMobileReportSlot {
   grid-column: 1;
+}
+
+/* Report issue's mobile-only resting spot (see TV_RELOCATE in app.js) --
+   empty (and so invisible) whenever nothing's been moved into it, i.e.
+   always on desktop and whenever TV Mode is closed. */
+#tvMobileReportSlot:not(:empty) {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 4px 0;
 }
 
 .tv-side-panel {

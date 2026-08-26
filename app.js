@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.33.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -145,6 +145,9 @@
     tvSidePanelRow2: document.getElementById("tvSidePanelRow2"),
     tvSidePanelRow2Group: document.getElementById("tvSidePanelRow2Group"),
     tvSidePanelRow3: document.getElementById("tvSidePanelRow3"),
+    tvPlaybackControls: document.getElementById("tvPlaybackControls"),
+    filtersRowRight: document.getElementById("filtersRowRight"),
+    tvMobileReportSlot: document.getElementById("tvMobileReportSlot"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
@@ -4936,64 +4939,75 @@
     els.genreFilter.value = state.genre;
   }
 
-  // Desktop-only: the power switch, Clear filters, country filter, Report
-  // issue, Vote, 4:3, and CC controls physically relocate from their normal
-  // spot in .filters-toggle-row/.filters-row into the side panel's own
-  // #tvSidePanelControls, below the Genre/Era/Custom/Channel tab content --
-  // real, actual, dedicated space, not just a duplicate/clone (which would
-  // mean two Vote buttons, two 4:3 buttons, etc. to keep in sync everywhere
-  // else in the codebase that touches them). Mobile keeps them exactly
-  // where they've always been; nothing here ever runs there. Each
-  // element's original {parent, nextSibling} is captured once, the first
-  // time this ever runs, so putting it back (closeTVModal(), or the window
-  // shrinking below the mobile breakpoint while TV Mode is still open) is
-  // always exact regardless of how many times it's moved back and forth.
-  // Three rows: country filter + Clear filters; 4:3 + CC grouped tight
+  // Controls that physically relocate from their normal spot in
+  // .filters-toggle-row/.filters-row depending on viewport, while TV Mode
+  // is open -- real, actual, dedicated space at the new spot, not a
+  // duplicate/clone (which would mean two Vote buttons, two 4:3 buttons,
+  // etc. to keep in sync everywhere else in the codebase that touches
+  // them). `desktop` moves a control into the side panel's own
+  // #tvSidePanelControls, below the Genre/Era/Custom/Channel tab content
+  // (three rows: country filter + Clear filters; 4:3 + CC grouped tight
   // then Vote; power switch + Report issue -- see the HTML comment above
-  // #tvSidePanelControls.
-  var TV_SIDE_PANEL_BORROWED = [
-    { id: "countryFilter", dest: "tvSidePanelRow1" },
-    { id: "clearFiltersBtn", dest: "tvSidePanelRow1" },
-    { id: "tvCropBtn", dest: "tvSidePanelRow2Group" },
-    { id: "tvCcBtn", dest: "tvSidePanelRow2Group" },
-    { id: "tvVoteBtn", dest: "tvSidePanelRow2" },
-    { id: "tvPowerSwitch", dest: "tvSidePanelRow3" },
-    { id: "tvReportLink", dest: "tvSidePanelRow3" }
+  // #tvSidePanelControls). `mobile` gives mobile its own separate
+  // rearrangement instead (playback controls read top-to-bottom right
+  // after the seek bar, so Add to Playlist joins them right after the
+  // volume slider -- and ends up left of Favorite for free, since that's
+  // the very next thing after .tv-playback-controls in the flow; Clear
+  // filters sits with the country filter; Report issue drops to the very
+  // end, after Genre/Era/Custom/Channel). Either can be null, meaning
+  // "leave this one exactly where it already is" for that viewport --
+  // most controls only ever move on desktop, tvPlaylistBtn only ever
+  // moves on mobile. Each element's original {parent, nextSibling} is
+  // captured once, the first time this ever runs, so putting it back
+  // (closeTVModal(), or crossing the mobile breakpoint while TV Mode is
+  // still open) is always exact regardless of how many times it's moved.
+  var TV_RELOCATE = [
+    { id: "countryFilter", desktop: "tvSidePanelRow1", mobile: null },
+    { id: "clearFiltersBtn", desktop: "tvSidePanelRow1", mobile: "filtersRowRight" },
+    { id: "tvCropBtn", desktop: "tvSidePanelRow2Group", mobile: null },
+    { id: "tvCcBtn", desktop: "tvSidePanelRow2Group", mobile: null },
+    { id: "tvVoteBtn", desktop: "tvSidePanelRow2", mobile: null },
+    { id: "tvPowerSwitch", desktop: "tvSidePanelRow3", mobile: null },
+    { id: "tvReportLink", desktop: "tvSidePanelRow3", mobile: "tvMobileReportSlot" },
+    { id: "tvPlaylistBtn", desktop: null, mobile: "tvPlaybackControls" }
   ];
-  var tvSidePanelBorrowedHomes = null;
-  var tvSidePanelControlsMoved = false;
+  var tvRelocateHomes = null;
+  var tvRelocateCurrentDest = null; // null (home) | "desktop" | "mobile"
 
-  function homeTVSidePanelBorrows() {
-    if (tvSidePanelBorrowedHomes) return;
-    tvSidePanelBorrowedHomes = TV_SIDE_PANEL_BORROWED.map(function (b) {
-      var el = els[b.id];
-      return { el: el, dest: els[b.dest], parent: el.parentNode, nextSibling: el.nextSibling };
+  function homeTVRelocate() {
+    if (tvRelocateHomes) return;
+    tvRelocateHomes = TV_RELOCATE.map(function (r) {
+      var el = els[r.id];
+      return { el: el, r: r, parent: el.parentNode, nextSibling: el.nextSibling };
     });
   }
 
-  function moveTVSidePanelControlsIn() {
-    homeTVSidePanelBorrows();
-    if (tvSidePanelControlsMoved) return;
-    tvSidePanelBorrowedHomes.forEach(function (h) { h.dest.appendChild(h.el); });
-    tvSidePanelControlsMoved = true;
-  }
-
-  function moveTVSidePanelControlsHome() {
-    if (!tvSidePanelControlsMoved || !tvSidePanelBorrowedHomes) return;
-    tvSidePanelBorrowedHomes.forEach(function (h) {
+  function moveTVRelocateHome() {
+    if (!tvRelocateCurrentDest || !tvRelocateHomes) return;
+    tvRelocateHomes.forEach(function (h) {
       if (h.nextSibling && h.nextSibling.parentNode === h.parent) h.parent.insertBefore(h.el, h.nextSibling);
       else h.parent.appendChild(h.el);
     });
-    tvSidePanelControlsMoved = false;
+    tvRelocateCurrentDest = null;
+  }
+
+  function moveTVRelocateTo(which) {
+    homeTVRelocate();
+    if (tvRelocateCurrentDest === which) return;
+    moveTVRelocateHome(); // clean slate -- a control with no destination for `which` just stays put
+    tvRelocateHomes.forEach(function (h) {
+      var destId = h.r[which];
+      if (destId) els[destId].appendChild(h.el);
+    });
+    tvRelocateCurrentDest = which;
   }
 
   // Called after opening (and on resize while still open) -- decides
-  // in vs. home purely from the current viewport, same breakpoint the
-  // side panel's own desktop-vs-stacked CSS uses.
+  // desktop vs. mobile purely from the current viewport, same breakpoint
+  // the side panel's own desktop-vs-stacked CSS uses.
   function applyTVSidePanelControlsLayout() {
     if (els.tvModal.hidden) return;
-    if (isMobileViewport()) moveTVSidePanelControlsHome();
-    else moveTVSidePanelControlsIn();
+    moveTVRelocateTo(isMobileViewport() ? "mobile" : "desktop");
   }
 
   window.addEventListener("resize", function () {
@@ -5061,7 +5075,7 @@
     state.tvCustomPool = null;
     state.tvCustomPlaylistId = null;
     exitTVFilterMode();
-    moveTVSidePanelControlsHome(); // before the moves below, or these would get carried into #tvSidePanelControls's new resting spot instead of back to their real homes
+    moveTVRelocateHome(); // before the moves below, or these would get carried into their relocated destination's new parent instead of back to their real homes
     els.filtersGroup.appendChild(els.tvSidePanel); // restore its nesting inside filtersGroup before moving that back
     els.controls.after(els.filtersGroup); // restore to its normal Home position
     els.tvModal.hidden = true;
