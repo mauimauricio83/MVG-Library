@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.31.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.32.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -176,6 +176,9 @@
     latestStrip: document.getElementById("latestStrip"),
     featuredStrip: document.getElementById("featuredStrip"),
     favoritesStrip: document.getElementById("favoritesStrip"),
+    myQueueStrip: document.getElementById("myQueueStrip"),
+    myQueueCollapseBtn: document.getElementById("myQueueCollapseBtn"),
+    myQueuePlayAll: document.getElementById("myQueuePlayAll"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     latestPlayAll: document.getElementById("latestPlayAll"),
     recentPlayAll: document.getElementById("recentPlayAll"),
@@ -1685,6 +1688,7 @@
       renderRecentList(state.rows);
       renderPlaylistsPage();
       renderTVCustomPane();
+      renderMyQueueStrip();
       renderGenrePickGrid(els.settingsGenrePickGrid);
       if (state.rows.length) renderDiscoverSection(state.rows);
     }).catch(function (err) {
@@ -1896,6 +1900,7 @@
     renderSpotlightSidebar(state.rows);
     renderExtraPicksSections(state.rows);
     ensureMyQueue();
+    renderMyQueueStrip();
     seedDefaultPlaylists(state.rows);
     startViewersChoice();
     renderDiscoverSection(state.rows);
@@ -2374,6 +2379,7 @@
     }
 
     track.addEventListener("click", function (e) {
+      if (handleThumbAddBtnClick(e)) return;
       var voteBtn = e.target.closest(".media-vote-btn");
       if (voteBtn) {
         voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
@@ -2423,7 +2429,7 @@
               : "";
             return (
               '<div class="media-strip-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + removeBtn + "</div>" +
+                '<div class="media-strip-thumb">' + thumb + sponsoredBadge + voteBtn + removeBtn + thumbAddBtnHtml(row.rowNum) + "</div>" +
                 '<div class="media-strip-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
                 '<div class="media-strip-artist">' + escapeHtml(artistLine) + "</div>" +
                 descLine +
@@ -2443,8 +2449,29 @@
     showDescription: true
   });
 
+  // My Queue, as its own homepage section (see the HTML comment above
+  // #myQueueStrip) -- hidden while empty, same one-click removal as the
+  // Playlists detail view (both ultimately edit the same MY_QUEUE_ID
+  // playlist entry, see ensureMyQueue()/loadPlaylistsForDisplay() near the
+  // favorites data functions).
+  var myQueuePool = [];
+  var myQueueStrip = createMediaStrip(els.myQueueStrip, {
+    onRemove: function (rowNum) {
+      togglePlaylistEntry(MY_QUEUE_ID, rowNum);
+      renderMyQueueStrip();
+      refreshPlaylistUIAfterChange();
+    }
+  });
+
+  function renderMyQueueStrip() {
+    var queue = findPlaylist(MY_QUEUE_ID);
+    myQueuePool = queue ? queue.rowNums.map(findRowByNum).filter(Boolean) : [];
+    myQueueStrip.render(myQueuePool);
+  }
+
   setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
   setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
+  setupCollapsibleStrip(els.myQueueStrip, els.myQueueCollapseBtn, "mvg-myqueue-collapsed", false);
 
   // Desktop-only: the gallery grid is capped to ~2 rows by default (see
   // styles.css) so it doesn't push everything else several scrolls down.
@@ -2731,6 +2758,30 @@
     }).join("");
   }
 
+  // Quick "+" add-to-playlist button on every video thumbnail across the
+  // site (media strips, Maui's Picks, Discover, Viewer's Choice, the main
+  // grid/search results) -- same popover as the lightbox/TV Mode's own +
+  // button, just triggered straight from the card instead of having to
+  // open the video first. Deliberately NOT added to the Recently Viewed
+  // strip or the lightbox's own "Related" row -- both wrap each thumbnail
+  // in a real <button> already, and nesting a button inside a button is
+  // invalid HTML (and would fire both click handlers at once).
+  function thumbAddBtnHtml(rowNum) {
+    return '<button type="button" class="thumb-add-btn" data-add-rownum="' + escapeHtml(rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>';
+  }
+
+  // Call at the top of any card container's delegated click handler --
+  // returns true (caller should return early) if the click was this button,
+  // false otherwise. Centralizes the one line of actual logic so every
+  // container's handler only needs a single `if (handleThumbAddBtnClick(e))
+  // return;` instead of repeating openAddToPlaylistPopover()'s call.
+  function handleThumbAddBtnClick(e) {
+    var btn = e.target.closest(".thumb-add-btn");
+    if (!btn) return false;
+    openAddToPlaylistPopover(btn.getAttribute("data-add-rownum"), btn);
+    return true;
+  }
+
   function openAddToPlaylistPopover(rowNum, anchorEl) {
     addPlaylistRowNum = rowNum;
     renderAddPlaylistList();
@@ -2754,6 +2805,7 @@
   function refreshPlaylistUIAfterChange() {
     renderPlaylistsPage();
     renderTVCustomPane();
+    renderMyQueueStrip();
   }
 
   els.addPlaylistList.addEventListener("click", function (e) {
@@ -2786,6 +2838,7 @@
       return node.nodeType === 1 && (
         node.id === "addPlaylistPopover" ||
         node.classList.contains("lightbox-playlist-btn") ||
+        node.classList.contains("thumb-add-btn") ||
         node.id === "tvPlaylistBtn"
       );
     });
@@ -3824,7 +3877,7 @@
       : "";
     return (
       '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-        '<div class="spotlight-card-thumb">' + thumb + sponsoredBadge + mediaVoteBtnHtml(row.rowNum, "media-vote-btn--overlay") + "</div>" +
+        '<div class="spotlight-card-thumb">' + thumb + sponsoredBadge + mediaVoteBtnHtml(row.rowNum, "media-vote-btn--overlay") + thumbAddBtnHtml(row.rowNum) + "</div>" +
         '<div class="spotlight-card-info">' +
           '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
           '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
@@ -3866,6 +3919,7 @@
   // <aside> -- innerHTML gets fully replaced on every render, which would
   // otherwise mean re-binding listeners on elements that no longer exist.
   els.extraPicksSections.addEventListener("click", function (e) {
+    if (handleThumbAddBtnClick(e)) return;
     var voteBtn = e.target.closest(".media-vote-btn");
     if (voteBtn) {
       voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
@@ -3907,6 +3961,7 @@
         '<div class="viewers-choice-thumb">' +
           (v.thumb ? '<img src="' + escapeHtml(v.thumb) + '" alt="" loading="lazy">' : "") +
           '<span class="viewers-choice-rank" style="width:' + size.badge + 'px;height:' + size.badge + 'px;font-size:' + size.font + 'px;">#' + rank + "</span>" +
+          thumbAddBtnHtml(v.id) +
         "</div>" +
         '<div class="viewers-choice-info">' +
           '<div class="viewers-choice-title-row">' +
@@ -3978,6 +4033,7 @@
   }
 
   els.viewersChoiceSection.addEventListener("click", function (e) {
+    if (handleThumbAddBtnClick(e)) return;
     var voteBtn = e.target.closest(".media-vote-btn");
     if (voteBtn) {
       voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
@@ -4010,7 +4066,7 @@
     var artistLine = row.artist || "";
     if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
     return '<div class="spotlight-card" data-row="' + escapeHtml(row.rowNum) + '">' +
-      '<div class="spotlight-card-thumb">' + thumb + "</div>" +
+      '<div class="spotlight-card-thumb">' + thumb + thumbAddBtnHtml(row.rowNum) + "</div>" +
       '<div class="spotlight-card-info">' +
         '<div class="spotlight-card-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
         '<div class="spotlight-card-artist">' + escapeHtml(artistLine) + "</div>" +
@@ -4084,6 +4140,7 @@
   });
 
   els.discoverGrid.addEventListener("click", function (e) {
+    if (handleThumbAddBtnClick(e)) return;
     var card = e.target.closest(".spotlight-card");
     if (!card) return;
     var row = findRowByNum(card.getAttribute("data-row"));
@@ -4162,6 +4219,7 @@
   }
 
   els.spotlightCards.addEventListener("click", function (e) {
+    if (handleThumbAddBtnClick(e)) return;
     var voteBtn = e.target.closest(".media-vote-btn");
     if (voteBtn) {
       voteForRowNum(voteBtn.getAttribute("data-vote-rownum"), voteBtn);
@@ -6308,6 +6366,10 @@
 
   els.favoritesPlayAll.addEventListener("click", function () {
     startTVMode(favoritesPool.filter(function (r) { return hasVideo(r); }));
+  });
+
+  els.myQueuePlayAll.addEventListener("click", function () {
+    startTVMode(myQueuePool.filter(function (r) { return hasVideo(r); }));
   });
 
   els.videoBox.addEventListener("click", function (e) {
@@ -12489,7 +12551,7 @@
 
     return (
       '<li class="result-card" data-row="' + escapeHtml(row.rowNum) + '" role="button" tabindex="0" aria-haspopup="dialog">' +
-      '<div class="result-card-thumb">' + thumb + "</div>" +
+      '<div class="result-card-thumb">' + thumb + thumbAddBtnHtml(row.rowNum) + "</div>" +
       '<div class="result-card-info">' +
       '<div class="result-card-song">' + escapeHtml(row.song || "(untitled)") + newBadge + "</div>" +
       (sub.length ? '<div class="result-card-artist">' + sub.join(" &middot; ") + "</div>" : "") +
@@ -12667,6 +12729,7 @@
   }
 
   els.results.addEventListener("click", function (e) {
+    if (handleThumbAddBtnClick(e)) return;
     if (e.target.closest(".clear-filters-btn")) {
       clearAllFilters();
       render();
@@ -12679,6 +12742,11 @@
 
   els.results.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
+    // The + button handles its own Enter/Space activation natively (it's a
+    // real <button>, nested inside .result-card for positioning) -- without
+    // this guard, the keydown here would ALSO fire handleEntryActivate() on
+    // the same keypress, opening the lightbox behind the popover.
+    if (e.target.closest(".thumb-add-btn")) return;
     var row = e.target.closest(".result-card");
     if (row) {
       e.preventDefault();

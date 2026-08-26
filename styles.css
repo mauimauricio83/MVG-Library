@@ -1936,13 +1936,14 @@ html, body {
 /* One-click remove (see createMediaStrip()'s opts.onRemove in app.js) --
    Playlists' detail strip only, so My Queue gets the same easy per-item
    removal YouTube's Watch Later has. Always visible (not hover-only) so it
-   works on touch, same reasoning as the vote button overlay above; top-right
-   keeps it clear of the vote button's bottom-right and the sponsored
-   badge's top-left. */
+   works on touch, same reasoning as the vote button overlay above.
+   Bottom-left is the one corner not already claimed -- top-right is the
+   "+" add-to-playlist button (.thumb-add-btn, on every thumbnail site-wide),
+   top-left is the sponsored badge, bottom-right is the vote button. */
 .media-strip-remove-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  bottom: 6px;
+  left: 6px;
   z-index: 1;
   width: 22px;
   height: 22px;
@@ -1959,6 +1960,50 @@ html, body {
 
 .media-strip-remove-btn:hover {
   background: #c4293f;
+}
+
+/* Quick "+" add-to-playlist button, top-right of every video thumbnail
+   site-wide (see thumbAddBtnHtml()/handleThumbAddBtnClick() in app.js) --
+   media strips, Maui's Picks/Discover (.spotlight-card-thumb), Viewer's
+   Choice (.viewers-choice-thumb), and the main grid/search results
+   (.result-card-thumb). Deliberately faint at rest -- a full-strength "+"
+   on every single card everywhere would be visual noise -- and only reads
+   clearly on hover/focus of either the button itself or its card, so it's
+   discoverable without hunting for the exact pixel. Stays tappable (not
+   invisible) at rest for touch, which has no hover state to reveal it. */
+.thumb-add-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.media-strip-card:hover .thumb-add-btn,
+.spotlight-card:hover .thumb-add-btn,
+.viewers-choice-card:hover .thumb-add-btn,
+.result-card:hover .thumb-add-btn,
+.thumb-add-btn:hover,
+.thumb-add-btn:focus-visible {
+  opacity: 1;
+}
+
+.thumb-add-btn:hover,
+.thumb-add-btn:focus-visible {
+  background: var(--accent);
 }
 
 .media-vote-btn:hover {

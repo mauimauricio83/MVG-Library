@@ -2,6 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.32.0 — current
+- My Queue is now its own homepage section, above Maui's Picks, hidden until you've actually added something to it.
+- Added a quick "+" add-to-playlist button to every video thumbnail site-wide (media strips, Maui's Picks, Discover, Viewer's Choice, the main grid/search results) -- barely visible at rest, full opacity on hover/focus, opens the same add-to-playlist popover the lightbox's own + button does. Fixed a bug this surfaced in the popover's own "click outside to close" handler, which didn't recognize the new button as part of the popover and was closing it in the same click that opened it.
+
 ## v6.31.0 — current
 - Added "My Queue" -- YouTube's Watch Later, copied: a special playlist that always exists, always sorts first in the add-to-playlist popover/Playlists page/TV Mode's Custom pane, and can't be renamed or deleted. Also added one-click per-video removal to the Playlists detail view (a small ✕ on each card) so clearing out My Queue -- or any playlist -- doesn't require reopening each video's own + menu to uncheck it.
 

@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.31.0">
+<link rel="stylesheet" href="styles.css?v=6.32.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -366,6 +366,30 @@
     <div class="spotlight-sidebar-title viewers-choice-title-main">Viewer's Choice</div>
     <div class="viewers-choice-top2" id="viewersChoiceTop2"></div>
     <div class="viewers-choice-rest" id="viewersChoiceRest"></div>
+  </section>
+
+  <!-- My Queue as its own homepage section (YouTube's Watch Later,
+       equivalent placement) -- above Maui's Picks per Maui's request.
+       Same createMediaStrip() shape as Latest Submissions/Featured, with
+       onRemove wired for the same one-click removal the Playlists detail
+       view has (see renderMyQueueStrip() in app.js). Hidden when empty
+       (no opts.emptyMessage) rather than showing an empty-state message --
+       most first-time visitors have never added anything to it yet, and
+       this is homepage real estate, not a dedicated destination page like
+       Playlists/Favorites. -->
+  <section class="media-strip" id="myQueueStrip" hidden>
+    <div class="media-strip-head">
+      <button type="button" class="media-strip-collapse-btn" id="myQueueCollapseBtn" aria-label="Expand or collapse">
+        <span class="media-strip-chevron">▾</span>
+        <span class="media-strip-title">My Queue</span>
+      </button>
+      <button type="button" class="media-strip-play-all" id="myQueuePlayAll">▶ Play All</button>
+    </div>
+    <div class="media-strip-body">
+      <button type="button" class="media-strip-arrow" id="myQueueStripPrev" aria-label="Show previous">‹</button>
+      <div class="media-strip-track" id="myQueueStripTrack"></div>
+      <button type="button" class="media-strip-arrow" id="myQueueStripNext" aria-label="Show next">›</button>
+    </div>
   </section>
 
   <aside class="spotlight-sidebar" id="spotlightSidebar" hidden>
@@ -1460,6 +1484,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.31.0"></script>
+<script src="app.js?v=6.32.0"></script>
 </body>
 </html>
