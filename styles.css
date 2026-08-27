@@ -4192,6 +4192,14 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.76rem;
 }
 
+/* Same reset as above, for when TV_RELOCATE (app.js) moves Clear filters
+   into .filters-row-right (mobile TV Mode, next to the country filter) --
+   the base rule's margin-top:12px is meant for its normal stacked spot and
+   otherwise pushes it visibly off-center from its row siblings. */
+.filters-row-right .clear-filters-btn {
+  margin-top: 0;
+}
+
 .save-playlist-btn {
   margin-top: 0;
   border: 1px solid var(--accent);
@@ -4332,6 +4340,33 @@ body.is-searching #viewersChoiceSection {
     height: 36px;
     padding: 0 14px;
     font-size: 0.82rem;
+  }
+
+  /* Country filter/Clear filters/Create Playlist row: fill it edge-to-edge
+     (the select grows into the leftover space instead of leaving it empty
+     next to the two buttons) and re-balance the spacing around it now that
+     it sits between the power row above and the Genre/Era/Custom/Channel
+     tabs below -- more air above (separating it from ON/OFF+Vote), less
+     below (reading as a lead-in to the tabs rather than its own island).
+     #tvFsRoot scopes this to TV Mode only -- .filters-row-right and
+     #countryFilter are shared with the main site's own (unrelated) filter
+     row outside TV Mode. */
+  #tvFsRoot #filtersPanel {
+    width: 100%;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+
+  #tvFsRoot .filters-row-right {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  #tvFsRoot #countryFilter {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 55%;
   }
 }
 
@@ -4539,6 +4574,16 @@ body.is-searching #viewersChoiceSection {
 #tvFiltersSlot,
 #tvMobileReportSlot {
   grid-column: 1;
+}
+
+/* Grid items default to min-width:auto (their content's max-content size),
+   which lets a wide row inside #tvFiltersSlot (e.g. the mobile country
+   filter row going nowrap+space-between -- see the max-width:640px block
+   above) push the whole column wider than the grid actually has room for,
+   overflowing the modal. min-width:0 lets it shrink to the track's real
+   width like a normal block child would. */
+#tvFiltersSlot {
+  min-width: 0;
 }
 
 /* Report issue's mobile-only resting spot (see TV_RELOCATE in app.js) --
