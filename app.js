@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.7"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.8"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -7141,7 +7141,15 @@
   }
 
   function closeLightbox() {
-    if (els.lightbox.hidden) return;
+    // Not just "is the modal open" -- a PIP-detached video keeps playing
+    // (and its frame keeps floating) after the modal itself already went
+    // hidden (see softCloseLightboxToPip()/lightboxPipDetached below), so
+    // a caller like openTVModal() that only ever sees els.lightbox.hidden
+    // === true would otherwise skip tearing that down entirely, leaving
+    // the old floating player/frame alive and overlapping on top of
+    // whatever opens next (confirmed: this is what broke TV Mode after
+    // backdrop-clicking a playing video into PIP and then opening it).
+    if (els.lightbox.hidden && !lightboxPipDetached) return;
     hideCardPreviewPopup();
     destroyLightboxVideoFrame();
     destroyProfileLightboxMap();

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.8 — current
+- Fixed TV Mode breaking (stuck until a refresh) after playing a video in the lightbox, clicking outside to drop it into the floating mini player (PIP), then opening TV Mode. `closeLightbox()` only checked whether the lightbox modal was hidden -- but a PIP-detached video keeps its own floating frame/player alive after the modal itself already hid, so nothing ever tore that down before TV Mode opened on top of it.
+
 ## v6.34.7 — current
 - Maintenance pass: audited the codebase for the `[hidden]` vs. unconditional-`display` cascade-tie bug (same class of issue fixed for Vote a version back) and fixed four more real instances -- the TV Mode side panel not actually hiding after closing TV Mode, an admin channel "scheduled insert" row that could show stale/empty, an admin Bulk Import commit row showing before anything was staged, and (the highest-impact one) the welcome gate's genre-picker step rendering stacked on top of the sign-in step instead of replacing it for new visitors. Also corrected a stale comment about Create Playlist's visibility in TV Mode.
 
