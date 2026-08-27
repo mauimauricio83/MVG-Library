@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.6 — current
+- Fixed the sidebar's new "More" button staying visible with 5 or fewer playlists -- another instance of the `[hidden]`-vs-unconditional-`display` cascade-tie bug (`.submit-link` had no `[hidden]` override). Generalized the fix this time (`.submit-link[hidden]`) instead of another one-off, since this is the second unrelated element to hit the exact same gap.
+
 ## v6.35.5 — current
 - Added a "My Playlists" shortcut to the desktop sidebar, below Support! (separated by a small spacer): your top 5 custom playlists, newest first, plus a "More" toggle that expands to all of them in place. Clicking any of them opens the playlist player directly, same as on the Playlists page. Desktop only -- mobile already has full access via the Playlists page itself.
 

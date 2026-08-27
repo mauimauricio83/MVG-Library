@@ -1604,9 +1604,16 @@ html, body {
   }
 }
 
-#signInBtn[hidden],
-#openAdminBtn[hidden] {
-  display: none;
+/* .submit-link's own unconditional display:flex (and the mobile
+   .header-links.is-open .submit-link overrides further down) beat the
+   browser's default [hidden]{display:none} at equal/tied specificity --
+   same footgun as .tv-vote-btn/.tv-playback-btn elsewhere in this file.
+   General rule (not just #signInBtn/#openAdminBtn, the two that first
+   hit it) so a future .submit-link-based element (e.g.
+   #sidebarPlaylistsMoreBtn) doesn't silently hit the same gap again.
+   !important to also beat those later mobile overrides. */
+.submit-link[hidden] {
+  display: none !important;
 }
 
 .header-avatar {
