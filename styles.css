@@ -3440,6 +3440,18 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.68rem;
 }
 
+/* .media-vote-btn's own unconditional display:inline-block (and the
+   desktop side panel's display:inline-flex override further down) beat
+   the browser default [hidden]{display:none} at equal/tied specificity
+   (author styles win cascade ties over the UA sheet, and later rules win
+   ties against each other) -- same footgun as .tv-playback-btn above.
+   Without this, teardownTV()/armTV() setting els.tvVoteBtn.hidden = true
+   (e.g. when the power switch goes OFF) doesn't actually hide it.
+   !important to also beat the desktop side-panel's own override. */
+.tv-vote-btn[hidden] {
+  display: none !important;
+}
+
 .tv-admin-edit-btn,
 .tv-admin-delete-btn {
   flex: 0 0 auto;

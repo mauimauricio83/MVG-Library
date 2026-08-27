@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.6 — current
+- Fixed Vote staying visible in TV Mode even after switching the power OFF. The shared Vote button style sets its own unconditional `display`, which was beating the browser's default `[hidden]{display:none}` in a cascade tie -- same class of bug fixed for the playback buttons a few versions back.
+
 ## v6.34.5 — current
 - Mobile TV Mode's country filter/Clear filters/Create Playlist row now fills the full width edge-to-edge instead of hugging the left, with more breathing room above it (separating it from the ON/OFF + Vote row) and less below (reading as a lead-in to Genre/Era/Custom/Channel). Also fixed Clear filters sitting visibly off-center from its row siblings -- an inherited `margin-top` meant for its normal stacked position wasn't reset in this new spot.
 
