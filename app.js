@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -148,7 +148,6 @@
     tvPlaybackControls: document.getElementById("tvPlaybackControls"),
     filtersRowRight: document.getElementById("filtersRowRight"),
     tvMobileReportSlot: document.getElementById("tvMobileReportSlot"),
-    tvMobileFavRow: document.getElementById("tvMobileFavRow"),
     tvMobilePowerRow: document.getElementById("tvMobilePowerRow"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
@@ -4953,13 +4952,15 @@
   // #tvSidePanelControls). `mobile` gives mobile its own separate
   // rearrangement instead: playback controls (enlarged, full-width -- see
   // the max-width:640px block in styles.css) read right after the seek
-  // bar, then a small gap, then Add to Playlist + Favorite together on
-  // their own row (#tvMobileFavRow), then whatever's left of
-  // .tv-toggle-row-right (Vote/4:3/widen/fullscreen/CC/share/info); Clear
-  // filters and Create Playlist both join the country filter's row; the
-  // power switch drops to its own centered row right below that
-  // (#tvMobilePowerRow); Report issue drops to the very end, after
-  // Genre/Era/Custom/Channel. Either desktop/mobile can be null, meaning
+  // bar, then a small gap, then Clear filters and Create Playlist join the
+  // country filter's row; the power switch drops to its own centered row
+  // right below that, with Vote beside it (#tvMobilePowerRow); Report
+  // issue drops to the very end, after Genre/Era/Custom/Channel.
+  // Everything else (Favorite/Add to playlist/4:3/widen/fullscreen/CC/
+  // share/info) is left at its original home in .tv-toggle-row-right,
+  // where it already reads as one line (Widen is hidden outright on
+  // mobile via #tvWidenBtn in styles.css -- it only makes sense next to
+  // the desktop-sized player). Either desktop/mobile can be null, meaning
   // "leave this one exactly where it already is" for that viewport.
   // Each element's original {parent, nextSibling} is captured once, the
   // first time this ever runs, so putting it back (closeTVModal(), or
@@ -4971,11 +4972,9 @@
     { id: "savePlaylistBtn", desktop: null, mobile: "filtersRowRight" },
     { id: "tvCropBtn", desktop: "tvSidePanelRow2Group", mobile: null },
     { id: "tvCcBtn", desktop: "tvSidePanelRow2Group", mobile: null },
-    { id: "tvVoteBtn", desktop: "tvSidePanelRow2", mobile: null },
     { id: "tvPowerSwitch", desktop: "tvSidePanelRow3", mobile: "tvMobilePowerRow" },
-    { id: "tvReportLink", desktop: "tvSidePanelRow3", mobile: "tvMobileReportSlot" },
-    { id: "tvPlaylistBtn", desktop: null, mobile: "tvMobileFavRow" },
-    { id: "tvFavBtn", desktop: null, mobile: "tvMobileFavRow" }
+    { id: "tvVoteBtn", desktop: "tvSidePanelRow2", mobile: "tvMobilePowerRow" },
+    { id: "tvReportLink", desktop: "tvSidePanelRow3", mobile: "tvMobileReportSlot" }
   ];
   var tvRelocateHomes = null;
   var tvRelocateCurrentDest = null; // null (home) | "desktop" | "mobile"

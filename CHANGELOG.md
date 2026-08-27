@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.2 — current
+- Further mobile TV Mode cleanup: Favorite/Add to playlist/4:3/Fullscreen/CC/Copy link/Info now stay together on one line instead of wrapping into two. The Widen ("enlarge") button is hidden on mobile -- it only made sense next to the desktop-sized player. Vote moved up to sit beside the on/off power switch.
+
 ## v6.34.1 — current
 - Decluttered TV Mode's mobile layout further: playback controls (prev/play/next/mute/volume) are now bigger and stretch the full row, with a small gap before the next row. Add to Playlist and Favorite now share their own row right after that. Create Playlist joined Clear filters next to the country filter. The power switch dropped to its own centered row below that. Report issue and the desktop side panel from the last two releases are unaffected.
 
