@@ -708,13 +708,30 @@ html, body {
   display: none;
 }
 
-/* Chip row lists every playlist by name -- tap to switch which one's
-   detail view (below) is showing. Mirrors .tv-filter-tab's pill look. */
+/* Chip row lists every non-My-Queue playlist by name, split into two
+   labeled groups (Default Playlists / My Playlists) -- tap a chip to
+   switch which one's detail view (below) is showing. Mirrors
+   .tv-filter-tab's pill look. */
 .playlists-chip-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px 0 16px;
+}
+
+.playlists-chip-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.playlists-chip-group-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 10px 0 16px;
 }
 
 .playlists-chip {
@@ -765,6 +782,20 @@ html, body {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
+}
+
+/* My Queue's fixed, always-visible section above the chip rows (see
+   #playlistsMyQueueSection) -- yellow like the homepage strip titles
+   (.media-strip-title), not the plain white/gray other playlist names get,
+   since it's not a selectable chip/detail like the rest. */
+.playlist-detail-name-queue {
+  color: var(--brand-yellow);
+}
+
+/* Its own top margin, distinguishing it visually as a separate block
+   rather than reading as an extra-tall Playlists header. */
+.playlist-detail-queue {
+  margin-top: 4px;
 }
 
 .playlist-detail-actions {
@@ -2260,6 +2291,7 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.desktop-view-search .about-strip,
+  body.desktop-view-search #myQueueStrip,
   body.desktop-view-search #spotlightSidebar,
   body.desktop-view-search #blogLatestSidebar,
   body.desktop-view-search #latestStrip,
@@ -2279,6 +2311,7 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.desktop-view-favorites .about-strip,
+  body.desktop-view-favorites #myQueueStrip,
   body.desktop-view-favorites #spotlightSidebar,
   body.desktop-view-favorites #blogLatestSidebar,
   body.desktop-view-favorites .ad-placeholder,
@@ -2303,6 +2336,7 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.desktop-view-playlists .about-strip,
+  body.desktop-view-playlists #myQueueStrip,
   body.desktop-view-playlists #spotlightSidebar,
   body.desktop-view-playlists #blogLatestSidebar,
   body.desktop-view-playlists .ad-placeholder,
@@ -2327,6 +2361,7 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.desktop-view-profiles .about-strip,
+  body.desktop-view-profiles #myQueueStrip,
   body.desktop-view-profiles #spotlightSidebar,
   body.desktop-view-profiles #blogLatestSidebar,
   body.desktop-view-profiles .ad-placeholder,
@@ -8080,6 +8115,7 @@ body.is-searching #viewersChoiceSection {
     display: flex;
   }
 
+  body.mobile-view-search #myQueueStrip,
   body.mobile-view-search #spotlightSidebar,
   body.mobile-view-search #blogLatestSidebar,
   body.mobile-view-search #latestStrip,
@@ -8113,6 +8149,7 @@ body.is-searching #viewersChoiceSection {
 
   /* Favorites view: its own page, reached via the bottom nav's Favorites
      button (setMobileView("favorites")) instead of the old popup modal. */
+  body.mobile-view-favorites #myQueueStrip,
   body.mobile-view-favorites #spotlightSidebar,
   body.mobile-view-favorites #blogLatestSidebar,
   body.mobile-view-favorites #latestStrip,
@@ -8131,6 +8168,7 @@ body.is-searching #viewersChoiceSection {
   /* Playlists view: no bottom-nav slot of its own (reached via the
      hamburger menu's Playlists link instead) -- still a real
      setMobileView("playlists") state, same pattern as Favorites above. */
+  body.mobile-view-playlists #myQueueStrip,
   body.mobile-view-playlists #spotlightSidebar,
   body.mobile-view-playlists #blogLatestSidebar,
   body.mobile-view-playlists #latestStrip,
@@ -8149,6 +8187,7 @@ body.is-searching #viewersChoiceSection {
   /* Profiles view: no bottom-nav slot of its own (reached via the
      hamburger menu's Profiles link instead) -- still a real
      setMobileView("profiles") state, same pattern as Playlists above. */
+  body.mobile-view-profiles #myQueueStrip,
   body.mobile-view-profiles #spotlightSidebar,
   body.mobile-view-profiles #blogLatestSidebar,
   body.mobile-view-profiles #latestStrip,

@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.34.8">
+<link rel="stylesheet" href="styles.css?v=6.35.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -516,10 +516,14 @@
   </section>
 
   <!-- Same dedicated-page pattern as #favoritesStrip above -- reached via
-       the sidebar/hamburger Playlists button. Two levels: a chip row
-       listing every playlist (tap to switch), and a detail view below it
-       for whichever one's selected (state.selectedPlaylistId), reusing
-       createMediaStrip() the same way Favorites' own strip does. -->
+       the sidebar/hamburger Playlists button. My Queue gets its own
+       always-visible section up top (not a selectable chip -- see
+       renderPlaylistsMyQueue() in app.js), then two labeled chip rows
+       (Default Playlists / My Playlists, split via each playlist's
+       isDefault flag -- see loadPlaylistsGroupedForDisplay()), then the
+       shared detail view below for whichever chip is selected
+       (state.selectedPlaylistId), reusing createMediaStrip() the same way
+       Favorites' own strip does. -->
   <section class="media-strip" id="playlistsPage" hidden>
     <div class="media-strip-head">
       <span class="media-strip-title">Playlists</span>
@@ -527,7 +531,29 @@
         <button type="button" class="media-strip-play-all" id="playlistsNewBtn">+ New Playlist</button>
       </div>
     </div>
-    <div class="playlists-chip-row" id="playlistsChipRow"></div>
+    <div class="playlist-detail playlist-detail-queue" id="playlistsMyQueueSection" hidden>
+      <div class="playlist-detail-head">
+        <span class="playlist-detail-name playlist-detail-name-queue" id="playlistsMyQueueName"></span>
+        <div class="playlist-detail-actions">
+          <button type="button" class="media-strip-play-all" id="playlistsMyQueuePlayAll">▶ Play All</button>
+        </div>
+      </div>
+      <div class="media-strip-body">
+        <button type="button" class="media-strip-arrow" id="playlistsMyQueuePrev" aria-label="Show previous">‹</button>
+        <div class="media-strip-track" id="playlistsMyQueueTrack"></div>
+        <button type="button" class="media-strip-arrow" id="playlistsMyQueueNext" aria-label="Show next">›</button>
+      </div>
+    </div>
+    <div class="playlists-chip-row" id="playlistsChipRow">
+      <div class="playlists-chip-group" id="playlistsDefaultChipGroup" hidden>
+        <div class="playlists-chip-group-label">Default Playlists</div>
+        <div class="playlists-chip-group-chips" id="playlistsDefaultChips"></div>
+      </div>
+      <div class="playlists-chip-group" id="playlistsCustomChipGroup" hidden>
+        <div class="playlists-chip-group-label">My Playlists</div>
+        <div class="playlists-chip-group-chips" id="playlistsCustomChips"></div>
+      </div>
+    </div>
     <p class="playlists-empty" id="playlistsEmptyMsg" hidden>No playlists yet — create one above, add videos via the + button on any video, or save a search as a playlist from the Search page.</p>
     <div class="playlist-detail" id="playlistDetail" hidden>
       <div class="playlist-detail-head">
@@ -1510,6 +1536,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.34.8"></script>
+<script src="app.js?v=6.35.0"></script>
 </body>
 </html>

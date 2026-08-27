@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.8"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -243,7 +243,14 @@
     tvPlaylistBtn: document.getElementById("tvPlaylistBtn"),
     tvCropBtn: document.getElementById("tvCropBtn"),
     playlistsPage: document.getElementById("playlistsPage"),
+    playlistsMyQueueSection: document.getElementById("playlistsMyQueueSection"),
+    playlistsMyQueueName: document.getElementById("playlistsMyQueueName"),
+    playlistsMyQueuePlayAll: document.getElementById("playlistsMyQueuePlayAll"),
     playlistsChipRow: document.getElementById("playlistsChipRow"),
+    playlistsDefaultChipGroup: document.getElementById("playlistsDefaultChipGroup"),
+    playlistsDefaultChips: document.getElementById("playlistsDefaultChips"),
+    playlistsCustomChipGroup: document.getElementById("playlistsCustomChipGroup"),
+    playlistsCustomChips: document.getElementById("playlistsCustomChips"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
     playlistsNewBtn: document.getElementById("playlistsNewBtn"),
     playlistDetail: document.getElementById("playlistDetail"),
@@ -1530,8 +1537,8 @@
     savePlaylists(list);
   }
 
-  // Every UI that lists playlists (the add-to-playlist popover, the
-  // Playlists page's chip row) should read through this instead of
+  // The add-to-playlist popover (where My Queue is still just the first
+  // entry in one flat list) should read through this instead of
   // loadPlaylists() directly, so My Queue sorts first regardless of
   // storage order -- a Firestore merge (syncFromFirestore()) could
   // otherwise put a remote playlist ahead of it.
@@ -1543,6 +1550,21 @@
       if (p.id === MY_QUEUE_ID) queue = p; else rest.push(p);
     });
     return queue ? [queue].concat(rest) : rest;
+  }
+
+  // The Playlists page's two chip rows read through this instead --
+  // My Queue excluded entirely (it gets its own fixed section, see
+  // renderPlaylistsMyQueue()), everything else split by the isDefault flag
+  // (see seedDefaultPlaylists()/backfillDefaultPlaylistFlags()).
+  function loadPlaylistsGroupedForDisplay() {
+    var list = loadPlaylists();
+    var defaults = [];
+    var custom = [];
+    list.forEach(function (p) {
+      if (p.id === MY_QUEUE_ID) return;
+      (p.isDefault ? defaults : custom).push(p);
+    });
+    return { defaults: defaults, custom: custom };
   }
 
   // One-time default playlists, seeded for every browser/account the
@@ -1558,10 +1580,34 @@
     "David Fincher", "Jonas Akerlund", "Hammer and Tongs", "Marty Callner"
   ];
   var DEFAULT_PLAYLISTS_SEEDED_KEY = "mvg-default-playlists-seeded";
+  // Backfills isDefault:true (added when the Default/My Playlists split
+  // shipped) onto playlists that were seeded by an earlier version of this
+  // function, before it stamped that flag. One-time and separate from
+  // DEFAULT_PLAYLISTS_SEEDED_KEY so it can run its own single pass without
+  // re-triggering the (now flag-aware) seeding logic below. Matches by
+  // name against DEFAULT_PLAYLIST_DIRECTORS -- the only signal available
+  // for playlists created before the flag existed.
+  var DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY = "mvg-default-playlists-flag-backfilled";
+
+  function backfillDefaultPlaylistFlags() {
+    try {
+      if (localStorage.getItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY)) return;
+    } catch (e) { return; }
+    var list = loadPlaylists();
+    var changed = false;
+    list.forEach(function (p) {
+      if (!p.isDefault && DEFAULT_PLAYLIST_DIRECTORS.indexOf(p.name) !== -1) {
+        p.isDefault = true;
+        changed = true;
+      }
+    });
+    try { localStorage.setItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY, "1"); } catch (e) {}
+    if (changed) { savePlaylists(list); pushToFirestore(); }
+  }
 
   function seedDefaultPlaylists(rows) {
     try {
-      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) return;
+      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) { backfillDefaultPlaylistFlags(); return; }
     } catch (e) { return; }
 
     var list = loadPlaylists();
@@ -1581,12 +1627,14 @@
         id: generatePlaylistId(),
         name: directorName,
         rowNums: rowNums,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        isDefault: true
       });
       added = true;
     });
 
     try { localStorage.setItem(DEFAULT_PLAYLISTS_SEEDED_KEY, "1"); } catch (e) {}
+    try { localStorage.setItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY, "1"); } catch (e) {} // freshly seeded with the flag already set -- nothing to backfill
     if (!added) return;
     savePlaylists(list);
     pushToFirestore();
@@ -2657,9 +2705,8 @@
     emptyMessage: "Empty playlist, waiting for its first track — the + button on any video will do it.",
     showDescription: true,
     // Per-card remove (see createMediaStrip()'s opts.onRemove) -- the easy
-    // one-click removal My Queue needs (YouTube's Watch Later has the same
-    // affordance); every other playlist gets it too for free since they
-    // all share this one strip instance.
+    // one-click removal every playlist gets for free since they all share
+    // this one strip instance.
     onRemove: function (rowNum) {
       togglePlaylistEntry(state.selectedPlaylistId, rowNum);
       renderPlaylistDetail();
@@ -2667,39 +2714,67 @@
     }
   });
 
-  function renderPlaylistsPage() {
-    var list = loadPlaylistsForDisplay();
-    els.playlistsEmptyMsg.hidden = !!list.length;
-    els.playlistsChipRow.innerHTML = list.map(function (p) {
-      var active = p.id === state.selectedPlaylistId ? " is-active" : "";
-      var isQueue = p.id === MY_QUEUE_ID;
-      var nameHtml = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(p.name);
-      return '<button type="button" class="playlists-chip' + active + '" data-id="' + escapeHtml(p.id) + '">' +
-        nameHtml + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
-    }).join("");
+  // My Queue's own fixed section above the chip rows (not a selectable
+  // chip/detail like the rest -- see #playlistsMyQueueSection). Same
+  // createMediaStrip() shape/one-click-remove as the homepage's own My
+  // Queue strip (renderMyQueueStrip()), just a separate DOM target/
+  // instance since the two sections render independently.
+  var playlistsMyQueueStrip = createMediaStrip(els.playlistsMyQueueSection, {
+    onRemove: function (rowNum) {
+      togglePlaylistEntry(MY_QUEUE_ID, rowNum);
+      refreshPlaylistUIAfterChange();
+    }
+  });
 
-    if (!list.length) {
+  function renderPlaylistsMyQueue() {
+    var queue = findPlaylist(MY_QUEUE_ID);
+    var rows = queue ? queue.rowNums.map(findRowByNum).filter(Boolean) : [];
+    els.playlistsMyQueueName.innerHTML = ICON_QUEUE_CLOCK + " " + escapeHtml(MY_QUEUE_NAME);
+    playlistsMyQueueStrip.render(rows);
+  }
+
+  function playlistsChipListHtml(list) {
+    return list.map(function (p) {
+      var active = p.id === state.selectedPlaylistId ? " is-active" : "";
+      return '<button type="button" class="playlists-chip' + active + '" data-id="' + escapeHtml(p.id) + '">' +
+        escapeHtml(p.name) + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
+    }).join("");
+  }
+
+  function renderPlaylistsPage() {
+    renderPlaylistsMyQueue();
+
+    var groups = loadPlaylistsGroupedForDisplay();
+    els.playlistsDefaultChipGroup.hidden = !groups.defaults.length;
+    els.playlistsDefaultChips.innerHTML = playlistsChipListHtml(groups.defaults);
+    els.playlistsCustomChipGroup.hidden = !groups.custom.length;
+    els.playlistsCustomChips.innerHTML = playlistsChipListHtml(groups.custom);
+
+    var selectable = groups.defaults.concat(groups.custom);
+    els.playlistsEmptyMsg.hidden = !!selectable.length;
+    if (!selectable.length) {
       state.selectedPlaylistId = null;
       els.playlistDetail.hidden = true;
       return;
     }
-    var stillExists = list.some(function (p) { return p.id === state.selectedPlaylistId; });
-    if (!stillExists) state.selectedPlaylistId = list[0].id;
+    var stillExists = selectable.some(function (p) { return p.id === state.selectedPlaylistId; });
+    if (!stillExists) state.selectedPlaylistId = selectable[0].id;
     renderPlaylistDetail();
   }
 
   function renderPlaylistDetail() {
+    // My Queue is never a chip/selectable target here anymore -- it has
+    // its own fixed section (renderPlaylistsMyQueue()) -- so this only
+    // ever renders a real default/custom playlist, both fully renameable/
+    // deletable.
     var playlist = findPlaylist(state.selectedPlaylistId);
     if (!playlist) {
       els.playlistDetail.hidden = true;
       return;
     }
-    var isQueue = playlist.id === MY_QUEUE_ID;
-    els.playlistDetailName.innerHTML = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(playlist.name);
-    // Fixed name, can't be deleted -- same as YouTube's Watch Later (see
-    // renamePlaylist()/deletePlaylist()'s own MY_QUEUE_ID guards).
-    els.playlistRenameBtn.hidden = isQueue;
-    els.playlistDeleteBtn.hidden = isQueue;
+    els.playlistDetailName.innerHTML = escapeHtml(playlist.name);
+    els.playlistRenameBtn.hidden = false;
+    els.playlistDeleteBtn.hidden = false;
     var rows = playlist.rowNums.map(findRowByNum).filter(Boolean);
     playlistDetailStrip.render(rows);
     Array.prototype.forEach.call(els.playlistsChipRow.querySelectorAll(".playlists-chip"), function (chip) {
@@ -2732,6 +2807,16 @@
 
   els.playlistPlayAllBtn.addEventListener("click", function () {
     var playlist = findPlaylist(state.selectedPlaylistId);
+    if (!playlist) return;
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
+    startTVMode(rows);
+  });
+
+  // My Queue's own fixed section has its own Play All (see
+  // #playlistsMyQueueSection) since it isn't part of the chip/detail
+  // selection state playlistPlayAllBtn above reads from.
+  els.playlistsMyQueuePlayAll.addEventListener("click", function () {
+    var playlist = findPlaylist(MY_QUEUE_ID);
     if (!playlist) return;
     var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
     startTVMode(rows);
