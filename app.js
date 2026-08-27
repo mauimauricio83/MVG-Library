@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.6"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.7"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -186,7 +186,7 @@
     featuredStrip: document.getElementById("featuredStrip"),
     favoritesStrip: document.getElementById("favoritesStrip"),
     myQueueStrip: document.getElementById("myQueueStrip"),
-    myQueueCollapseBtn: document.getElementById("myQueueCollapseBtn"),
+    myQueueTitleBtn: document.getElementById("myQueueTitleBtn"),
     myQueuePlayAll: document.getElementById("myQueuePlayAll"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
     latestPlayAll: document.getElementById("latestPlayAll"),
@@ -2648,7 +2648,10 @@
 
   setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
   setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
-  setupCollapsibleStrip(els.myQueueStrip, els.myQueueCollapseBtn, "mvg-myqueue-collapsed", false);
+  // My Queue deliberately has no collapse feature -- its title is a
+  // button that opens the playlist player instead (see openMyQueuePlayer()
+  // near the Playlists page code), same as its Play All.
+  els.myQueueTitleBtn.addEventListener("click", openMyQueuePlayer);
 
   // Desktop-only: the gallery grid is capped to ~2 rows by default (see
   // styles.css) so it doesn't push everything else several scrolls down.
@@ -6936,9 +6939,7 @@
     startTVMode(favoritesPool.filter(function (r) { return hasVideo(r); }));
   });
 
-  els.myQueuePlayAll.addEventListener("click", function () {
-    startTVMode(myQueuePool.filter(function (r) { return hasVideo(r); }));
-  });
+  els.myQueuePlayAll.addEventListener("click", openMyQueuePlayer);
 
   els.videoBox.addEventListener("click", function (e) {
     if (e.target.closest("#tvArmedPlayBtn")) playArmedTV();

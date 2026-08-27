@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.35.6">
+<link rel="stylesheet" href="styles.css?v=6.35.7">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -417,10 +417,7 @@
        Playlists/Favorites. -->
   <section class="media-strip" id="myQueueStrip" hidden>
     <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="myQueueCollapseBtn" aria-label="Expand or collapse">
-        <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">My Queue</span>
-      </button>
+      <button type="button" class="media-strip-title media-strip-title-btn" id="myQueueTitleBtn">My Queue</button>
       <button type="button" class="media-strip-play-all" id="myQueuePlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
@@ -520,9 +517,9 @@
   <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
       <span class="media-strip-title" id="favoritesTitle">Favorites</span>
+      <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
       <div class="media-strip-head-actions">
         <button type="button" class="media-strip-play-all" id="favoritesShareBtn">Share Favorites</button>
-        <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
       </div>
     </div>
     <p class="media-strip-share-status" id="favoritesShareStatus" hidden></p>
@@ -1590,6 +1587,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.35.6"></script>
+<script src="app.js?v=6.35.7"></script>
 </body>
 </html>

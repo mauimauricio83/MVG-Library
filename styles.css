@@ -773,7 +773,7 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -794,12 +794,17 @@ html, body {
 
 /* Reset the button-ness so it reads as plain text, styled the same as
    before it became clickable (opens the same as Play All -- see
-   playlistsMyQueueName's click handler in app.js). */
+   playlistsMyQueueName's click handler in app.js). font-family only (not
+   the full `font` shorthand) -- that shorthand also resets font-size/
+   weight, which would otherwise clobber .playlist-detail-name's own
+   1.05rem/700 (same-specificity tie, this rule comes later in the
+   cascade) and make the title read in the browser's default button font
+   instead of matching the other section headers. */
 .playlist-detail-name-btn {
   border: none;
   background: none;
   padding: 0;
-  font: inherit;
+  font-family: inherit;
   cursor: pointer;
 }
 
@@ -1839,18 +1844,45 @@ html, body {
   background: var(--surface);
 }
 
+/* flex-start (not space-between) so Play All/other head buttons sit close
+   to the title -- a short mouse trip, not a trek to the far edge of the
+   row. Anything that should still hug the right edge (e.g. Favorites'
+   Share button) gets margin-left:auto on its own wrapper instead -- see
+   .media-strip-head-actions below. */
 .media-strip-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   padding: 0 14px 8px;
 }
 
+/* Unified with .spotlight-sidebar-title/.recent-title at 1.05rem (matches
+   .playlist-detail-name's own existing 1.05rem/700) -- these were three
+   different sizes (0.82/0.95/1.1rem) despite all being the same kind of
+   yellow section heading, which read as Discover/Latest/etc. being
+   randomly smaller than Maui's Picks/Recently Viewed for no real reason.
+   .viewers-choice-title-main's 1.5rem is a deliberate exception (a
+   bigger, standalone page-hero heading, not just another section title). */
 .media-strip-title {
-  font-size: 0.82rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--brand-yellow);
+}
+
+/* My Queue's title is a real <button> (opens the playlist player, same
+   as its Play All -- see openMyQueuePlayer() in app.js), not the
+   chevron-collapse-btn every other homepage strip uses -- My Queue
+   deliberately has no collapse feature. font-family only (not the full
+   `font` shorthand) so .media-strip-title's own font-size/weight/color
+   survive -- same footgun already fixed once for
+   .playlist-detail-name-btn. */
+.media-strip-title-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .media-strip-collapse-btn {
@@ -1907,6 +1939,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 14px;
+  margin-left: auto;
 }
 
 .media-strip-share-status {
@@ -3745,7 +3778,7 @@ body.is-searching #viewersChoiceSection {
 
 .spotlight-sidebar-title {
   margin-bottom: 12px;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--brand-yellow);
 }
@@ -7385,14 +7418,14 @@ body.is-searching #viewersChoiceSection {
 .recent-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   margin-bottom: 14px;
 }
 
 .recent-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--brand-yellow);
 }
 

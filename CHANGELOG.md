@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.7 — current
+- Homepage My Queue's title is now a button that opens the playlist player, same as its Play All -- and its Play All button, which was still opening TV Mode, now opens the playlist player too. Removed My Queue's collapse/expand feature entirely (it never made sense alongside a title that now opens something).
+- Fixed the Playlists page's My Queue title rendering in the browser's default button font instead of matching the other section headers -- a `font: inherit` shorthand was clobbering its own font-size/weight (same class of bug as the earlier `[hidden]` cascade-tie issues, just for `font` instead of `display`).
+- Moved every "Play All" button (and its equivalents) to sit right next to its section title instead of the far right of the row -- Latest, Featured, Favorites, My Queue (both the homepage strip and the Playlists page section), and Recently Viewed. Favorites' "Share Favorites" stays pinned to the right where it was.
+- Unified the size of every yellow section title (My Queue, Latest, Featured, Favorites, Discover, Maui's Picks, Recently Viewed, Playlists, Profiles) to one consistent, larger size -- they were three different sizes before, which made Discover in particular read as smaller than its neighbors for no real reason. Viewer's Choice's larger hero-style heading is intentionally unchanged.
+
 ## v6.35.6 — current
 - Fixed the sidebar's new "More" button staying visible with 5 or fewer playlists -- another instance of the `[hidden]`-vs-unconditional-`display` cascade-tie bug (`.submit-link` had no `[hidden]` override). Generalized the fix this time (`.submit-link[hidden]`) instead of another one-off, since this is the second unrelated element to hit the exact same gap.
 
