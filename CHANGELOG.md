@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.3 — current
+- The Favorite-through-Info row (whatever's left of the toggle row after Vote/4:3/CC move elsewhere on mobile) was reading as a small, right-justified cluster. It now spreads edge-to-edge across the full row with bigger buttons, matching the playback controls row above it.
+
 ## v6.34.2 — current
 - Further mobile TV Mode cleanup: Favorite/Add to playlist/4:3/Fullscreen/CC/Copy link/Info now stay together on one line instead of wrapping into two. The Widen ("enlarge") button is hidden on mobile -- it only made sense next to the desktop-sized player. Vote moved up to sit beside the on/off power switch.
 

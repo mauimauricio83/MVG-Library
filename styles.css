@@ -4303,6 +4303,36 @@ body.is-searching #viewersChoiceSection {
   #tvWidenBtn {
     display: none !important;
   }
+
+  /* Favorite through Info (whatever's left of .tv-toggle-row-right after
+     TV_RELOCATE moves Vote/4:3/CC/etc. elsewhere on mobile -- see
+     app.js) reads as a stray, right-justified cluster at its base
+     (desktop) size. Dropping margin-left:auto + spreading with
+     space-between fills the row edge-to-edge instead of hugging the
+     right; bigger buttons make it a comfortable full-width tap target
+     row like .tv-playback-controls above. */
+  .tv-toggle-row-right {
+    flex: 1 0 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .tv-toggle-row-right .tv-fav-btn,
+  .tv-toggle-row-right .tv-playlist-btn,
+  .tv-toggle-row-right .tv-info-btn,
+  .tv-toggle-row-right .tv-widen-btn,
+  .tv-toggle-row-right .tv-admin-edit-btn,
+  .tv-toggle-row-right .tv-admin-delete-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.15rem;
+  }
+
+  .tv-toggle-row-right .tv-crop-btn {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 0.82rem;
+  }
 }
 
 /* Sits right below the video, not overlaid on it -- native controls
