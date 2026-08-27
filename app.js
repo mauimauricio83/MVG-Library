@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4952,10 +4952,10 @@
   // #tvSidePanelControls). `mobile` gives mobile its own separate
   // rearrangement instead: playback controls (enlarged, full-width -- see
   // the max-width:640px block in styles.css) read right after the seek
-  // bar, then a small gap, then Clear filters and Create Playlist join the
-  // country filter's row; the power switch drops to its own centered row
-  // right below that, with Vote beside it (#tvMobilePowerRow); Report
-  // issue drops to the very end, after Genre/Era/Custom/Channel.
+  // bar, then a small gap, then the power switch gets its own centered row
+  // with Vote beside it (#tvMobilePowerRow), then Clear filters and Create
+  // Playlist join the country filter's row right below that; Report issue
+  // drops to the very end, after Genre/Era/Custom/Channel.
   // Everything else (Favorite/Add to playlist/4:3/widen/fullscreen/CC/
   // share/info) is left at its original home in .tv-toggle-row-right,
   // where it already reads as one line (Widen is hidden outright on

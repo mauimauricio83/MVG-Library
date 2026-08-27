@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.34.3">
+<link rel="stylesheet" href="styles.css?v=6.34.4">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -314,6 +314,10 @@
 
     <div class="tv-info-panel" id="tvInfoPanel" hidden></div>
 
+    <!-- Mobile-only destination for the power switch -- centered, its own
+         row above the country filter/Clear filters/Create Playlist line.
+         See TV_RELOCATE in app.js. Empty (invisible) on desktop. -->
+    <div class="tv-mobile-power-row" id="tvMobilePowerRow"></div>
     <div class="filters-row" id="filtersPanel">
       <div class="category-filters-group">
         <div class="category-filters" id="categoryFilters"></div>
@@ -331,10 +335,6 @@
         <select id="countryFilter" class="filter-select" aria-label="Filter by country"></select>
       </div>
     </div>
-    <!-- Mobile-only destination for the power switch -- centered, its own
-         row below the country filter/Clear filters/Create Playlist line.
-         See TV_RELOCATE in app.js. Empty (invisible) on desktop. -->
-    <div class="tv-mobile-power-row" id="tvMobilePowerRow"></div>
     <!-- Genre/Era/Custom/Channel: a separate sibling from .filters-row (not
          nested inside it) so it can be relocated as its own unit -- see
          #tvSidePanelSlot inside #tvModal below, and openTVModal()/
@@ -1510,6 +1510,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.34.3"></script>
+<script src="app.js?v=6.34.4"></script>
 </body>
 </html>

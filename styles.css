@@ -3353,7 +3353,7 @@ body.is-searching #viewersChoiceSection {
 }
 
 /* Mobile-only destination for the power switch (+ Vote, moved beside it)
-   -- its own centered row below the country filter/Clear filters/Create
+   -- its own centered row above the country filter/Clear filters/Create
    Playlist line (see TV_RELOCATE in app.js). A plain block (not inside
    the flex-wrap toggle row), so no flex-basis trick needed to force its
    own line. */

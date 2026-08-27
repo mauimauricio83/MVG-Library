@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.4 — current
+- Swapped the order of mobile TV Mode's two rows below the playback controls: the on/off power switch + Vote row now comes first, with the country filter/Clear filters/Create Playlist row right below it.
+
 ## v6.34.3 — current
 - The Favorite-through-Info row (whatever's left of the toggle row after Vote/4:3/CC move elsewhere on mobile) was reading as a small, right-justified cluster. It now spreads edge-to-edge across the full row with bigger buttons, matching the playback controls row above it.
 
