@@ -1520,6 +1520,40 @@ html, body {
   opacity: 1;
 }
 
+/* Desktop-only "My Playlists" shortcut below Support! -- see
+   #sidebarPlaylistsSection in index.html / renderSidebarPlaylists() in
+   app.js. Hidden entirely on mobile (the hamburger overlay), see the
+   max-width:640px rule further down. */
+.sidebar-playlists-spacer {
+  height: 1px;
+  margin: 10px 4px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+
+.header-links-section-label {
+  padding: 4px 10px 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.header-links.is-open .header-links-section-label {
+  opacity: 1;
+}
+
+.sidebar-playlist-item .header-links-label,
+.sidebar-playlists-more .header-links-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header-account-btn {
   border: none;
   background: none;
@@ -1765,6 +1799,13 @@ html, body {
 
   /* Settings moved to the bottom nav on mobile -- desktop keeps it inline. */
   #openSettingsBtn {
+    display: none;
+  }
+
+  /* My Playlists sidebar shortcut is desktop-only, per explicit request --
+     mobile already has full access via the Playlists page itself. */
+  .sidebar-playlists-spacer,
+  .sidebar-playlists-section {
     display: none;
   }
 

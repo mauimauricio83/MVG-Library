@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.5"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -253,6 +253,9 @@
     playlistsCustomChips: document.getElementById("playlistsCustomChips"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
     playlistsNewBtn: document.getElementById("playlistsNewBtn"),
+    sidebarPlaylistsSection: document.getElementById("sidebarPlaylistsSection"),
+    sidebarPlaylistsList: document.getElementById("sidebarPlaylistsList"),
+    sidebarPlaylistsMoreBtn: document.getElementById("sidebarPlaylistsMoreBtn"),
     playlistPlayerModal: document.getElementById("playlistPlayerModal"),
     playlistPlayerPanel: document.getElementById("playlistPlayerPanel"),
     playlistPlayerVideoFrame: document.getElementById("playlistPlayerVideoFrame"),
@@ -2075,6 +2078,7 @@
     ensureMyQueue();
     renderMyQueueStrip();
     seedDefaultPlaylists(state.rows);
+    renderSidebarPlaylists();
     startViewersChoice();
     renderDiscoverSection(state.rows);
     render();
@@ -2823,7 +2827,44 @@
     els.playlistsCustomChipGroup.hidden = !groups.custom.length;
     els.playlistsCustomChips.innerHTML = playlistsChipListHtml(groups.custom);
     els.playlistsEmptyMsg.hidden = !!(groups.defaults.length + groups.custom.length);
+    renderSidebarPlaylists();
   }
+
+  // Desktop-only shortcut in the sidebar (#sidebarPlaylistsSection, below
+  // Support!) -- the user's own (custom) playlists only, top 5 (newest
+  // first, same order as the My Playlists chip row) with a "More" toggle
+  // to reveal the rest in place. Re-rendered on every playlist mutation
+  // via renderPlaylistsPage() above, so it never goes stale after
+  // create/rename/delete/sync.
+  var sidebarPlaylistsExpanded = false;
+  var SIDEBAR_PLAYLIST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+
+  function renderSidebarPlaylists() {
+    var custom = loadPlaylistsGroupedForDisplay().custom;
+    els.sidebarPlaylistsSection.hidden = !custom.length;
+    if (!custom.length) return;
+    var visible = sidebarPlaylistsExpanded ? custom : custom.slice(0, 5);
+    els.sidebarPlaylistsList.innerHTML = visible.map(function (p) {
+      return '<button type="button" class="submit-link header-account-btn sidebar-playlist-item" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="header-links-icon">' + SIDEBAR_PLAYLIST_ICON + "</span>" +
+        '<span class="header-links-label">' + escapeHtml(p.name) + "</span>" +
+        "</button>";
+    }).join("");
+    els.sidebarPlaylistsMoreBtn.hidden = custom.length <= 5;
+    els.sidebarPlaylistsMoreBtn.querySelector(".header-links-label").textContent = sidebarPlaylistsExpanded ? "Less" : "More";
+  }
+
+  els.sidebarPlaylistsList.addEventListener("click", function (e) {
+    var item = e.target.closest(".sidebar-playlist-item");
+    if (!item) return;
+    var playlist = findPlaylist(item.getAttribute("data-id"));
+    if (playlist) openPlaylistPlayer(playlist);
+  });
+
+  els.sidebarPlaylistsMoreBtn.addEventListener("click", function () {
+    sidebarPlaylistsExpanded = !sidebarPlaylistsExpanded;
+    renderSidebarPlaylists();
+  });
 
   els.sidebarPlaylistsBtn.addEventListener("click", function () {
     sharedFavoritesUid = null;

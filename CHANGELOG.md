@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.5 — current
+- Added a "My Playlists" shortcut to the desktop sidebar, below Support! (separated by a small spacer): your top 5 custom playlists, newest first, plus a "More" toggle that expands to all of them in place. Clicking any of them opens the playlist player directly, same as on the Playlists page. Desktop only -- mobile already has full access via the Playlists page itself.
+
 ## v6.35.4 — current
 - Fixed the default-playlist dedup fix itself: it was a one-time pass gated behind a "ran once" flag, so an account whose duplicates arrived (or re-arrived) via a Firestore sync *after* that flag was already set never got cleaned up. Backfilling `isDefault`/deduping is now a cheap, idempotent pass that just re-runs on every load and every sync -- no flag, no "only once" gap for old-style duplicates from a not-yet-updated device to slip back in through.
 - Swapped the Playlists page order: My Playlists now comes before Default Playlists.
