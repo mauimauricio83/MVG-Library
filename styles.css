@@ -1753,9 +1753,13 @@ html, body {
     display: none;
   }
 
-  /* Home/TV Mode links and the top-bar search icon are desktop-only --
-     mobile already has these via the bottom nav. #headerLinks. prefix
-     needed so this beats .header-links.is-open .submit-link's
+  /* Home/TV Mode/Favorites links and the top-bar search icon are
+     desktop-only -- mobile already has these via the bottom nav.
+     Playlists deliberately doesn't carry .sidebar-page-link (its button
+     lost the class) since it has no bottom-nav slot of its own -- hiding
+     it here as well would leave it with no mobile entry point at all
+     (confirmed: this exact bug was live in production). #headerLinks.
+     prefix needed so this beats .header-links.is-open .submit-link's
      display:flex on specificity (2 classes) when the mobile menu is open. */
   #headerLinks .sidebar-page-link,
   .top-bar-actions,

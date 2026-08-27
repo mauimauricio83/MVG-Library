@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.1 — current
+- Fixed the Playlists link missing from the mobile hamburger menu entirely -- it shared a class with Home/TV Mode/Favorites that hides all of them on mobile since the bottom nav already covers those, but Playlists has no bottom-nav slot of its own, so it was left with no mobile entry point at all.
+
 ## v6.35.0 — current
 - Fixed My Queue's homepage strip staying visible (and reading as duplicated) on every other page/view -- it was simply missing from the CSS hide-lists every other home-only section already had for Search/Favorites/Playlists/Profiles, on both desktop and mobile.
 - Reworked the Playlists page: My Queue now has its own fixed, always-visible, yellow-titled section above the chip rows instead of being mixed in as just another chip. The remaining playlists split into "Default Playlists" (the 16 seeded director filmographies) and "My Playlists" (anything you create) -- default playlists are tagged at seed time so renaming one keeps it under Default Playlists rather than "graduating" it.
