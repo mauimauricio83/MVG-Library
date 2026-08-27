@@ -792,6 +792,21 @@ html, body {
   color: var(--brand-yellow);
 }
 
+/* Reset the button-ness so it reads as plain text, styled the same as
+   before it became clickable (opens the same as Play All -- see
+   playlistsMyQueueName's click handler in app.js). */
+.playlist-detail-name-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.playlist-detail-name-btn:hover {
+  text-decoration: underline;
+}
+
 /* Its own top margin, distinguishing it visually as a separate block
    rather than reading as an extra-tall Playlists header. */
 .playlist-detail-queue {
@@ -5828,6 +5843,12 @@ body.is-searching #viewersChoiceSection {
 @media (min-width: 641px) {
   #playlistPlayerModal .lightbox-panel {
     max-width: 1040px;
+  }
+
+  /* Widen toggle (state.playlistPlayer.large) -- higher specificity than
+     the base .lightbox-panel.size-large's 1080px, needs its own bump. */
+  #playlistPlayerModal .lightbox-panel.size-large {
+    max-width: 1400px;
   }
 
   /* Rail on the left, video/details on the right -- grid-column placed

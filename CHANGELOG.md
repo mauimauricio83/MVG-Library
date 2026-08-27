@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.3 — current
+- Fixed default playlists (Michel Gondry, etc.) duplicating -- they were seeded with a random id per device/browser, so Firestore's by-id merge couldn't recognize a second device's copy as the same playlist and just appended a whole second set. Default playlists now get a deterministic id, plus a one-time cleanup pass that merges any duplicates already created (unioning their videos) for accounts that already hit this.
+- New playlists now appear at the top of My Playlists instead of the bottom.
+- My Queue's title is now clickable and opens the same as its Play All.
+- The playlist player's action row now matches the normal lightbox's in full: Edit/Delete/Cover art (admin), Add to playlist, Vote, Favorite, Copy link, Widen, and Report an issue -- previously it only had Add to playlist and Favorite.
+
 ## v6.35.2 — current
 - Added a real playlist player: clicking any playlist chip (or Play All, including My Queue's) now opens a normal video lightbox -- favorite/add-to-playlist/tags/credits/description, same chrome as always -- with a playlist rail on the left (desktop) or a collapsed list below the controls (mobile). Plays sequentially by default with a shuffle toggle, Prev/Next, per-track remove, and Rename/Delete moved into the player itself. Not TV Mode and not the old select-then-preview strip (removed) -- a dedicated, simpler modal built on the same shared video-player wrapper TV Mode and the lightbox's own mini-player already use.
 

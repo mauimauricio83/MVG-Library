@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.35.2">
+<link rel="stylesheet" href="styles.css?v=6.35.3">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -534,7 +534,7 @@
     </div>
     <div class="playlist-detail playlist-detail-queue" id="playlistsMyQueueSection" hidden>
       <div class="playlist-detail-head">
-        <span class="playlist-detail-name playlist-detail-name-queue" id="playlistsMyQueueName"></span>
+        <button type="button" class="playlist-detail-name playlist-detail-name-queue playlist-detail-name-btn" id="playlistsMyQueueName"></button>
         <div class="playlist-detail-actions">
           <button type="button" class="media-strip-play-all" id="playlistsMyQueuePlayAll">▶ Play All</button>
         </div>
@@ -712,7 +712,7 @@
      click or a Play All button. -->
 <div class="lightbox playlist-player-modal" id="playlistPlayerModal" hidden>
   <div class="lightbox-backdrop"></div>
-  <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Playlist player">
+  <div class="lightbox-panel" id="playlistPlayerPanel" role="dialog" aria-modal="true" aria-label="Playlist player">
     <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
     <div class="playlist-player-layout">
       <div class="playlist-player-main">
@@ -722,10 +722,11 @@
         <div class="lightbox-body">
           <div class="lightbox-title-row">
             <h2 class="lightbox-title" id="playlistPlayerTitle"></h2>
-            <div class="lightbox-title-actions">
-              <button type="button" class="lightbox-playlist-btn" id="playlistPlayerAddBtn" title="Add to playlist" aria-label="Add to playlist">+</button>
-              <button type="button" class="lightbox-fav-btn" id="playlistPlayerFavBtn" title="Favorite" aria-label="Toggle favorite">♡</button>
-            </div>
+            <!-- Rebuilt per-track in JS (loadPlaylistPlayerTrack()), same as
+                 openLightbox()'s own title-actions row -- admin buttons are
+                 conditional on adminUiActive(), Vote/Favorite reflect this
+                 row's own state. -->
+            <div class="lightbox-title-actions" id="playlistPlayerTitleActions"></div>
           </div>
           <p class="lightbox-subtitle" id="playlistPlayerSubtitle"></p>
           <div class="lightbox-tag-row" id="playlistPlayerTags"></div>
@@ -1570,6 +1571,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.35.2"></script>
+<script src="app.js?v=6.35.3"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -254,11 +254,11 @@
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
     playlistsNewBtn: document.getElementById("playlistsNewBtn"),
     playlistPlayerModal: document.getElementById("playlistPlayerModal"),
+    playlistPlayerPanel: document.getElementById("playlistPlayerPanel"),
     playlistPlayerVideoFrame: document.getElementById("playlistPlayerVideoFrame"),
     playlistPlayerTarget: document.getElementById("playlistPlayerTarget"),
     playlistPlayerTitle: document.getElementById("playlistPlayerTitle"),
-    playlistPlayerAddBtn: document.getElementById("playlistPlayerAddBtn"),
-    playlistPlayerFavBtn: document.getElementById("playlistPlayerFavBtn"),
+    playlistPlayerTitleActions: document.getElementById("playlistPlayerTitleActions"),
     playlistPlayerSubtitle: document.getElementById("playlistPlayerSubtitle"),
     playlistPlayerTags: document.getElementById("playlistPlayerTags"),
     playlistPlayerCredits: document.getElementById("playlistPlayerCredits"),
@@ -1083,6 +1083,7 @@
       order: [],
       index: 0,
       shuffle: false,
+      large: false,
       player: null
     },
     isAdmin: false,
@@ -1510,7 +1511,11 @@
       rowNums: rowNums ? rowNums.slice() : [],
       updatedAt: Date.now()
     };
-    list.push(playlist);
+    // Newest first -- every UI that lists playlists (My Playlists chip
+    // row, the add-to-playlist popover) just reads storage order as-is,
+    // so a brand-new playlist should already be at the front of it rather
+    // than needing every consumer to separately re-sort by creation time.
+    list.unshift(playlist);
     savePlaylists(list);
     pushToFirestore();
     return playlist;
@@ -1627,9 +1632,56 @@
     if (changed) { savePlaylists(list); pushToFirestore(); }
   }
 
+  // Every default playlist this seeds shares this ONE-time cleanup pass --
+  // see dedupeDefaultPlaylists() below for why it's needed (random ids
+  // meant two devices seeding independently produced two full sets that
+  // Firestore's by-id merge (syncFromFirestore()) couldn't recognize as
+  // the same playlist). Deterministic ids fix it going forward; the
+  // cleanup pass handles accounts that already have the duplicates.
+  var DEFAULT_PLAYLISTS_DEDUPED_KEY = "mvg-default-playlists-deduped";
+
+  function defaultPlaylistId(directorName) {
+    return "pl-default-" + slugify(directorName);
+  }
+
+  // One-time merge of duplicate default playlists sharing the same name
+  // (isDefault, pre-deterministic-id) into a single entry per director --
+  // unions their rowNums (favoring whichever had more, then keeps every
+  // rowNum either copy had) and re-ids it to the new deterministic id so
+  // it also naturally de-dupes against any other device's copy next sync.
+  function dedupeDefaultPlaylists() {
+    try {
+      if (localStorage.getItem(DEFAULT_PLAYLISTS_DEDUPED_KEY)) return;
+    } catch (e) { return; }
+    var list = loadPlaylists();
+    var byName = {};
+    var changed = false;
+    var deduped = list.filter(function (p) {
+      if (!p.isDefault) return true;
+      if (!byName[p.name]) { byName[p.name] = p; return true; }
+      var kept = byName[p.name];
+      p.rowNums.forEach(function (n) {
+        if (kept.rowNums.indexOf(n) === -1) kept.rowNums.push(n);
+      });
+      changed = true;
+      return false; // drop this duplicate, its rowNums already merged into `kept`
+    });
+    deduped.forEach(function (p) {
+      if (!p.isDefault) return;
+      var newId = defaultPlaylistId(p.name);
+      if (p.id !== newId) { p.id = newId; changed = true; }
+    });
+    try { localStorage.setItem(DEFAULT_PLAYLISTS_DEDUPED_KEY, "1"); } catch (e) {}
+    if (changed) { savePlaylists(deduped); pushToFirestore(); }
+  }
+
   function seedDefaultPlaylists(rows) {
     try {
-      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) { backfillDefaultPlaylistFlags(); return; }
+      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) {
+        backfillDefaultPlaylistFlags();
+        dedupeDefaultPlaylists();
+        return;
+      }
     } catch (e) { return; }
 
     var list = loadPlaylists();
@@ -1646,7 +1698,12 @@
         .map(function (r) { return r.rowNum; });
       if (!rowNums.length) return; // nothing in the catalog yet -- skip rather than seed an empty playlist
       list.push({
-        id: generatePlaylistId(),
+        // Deterministic (not generatePlaylistId()'s random id) so seeding
+        // independently on a second device produces the SAME id for the
+        // "same" default playlist -- syncFromFirestore()'s by-id merge can
+        // then actually recognize them as one playlist instead of quietly
+        // appending a second full set of all 16.
+        id: defaultPlaylistId(directorName),
         name: directorName,
         rowNums: rowNums,
         updatedAt: Date.now(),
@@ -1657,6 +1714,7 @@
 
     try { localStorage.setItem(DEFAULT_PLAYLISTS_SEEDED_KEY, "1"); } catch (e) {}
     try { localStorage.setItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY, "1"); } catch (e) {} // freshly seeded with the flag already set -- nothing to backfill
+    try { localStorage.setItem(DEFAULT_PLAYLISTS_DEDUPED_KEY, "1"); } catch (e) {} // freshly seeded with deterministic ids already -- nothing to dedupe
     if (!added) return;
     savePlaylists(list);
     pushToFirestore();
@@ -2783,11 +2841,14 @@
     renderPlaylistsPage();
   });
 
-  // My Queue's own fixed section's Play All also opens the player.
-  els.playlistsMyQueuePlayAll.addEventListener("click", function () {
+  // My Queue's own fixed section's Play All AND its title (now a button,
+  // see #playlistsMyQueueName in index.html) both open the player.
+  function openMyQueuePlayer() {
     var playlist = findPlaylist(MY_QUEUE_ID);
     if (playlist) openPlaylistPlayer(playlist);
-  });
+  }
+  els.playlistsMyQueuePlayAll.addEventListener("click", openMyQueuePlayer);
+  els.playlistsMyQueueName.addEventListener("click", openMyQueuePlayer);
 
   // ---- Playlist player -------------------------------------------------
   // A normal video lightbox (favorite/add-to-playlist/tags/credits/
@@ -2805,6 +2866,30 @@
     return pp.rows[pp.order[pp.index]];
   }
 
+  // Same actions row as openLightbox() -- Edit/Delete/Cover art (admin
+  // only), Add to playlist, Vote, Favorite, Copy link, Widen, Report an
+  // issue -- rebuilt fresh per track since admin-ness and vote/favorite
+  // state are per-row. No crop/4:3 button: that's TV Mode-only, the plain
+  // lightbox this player mirrors never had one either.
+  function playlistPlayerTitleActionsHtml(row) {
+    var adminEditBtn = adminUiActive()
+      ? '<button type="button" class="lightbox-admin-edit-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Edit entry (admin)" aria-label="Edit entry">✎ Edit</button>'
+      : "";
+    var adminDeleteBtn = adminUiActive()
+      ? '<button type="button" class="lightbox-admin-delete-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml((row.artist ? row.artist + " — " : "") + (row.song || "(untitled)")) + '" title="Delete entry (admin)" aria-label="Delete entry">' + ICON_TRASH + " Delete</button>"
+      : "";
+    var adminCoverBtn = adminUiActive()
+      ? '<button type="button" class="lightbox-admin-cover-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Download cover art (admin)" aria-label="Download cover art">⬇ Cover art</button>'
+      : "";
+    return adminEditBtn + adminDeleteBtn + adminCoverBtn +
+      '<button type="button" class="lightbox-playlist-btn" data-rownum="' + escapeHtml(row.rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>' +
+      lightboxVoteBtnHtml(row) +
+      '<button type="button" class="lightbox-fav-btn' + (isFavorite(row.rowNum) ? " is-active" : "") + '" data-rownum="' + escapeHtml(row.rowNum) + '" title="Favorite" aria-label="Toggle favorite">' + (isFavorite(row.rowNum) ? "♥" : "♡") + "</button>" +
+      shareButtonHtml(lightboxHash(row), (row.song || "Untitled") + (row.artist ? " — " + row.artist : "")) +
+      '<button type="button" class="lightbox-widen-btn" title="Widen player" aria-label="Toggle player size">⤢</button>' +
+      '<button type="button" class="lightbox-report-menu-btn" data-rownum="' + escapeHtml(row.rowNum) + '" data-report-url="' + escapeHtml(reportFormUrl(row)) + '" aria-haspopup="true" aria-expanded="false">Report an issue</button>';
+  }
+
   function openPlaylistPlayer(playlist) {
     var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
     if (!rows.length) { alert("This playlist has no playable videos yet."); return; }
@@ -2815,6 +2900,8 @@
     pp.rows = rows;
     pp.order = rows.map(function (r, i) { return i; });
     pp.shuffle = false;
+    pp.large = false;
+    els.playlistPlayerPanel.classList.remove("size-large");
     els.playlistPlayerShuffleBtn.setAttribute("aria-pressed", "false");
     els.playlistPlayerRailName.innerHTML = (playlist.id === MY_QUEUE_ID ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(playlist.name);
     els.playlistPlayerRenameBtn.hidden = playlist.id === MY_QUEUE_ID;
@@ -2859,10 +2946,12 @@
     els.playlistPlayerDesc.innerHTML = row.description
       ? escapeHtml(row.description)
       : '<span class="placeholder">No writeup yet.</span>';
-    els.playlistPlayerFavBtn.classList.toggle("is-active", isFavorite(row.rowNum));
-    els.playlistPlayerFavBtn.textContent = isFavorite(row.rowNum) ? "♥" : "♡";
-    els.playlistPlayerFavBtn.setAttribute("data-rownum", row.rowNum);
-    els.playlistPlayerAddBtn.setAttribute("data-rownum", row.rowNum);
+    els.playlistPlayerTitleActions.innerHTML = playlistPlayerTitleActionsHtml(row);
+    var widenBtn = els.playlistPlayerTitleActions.querySelector(".lightbox-widen-btn");
+    if (widenBtn) {
+      widenBtn.textContent = pp.large ? "⤡" : "⤢";
+      widenBtn.title = pp.large ? "Shrink player" : "Widen player";
+    }
 
     els.playlistPlayerPrevBtn.disabled = orderIndex <= 0;
     els.playlistPlayerNextBtn.disabled = orderIndex >= pp.order.length - 1;
@@ -2966,18 +3055,6 @@
     loadPlaylistPlayerTrack(parseInt(item.getAttribute("data-order-index"), 10));
   });
 
-  els.playlistPlayerFavBtn.addEventListener("click", function () {
-    var rowNum = els.playlistPlayerFavBtn.getAttribute("data-rownum");
-    var nowFavorite = toggleFavorite(rowNum);
-    els.playlistPlayerFavBtn.classList.toggle("is-active", nowFavorite);
-    els.playlistPlayerFavBtn.textContent = nowFavorite ? "♥" : "♡";
-    renderFavoritesStrip(state.rows);
-  });
-
-  els.playlistPlayerAddBtn.addEventListener("click", function () {
-    openAddToPlaylistPopover(els.playlistPlayerAddBtn.getAttribute("data-rownum"), els.playlistPlayerAddBtn);
-  });
-
   els.playlistPlayerRenameBtn.addEventListener("click", function () {
     var playlist = state.playlistPlayer.playlist;
     if (!playlist) return;
@@ -2998,8 +3075,62 @@
     renderPlaylistsPage();
   });
 
+  // Mirrors the relevant subset of els.lightbox's own delegated click
+  // handler (widen/report/admin edit-delete-cover/favorite/share/vote/
+  // add-to-playlist) -- same classes, same global functions, just scoped
+  // to this modal instead. Not literally shared with els.lightbox's
+  // handler since widen here needs its own size state (state.playlistPlayer
+  // .large / #playlistPlayerPanel, independent of the plain lightbox's
+  // state.lightboxSize / els.lightboxPanel), and crop doesn't apply here.
   els.playlistPlayerModal.addEventListener("click", function (e) {
-    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) { dismissTopModal(); return; }
+    if (e.target.closest(".lightbox-widen-btn")) {
+      var pp = state.playlistPlayer;
+      pp.large = !pp.large;
+      els.playlistPlayerPanel.classList.toggle("size-large", pp.large);
+      var widenBtn = els.playlistPlayerModal.querySelector(".lightbox-widen-btn");
+      if (widenBtn) {
+        widenBtn.textContent = pp.large ? "⤡" : "⤢";
+        widenBtn.title = pp.large ? "Shrink player" : "Widen player";
+      }
+      return;
+    }
+    var reportMenuBtn = e.target.closest(".lightbox-report-menu-btn");
+    if (reportMenuBtn) {
+      e.stopPropagation();
+      toggleLightboxReportMenu(reportMenuBtn);
+      return;
+    }
+    var adminEditBtn = e.target.closest(".lightbox-admin-edit-btn");
+    if (adminEditBtn) {
+      openAdminEditForRow(adminEditBtn.getAttribute("data-rownum"));
+      return;
+    }
+    var adminDeleteBtn = e.target.closest(".lightbox-admin-delete-btn");
+    if (adminDeleteBtn) {
+      deleteRowFromLightbox(adminDeleteBtn.getAttribute("data-rownum"), adminDeleteBtn.getAttribute("data-label"));
+      return;
+    }
+    var adminCoverBtn = e.target.closest(".lightbox-admin-cover-btn");
+    if (adminCoverBtn) {
+      var coverRow = findRowByNum(adminCoverBtn.getAttribute("data-rownum"));
+      if (coverRow) downloadCoverArt(coverRow, adminCoverBtn);
+      return;
+    }
+    var favBtn = e.target.closest(".lightbox-fav-btn");
+    if (favBtn) {
+      var nowFavorite = toggleFavorite(favBtn.getAttribute("data-rownum"));
+      favBtn.classList.toggle("is-active", nowFavorite);
+      favBtn.textContent = nowFavorite ? "♥" : "♡";
+      renderFavoritesStrip(state.rows);
+      return;
+    }
+    var shareBtn = e.target.closest(".lightbox-share-btn");
+    if (shareBtn) { handleShareButtonClick(shareBtn); return; }
+    var voteBtn = e.target.closest(".lightbox-vote-btn");
+    if (voteBtn) { voteForRowNum(voteBtn.getAttribute("data-rownum"), voteBtn); return; }
+    var playlistBtn = e.target.closest(".lightbox-playlist-btn");
+    if (playlistBtn) { openAddToPlaylistPopover(playlistBtn.getAttribute("data-rownum"), playlistBtn); return; }
   });
 
   // "Save as Playlist" on Search -- snapshots the currently-matching rows
