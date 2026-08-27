@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -1607,19 +1607,20 @@
     "David Fincher", "Jonas Akerlund", "Hammer and Tongs", "Marty Callner"
   ];
   var DEFAULT_PLAYLISTS_SEEDED_KEY = "mvg-default-playlists-seeded";
-  // Backfills isDefault:true (added when the Default/My Playlists split
-  // shipped) onto playlists that were seeded by an earlier version of this
-  // function, before it stamped that flag. One-time and separate from
-  // DEFAULT_PLAYLISTS_SEEDED_KEY so it can run its own single pass without
-  // re-triggering the (now flag-aware) seeding logic below. Matches by
-  // name against DEFAULT_PLAYLIST_DIRECTORS -- the only signal available
-  // for playlists created before the flag existed.
-  var DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY = "mvg-default-playlists-flag-backfilled";
 
+  // Stamps isDefault:true (added when the Default/My Playlists split
+  // shipped) onto any playlist matching a known director name that
+  // doesn't have it yet -- covers playlists seeded by an earlier version
+  // of this feature, before the flag existed. Deliberately NOT gated
+  // behind a "ran once" localStorage flag: it's cheap and idempotent (a
+  // playlist that already has the flag is untouched), and it needs to
+  // keep re-running on every load/sync, not just the first one -- a
+  // signed-in account can have pre-flag duplicates arrive well after this
+  // device's own local state was already considered "done" (see
+  // dedupeDefaultPlaylists() below for the full story; this was
+  // originally gated the same way and that's exactly what let already-
+  // fixed accounts re-accumulate duplicates on their next Firestore sync).
   function backfillDefaultPlaylistFlags() {
-    try {
-      if (localStorage.getItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY)) return;
-    } catch (e) { return; }
     var list = loadPlaylists();
     var changed = false;
     list.forEach(function (p) {
@@ -1628,31 +1629,30 @@
         changed = true;
       }
     });
-    try { localStorage.setItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY, "1"); } catch (e) {}
     if (changed) { savePlaylists(list); pushToFirestore(); }
   }
-
-  // Every default playlist this seeds shares this ONE-time cleanup pass --
-  // see dedupeDefaultPlaylists() below for why it's needed (random ids
-  // meant two devices seeding independently produced two full sets that
-  // Firestore's by-id merge (syncFromFirestore()) couldn't recognize as
-  // the same playlist). Deterministic ids fix it going forward; the
-  // cleanup pass handles accounts that already have the duplicates.
-  var DEFAULT_PLAYLISTS_DEDUPED_KEY = "mvg-default-playlists-deduped";
 
   function defaultPlaylistId(directorName) {
     return "pl-default-" + slugify(directorName);
   }
 
-  // One-time merge of duplicate default playlists sharing the same name
-  // (isDefault, pre-deterministic-id) into a single entry per director --
-  // unions their rowNums (favoring whichever had more, then keeps every
-  // rowNum either copy had) and re-ids it to the new deterministic id so
-  // it also naturally de-dupes against any other device's copy next sync.
+  // Merges duplicate default playlists sharing the same name into a
+  // single entry per director -- unions their rowNums and re-ids it to
+  // the deterministic id (defaultPlaylistId()) so it also naturally
+  // de-dupes against any other device's copy on the next sync. Random
+  // ids (the old behavior) meant two devices seeding independently
+  // produced two full sets that syncFromFirestore()'s by-id merge
+  // couldn't recognize as the same playlist -- deterministic ids fix
+  // that going forward, but any devices/sessions that haven't picked up
+  // this code yet keep writing old-style duplicates in the meantime.
+  // That's exactly why this can't be a one-time pass gated behind a
+  // localStorage flag the way it first shipped: a signed-in account
+  // syncing from a not-yet-updated device can reintroduce duplicates
+  // *after* this device already ran its "one-time" cleanup, and with a
+  // flag already set, they'd never get cleaned up again. Cheap and
+  // idempotent instead (a no-op once nothing's actually duplicated), so
+  // it just re-runs on every load/sync until every device is caught up.
   function dedupeDefaultPlaylists() {
-    try {
-      if (localStorage.getItem(DEFAULT_PLAYLISTS_DEDUPED_KEY)) return;
-    } catch (e) { return; }
     var list = loadPlaylists();
     var byName = {};
     var changed = false;
@@ -1671,53 +1671,53 @@
       var newId = defaultPlaylistId(p.name);
       if (p.id !== newId) { p.id = newId; changed = true; }
     });
-    try { localStorage.setItem(DEFAULT_PLAYLISTS_DEDUPED_KEY, "1"); } catch (e) {}
     if (changed) { savePlaylists(deduped); pushToFirestore(); }
   }
 
   function seedDefaultPlaylists(rows) {
-    try {
-      if (localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY)) {
-        backfillDefaultPlaylistFlags();
-        dedupeDefaultPlaylists();
-        return;
-      }
-    } catch (e) { return; }
+    var alreadySeeded;
+    try { alreadySeeded = !!localStorage.getItem(DEFAULT_PLAYLISTS_SEEDED_KEY); } catch (e) { return; }
 
-    var list = loadPlaylists();
-    var added = false;
+    if (!alreadySeeded) {
+      var list = loadPlaylists();
+      var added = false;
 
-    DEFAULT_PLAYLIST_DIRECTORS.forEach(function (directorName) {
-      var target = normalizeCreditName(directorName, false);
-      // rowNum-ascending (catalog order) rather than sheet row order --
-      // reads as oldest-to-newest per director, a reasonable default for
-      // a filmography.
-      var rowNums = rows
-        .filter(function (r) { return hasVideo(r) && normalizeCreditName(r.director, true) === target; })
-        .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
-        .map(function (r) { return r.rowNum; });
-      if (!rowNums.length) return; // nothing in the catalog yet -- skip rather than seed an empty playlist
-      list.push({
-        // Deterministic (not generatePlaylistId()'s random id) so seeding
-        // independently on a second device produces the SAME id for the
-        // "same" default playlist -- syncFromFirestore()'s by-id merge can
-        // then actually recognize them as one playlist instead of quietly
-        // appending a second full set of all 16.
-        id: defaultPlaylistId(directorName),
-        name: directorName,
-        rowNums: rowNums,
-        updatedAt: Date.now(),
-        isDefault: true
+      DEFAULT_PLAYLIST_DIRECTORS.forEach(function (directorName) {
+        var target = normalizeCreditName(directorName, false);
+        // rowNum-ascending (catalog order) rather than sheet row order --
+        // reads as oldest-to-newest per director, a reasonable default
+        // for a filmography.
+        var rowNums = rows
+          .filter(function (r) { return hasVideo(r) && normalizeCreditName(r.director, true) === target; })
+          .sort(function (a, b) { return parseInt(a.rowNum, 10) - parseInt(b.rowNum, 10); })
+          .map(function (r) { return r.rowNum; });
+        if (!rowNums.length) return; // nothing in the catalog yet -- skip rather than seed an empty playlist
+        list.push({
+          // Deterministic (not generatePlaylistId()'s random id) so
+          // seeding independently on a second device produces the SAME
+          // id for the "same" default playlist -- syncFromFirestore()'s
+          // by-id merge can then actually recognize them as one playlist
+          // instead of quietly appending a second full set of all 16.
+          id: defaultPlaylistId(directorName),
+          name: directorName,
+          rowNums: rowNums,
+          updatedAt: Date.now(),
+          isDefault: true
+        });
+        added = true;
       });
-      added = true;
-    });
 
-    try { localStorage.setItem(DEFAULT_PLAYLISTS_SEEDED_KEY, "1"); } catch (e) {}
-    try { localStorage.setItem(DEFAULT_PLAYLISTS_FLAG_BACKFILLED_KEY, "1"); } catch (e) {} // freshly seeded with the flag already set -- nothing to backfill
-    try { localStorage.setItem(DEFAULT_PLAYLISTS_DEDUPED_KEY, "1"); } catch (e) {} // freshly seeded with deterministic ids already -- nothing to dedupe
-    if (!added) return;
-    savePlaylists(list);
-    pushToFirestore();
+      try { localStorage.setItem(DEFAULT_PLAYLISTS_SEEDED_KEY, "1"); } catch (e) {}
+      if (added) { savePlaylists(list); pushToFirestore(); }
+    }
+
+    // Always -- not just on a fresh seed -- since `list` (or a signed-in
+    // account's Firestore data generally) can already carry old-style
+    // duplicates/un-flagged defaults regardless of whether THIS device
+    // has seeded before. Both are cheap no-ops when there's nothing to
+    // fix.
+    backfillDefaultPlaylistFlags();
+    dedupeDefaultPlaylists();
   }
 
   // Returns the new "is in this playlist" state, mirroring toggleFavorite().
@@ -1847,6 +1847,13 @@
       } catch (e) {}
       savePlaylists(mergedPlaylists);
       ensureMyQueue(); // in case neither side had one yet (pre-feature account, fresh device)
+      // A remote copy from a device/session that hasn't picked up the
+      // deterministic default-playlist ids yet can reintroduce duplicates
+      // right here -- same cheap/idempotent cleanup seedDefaultPlaylists()
+      // runs on every load, needed again after every sync for the same
+      // reason (see dedupeDefaultPlaylists() for the full story).
+      backfillDefaultPlaylistFlags();
+      dedupeDefaultPlaylists();
       savePreferredGenres(mergedGenres);
 
       pushToFirestore();
