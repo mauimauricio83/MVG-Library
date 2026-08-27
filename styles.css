@@ -285,6 +285,14 @@ html, body {
   display: none;
 }
 
+/* Without this, showWelcomeGenreStep() hiding the main stage and showing
+   the genre stage doesn't actually hide the main one (its unconditional
+   display:flex below beats [hidden] at equal specificity) -- both stages
+   render stacked/overlapping instead of just the genre picker. */
+.welcome-gate-stage[hidden] {
+  display: none;
+}
+
 .welcome-gate-stage {
   position: relative;
   z-index: 1;
@@ -4614,6 +4622,15 @@ body.is-searching #viewersChoiceSection {
   gap: 10px;
 }
 
+/* Without this, exitTVFilterMode()'s els.tvSidePanel.hidden = true doesn't
+   actually hide it (the unconditional display:flex above beats the
+   browser's [hidden]{display:none} at equal specificity) -- currently
+   harmless since the panel has no padding/border of its own to make an
+   empty box visible, but a real latent bug if that ever changes. */
+.tv-side-panel[hidden] {
+  display: none;
+}
+
 /* Desktop-only home for the controls moveTVSidePanelControlsIn() (app.js)
    relocates here -- power switch, Clear filters, country filter, Report
    issue, Vote, 4:3, CC. Empty (and so invisible, no explicit hide needed)
@@ -6645,6 +6662,15 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.85rem;
 }
 
+/* Without this, renderAdminChannelScheduledInsert() setting
+   .hidden = true when there's no scheduled insert doesn't actually hide
+   the row (unconditional display:flex above beats [hidden] at equal
+   specificity) -- it'd show an empty bordered row in the admin channel
+   view at all times. */
+.admin-channel-scheduled-insert-row[hidden] {
+  display: none;
+}
+
 .admin-bulk-hint {
   margin: 10px 0 0;
   font-size: 0.8rem;
@@ -6742,6 +6768,15 @@ body.is-searching #viewersChoiceSection {
 .admin-form-actions {
   display: flex;
   gap: 8px;
+}
+
+/* Scoped to the id, not the shared class -- #adminBulkCommitRow is the
+   only .admin-form-actions row ever toggled via .hidden (Bulk Import's
+   commit row, shown once at least one valid row is staged). Without
+   this, the unconditional display:flex above beats [hidden] at equal
+   specificity and it shows empty before anything's staged. */
+#adminBulkCommitRow[hidden] {
+  display: none;
 }
 
 /* Full-frame post editor -- deliberately NOT a .lightbox (a 560px-capped

@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.7 — current
+- Maintenance pass: audited the codebase for the `[hidden]` vs. unconditional-`display` cascade-tie bug (same class of issue fixed for Vote a version back) and fixed four more real instances -- the TV Mode side panel not actually hiding after closing TV Mode, an admin channel "scheduled insert" row that could show stale/empty, an admin Bulk Import commit row showing before anything was staged, and (the highest-impact one) the welcome gate's genre-picker step rendering stacked on top of the sign-in step instead of replacing it for new visitors. Also corrected a stale comment about Create Playlist's visibility in TV Mode.
+
 ## v6.34.6 — current
 - Fixed Vote staying visible in TV Mode even after switching the power OFF. The shared Vote button style sets its own unconditional `display`, which was beating the browser's default `[hidden]{display:none}` in a cascade tie -- same class of bug fixed for the playback buttons a few versions back.
 

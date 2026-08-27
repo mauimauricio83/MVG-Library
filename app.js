@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.6"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.7"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -4907,7 +4907,15 @@
     els.mvgOnlyLabel.hidden = true;
     els.mvgOnlyTip.hidden = true;
     els.genreTip.hidden = true;
-    els.savePlaylistBtn.hidden = true; // Search-only -- nothing to "save as playlist" in TV Mode
+    // This actually only hides it on desktop (TV_RELOCATE leaves it home
+    // in .filters-toggle-row there, where no CSS rule overrides
+    // [hidden]). On mobile, TV_RELOCATE deliberately moves it into
+    // #filtersRowRight next to Clear filters -- a real, working feature
+    // (Create Playlist from the current TV filter's matches) -- and it
+    // stays visible there despite this line, because .save-playlist-btn's
+    // mobile display:inline-flex rule (styles.css) has no [hidden]
+    // override. Don't "fix" that CSS gap without also reworking this.
+    els.savePlaylistBtn.hidden = true;
     els.tvFilterTabs.hidden = false;
     els.tvSidePanel.hidden = false;
     state.tvActiveTab = "era";
