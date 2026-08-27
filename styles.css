@@ -3352,6 +3352,29 @@ body.is-searching #viewersChoiceSection {
   margin-left: auto;
 }
 
+/* Mobile-only destination for Add to Playlist + Favorite, on their own
+   row right after the playback controls (see TV_RELOCATE in app.js).
+   :not(:empty) keeps it from taking any space at all on desktop, where
+   it's never populated. flex:1 0 100% guarantees its own line within
+   .filters-toggle-row's flex-wrap regardless of how much room is left on
+   the previous line, same reasoning as .tv-playback-controls above. */
+.tv-mobile-fav-row:not(:empty) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 0 100%;
+}
+
+/* Mobile-only destination for the power switch -- its own centered row
+   below the country filter/Clear filters/Create Playlist line (see
+   TV_RELOCATE in app.js). A plain block (not inside the flex-wrap toggle
+   row), so no flex-basis trick needed to force its own line. */
+.tv-mobile-power-row:not(:empty) {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+}
+
 .tv-fav-btn,
 .tv-info-btn,
 .tv-widen-btn,
@@ -4255,6 +4278,34 @@ body.is-searching #viewersChoiceSection {
 
 .tv-volume-slider[hidden] {
   display: none;
+}
+
+/* Mobile TV Mode: playback controls (prev/play/next/mute/volume) get
+   their own full-width row, bigger and easier to tap now that they're
+   not competing with Clear filters/the power switch/etc. for the same
+   line (those moved elsewhere -- see TV_RELOCATE in app.js). The volume
+   slider flexes to fill whatever width the five buttons don't need,
+   which is what actually makes the row read as "full width" rather than
+   just bigger buttons floating at the start of it. margin-bottom is the
+   small gap before the next row (Add to Playlist + Favorite). */
+@media (max-width: 640px) {
+  .tv-playback-controls {
+    flex: 1 0 100%;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .tv-playback-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .tv-volume-slider {
+    flex: 1 1 auto;
+    width: auto;
+    height: 6px;
+  }
 }
 
 /* Sits right below the video, not overlaid on it -- native controls

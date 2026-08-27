@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.34.1 — current
+- Decluttered TV Mode's mobile layout further: playback controls (prev/play/next/mute/volume) are now bigger and stretch the full row, with a small gap before the next row. Add to Playlist and Favorite now share their own row right after that. Create Playlist joined Clear filters next to the country filter. The power switch dropped to its own centered row below that. Report issue and the desktop side panel from the last two releases are unaffected.
+
 ## v6.34.0 — current
 - Rearranged TV Mode's mobile layout so playback controls sit right after the timecode/progress bar, matching how it already read on desktop: Add to Playlist now joins the playback row right after the volume slider (putting it directly before Favorite too), Clear filters moved next to the country filter, and Report issue dropped to the very end, after the Genre/Era/Custom/Channel section. Desktop's own side-panel layout (shipped last version) is unaffected -- this is a separate, mobile-only rearrangement (`TV_RELOCATE` in app.js) that puts everything back exactly where it started the moment the window crosses back to desktop width or TV Mode closes.
 

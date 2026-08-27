@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.34.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.34.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -148,6 +148,8 @@
     tvPlaybackControls: document.getElementById("tvPlaybackControls"),
     filtersRowRight: document.getElementById("filtersRowRight"),
     tvMobileReportSlot: document.getElementById("tvMobileReportSlot"),
+    tvMobileFavRow: document.getElementById("tvMobileFavRow"),
+    tvMobilePowerRow: document.getElementById("tvMobilePowerRow"),
     tvAdPlaceholder: document.getElementById("tvAdPlaceholder"),
     tvFiltersSlot: document.getElementById("tvFiltersSlot"),
     clearFiltersBtn: document.getElementById("clearFiltersBtn"),
@@ -4949,27 +4951,31 @@
   // (three rows: country filter + Clear filters; 4:3 + CC grouped tight
   // then Vote; power switch + Report issue -- see the HTML comment above
   // #tvSidePanelControls). `mobile` gives mobile its own separate
-  // rearrangement instead (playback controls read top-to-bottom right
-  // after the seek bar, so Add to Playlist joins them right after the
-  // volume slider -- and ends up left of Favorite for free, since that's
-  // the very next thing after .tv-playback-controls in the flow; Clear
-  // filters sits with the country filter; Report issue drops to the very
-  // end, after Genre/Era/Custom/Channel). Either can be null, meaning
-  // "leave this one exactly where it already is" for that viewport --
-  // most controls only ever move on desktop, tvPlaylistBtn only ever
-  // moves on mobile. Each element's original {parent, nextSibling} is
-  // captured once, the first time this ever runs, so putting it back
-  // (closeTVModal(), or crossing the mobile breakpoint while TV Mode is
-  // still open) is always exact regardless of how many times it's moved.
+  // rearrangement instead: playback controls (enlarged, full-width -- see
+  // the max-width:640px block in styles.css) read right after the seek
+  // bar, then a small gap, then Add to Playlist + Favorite together on
+  // their own row (#tvMobileFavRow), then whatever's left of
+  // .tv-toggle-row-right (Vote/4:3/widen/fullscreen/CC/share/info); Clear
+  // filters and Create Playlist both join the country filter's row; the
+  // power switch drops to its own centered row right below that
+  // (#tvMobilePowerRow); Report issue drops to the very end, after
+  // Genre/Era/Custom/Channel. Either desktop/mobile can be null, meaning
+  // "leave this one exactly where it already is" for that viewport.
+  // Each element's original {parent, nextSibling} is captured once, the
+  // first time this ever runs, so putting it back (closeTVModal(), or
+  // crossing the mobile breakpoint while TV Mode is still open) is always
+  // exact regardless of how many times it's moved.
   var TV_RELOCATE = [
     { id: "countryFilter", desktop: "tvSidePanelRow1", mobile: null },
     { id: "clearFiltersBtn", desktop: "tvSidePanelRow1", mobile: "filtersRowRight" },
+    { id: "savePlaylistBtn", desktop: null, mobile: "filtersRowRight" },
     { id: "tvCropBtn", desktop: "tvSidePanelRow2Group", mobile: null },
     { id: "tvCcBtn", desktop: "tvSidePanelRow2Group", mobile: null },
     { id: "tvVoteBtn", desktop: "tvSidePanelRow2", mobile: null },
-    { id: "tvPowerSwitch", desktop: "tvSidePanelRow3", mobile: null },
+    { id: "tvPowerSwitch", desktop: "tvSidePanelRow3", mobile: "tvMobilePowerRow" },
     { id: "tvReportLink", desktop: "tvSidePanelRow3", mobile: "tvMobileReportSlot" },
-    { id: "tvPlaylistBtn", desktop: null, mobile: "tvPlaybackControls" }
+    { id: "tvPlaylistBtn", desktop: null, mobile: "tvMobileFavRow" },
+    { id: "tvFavBtn", desktop: null, mobile: "tvMobileFavRow" }
   ];
   var tvRelocateHomes = null;
   var tvRelocateCurrentDest = null; // null (home) | "desktop" | "mobile"
