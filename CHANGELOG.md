@@ -2,6 +2,9 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.35.2 — current
+- Added a real playlist player: clicking any playlist chip (or Play All, including My Queue's) now opens a normal video lightbox -- favorite/add-to-playlist/tags/credits/description, same chrome as always -- with a playlist rail on the left (desktop) or a collapsed list below the controls (mobile). Plays sequentially by default with a shuffle toggle, Prev/Next, per-track remove, and Rename/Delete moved into the player itself. Not TV Mode and not the old select-then-preview strip (removed) -- a dedicated, simpler modal built on the same shared video-player wrapper TV Mode and the lightbox's own mini-player already use.
+
 ## v6.35.1 — current
 - Fixed the Playlists link missing from the mobile hamburger menu entirely -- it shared a class with Home/TV Mode/Favorites that hides all of them on mobile since the bottom nav already covers those, but Playlists has no bottom-nav slot of its own, so it was left with no mobile entry point at all.
 

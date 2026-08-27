@@ -5678,6 +5678,182 @@ body.is-searching #viewersChoiceSection {
   opacity: 0.6;
 }
 
+/* Playlist player (#playlistPlayerModal) -- a normal lightbox (video +
+   .lightbox-body chrome, reused as-is above) plus a playlist rail. Mobile:
+   plain stacked column, rail reads as a list below the controls. Desktop:
+   two-column grid, rail on the right within a wider panel (no :has() sizing
+   trick needed like TV Mode's optional side panel -- this modal's rail is
+   always present whenever it's open, never conditionally empty). */
+.playlist-player-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-player-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.playlist-player-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.playlist-player-rail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playlist-player-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.playlist-player-shuffle-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.playlist-player-shuffle-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.playlist-player-shuffle-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.playlist-player-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.playlist-player-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.playlist-player-rail-item:hover {
+  background: var(--accent-soft);
+}
+
+.playlist-player-rail-item.is-current {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent);
+}
+
+.playlist-player-rail-thumb {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 36px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.playlist-player-rail-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.playlist-player-rail-song {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-player-rail-item.is-current .playlist-player-rail-song {
+  color: var(--brand-yellow);
+}
+
+.playlist-player-rail-artist {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-player-rail-remove {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.playlist-player-rail-remove:hover {
+  color: var(--accent);
+  background: var(--surface);
+}
+
+@media (min-width: 641px) {
+  #playlistPlayerModal .lightbox-panel {
+    max-width: 1040px;
+  }
+
+  /* Rail on the left, video/details on the right -- grid-column placed
+     explicitly (rather than reordering the DOM) so mobile keeps its own
+     natural DOM order: main content first, rail below it as a plain
+     stacked column. */
+  .playlist-player-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    align-items: start;
+  }
+
+  .playlist-player-main {
+    grid-column: 2;
+  }
+
+  .playlist-player-rail {
+    grid-column: 1;
+    grid-row: 1;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
 /* Floating hover preview of the trading card -- see showCardPreviewFor() in
    app.js. Appended straight to <body> (position: fixed) rather than nested
    in the lightbox, so it's never clipped by the lightbox panel's own

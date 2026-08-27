@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.35.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -253,11 +253,23 @@
     playlistsCustomChips: document.getElementById("playlistsCustomChips"),
     playlistsEmptyMsg: document.getElementById("playlistsEmptyMsg"),
     playlistsNewBtn: document.getElementById("playlistsNewBtn"),
-    playlistDetail: document.getElementById("playlistDetail"),
-    playlistDetailName: document.getElementById("playlistDetailName"),
-    playlistPlayAllBtn: document.getElementById("playlistPlayAllBtn"),
-    playlistRenameBtn: document.getElementById("playlistRenameBtn"),
-    playlistDeleteBtn: document.getElementById("playlistDeleteBtn"),
+    playlistPlayerModal: document.getElementById("playlistPlayerModal"),
+    playlistPlayerVideoFrame: document.getElementById("playlistPlayerVideoFrame"),
+    playlistPlayerTarget: document.getElementById("playlistPlayerTarget"),
+    playlistPlayerTitle: document.getElementById("playlistPlayerTitle"),
+    playlistPlayerAddBtn: document.getElementById("playlistPlayerAddBtn"),
+    playlistPlayerFavBtn: document.getElementById("playlistPlayerFavBtn"),
+    playlistPlayerSubtitle: document.getElementById("playlistPlayerSubtitle"),
+    playlistPlayerTags: document.getElementById("playlistPlayerTags"),
+    playlistPlayerCredits: document.getElementById("playlistPlayerCredits"),
+    playlistPlayerDesc: document.getElementById("playlistPlayerDesc"),
+    playlistPlayerRailName: document.getElementById("playlistPlayerRailName"),
+    playlistPlayerRenameBtn: document.getElementById("playlistPlayerRenameBtn"),
+    playlistPlayerDeleteBtn: document.getElementById("playlistPlayerDeleteBtn"),
+    playlistPlayerPrevBtn: document.getElementById("playlistPlayerPrevBtn"),
+    playlistPlayerNextBtn: document.getElementById("playlistPlayerNextBtn"),
+    playlistPlayerShuffleBtn: document.getElementById("playlistPlayerShuffleBtn"),
+    playlistPlayerRailList: document.getElementById("playlistPlayerRailList"),
     tvCustomList: document.getElementById("tvCustomList"),
     tvChannelPane: document.getElementById("tvChannelPane"),
     tvChannelStatus: document.getElementById("tvChannelStatus"),
@@ -842,6 +854,7 @@
 
   function closeAllModalsHard() {
     closeLightbox();
+    closePlaylistPlayer();
     closeDmThread();
     closeTVModal();
     closeSubmitModal();
@@ -1061,8 +1074,17 @@
       currentTrackStartedAt: null, // wall-clock ms this specific airing began -- for "X into this airing" comment timestamps
       commentsUnsub: null
     },
-    // Which playlist is open on the Playlists page (see renderPlaylistsPage()).
-    selectedPlaylistId: null,
+    // Playlist player (see openPlaylistPlayer()) -- rows is the ordered,
+    // hasVideo()-filtered rowNums (never mutated after open; shuffle
+    // reorders `order` instead so it can be un-shuffled back to this).
+    playlistPlayer: {
+      playlist: null,
+      rows: [],
+      order: [],
+      index: 0,
+      shuffle: false,
+      player: null
+    },
     isAdmin: false,
     viewAsNormie: loadAdminNormiePref(), // per-device pref, see adminUiActive()
     // Site-wide (not per-device) homepage section toggles -- see
@@ -2692,30 +2714,18 @@
 
   // ---- Playlists ---------------------------------------------------
   // Named lists of rowNums (see loadPlaylists()/createPlaylist() etc. near
-  // the favorites data functions). The page has two levels: a chip row
-  // listing every playlist, and a detail strip (reusing createMediaStrip(),
-  // same as Favorites) for whichever one's selected.
+  // the favorites data functions). My Queue gets its own fixed, always-
+  // visible strip; every other playlist is a chip that opens the playlist
+  // player directly (see openPlaylistPlayer() below) -- no separate
+  // select-then-preview step.
 
-  // Small clock icon marking My Queue in both the chip row and the
+  // Small clock icon marking My Queue in both its own section and the
   // add-to-playlist popover -- same plain-stroke-SVG convention as
   // ICON_TRASH etc. elsewhere.
   var ICON_QUEUE_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
 
-  var playlistDetailStrip = createMediaStrip(els.playlistDetail, {
-    emptyMessage: "Empty playlist, waiting for its first track — the + button on any video will do it.",
-    showDescription: true,
-    // Per-card remove (see createMediaStrip()'s opts.onRemove) -- the easy
-    // one-click removal every playlist gets for free since they all share
-    // this one strip instance.
-    onRemove: function (rowNum) {
-      togglePlaylistEntry(state.selectedPlaylistId, rowNum);
-      renderPlaylistDetail();
-      refreshPlaylistUIAfterChange();
-    }
-  });
-
   // My Queue's own fixed section above the chip rows (not a selectable
-  // chip/detail like the rest -- see #playlistsMyQueueSection). Same
+  // chip like the rest -- see #playlistsMyQueueSection). Same
   // createMediaStrip() shape/one-click-remove as the homepage's own My
   // Queue strip (renderMyQueueStrip()), just a separate DOM target/
   // instance since the two sections render independently.
@@ -2735,51 +2745,19 @@
 
   function playlistsChipListHtml(list) {
     return list.map(function (p) {
-      var active = p.id === state.selectedPlaylistId ? " is-active" : "";
-      return '<button type="button" class="playlists-chip' + active + '" data-id="' + escapeHtml(p.id) + '">' +
+      return '<button type="button" class="playlists-chip" data-id="' + escapeHtml(p.id) + '">' +
         escapeHtml(p.name) + ' <span class="playlists-chip-count">' + p.rowNums.length + "</span></button>";
     }).join("");
   }
 
   function renderPlaylistsPage() {
     renderPlaylistsMyQueue();
-
     var groups = loadPlaylistsGroupedForDisplay();
     els.playlistsDefaultChipGroup.hidden = !groups.defaults.length;
     els.playlistsDefaultChips.innerHTML = playlistsChipListHtml(groups.defaults);
     els.playlistsCustomChipGroup.hidden = !groups.custom.length;
     els.playlistsCustomChips.innerHTML = playlistsChipListHtml(groups.custom);
-
-    var selectable = groups.defaults.concat(groups.custom);
-    els.playlistsEmptyMsg.hidden = !!selectable.length;
-    if (!selectable.length) {
-      state.selectedPlaylistId = null;
-      els.playlistDetail.hidden = true;
-      return;
-    }
-    var stillExists = selectable.some(function (p) { return p.id === state.selectedPlaylistId; });
-    if (!stillExists) state.selectedPlaylistId = selectable[0].id;
-    renderPlaylistDetail();
-  }
-
-  function renderPlaylistDetail() {
-    // My Queue is never a chip/selectable target here anymore -- it has
-    // its own fixed section (renderPlaylistsMyQueue()) -- so this only
-    // ever renders a real default/custom playlist, both fully renameable/
-    // deletable.
-    var playlist = findPlaylist(state.selectedPlaylistId);
-    if (!playlist) {
-      els.playlistDetail.hidden = true;
-      return;
-    }
-    els.playlistDetailName.innerHTML = escapeHtml(playlist.name);
-    els.playlistRenameBtn.hidden = false;
-    els.playlistDeleteBtn.hidden = false;
-    var rows = playlist.rowNums.map(findRowByNum).filter(Boolean);
-    playlistDetailStrip.render(rows);
-    Array.prototype.forEach.call(els.playlistsChipRow.querySelectorAll(".playlists-chip"), function (chip) {
-      chip.classList.toggle("is-active", chip.getAttribute("data-id") === state.selectedPlaylistId);
-    });
+    els.playlistsEmptyMsg.hidden = !!(groups.defaults.length + groups.custom.length);
   }
 
   els.sidebarPlaylistsBtn.addEventListener("click", function () {
@@ -2790,54 +2768,238 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  // Every chip opens the playlist player directly.
   els.playlistsChipRow.addEventListener("click", function (e) {
     var chip = e.target.closest(".playlists-chip");
     if (!chip) return;
-    state.selectedPlaylistId = chip.getAttribute("data-id");
-    renderPlaylistDetail();
+    var playlist = findPlaylist(chip.getAttribute("data-id"));
+    if (playlist) openPlaylistPlayer(playlist);
   });
 
   els.playlistsNewBtn.addEventListener("click", function () {
     var name = window.prompt("Playlist name:");
     if (name === null) return;
-    var playlist = createPlaylist(name, []);
-    state.selectedPlaylistId = playlist.id;
+    createPlaylist(name, []);
     renderPlaylistsPage();
   });
 
-  els.playlistPlayAllBtn.addEventListener("click", function () {
-    var playlist = findPlaylist(state.selectedPlaylistId);
-    if (!playlist) return;
-    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
-    startTVMode(rows);
-  });
-
-  // My Queue's own fixed section has its own Play All (see
-  // #playlistsMyQueueSection) since it isn't part of the chip/detail
-  // selection state playlistPlayAllBtn above reads from.
+  // My Queue's own fixed section's Play All also opens the player.
   els.playlistsMyQueuePlayAll.addEventListener("click", function () {
     var playlist = findPlaylist(MY_QUEUE_ID);
-    if (!playlist) return;
-    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
-    startTVMode(rows);
+    if (playlist) openPlaylistPlayer(playlist);
   });
 
-  els.playlistRenameBtn.addEventListener("click", function () {
-    var playlist = findPlaylist(state.selectedPlaylistId);
+  // ---- Playlist player -------------------------------------------------
+  // A normal video lightbox (favorite/add-to-playlist/tags/credits/
+  // description -- the same chrome openLightbox() uses, classes reused
+  // directly for free styling) plus a playlist rail. Deliberately NOT TV
+  // Mode (its armed/static/filter/channel machinery doesn't apply to
+  // "play through a saved playlist in order") and deliberately NOT
+  // openLightbox() itself (its permanent body-level PIP mini-player
+  // doesn't make sense nested inside another already-open modal). Built
+  // directly on createVideoPlayer() -- the same shared YT.Player/
+  // Vimeo.Player wrapper TV Mode and the lightbox's own PIP player use.
+
+  function playlistPlayerCurrentRow() {
+    var pp = state.playlistPlayer;
+    return pp.rows[pp.order[pp.index]];
+  }
+
+  function openPlaylistPlayer(playlist) {
+    var rows = playlist.rowNums.map(findRowByNum).filter(function (r) { return r && hasVideo(r); });
+    if (!rows.length) { alert("This playlist has no playable videos yet."); return; }
+    closeLightbox();
+    if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
+    var pp = state.playlistPlayer;
+    pp.playlist = playlist;
+    pp.rows = rows;
+    pp.order = rows.map(function (r, i) { return i; });
+    pp.shuffle = false;
+    els.playlistPlayerShuffleBtn.setAttribute("aria-pressed", "false");
+    els.playlistPlayerRailName.innerHTML = (playlist.id === MY_QUEUE_ID ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(playlist.name);
+    els.playlistPlayerRenameBtn.hidden = playlist.id === MY_QUEUE_ID;
+    els.playlistPlayerDeleteBtn.hidden = playlist.id === MY_QUEUE_ID;
+    els.playlistPlayerModal.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+    loadPlaylistPlayerTrack(0);
+  }
+
+  function closePlaylistPlayer() {
+    if (els.playlistPlayerModal.hidden) return;
+    var pp = state.playlistPlayer;
+    if (pp.player && pp.player.destroy) { try { pp.player.destroy(); } catch (e) {} }
+    pp.player = null;
+    pp.playlist = null;
+    pp.rows = [];
+    pp.order = [];
+    els.playlistPlayerModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  function loadPlaylistPlayerTrack(orderIndex) {
+    var pp = state.playlistPlayer;
+    pp.index = orderIndex;
+    var row = playlistPlayerCurrentRow();
+    var ref = getRowVideoRef(row);
+
+    if (pp.player && pp.player.destroy) { try { pp.player.destroy(); } catch (e) {} }
+    pp.player = null;
+
+    els.playlistPlayerTitle.textContent = row.song || "(untitled)";
+    var sub = [];
+    if (row.artist) sub.push(row.artist);
+    els.playlistPlayerSubtitle.textContent = sub.join(" · ");
+    var tagHtml = row.category ? '<span class="tag ' + categoryTagClass(row.category) + '">' + escapeHtml(row.category) + "</span>" : "";
+    var genreTags = (row.genres || []).map(function (g) {
+      return '<span class="tag tag-default">' + escapeHtml(g) + "</span>";
+    }).join("");
+    els.playlistPlayerTags.innerHTML = tagHtml + genreTags;
+    els.playlistPlayerCredits.innerHTML = creditsHtml(row);
+    els.playlistPlayerDesc.innerHTML = row.description
+      ? escapeHtml(row.description)
+      : '<span class="placeholder">No writeup yet.</span>';
+    els.playlistPlayerFavBtn.classList.toggle("is-active", isFavorite(row.rowNum));
+    els.playlistPlayerFavBtn.textContent = isFavorite(row.rowNum) ? "♥" : "♡";
+    els.playlistPlayerFavBtn.setAttribute("data-rownum", row.rowNum);
+    els.playlistPlayerAddBtn.setAttribute("data-rownum", row.rowNum);
+
+    els.playlistPlayerPrevBtn.disabled = orderIndex <= 0;
+    els.playlistPlayerNextBtn.disabled = orderIndex >= pp.order.length - 1;
+
+    renderPlaylistPlayerRail();
+
+    if (!ref) {
+      els.playlistPlayerVideoFrame.innerHTML = '<div class="lightbox-video-empty">No video available for this entry.</div>';
+      return;
+    }
+    els.playlistPlayerVideoFrame.innerHTML = '<div id="playlistPlayerTarget"></div>';
+    var indexAtLoad = orderIndex;
+    createVideoPlayer("playlistPlayerTarget", ref, {
+      autoplay: true,
+      controls: true,
+      isStale: function () { return els.playlistPlayerModal.hidden || state.playlistPlayer.index !== indexAtLoad; },
+      onEnded: function () { playlistPlayerNext(); },
+      onError: function () { playlistPlayerNext(); },
+      onReady: function (player) { state.playlistPlayer.player = player; }
+    });
+  }
+
+  function renderPlaylistPlayerRail() {
+    var pp = state.playlistPlayer;
+    els.playlistPlayerRailList.innerHTML = pp.order.map(function (rowIdx, orderIdx) {
+      var row = pp.rows[rowIdx];
+      var thumbUrl = getRowThumbUrl(row);
+      var thumb = thumbUrl ? '<img class="playlist-player-rail-thumb" src="' + thumbUrl + '" alt="" loading="lazy">' : '<span class="playlist-player-rail-thumb"></span>';
+      var artistLine = row.artist || "";
+      if (row.director) artistLine += (artistLine ? " · " : "") + "Dir. " + row.director;
+      return '<div class="playlist-player-rail-item' + (orderIdx === pp.index ? " is-current" : "") + '" data-order-index="' + orderIdx + '">' +
+        thumb +
+        '<span class="playlist-player-rail-info">' +
+        '<span class="playlist-player-rail-song">' + escapeHtml(row.song || "(untitled)") + "</span>" +
+        '<span class="playlist-player-rail-artist">' + escapeHtml(artistLine) + "</span>" +
+        "</span>" +
+        '<button type="button" class="playlist-player-rail-remove" data-rownum="' + escapeHtml(row.rowNum) + '" title="Remove from playlist" aria-label="Remove from playlist">✕</button>' +
+        "</div>";
+    }).join("");
+  }
+
+  function playlistPlayerPrev() {
+    var pp = state.playlistPlayer;
+    if (pp.index > 0) loadPlaylistPlayerTrack(pp.index - 1);
+  }
+
+  function playlistPlayerNext() {
+    var pp = state.playlistPlayer;
+    if (pp.index < pp.order.length - 1) loadPlaylistPlayerTrack(pp.index + 1);
+  }
+
+  els.playlistPlayerPrevBtn.addEventListener("click", playlistPlayerPrev);
+  els.playlistPlayerNextBtn.addEventListener("click", playlistPlayerNext);
+
+  // Reshuffles the REMAINING queue (everything after the current track)
+  // rather than the whole thing, so toggling shuffle mid-playlist doesn't
+  // replay anything already heard; toggling back off restores the
+  // original (creation-order) sequence for everything not yet played.
+  els.playlistPlayerShuffleBtn.addEventListener("click", function () {
+    var pp = state.playlistPlayer;
+    pp.shuffle = !pp.shuffle;
+    els.playlistPlayerShuffleBtn.setAttribute("aria-pressed", pp.shuffle ? "true" : "false");
+    var played = pp.order.slice(0, pp.index + 1);
+    var remaining = pp.order.slice(pp.index + 1);
+    if (pp.shuffle) {
+      remaining = shuffle(remaining);
+    } else {
+      remaining = remaining.slice().sort(function (a, b) { return a - b; });
+    }
+    pp.order = played.concat(remaining);
+    els.playlistPlayerNextBtn.disabled = pp.index >= pp.order.length - 1;
+    renderPlaylistPlayerRail();
+  });
+
+  els.playlistPlayerRailList.addEventListener("click", function (e) {
+    var removeBtn = e.target.closest(".playlist-player-rail-remove");
+    if (removeBtn) {
+      var pp = state.playlistPlayer;
+      var rowNum = removeBtn.getAttribute("data-rownum");
+      var wasCurrent = playlistPlayerCurrentRow().rowNum === rowNum;
+      var currentRowNum = playlistPlayerCurrentRow().rowNum;
+      togglePlaylistEntry(pp.playlist.id, rowNum);
+      refreshPlaylistUIAfterChange();
+      var removedRowIdx = pp.rows.findIndex(function (r) { return r.rowNum === rowNum; });
+      pp.rows.splice(removedRowIdx, 1);
+      pp.order = pp.order.filter(function (i) { return i !== removedRowIdx; }).map(function (i) { return i > removedRowIdx ? i - 1 : i; });
+      if (!pp.rows.length) { closePlaylistPlayer(); return; }
+      // Removing a track earlier in the order than the one currently
+      // playing must not silently skip ahead -- re-find the still-playing
+      // track's new position instead of just clamping the raw index.
+      // Removing the currently-playing track itself advances to whatever
+      // now sits at that same order position (its natural "next").
+      var newIndex = wasCurrent
+        ? Math.min(pp.index, pp.order.length - 1)
+        : pp.order.findIndex(function (rowIdx) { return pp.rows[rowIdx].rowNum === currentRowNum; });
+      loadPlaylistPlayerTrack(newIndex);
+      return;
+    }
+    var item = e.target.closest(".playlist-player-rail-item");
+    if (!item) return;
+    loadPlaylistPlayerTrack(parseInt(item.getAttribute("data-order-index"), 10));
+  });
+
+  els.playlistPlayerFavBtn.addEventListener("click", function () {
+    var rowNum = els.playlistPlayerFavBtn.getAttribute("data-rownum");
+    var nowFavorite = toggleFavorite(rowNum);
+    els.playlistPlayerFavBtn.classList.toggle("is-active", nowFavorite);
+    els.playlistPlayerFavBtn.textContent = nowFavorite ? "♥" : "♡";
+    renderFavoritesStrip(state.rows);
+  });
+
+  els.playlistPlayerAddBtn.addEventListener("click", function () {
+    openAddToPlaylistPopover(els.playlistPlayerAddBtn.getAttribute("data-rownum"), els.playlistPlayerAddBtn);
+  });
+
+  els.playlistPlayerRenameBtn.addEventListener("click", function () {
+    var playlist = state.playlistPlayer.playlist;
     if (!playlist) return;
     var name = window.prompt("Rename playlist:", playlist.name);
     if (name === null) return;
     renamePlaylist(playlist.id, name);
+    playlist.name = name;
+    els.playlistPlayerRailName.textContent = name;
     renderPlaylistsPage();
   });
 
-  els.playlistDeleteBtn.addEventListener("click", function () {
-    var playlist = findPlaylist(state.selectedPlaylistId);
+  els.playlistPlayerDeleteBtn.addEventListener("click", function () {
+    var playlist = state.playlistPlayer.playlist;
     if (!playlist) return;
     if (!window.confirm('Delete "' + playlist.name + '"? This can\'t be undone.')) return;
     deletePlaylist(playlist.id);
-    state.selectedPlaylistId = null;
+    closePlaylistPlayer();
     renderPlaylistsPage();
+  });
+
+  els.playlistPlayerModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
   });
 
   // "Save as Playlist" on Search -- snapshots the currently-matching rows
@@ -2852,8 +3014,7 @@
     }
     var name = window.prompt("Save these " + matches.length + " results as a playlist named:");
     if (name === null) return;
-    var playlist = createPlaylist(name, matches.map(function (r) { return r.rowNum; }));
-    state.selectedPlaylistId = playlist.id;
+    createPlaylist(name, matches.map(function (r) { return r.rowNum; }));
     renderPlaylistsPage();
   });
 
@@ -5121,6 +5282,7 @@
   function openTVModal() {
     if (!els.tvModal.hidden) return;
     closeLightbox();
+    closePlaylistPlayer(); // same orphaned-player bug class as closeLightbox() missing this used to cause -- see its own PIP fix earlier this session
     els.tvFiltersSlot.appendChild(els.filtersGroup);
     // Pulled out separately (rather than left nested inside filtersGroup)
     // so it can sit in its own grid column beside the video instead of
@@ -7061,6 +7223,7 @@
 
   function openLightbox(row) {
     if (state.tv.active) { teardownTV(); els.videoBox.innerHTML = ""; moveVideoPairHome(); }
+    closePlaylistPlayer(); // same orphaned-player bug class as closeLightbox() missing this used to cause -- see its own PIP fix earlier this session
 
     // Reusing the still-live frame/player (rather than destroying and
     // recreating it) is what makes clicking a detached mini player reopen
