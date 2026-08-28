@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.38.0">
+<link rel="stylesheet" href="styles.css?v=6.38.1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1225,6 +1225,13 @@
         <div class="admin-form-actions">
           <button type="submit" class="submit-form-btn" id="adminFormSaveBtn">Save</button>
           <button type="button" class="admin-row-btn" id="adminFormCancelBtn">Cancel</button>
+          <!-- Existing entries only (see showAdminForm() in app.js) -- the
+               lightbox already has its own delete button, but reaching the
+               edit form directly (e.g. Thumbnail Check's "Edit manually")
+               had no way to delete a genuinely-dead entry without also
+               opening the lightbox just for that. Reuses deleteRowByAdmin(),
+               same confirm/publish flow as every other delete entry point. -->
+          <button type="button" class="admin-row-btn admin-row-btn-danger" id="adminFormDeleteBtn" hidden>Delete</button>
         </div>
         <p class="admin-status" id="adminFormStatus" hidden></p>
       </form>
@@ -1690,6 +1697,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.38.0"></script>
+<script src="app.js?v=6.38.1"></script>
 </body>
 </html>

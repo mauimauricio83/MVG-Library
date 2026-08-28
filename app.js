@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.38.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.38.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -538,6 +538,7 @@
     adminForm: document.getElementById("adminForm"),
     adminFormTitle: document.getElementById("adminFormTitle"),
     adminFormCancelBtn: document.getElementById("adminFormCancelBtn"),
+    adminFormDeleteBtn: document.getElementById("adminFormDeleteBtn"),
     adminFormSaveBtn: document.getElementById("adminFormSaveBtn"),
     adminYoutubeSearchBtn: document.getElementById("adminYoutubeSearchBtn"),
     adminFormStatus: document.getElementById("adminFormStatus"),
@@ -11057,6 +11058,7 @@
     els.adminFormSaveBtn.disabled = false;
     els.adminYoutubeSearchBtn.disabled = false;
     els.adminFormTitle.textContent = row ? "Edit Entry" : "Add Entry";
+    els.adminFormDeleteBtn.hidden = !row;
     els.adminForm.reset();
     state.adminFormOriginal = row ? { feature: !!row.feature, spotlight: !!row.spotlight, sponsored: !!row.sponsored } : null;
     var f = els.adminForm;
@@ -11321,6 +11323,20 @@
     });
   }
 
+  // Removes just one row's card from the gallery instead of re-rendering
+  // the whole grid (see recheckSingleThumb()/applyThumbCheckReplacement()
+  // below) -- a full renderThumbCheckPage() would also blow away every
+  // OTHER row's already-loaded "Find replacement" candidates, which is
+  // exactly what was silently burning API quota: fix one entry mid-batch
+  // and every other row's search results (and the quota spent getting
+  // them) vanished with it, unusable, before they could be reviewed.
+  function removeThumbCheckItem(rowNum) {
+    var btn = els.thumbCheckGrid.querySelector('[data-recheck-row="' + rowNum + '"]');
+    var item = btn ? btn.closest(".thumb-check-item") : null;
+    if (item) item.remove();
+    els.thumbCheckEmpty.hidden = !!els.thumbCheckGrid.querySelector(".thumb-check-item");
+  }
+
   function recheckSingleThumb(rowNum) {
     var btn = els.thumbCheckGrid.querySelector('[data-recheck-row="' + rowNum + '"]');
     if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
@@ -11344,7 +11360,11 @@
         cached.brokenThumb = brokenResult;
         saveCache(state.rows);
       }
-      renderThumbCheckPage();
+      if (brokenResult) {
+        if (btn) { btn.disabled = false; btn.textContent = "Recheck"; }
+      } else {
+        removeThumbCheckItem(rowNum);
+      }
       return publishSnapshot();
     }).catch(function (err) {
       console.error("Thumbnail recheck failed:", err);
@@ -11377,11 +11397,15 @@
       return res.json();
     }).then(function (data) {
       return (data.items || []).map(function (item) {
+        var thumbs = item.snippet.thumbnails;
         return {
           videoId: item.id.videoId,
           title: item.snippet.title,
           channel: item.snippet.channelTitle,
-          thumb: item.snippet.thumbnails.default.url
+          // medium (320x180) reads clearly enough to actually judge a match
+          // against the default 120x90 -- falls back if a result somehow
+          // lacks it.
+          thumb: (thumbs.medium || thumbs.default).url
         };
       });
     });
@@ -11401,13 +11425,18 @@
       if (!candidates.length) { panel.innerHTML = '<p class="admin-empty">No results.</p>'; return; }
       var rowNum = btn.getAttribute("data-search-row");
       panel.innerHTML = candidates.map(function (c) {
-        return '<button type="button" class="thumb-check-candidate" data-use-candidate="1" data-row="' + escapeHtml(rowNum) + '" data-video-id="' + escapeHtml(c.videoId) + '">' +
+        var fullLabel = c.title + " — " + c.channel;
+        var watchUrl = "https://www.youtube.com/watch?v=" + c.videoId;
+        return '<div class="thumb-check-candidate">' +
+          '<button type="button" class="thumb-check-candidate-select" data-use-candidate="1" data-row="' + escapeHtml(rowNum) + '" data-video-id="' + escapeHtml(c.videoId) + '" title="' + escapeHtml(fullLabel) + '">' +
           '<img src="' + escapeHtml(c.thumb) + '" alt="" loading="lazy">' +
           '<span class="thumb-check-candidate-info">' +
           '<span class="thumb-check-candidate-title">' + escapeHtml(c.title) + '</span>' +
           '<span class="thumb-check-candidate-channel">' + escapeHtml(c.channel) + '</span>' +
           "</span>" +
-          "</button>";
+          "</button>" +
+          '<a class="thumb-check-candidate-open" href="' + escapeHtml(watchUrl) + '" target="_blank" rel="noopener noreferrer" title="Open on YouTube in a new tab" aria-label="Open on YouTube in a new tab">↗</a>' +
+          "</div>";
       }).join("");
     }).catch(function (err) {
       console.error("YouTube search failed:", err);
@@ -11434,7 +11463,7 @@
       if (stillBroken) {
         panel.innerHTML = '<p class="admin-empty">Saved, but the thumbnail still isn’t loading — try another result, or fix it manually.</p>';
       } else {
-        renderThumbCheckPage(); // fixed -- this row drops out of the live list entirely
+        removeThumbCheckItem(rowNum); // fixed -- drop just this row, every other loaded panel stays put
       }
     }).catch(function (err) {
       console.error("Applying replacement failed:", err);
@@ -13295,6 +13324,13 @@
 
   els.adminGoAddBtn.addEventListener("click", function () { state.adminReturnView = "landing"; showAdminForm(null); });
   els.adminFormCancelBtn.addEventListener("click", returnFromAdminSubview);
+
+  els.adminFormDeleteBtn.addEventListener("click", function () {
+    var rowNum = els.adminForm.elements.rowNum.value;
+    if (!rowNum) return; // hidden for new/unsaved entries anyway, see showAdminForm()
+    var label = (els.adminForm.elements.artist.value || "").trim() + " — " + (els.adminForm.elements.song.value || "").trim();
+    deleteRowByAdmin(rowNum, label, function () {}); // already inside the admin modal -- nothing extra to close
+  });
 
   // Opens a YouTube search in a new tab for whatever Artist/Song is
   // currently typed into the form -- lets an admin re-find a video (e.g.

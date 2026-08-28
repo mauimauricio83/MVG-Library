@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.38.0 — current
+## v6.38.1 — current
+- Fixed Thumbnail Check's biggest bug: fixing or rechecking any single entry re-rendered the whole gallery, which silently wiped out every OTHER row's already-loaded "Find replacement" search results -- including ones a "Find replacements for all" batch had already spent API quota fetching. Fixing/rechecking a row now only removes that one row's card; every other row's loaded candidates are left alone.
+- Find replacement candidates: hovering a result now shows the full title + channel as a tooltip (titles were often cut off, making it hard to judge a match), thumbnails are larger, and each result has a separate "open in new tab" link so you can verify the actual video before picking it.
+- Added a Delete button to the individual entry edit form (previously delete was lightbox-only) -- for when a flagged entry's video is genuinely gone and there's nothing to replace it with.
+
+## v6.38.0
 - Thumbnail Check: added "Scan latest 100" -- checks only the most recently added entries (seconds, not minutes) as a quick sanity check, alongside the existing full-catalog scan.
 - Thumbnail Check: added "Find replacements for all" -- runs the YouTube search for every listed entry (up to 100) in one click instead of one at a time, pre-loading every candidate list so fixing becomes scroll-and-pick per row. Still never applies anything automatically -- confirms the API quota cost (100 units per search) before running, since 100 entries is effectively a full day's free quota in one click.
 

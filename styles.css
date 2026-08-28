@@ -7475,27 +7475,43 @@ body.is-searching #viewersChoiceSection {
   }
 }
 
+/* Wraps the select button + the separate "open in new tab" link -- kept as
+   two independent controls (rather than one clickable card) so opening the
+   video to double-check it doesn't also select/apply it. */
 .thumb-check-candidate {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 220px;
-  padding: 6px;
+  align-items: stretch;
+  width: 260px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
+  overflow: hidden;
 }
 
 .thumb-check-candidate:hover {
   border-color: var(--accent);
 }
 
+.thumb-check-candidate-select {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  /* Native tooltip carries the full title + channel on hover -- see
+     thumb-check-candidate-title/-channel's own ellipsis truncation below,
+     which otherwise makes it hard to judge a match at this width. */
+}
+
 .thumb-check-candidate img {
-  flex: 0 0 64px;
-  width: 64px;
+  flex: 0 0 96px;
+  width: 96px;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 5px;
@@ -7522,6 +7538,23 @@ body.is-searching #viewersChoiceSection {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.thumb-check-candidate-open {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border-left: 1px solid var(--border);
+  color: var(--text-faint);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.thumb-check-candidate-open:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .admin-form {
