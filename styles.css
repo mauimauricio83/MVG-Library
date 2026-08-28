@@ -779,7 +779,7 @@ html, body {
 }
 
 .playlist-detail-name {
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text);
 }
@@ -1844,6 +1844,15 @@ html, body {
   background: var(--surface);
 }
 
+/* My Queue's card border/background was reported as visually clashing
+   with its own title (screenshot showed the box reading as overlapping
+   the "My Queue" heading) -- drop the chrome entirely so it sits flush,
+   like the borderless sections (Maui's Picks etc). */
+#myQueueStrip {
+  border: none;
+  background: none;
+}
+
 /* flex-start (not space-between) so Play All/other head buttons sit close
    to the title -- a short mouse trip, not a trek to the far edge of the
    row. Anything that should still hug the right edge (e.g. Favorites'
@@ -1871,7 +1880,7 @@ html, body {
    .viewers-choice-title-main's 1.5rem is a deliberate exception (a
    bigger, standalone page-hero heading, not just another section title). */
 .media-strip-title {
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--brand-yellow);
 }
@@ -3803,6 +3812,10 @@ body.is-searching #viewersChoiceSection {
   margin-left: auto;
 }
 
+.search-selection-menu[hidden] {
+  display: none;
+}
+
 .search-selection-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -3933,7 +3946,7 @@ body.is-searching #viewersChoiceSection {
 
 .spotlight-sidebar-title {
   margin-bottom: 12px;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--brand-yellow);
 }
@@ -4280,6 +4293,13 @@ body.is-searching #viewersChoiceSection {
   border-radius: var(--radius);
 }
 
+.jumpnav-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .jumpnav {
   display: flex;
   flex-wrap: wrap;
@@ -4289,6 +4309,40 @@ body.is-searching #viewersChoiceSection {
 
 .jumpnav[hidden] {
   display: none;
+}
+
+/* Search-results list/thumbnail-grid switch, sat in the same row as the
+   A-Z jump nav (see #resultsViewToggle in index.html, applyResultsViewMode()
+   in app.js). Hidden outside Search since #jumpNavTop's own row only ever
+   shows there in practice, but this stays visible whenever the row is, so
+   it doesn't need its own extra view-gating CSS. */
+.results-view-toggle {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+}
+
+.results-view-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.results-view-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.results-view-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .hub-links {
@@ -4397,6 +4451,72 @@ body.is-searching #viewersChoiceSection {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+}
+
+/* Default list view goes 2-column on wide screens -- a single 160px-wide
+   thumb column left the right half of the results area empty (user
+   report). Scoped to #results:not(.view-grid) so it never fights the
+   thumbnail-grid view below on specificity. */
+@media (min-width: 760px) {
+  #results:not(.view-grid) .result-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #results:not(.view-grid) .result-list .result-card {
+    border-bottom: 1px solid var(--border);
+  }
+
+  #results:not(.view-grid) .result-list .result-card:nth-child(odd) {
+    border-right: 1px solid var(--border);
+  }
+
+  /* Drop the bottom divider on the last card overall, and on a trailing
+     unpaired odd card (last row with only one column filled). */
+  #results:not(.view-grid) .result-list .result-card:last-child,
+  #results:not(.view-grid) .result-list .result-card:nth-last-child(2):nth-child(odd) {
+    border-bottom: none;
+  }
+}
+
+/* Alternate thumbnail-only grid view (toggle next to the A-Z jump nav --
+   see #resultsViewGridBtn/applyResultsViewMode() in app.js). Reuses the
+   exact same .result-card markup as list view; only visibility of the
+   secondary info rows changes, so no separate render path is needed. */
+#results.view-grid .result-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+#results.view-grid .result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+#results.view-grid .result-card-thumb {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+#results.view-grid .result-card-artist,
+#results.view-grid .result-card-desc,
+#results.view-grid .result-card-meta {
+  display: none;
+}
+
+#results.view-grid .result-card-song {
+  white-space: normal;
+  font-size: 0.85rem;
 }
 
 .result-card-meta {
@@ -7580,7 +7700,7 @@ body.is-searching #viewersChoiceSection {
 
 .recent-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   color: var(--brand-yellow);
 }
 

@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.36.0">
+<link rel="stylesheet" href="styles.css?v=6.36.1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -465,7 +465,13 @@
   </section>
 
   <div id="status" class="status"></div>
-  <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>
+  <div class="jumpnav-row">
+    <nav id="jumpNavTop" class="jumpnav" aria-label="Jump to letter"></nav>
+    <div class="results-view-toggle" id="resultsViewToggle" role="group" aria-label="Results view">
+      <button type="button" class="results-view-btn active" id="resultsViewListBtn" aria-label="List view" title="List view" aria-pressed="true">☰</button>
+      <button type="button" class="results-view-btn" id="resultsViewGridBtn" aria-label="Thumbnail grid view" title="Thumbnail grid view" aria-pressed="false">⊞</button>
+    </div>
+  </div>
 
   <aside class="blog-latest-sidebar" id="blogLatestSidebar" hidden>
     <div class="spotlight-sidebar-title">News</div>
@@ -1628,6 +1634,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.36.0"></script>
+<script src="app.js?v=6.36.1"></script>
 </body>
 </html>

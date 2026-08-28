@@ -2,7 +2,13 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.0 — current
+## v6.36.1 — current
+- Removed My Queue's card border/background -- it was reading as a box overlapping the "My Queue" title.
+- Made every yellow section title bigger again (My Queue, Latest, Featured, Favorites, Discover, Maui's Picks, Recently Viewed, Playlists, Profiles): 1.05rem -> 1.25rem.
+- Search results now render in a 2-column grid on wide screens instead of a single narrow list, and added a toggle (next to the A-Z jump nav) to switch to a thumbnail-only grid view -- both choices persist across visits.
+- Fixed the Search "Actions" dropdown (bulk-selection bar) rendering open by default instead of collapsed -- another instance of the `[hidden]`-vs-unconditional-`display` cascade-tie bug (`.search-selection-menu{display:flex}` was beating `[hidden]`).
+
+## v6.36.0
 - Added bulk selection to Search results: a low-opacity checkbox on every thumbnail (bottom-right), a "Selection" bar that appears once 1+ is checked with "Select all" (currently-rendered results only)/"Clear", and an Actions menu -- Add to Favorites, Add to Playlist, Save as New Playlist, Play Selected (opens the playlist player with just the selected videos), plus admin-only Bulk Edit (the four boolean flags, tri-state, plus adding one genre to all selected) and Bulk Delete.
 - Removed the collapse/expand (chevron) feature from every homepage strip (Latest, Featured, My Queue already had it removed last version) -- every title is now just a button.
 - Every section title (My Queue, Latest, Featured, Favorites, Recently Viewed) now does the same thing as its own Play All when clicked.

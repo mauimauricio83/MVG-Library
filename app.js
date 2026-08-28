@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.36.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.36.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -139,6 +139,8 @@
     tabs: Array.prototype.slice.call(document.querySelectorAll(".tab")),
     jumpTop: document.getElementById("jumpNavTop"),
     jumpBottom: document.getElementById("jumpNavBottom"),
+    resultsViewListBtn: document.getElementById("resultsViewListBtn"),
+    resultsViewGridBtn: document.getElementById("resultsViewGridBtn"),
     videoEmbed: document.getElementById("videoEmbed"),
     videoBox: document.getElementById("videoEmbedBox"),
     categoryFilters: document.getElementById("categoryFilters"),
@@ -13373,6 +13375,29 @@
 
   els.jumpTop.addEventListener("click", onJumpClick);
   els.jumpBottom.addEventListener("click", onJumpClick);
+
+  var RESULTS_VIEW_KEY = "mvg-results-view";
+
+  function applyResultsViewMode(mode) {
+    var grid = mode === "grid";
+    els.results.classList.toggle("view-grid", grid);
+    els.resultsViewListBtn.classList.toggle("active", !grid);
+    els.resultsViewListBtn.setAttribute("aria-pressed", String(!grid));
+    els.resultsViewGridBtn.classList.toggle("active", grid);
+    els.resultsViewGridBtn.setAttribute("aria-pressed", String(grid));
+  }
+
+  applyResultsViewMode(localStorage.getItem(RESULTS_VIEW_KEY) === "grid" ? "grid" : "list");
+
+  els.resultsViewListBtn.addEventListener("click", function () {
+    localStorage.setItem(RESULTS_VIEW_KEY, "list");
+    applyResultsViewMode("list");
+  });
+
+  els.resultsViewGridBtn.addEventListener("click", function () {
+    localStorage.setItem(RESULTS_VIEW_KEY, "grid");
+    applyResultsViewMode("grid");
+  });
 
   function handleEntryActivate(rowEl) {
     var li = rowEl.closest(".result-card");
