@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.36.5"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.36.6"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11172,8 +11172,34 @@
         return fetchVimeoThumbnail(vimeoId).then(function (thumb) { if (thumb) r.doc.vimeoThumb = thumb; });
       }).filter(Boolean);
 
-      return Promise.all(thumbFetches).then(function () { return mapped; });
+      return Promise.all(thumbFetches).then(function () {
+        // A pasted field with a stray, unescaped " (e.g. a respondent
+        // quoting a title inline -- "Song" gave me...) reads to Papa's
+        // parser as an opening quote for a whole field, and it then
+        // consumes everything up to the next quote-ish boundary --
+        // sometimes swallowing the following pasted row(s) whole, with no
+        // visible error, just fewer rows than pasted. Papa still flags
+        // this internally (parsed.errors, Quotes/FieldMismatch codes) even
+        // though it doesn't throw -- surface that here instead of losing
+        // it, so a merged row is caught at preview time, not after commit.
+        mapped.parseWarnings = parsed.errors;
+        return mapped;
+      });
     });
+  }
+
+  function summarizeBulkParseWarnings(errors) {
+    if (!errors || !errors.length) return "";
+    var rows = [];
+    errors.forEach(function (e) {
+      if (typeof e.row === "number" && rows.indexOf(e.row) === -1) rows.push(e.row);
+    });
+    rows.sort(function (a, b) { return a - b; });
+    // Papa's row index is 0-based over data rows (header excluded) -- +1
+    // to match "the Nth row you pasted," what an admin would actually count.
+    var pasted = rows.map(function (r) { return r + 1; }).join(", ");
+    return "Possible malformed quotes near pasted row" + (rows.length === 1 ? "" : "s") + " " + pasted +
+      " -- a stray \" inside a field can silently merge that row into its neighbor. Check the row count above matches what you pasted, and review the preview closely before committing.";
   }
 
   function renderBulkPreview(rows) {
@@ -11212,8 +11238,9 @@
       state.adminBulkParsed = rows.filter(function (r) { return r.valid; });
       renderBulkPreview(rows);
       var validCount = state.adminBulkParsed.length;
-      els.adminBulkStatus.textContent = validCount + " of " + rows.length + " rows ready to import.";
-      els.adminBulkStatus.className = "admin-status";
+      var warning = summarizeBulkParseWarnings(rows.parseWarnings);
+      els.adminBulkStatus.textContent = validCount + " of " + rows.length + " rows ready to import." + (warning ? " ⚠ " + warning : "");
+      els.adminBulkStatus.className = warning ? "admin-status is-error" : "admin-status";
       els.adminBulkCommitRow.hidden = validCount === 0;
     }).catch(function (err) {
       console.error("Bulk preview failed:", err);

@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.5 — current
+## v6.36.6 — current
+- Admin Bulk Import now warns when a pasted row has a malformed/unescaped quote character that could have silently merged it with the next row (this is exactly what happened with a recent "Uyku Pansiyon" submission, which quietly dropped the row after it -- see Papa Parse's own internal quote-parsing errors, previously discarded). The preview now flags "Possible malformed quotes near pasted row N" so this gets caught before committing, not after.
+
+## v6.36.5
 - The Manual page's table of contents is now a sticky rail alongside the content on wide screens (matching the standalone reference version) instead of a static box you scroll away from -- stays in view the whole time you're reading. Falls back to the original stacked layout on narrow/mobile screens.
 
 ## v6.36.4
