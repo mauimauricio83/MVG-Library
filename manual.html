@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  try {
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("mvg-theme") || "dark");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+</script>
+<title>Manual | MVG Library</title>
+<meta name="description" content="Complete reference documentation for every feature on MVG Library — browsing, TV Mode, trading cards, playlists, voting, and more.">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css?v=6.36.4">
+<link rel="stylesheet" href="hub.css?v=6.36.4">
+<style>
+  /* Same reasoning as support.html/news.html/privacy.html: .hub-page
+     carries its own max-width/padding for the reading width, so .app's
+     default padding (needed only for its sidebar-sharing flex behavior)
+     would otherwise double up with it. Widened past the usual 760px --
+     this page is reference documentation with tables, not an article. */
+  .app { padding: 0; }
+  .hub-page.manual-page { max-width: 900px; }
+
+  .manual-eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+
+  /* Table of contents */
+  .manual-toc {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 18px 20px;
+    margin: 0 0 40px;
+  }
+
+  .manual-toc-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 12px;
+  }
+
+  .manual-toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: 24px;
+  }
+
+  @media (max-width: 560px) {
+    .manual-toc ol { columns: 1; }
+  }
+
+  .manual-toc li { break-inside: avoid; margin-bottom: 4px; }
+
+  .manual-toc a {
+    display: flex;
+    gap: 8px;
+    padding: 4px 0;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .manual-toc a:hover { color: var(--accent); }
+
+  .manual-toc a span.n {
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+  }
+
+  /* Sections */
+  .manual-section {
+    padding-top: 40px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    scroll-margin-top: 90px;
+  }
+
+  .manual-section:first-of-type { border-top: none; }
+
+  .manual-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 4px;
+  }
+
+  .manual-num {
+    color: var(--brand-yellow);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .manual-section h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  .manual-dek {
+    color: var(--text-muted);
+    margin: 6px 0 22px;
+    max-width: 66ch;
+  }
+
+  .manual-section h3 {
+    font-size: 1rem;
+    margin: 26px 0 10px;
+  }
+
+  .manual-section p, .manual-section ul, .manual-section ol {
+    max-width: 68ch;
+  }
+
+  .manual-section li { margin-bottom: 6px; }
+
+  /* Reference tables */
+  .manual-table-wrap { overflow-x: auto; margin: 16px 0 8px; }
+
+  table.manual-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  table.manual-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: 0 14px 8px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  table.manual-table td {
+    padding: 10px 14px 10px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text-muted);
+  }
+
+  table.manual-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+  table.manual-table tr:last-child td { border-bottom: none; }
+
+  /* Feature card pairs */
+  .manual-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  @media (max-width: 560px) { .manual-cards { grid-template-columns: 1fr; } }
+
+  .manual-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+
+  .manual-card h4 {
+    margin: 0 0 6px;
+    font-size: 0.9rem;
+  }
+
+  .manual-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    max-width: none;
+  }
+
+  .manual-note {
+    display: flex;
+    gap: 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin: 18px 0;
+    max-width: 68ch;
+  }
+
+  .manual-note-tag {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    flex: 0 0 auto;
+    padding-top: 2px;
+  }
+
+  .manual-note p { margin: 0; font-size: 0.88rem; color: var(--text); max-width: none; }
+
+  .kbd {
+    display: inline-block;
+    padding: 0.1em 0.5em;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 0.82em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .manual-back-to-top {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    text-decoration: none;
+  }
+
+  .manual-back-to-top:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="shell">
+<script src="site-nav.js?v=6.36.4"></script>
+<div class="app">
+<div class="hub-page manual-page">
+
+<p class="manual-eyebrow">Reference Manual</p>
+<h1>MVG Library Manual</h1>
+<p class="hub-intro">Complete documentation of every viewer-facing feature on MVG Library — a music-video credits database, TV-style viewing experience, and personal library.</p>
+
+<nav class="manual-toc" aria-label="Manual contents">
+  <p class="manual-toc-title">Contents</p>
+  <ol>
+    <li><a href="#accounts"><span class="n">01</span> Accounts &amp; Sync</a></li>
+    <li><a href="#browsing"><span class="n">02</span> Browsing &amp; Search</a></li>
+    <li><a href="#homepage"><span class="n">03</span> The Homepage</a></li>
+    <li><a href="#lightbox"><span class="n">04</span> Video Detail View</a></li>
+    <li><a href="#cards"><span class="n">05</span> Trading Cards</a></li>
+    <li><a href="#tvmode"><span class="n">06</span> TV Mode</a></li>
+    <li><a href="#queue"><span class="n">07</span> My Queue</a></li>
+    <li><a href="#favorites"><span class="n">08</span> Favorites</a></li>
+    <li><a href="#playlists"><span class="n">09</span> Playlists</a></li>
+    <li><a href="#recent"><span class="n">10</span> Recently Viewed</a></li>
+    <li><a href="#bulk"><span class="n">11</span> Bulk Selection &amp; Views</a></li>
+    <li><a href="#voting"><span class="n">12</span> Voting</a></li>
+    <li><a href="#submit"><span class="n">13</span> Submitting a Video</a></li>
+    <li><a href="#connect"><span class="n">14</span> Connect &amp; Profiles</a></li>
+    <li><a href="#board"><span class="n">15</span> Message Board</a></li>
+    <li><a href="#settings"><span class="n">16</span> Settings</a></li>
+    <li><a href="#genres"><span class="n">17</span> Genre Preferences</a></li>
+    <li><a href="#extras"><span class="n">18</span> Community &amp; Extras</a></li>
+    <li><a href="#devices"><span class="n">19</span> Desktop vs. Mobile</a></li>
+    <li><a href="#index"><span class="n">20</span> Full Control Index</a></li>
+  </ol>
+</nav>
+
+<section class="manual-section" id="accounts">
+  <div class="manual-section-head"><span class="manual-num">01</span><h2>Accounts &amp; Sync</h2></div>
+  <p class="manual-dek">MVG Library works fully signed out. Signing in with Google only unlocks the features that need to remember you across devices.</p>
+
+  <h3>The Welcome Gate</h3>
+  <p>The first time you open the site in a browser, a modal offers two paths: <strong>Sign in with Google</strong>, or <strong>Continue as Guest</strong>. Both land you on the same homepage — nothing about browsing, TV Mode, or search requires an account.</p>
+  <p>If you continue as a guest and later sign in, a second, optional step appears: a genre-picker (see <a href="#genres">§17</a>) asking "What do you like?" — skippable, and editable later in Settings.</p>
+
+  <h3>What requires sign-in</h3>
+  <div class="manual-cards">
+    <div class="manual-card"><h4>Requires an account</h4><p>Syncing My Queue, Favorites, Playlists, and Recently Viewed across devices · Voting · Commenting · Connect/Profiles · Direct messages · Message board posts · Share Favorites links</p></div>
+    <div class="manual-card"><h4>Works signed out</h4><p>Every browse/search/filter path · TV Mode, including Channel Mode · The lightbox and all its info · Trading card downloads · Submitting a video · Reading comments and the message board</p></div>
+  </div>
+
+  <div class="manual-note">
+    <span class="manual-note-tag">Storage</span>
+    <p>Signed out, My Queue/Favorites/Playlists/Recently Viewed live in this browser's local storage only — instant, offline-first, but tied to this device. Signing in syncs them to your account and merges what's already on the device.</p>
+  </div>
+</section>
+
+<section class="manual-section" id="browsing">
+  <div class="manual-section-head"><span class="manual-num">02</span><h2>Browsing &amp; Search</h2></div>
+  <p class="manual-dek">The catalog can be browsed by three different keys, filtered six ways, and searched across every credited role — not just artist and song.</p>
+
+  <h3>Browse tabs</h3>
+  <p>Results group under whichever tab is active: <span class="kbd">By Director</span>, <span class="kbd">By Artist</span>, or <span class="kbd">By Song Title</span>. Switching tabs re-groups the same underlying result set instead of re-querying.</p>
+
+  <h3>Filters</h3>
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Filter</th><th>Behavior</th></tr>
+      <tr><td>Genre</td><td>Single-select — narrows to one genre at a time, not a combination.</td></tr>
+      <tr><td>Year</td><td>Single release year.</td></tr>
+      <tr><td>Country</td><td>Country of production.</td></tr>
+      <tr><td>Category chips</td><td>Multi-select, derived from the data itself (Music Video, Dance, Short, Live Performance, Installation, Docu, and so on). Selecting more than one narrows to entries matching <em>all</em> selected categories, not any one.</td></tr>
+      <tr><td>MVG Reels only</td><td>Shows only entries Maui has personally covered in an Instagram breakdown reel — those entries carry a small Instagram icon linking straight to it.</td></tr>
+      <tr><td>Clear filters</td><td>Resets every filter above, plus the active A–Z letter and search query, in one click.</td></tr>
+    </table>
+  </div>
+
+  <h3>Search</h3>
+  <p>Typing in the search bar filters live, no autosuggest dropdown. It is:</p>
+  <ul>
+    <li><strong>Accent-insensitive</strong> — dropping or mistyping an accent mark still matches.</li>
+    <li><strong>Typo-tolerant</strong> — small misspellings still surface the right entry.</li>
+    <li><strong>Full-credit</strong> — matches Artist, Song, Director, Producer, DP, Editor, Choreographer, Studio, and Description, not just the obvious fields.</li>
+  </ul>
+
+  <h3>Jump nav</h3>
+  <p>The A–Z (plus 0–9) row above the results only shows letters that actually have entries — no dead buttons. Clicking a letter jumps straight to that group; clicking it again clears the jump.</p>
+
+  <h3>Results layout</h3>
+  <p>See <a href="#bulk">§11</a> for the two-column/list toggle, thumbnail grid view, and bulk selection tools available on the results list.</p>
+</section>
+
+<section class="manual-section" id="homepage">
+  <div class="manual-section-head"><span class="manual-num">03</span><h2>The Homepage</h2></div>
+  <p class="manual-dek">Top to bottom, in actual page order — your own stuff first, curated picks next, the full catalog underneath.</p>
+
+  <ol>
+    <li><strong>Viewer's Choice</strong> — the top two entries by community vote, highlighted, plus a supporting grid. Pure votes, no editorial picks.</li>
+    <li><strong>My Queue</strong> — see <a href="#queue">§07</a>.</li>
+    <li><strong>Maui's Picks</strong> — hand-curated, capped at six, oldest evicted as new picks are added.</li>
+    <li><strong>News</strong> — latest blog posts, pulled in automatically.</li>
+    <li><strong>Latest Submissions</strong> — a horizontally scrolling strip weighted toward genuinely recent adds, not old bulk-imported entries.</li>
+    <li><strong>Featured</strong> — a separate curation lane from Maui's Picks, admin-flagged.</li>
+    <li><strong>Discover</strong> — unbounded random browsing. "See more" keeps appending fresh picks with no repeats until the whole catalog's had a lap, then starts over. Lightly weighted by your genre preferences (<a href="#genres">§17</a>) without ever hiding anything.</li>
+    <li><strong>Main grid</strong> — the full catalog, grouped by letter under whichever browse tab is active.</li>
+    <li><strong>Hub links</strong> — "Browse by Director" / "Browse by Artist," dedicated pages for search-engine discovery.</li>
+  </ol>
+
+  <div class="manual-note">
+    <span class="manual-note-tag">Sidebar</span>
+    <p>On desktop, the left sidebar carries a permanent <strong>My Playlists</strong> shortcut below Support! — your five most recent playlists plus a "More" button that expands to the rest, so your library is never more than one click away regardless of scroll position.</p>
+  </div>
+</section>
+
+<section class="manual-section" id="lightbox">
+  <div class="manual-section-head"><span class="manual-num">04</span><h2>Video Detail View</h2></div>
+  <p class="manual-dek">Clicking any thumbnail outside TV Mode opens the lightbox — the real detail page for an entry, and the most information-dense screen on the site.</p>
+
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Element</th><th>What it does</th></tr>
+      <tr><td>Player</td><td>Embedded YouTube or Vimeo video.</td></tr>
+      <tr><td>+</td><td>Add to a playlist (or My Queue).</td></tr>
+      <tr><td>Vote</td><td>One-click vote for Viewer's Choice — see <a href="#voting">§12</a>.</td></tr>
+      <tr><td>♡</td><td>Toggle favorite.</td></tr>
+      <tr><td>Share</td><td>Copies a direct, deep-linkable URL to this entry.</td></tr>
+      <tr><td>⤢ Widen</td><td>Enlarges the player within the lightbox.</td></tr>
+      <tr><td>Report an issue</td><td>Flags a broken link or wrong credit for review.</td></tr>
+    </table>
+  </div>
+
+  <h3>Credits block</h3>
+  <p>Every tracked field is laid out as structured credits, not buried in a paragraph: Director, Producer, Director of Photography, Editor, Choreographer, Studio, Country (with flag), genre tags, and release date.</p>
+
+  <h3>Suggest an edit</h3>
+  <p>Click any individual credit field to open a small form: pick the field, see its current value, type a corrected value and an optional reason, and submit. Corrections are reviewed, not auto-applied — a way to crowdsource accuracy without opening editing to everyone.</p>
+
+  <h3>Related &amp; Comments</h3>
+  <p>Below the description sits a row of similar entries (<strong>Related</strong>), one click to jump to another lightbox, and further down a per-video <strong>Comments</strong> thread — public to read, sign-in required to post. This is distinct from the site-wide message board (<a href="#board">§15</a>).</p>
+</section>
+
+<section class="manual-section" id="cards">
+  <div class="manual-section-head"><span class="manual-num">05</span><h2>Trading Cards</h2></div>
+  <p class="manual-dek">Every entry can be downloaded as a shareable, collectible-style card — client-rendered, nothing pre-made.</p>
+
+  <p>In any lightbox, below the description, click <span class="kbd">Download trading card</span>. Hovering the link first shows a live preview of the exact card you're about to get.</p>
+
+  <h3>What's on the card</h3>
+  <ul>
+    <li>Song title, artist, and director</li>
+    <li>Category and year</li>
+    <li>Genre tag(s), with a colored border — each genre hashes to one of eight consistent colors, so the same genre always reads the same way. Two genres split the border diagonally, Magic: The Gathering–style.</li>
+    <li>Country flag</li>
+    <li>Artwork pulled from the video's own YouTube/Vimeo thumbnail, at the best resolution available</li>
+    <li>Description — or a separate <strong>Flavor Text Override</strong> if the submitter provided one specifically for the card (set at submission time, see <a href="#submit">§13</a>)</li>
+    <li>The MVG logo</li>
+  </ul>
+
+  <div class="manual-note">
+    <span class="manual-note-tag">Format</span>
+    <p>Rendered at 1080×1350 — Instagram's minimum portrait ratio, so it posts to a feed without being auto-cropped. Not a hand-made template: it's drawn on a canvas at download time from that entry's live data.</p>
+  </div>
+</section>
+
+<section class="manual-section" id="tvmode">
+  <div class="manual-section-head"><span class="manual-num">06</span><h2>TV Mode</h2></div>
+  <p class="manual-dek">The site's centerpiece: a channel-surfing, static-screen viewing experience, up to and including a synced live channel everyone watches together.</p>
+  <p>Entry: sidebar <span class="kbd">TV Mode</span>, or the mobile bottom-nav TV icon.</p>
+
+  <h3>Armed / static screen</h3>
+  <p>TV Mode opens on real, per-frame analog static (not a looping gif) with the next pick's title and thumbnail deliberately hidden until you hit play — the channel-surfing feeling is intentional. A physical-styled power switch drops back to static on demand.</p>
+
+  <h3>The filter panel</h3>
+  <p>A CRT-styled panel (full side panel in windowed/4:3, minimized in 16:9 fullscreen) with four tabs:</p>
+  <div class="manual-cards">
+    <div class="manual-card"><h4>Genre</h4><p>10 broad umbrella buckets — Pop, Rock, Metal &amp; Punk, Hip-Hop/Rap, R&amp;B/Soul/Funk, Electronic/Dance, Country/Folk, Latin/World/Reggae, Jazz/Blues/Classical, Other.</p></div>
+    <div class="manual-card"><h4>Era</h4><p>A rotary dial with three granularities: exact <strong>Years</strong>, <strong>Eras</strong> (a decade split into Early/Mid/Late), or coarse <strong>Decades</strong>.</p></div>
+    <div class="manual-card"><h4>Custom</h4><p>Tune the channel to any one of your own playlists.</p></div>
+    <div class="manual-card"><h4>📻 Channel</h4><p>See below — the shared broadcast.</p></div>
+  </div>
+
+  <h3>Channel Mode</h3>
+  <p>A single, shared, synced broadcast — everyone tuned in sees the same video at the same timestamp, like a real TV channel, not independent per-viewer playback. A status line reads "You're tuned into the Channel — up next: …" and, when enabled, a live comment panel runs alongside it.</p>
+
+  <h3>Playback</h3>
+  <p>No seek bar, by design — a deliberate remote-control feel: Prev / Play-Pause / Next / Mute / Volume, plus Report issue, Favorite, Vote, Add-to-playlist, Crop-to-4:3, Widen/shrink, Fullscreen, CC captions, Share, and Info. Every skip flashes a brief burst of static as a transition. Mute/volume changes surface classic on-screen remote indicators.</p>
+
+  <h3>4:3 and fullscreen</h3>
+  <p>4:3 cropping in the windowed player and 4:3 inside fullscreen are two independent toggles — they don't combine. Fullscreen itself supports both aspect ratios and auto-hides its HUD after a few seconds of no mouse movement.</p>
+
+  <div class="manual-note">
+    <span class="manual-note-tag">Known quirk</span>
+    <p>YouTube's own title/channel overlay can briefly appear on pause or load inside an embed — that's YouTube's player doing that, not something MVG Library controls.</p>
+  </div>
+</section>
+
+<section class="manual-section" id="queue">
+  <div class="manual-section-head"><span class="manual-num">07</span><h2>My Queue</h2></div>
+  <p class="manual-dek">A deliberate, straightforward clone of YouTube's Watch Later.</p>
+  <ul>
+    <li>A <strong>+</strong> sits on the bottom-right corner of every thumbnail across the entire site — hover, click, done, no need to open the video first.</li>
+    <li>A one-click <strong>✕</strong> removes an entry directly from its thumbnail while queued.</li>
+    <li>My Queue's title and its Play All both open the dedicated playlist player (<a href="#playlists">§09</a>), not TV Mode.</li>
+    <li>Pinned first, above your own playlists and the default playlists, everywhere playlists are listed.</li>
+  </ul>
+</section>
+
+<section class="manual-section" id="favorites">
+  <div class="manual-section-head"><span class="manual-num">08</span><h2>Favorites</h2></div>
+  <p class="manual-dek">A simpler, single flat list — for videos you just want to keep, not organize.</p>
+  <ul>
+    <li>♡ on any card, in the lightbox, or in TV Mode adds or removes a favorite.</li>
+    <li>The dedicated Favorites page (sidebar) supports Play All.</li>
+    <li><strong>Share Favorites</strong> (Favorites page, or Settings) generates and copies a public, read-only link to your list. Requires sign-in.</li>
+  </ul>
+</section>
+
+<section class="manual-section" id="playlists">
+  <div class="manual-section-head"><span class="manual-num">09</span><h2>Playlists</h2></div>
+  <p class="manual-dek">Organized lists, split clearly between what's pre-seeded and what's yours, played back through a dedicated player rather than a modal.</p>
+
+  <h3>Creating a playlist</h3>
+  <p>Either <span class="kbd">+ New Playlist</span> from the Playlists page, or <span class="kbd">Create Playlist</span> in the search filters row — which snapshots your <em>current search results</em> straight into a new playlist. New playlists always land at the top of your list, newest first.</p>
+
+  <h3>Layout</h3>
+  <p>My Queue sits fixed above everything. Below it, the page splits into two groups: <strong>My Playlists</strong> (yours) and <strong>Default Playlists</strong> (pre-seeded, one per major director — e.g. Michel Gondry, Spike Jonze).</p>
+
+  <h3>The playlist player</h3>
+  <p>Clicking any playlist chip — or My Queue's title/Play All, or "Play Selected" from bulk selection (<a href="#bulk">§11</a>) — opens a dedicated player, deliberately <em>not</em> TV Mode: a normal-looking video lightbox with a full track rail down the <strong>left</strong> side (thumbnail, song, artist, a remove button per track).</p>
+  <div class="manual-cards">
+    <div class="manual-card"><h4>Transport</h4><p>Prev / Next, plus a shuffle toggle that reorders only the <em>remaining</em> queue — what's already played stays put.</p></div>
+    <div class="manual-card"><h4>Rename / Delete</h4><p>Live in the player itself for custom playlists. Hidden for My Queue and one-off "Play Selected" lists, which can't be renamed.</p></div>
+  </div>
+</section>
+
+<section class="manual-section" id="recent">
+  <div class="manual-section-head"><span class="manual-num">10</span><h2>Recently Viewed</h2></div>
+  <p class="manual-dek">An automatic history strip — open anything, it shows up here.</p>
+  <p>Capped at the 12 most recent entries. Clear it anytime from Settings (<a href="#settings">§16</a>).</p>
+</section>
+
+<section class="manual-section" id="bulk">
+  <div class="manual-section-head"><span class="manual-num">11</span><h2>Bulk Selection &amp; View Modes</h2></div>
+  <p class="manual-dek">Search-only tools for acting on many results at once, and for choosing how those results are laid out.</p>
+
+  <h3>View modes</h3>
+  <p>Next to the A–Z row, a small toggle switches the results list between a dense two-column list (the default on wide screens) and a pure thumbnail grid — one unified gallery, not broken up by letter. The choice is remembered across visits.</p>
+
+  <h3>Selecting multiple results</h3>
+  <p>Every result card carries a low-opacity checkbox in its bottom-right corner. Checking one or more reveals a <strong>Selection</strong> bar above the results:</p>
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Control</th><th>Effect</th></tr>
+      <tr><td>Select all</td><td>Selects everything currently rendered — not every result matching the search across the whole catalog.</td></tr>
+      <tr><td>Clear</td><td>Empties the current selection.</td></tr>
+      <tr><td>Add to Favorites</td><td>Favorites every selected entry.</td></tr>
+      <tr><td>Add to Playlist…</td><td>Adds every selected entry to a playlist you pick.</td></tr>
+      <tr><td>Save as New Playlist…</td><td>Creates a new playlist from exactly the selected entries.</td></tr>
+      <tr><td>Play Selected</td><td>Opens the playlist player with just the selected entries, in the order you checked them.</td></tr>
+    </table>
+  </div>
+  <p>The Selection bar only appears while you're actively searching with something checked — it clears out of the way once you leave Search.</p>
+</section>
+
+<section class="manual-section" id="voting">
+  <div class="manual-section-head"><span class="manual-num">12</span><h2>Voting</h2></div>
+  <p class="manual-dek">Community-driven, currently free and unlimited.</p>
+  <ul>
+    <li>Vote from any card, the lightbox, or TV Mode — a "Voted!" flash confirms it.</li>
+    <li>The top-bar <span class="kbd">Vote</span> button opens a leaderboard of Top Videos.</li>
+    <li>Voting is currently unlimited — no cap on votes per person.</li>
+    <li>By default your name is never attached to a vote. An opt-in Settings toggle lets you show your name as a video's top or latest voter.</li>
+  </ul>
+</section>
+
+<section class="manual-section" id="submit">
+  <div class="manual-section-head"><span class="manual-num">13</span><h2>Submitting a Video</h2></div>
+  <p class="manual-dek">Every submission is manually reviewed before it's added — nothing goes live automatically.</p>
+
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Field</th><th>Required?</th></tr>
+      <tr><td>Artist</td><td>Required</td></tr>
+      <tr><td>Song Title</td><td>Required</td></tr>
+      <tr><td>YouTube Link / Vimeo Link</td><td>At least one required</td></tr>
+      <tr><td>Director</td><td>Required</td></tr>
+      <tr><td>Category</td><td>Required</td></tr>
+      <tr><td>Your email</td><td>Required (not published)</td></tr>
+      <tr><td>Year of release</td><td>Required</td></tr>
+      <tr><td>Country</td><td>Required</td></tr>
+      <tr><td>Description</td><td>Optional</td></tr>
+      <tr><td>Flavor Text Override</td><td>Optional — replaces Description on the trading card only</td></tr>
+      <tr><td>Genre</td><td>Optional</td></tr>
+      <tr><td>Release date</td><td>Optional</td></tr>
+      <tr><td>Producer / DP / Editor / Choreographer / Studio</td><td>Optional</td></tr>
+    </table>
+  </div>
+
+  <div class="manual-note">
+    <span class="manual-note-tag">Bulk submissions</span>
+    <p>A shared spreadsheet template is linked directly in the form for anyone submitting a large batch at once — fill it in and email it back rather than submitting one at a time.</p>
+  </div>
+
+  <p>We do not accept Gen-AI music videos.</p>
+</section>
+
+<section class="manual-section" id="connect">
+  <div class="manual-section-head"><span class="manual-num">14</span><h2>Connect &amp; Profiles</h2></div>
+  <p class="manual-dek">The same credits data, working in the other direction: a directory of the people behind the videos.</p>
+  <p>The <span class="kbd">Watch</span> / <span class="kbd">Connect</span> pills at the top of the sidebar are a display filter, not separate account types — Connect jumps straight to Profiles.</p>
+  <p><strong>Profiles</strong> is a director/artist/crew directory, auto-populated from credits already in the database, plus a request/connection flow. Requires sign-in to browse.</p>
+  <p><strong>Direct messages</strong> — once connected with someone through Profiles, a Messages panel lets you DM them in-app, no email or social handoff required.</p>
+</section>
+
+<section class="manual-section" id="board">
+  <div class="manual-section-head"><span class="manual-num">15</span><h2>Message Board</h2></div>
+  <p class="manual-dek">A persistent, site-wide public chat — separate from per-video comments.</p>
+  <p>A small chat-bubble icon sits fixed in the bottom-right corner on every page. Public to read; sign-in required to post.</p>
+</section>
+
+<section class="manual-section" id="settings">
+  <div class="manual-section-head"><span class="manual-num">16</span><h2>Settings</h2></div>
+  <p class="manual-dek">Reached via the gear icon (top bar on desktop, bottom nav on mobile).</p>
+
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Row</th><th>Does</th></tr>
+      <tr><td>Appearance</td><td>Dark/Light theme. Dark by default.</td></tr>
+      <tr><td>Autoplay</td><td>Start playing automatically when a video opens.</td></tr>
+      <tr><td>Genres you like</td><td>The same checkbox grid from onboarding — see <a href="#genres">§17</a>.</td></tr>
+      <tr><td>Recently Viewed history</td><td>Clears your Recently Viewed strip.</td></tr>
+      <tr><td>Favorites</td><td>Clears your entire favorites list.</td></tr>
+      <tr><td>Share your favorites</td><td>Generates a public read-only link. Requires sign-in.</td></tr>
+      <tr><td>Username</td><td>3–30 characters, letters/numbers/underscore, must be unique. Only shown publicly if you opt in below.</td></tr>
+      <tr><td>Show my name on votes</td><td>Off by default. When on, your username can appear as a video's top or latest voter.</td></tr>
+      <tr><td>Account</td><td>Sign out (signed-in users only).</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="manual-section" id="genres">
+  <div class="manual-section-head"><span class="manual-num">17</span><h2>Genre Preferences</h2></div>
+  <p class="manual-dek">A weight, not a filter — the one deliberately gentle piece of personalization on the site.</p>
+  <p>Set once during onboarding, or anytime in Settings: check off the genres you're into. <strong>Discover</strong> leans toward those picks, but keeps mixing in everything else — nothing is ever hidden because of this setting, and it's just as easy to uncheck as it was to check. No hidden algorithm, no watch-history inference: you told it what you like, in plain checkboxes you can see and change.</p>
+</section>
+
+<section class="manual-section" id="extras">
+  <div class="manual-section-head"><span class="manual-num">18</span><h2>Community &amp; Extras</h2></div>
+  <p class="manual-dek">Everything else worth knowing about, reachable from the sidebar or the footer.</p>
+  <div class="manual-cards">
+    <div class="manual-card"><h4>Word Cloud</h4><p>A hidden "cloud" link in the footer opens a draggable, zoomable 3D sphere of artist/song/director names, sized by how often they appear among recent submissions.</p></div>
+    <div class="manual-card"><h4>Discord</h4><p>Sidebar link to the community server.</p></div>
+    <div class="manual-card"><h4>News</h4><p>The blog, as its own page.</p></div>
+    <div class="manual-card"><h4>Podcast</h4><p>"The Film School You Never Went To," with an embedded Spotify player.</p></div>
+    <div class="manual-card"><h4>Support</h4><p>Ko-fi page for backing the project directly.</p></div>
+  </div>
+</section>
+
+<section class="manual-section" id="devices">
+  <div class="manual-section-head"><span class="manual-num">19</span><h2>Desktop vs. Mobile</h2></div>
+  <p class="manual-dek">Same feature set, two different navigation shells.</p>
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th></th><th>Desktop</th><th>Mobile</th></tr>
+      <tr><td>Primary nav</td><td>Left sidebar, always visible</td><td>Bottom nav bar: Home, Favorites, Search, TV Mode, Settings</td></tr>
+      <tr><td>Search</td><td>Top-bar search box; focusing it switches into the dedicated Search view</td><td>Dedicated bottom-nav Search tab</td></tr>
+      <tr><td>My Playlists shortcut</td><td>Persistent in the sidebar, below Support!</td><td>Not shown — reached via Playlists directly</td></tr>
+      <tr><td>Results view toggle / bulk selection</td><td>Available</td><td>Available</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="manual-section" id="index">
+  <div class="manual-section-head"><span class="manual-num">20</span><h2>Full Control Index</h2></div>
+  <p class="manual-dek">Every button, label, and icon referenced above, in one lookup table.</p>
+  <div class="manual-table-wrap">
+    <table class="manual-table">
+      <tr><th>Feature</th><th>Where</th><th>Label / Icon</th></tr>
+      <tr><td>TV Mode</td><td>Sidebar / mobile bottom nav</td><td><span class="kbd">TV Mode</span></td></tr>
+      <tr><td>My Queue add / remove</td><td>Every thumbnail site-wide</td><td><span class="kbd">+</span> / <span class="kbd">✕</span></td></tr>
+      <tr><td>My Queue open</td><td>Homepage strip</td><td><span class="kbd">My Queue</span> title / <span class="kbd">▶ Play All</span></td></tr>
+      <tr><td>Favorites</td><td>Sidebar / mobile bottom nav</td><td><span class="kbd">♡</span> / <span class="kbd">Favorites</span></td></tr>
+      <tr><td>Playlists</td><td>Sidebar</td><td><span class="kbd">Playlists</span> / <span class="kbd">+ New Playlist</span></td></tr>
+      <tr><td>Playlist player</td><td>Any playlist chip, My Queue title, Play Selected</td><td>opens automatically</td></tr>
+      <tr><td>My Playlists shortcut</td><td>Left sidebar, desktop, below Support!</td><td><span class="kbd">My Playlists</span> / <span class="kbd">More</span></td></tr>
+      <tr><td>Recently Viewed</td><td>Sidebar</td><td><span class="kbd">Recently Viewed</span></td></tr>
+      <tr><td>Submit a video</td><td>Sidebar</td><td><span class="kbd">Submit music video</span></td></tr>
+      <tr><td>Vote</td><td>Cards, lightbox, TV Mode, top bar</td><td><span class="kbd">Vote</span></td></tr>
+      <tr><td>Bulk selection</td><td>Search results, bottom-right of each thumbnail</td><td>checkbox → <span class="kbd">Selection</span> bar → <span class="kbd">Actions</span></td></tr>
+      <tr><td>Results view toggle</td><td>Search, next to the A–Z row</td><td>list icon / grid icon</td></tr>
+      <tr><td>Trading card</td><td>Any lightbox, below the description</td><td><span class="kbd">Download trading card</span></td></tr>
+      <tr><td>Suggest an edit</td><td>Any credit field in the lightbox</td><td>click the field</td></tr>
+      <tr><td>Comments (per-video)</td><td>Bottom of the lightbox</td><td><span class="kbd">Comments</span></td></tr>
+      <tr><td>Message board</td><td>Floating icon, every page</td><td>chat-bubble icon</td></tr>
+      <tr><td>Direct messages</td><td>Profiles, after connecting</td><td><span class="kbd">Messages</span></td></tr>
+      <tr><td>Connect toggle</td><td>Sidebar top</td><td><span class="kbd">Watch</span> / <span class="kbd">Connect</span></td></tr>
+      <tr><td>Settings</td><td>Top bar (desktop) / bottom nav (mobile)</td><td>gear icon</td></tr>
+      <tr><td>Genre preferences</td><td>Onboarding, or Settings</td><td>checkbox grid</td></tr>
+      <tr><td>Share Favorites</td><td>Favorites page, or Settings</td><td><span class="kbd">Share Favorites</span> / <span class="kbd">Get link</span></td></tr>
+      <tr><td>Word Cloud</td><td>Footer</td><td>small "cloud" link</td></tr>
+      <tr><td>Discord</td><td>Sidebar</td><td><span class="kbd">Discord</span></td></tr>
+      <tr><td>News</td><td>Sidebar</td><td><span class="kbd">News</span></td></tr>
+      <tr><td>Podcast</td><td>Sidebar</td><td><span class="kbd">Podcast</span></td></tr>
+      <tr><td>Support</td><td>Sidebar</td><td><span class="kbd">Support!</span></td></tr>
+    </table>
+  </div>
+  <a class="manual-back-to-top" href="#top">Back to top ↑</a>
+</section>
+
+</div>
+</div>
+</div>
+</body>
+</html>

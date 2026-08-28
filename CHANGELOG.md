@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.3 — current
+## v6.36.4 — current
+- Added a full Manual page (manual.html) -- complete reference documentation for every viewer-facing feature (Accounts, Browsing/Search, the Homepage, the lightbox, Trading Cards, TV Mode, My Queue, Favorites, Playlists, Recently Viewed, Bulk Selection, Voting, Submitting, Connect/Profiles, the Message Board, Settings, Genre Preferences, and more), with a table of contents and a full control index. Linked in the footer between RSS and Feedback. Uses the same sidebar/header chrome as news.html/support.html/privacy.html (via site-nav.js), just widened for its reference tables.
+
+## v6.36.3
 - Fixed the Search "Selection" bar showing on Home with "0 selected" instead of staying hidden -- another instance of the `[hidden]`-vs-unconditional-`display` cascade-tie bug (`.search-selection-bar{display:flex}` was beating `[hidden]`), missed in v6.36.2 because that fix only verified the bar's `hidden` attribute, not its actual rendered `display`.
 - Fixed the list/thumbnail-grid view toggle rendering as a stray floating row above News on Home -- its wrapper (`.jumpnav-row`) wasn't covered by the same show/hide rules as the A-Z nav it sits next to, so the row (and the toggle inside it) stayed visible even when the nav itself was correctly hidden.
 - Search's thumbnail-grid view no longer breaks the results into per-letter sections with headings -- it's a single unified gallery now, matching what a "just show me thumbnails" view should look like.
