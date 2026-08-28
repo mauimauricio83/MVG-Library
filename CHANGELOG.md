@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.38.2 — current
+## v6.38.3 — current
+- Thumbnail Check: added a Delete button next to Recheck/Find replacement/Edit manually on each row, for deleting a dead entry straight from the gallery instead of opening the edit form first. Drops just that one row (same as fixing/rechecking), leaving every other row's loaded search results untouched.
+
+## v6.38.2
 - Thumbnail Check results now cap at 60% width on desktop instead of stretching the full page -- rows were reading as mostly empty space, with the action buttons a long way from the title/thumbnail they belong to.
 
 ## v6.38.1

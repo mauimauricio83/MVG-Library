@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.38.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.38.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11284,6 +11284,7 @@
       '<button type="button" class="admin-row-btn" data-recheck-row="' + escapeHtml(row.rowNum) + '">Recheck</button>' +
       '<button type="button" class="admin-row-btn" data-search-row="' + escapeHtml(row.rowNum) + '" data-query="' + escapeHtml(query) + '">Find replacement</button>' +
       '<button type="button" class="admin-row-btn" data-fix-row="' + escapeHtml(row.rowNum) + '">Edit manually</button>' +
+      '<button type="button" class="admin-row-btn admin-row-btn-danger" data-delete-row="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml(query || "this entry") + '">Delete</button>' +
       "</div>" +
       "</div>" +
       '<div class="thumb-check-item-candidates" hidden></div>' +
@@ -11335,6 +11336,27 @@
     var item = btn ? btn.closest(".thumb-check-item") : null;
     if (item) item.remove();
     els.thumbCheckEmpty.hidden = !!els.thumbCheckGrid.querySelector(".thumb-check-item");
+  }
+
+  // Same underlying delete as deleteRowByAdmin() (Firestore delete + the
+  // usual local-state cleanup + republish), but deliberately doesn't reuse
+  // it directly -- that function ends by opening the admin modal onto its
+  // landing screen, which makes sense from the lightbox/edit-form entry
+  // points it was built for, but would be a jarring detour from this page.
+  // Drops just this one row via removeThumbCheckItem() instead, same as
+  // recheck/apply-replacement, so it stays put and every other row's
+  // loaded candidates are undisturbed.
+  function deleteThumbCheckRow(rowNum, label) {
+    if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
+    db.collection("videos").doc(rowNum).delete().then(function () {
+      removeRowAndRerender(rowNum);
+      removeAdminRowLocal(rowNum);
+      removeThumbCheckItem(rowNum);
+      return publishSnapshot();
+    }).catch(function (err) {
+      console.error("Thumbnail Check delete failed:", err);
+      alert("Delete failed: " + err.message);
+    });
   }
 
   function recheckSingleThumb(rowNum) {
@@ -11479,7 +11501,9 @@
     var searchBtn = e.target.closest("[data-search-row]");
     if (searchBtn) { runThumbCheckReplacementSearch(searchBtn); return; }
     var useBtn = e.target.closest("[data-use-candidate]");
-    if (useBtn) applyThumbCheckReplacement(useBtn);
+    if (useBtn) { applyThumbCheckReplacement(useBtn); return; }
+    var deleteBtn = e.target.closest("[data-delete-row]");
+    if (deleteBtn) deleteThumbCheckRow(deleteBtn.getAttribute("data-delete-row"), deleteBtn.getAttribute("data-label"));
   });
 
   // Runs "Find replacement" for every listed entry (up to 100) instead of
