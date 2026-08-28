@@ -2,6 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
+## v6.36.0 — current
+- Added bulk selection to Search results: a low-opacity checkbox on every thumbnail (bottom-right), a "Selection" bar that appears once 1+ is checked with "Select all" (currently-rendered results only)/"Clear", and an Actions menu -- Add to Favorites, Add to Playlist, Save as New Playlist, Play Selected (opens the playlist player with just the selected videos), plus admin-only Bulk Edit (the four boolean flags, tri-state, plus adding one genre to all selected) and Bulk Delete.
+- Removed the collapse/expand (chevron) feature from every homepage strip (Latest, Featured, My Queue already had it removed last version) -- every title is now just a button.
+- Every section title (My Queue, Latest, Featured, Favorites, Recently Viewed) now does the same thing as its own Play All when clicked.
+- Fixed My Queue's title sitting ~15px further right than Maui's Picks and every other flush-left section title -- all titles now line up.
+
 ## v6.35.7 — current
 - Homepage My Queue's title is now a button that opens the playlist player, same as its Play All -- and its Play All button, which was still opening TV Mode, now opens the playlist player too. Removed My Queue's collapse/expand feature entirely (it never made sense alongside a title that now opens something).
 - Fixed the Playlists page's My Queue title rendering in the browser's default button font instead of matching the other section headers -- a `font: inherit` shorthand was clobbering its own font-size/weight (same class of bug as the earlier `[hidden]` cascade-tie issues, just for `font` instead of `display`).

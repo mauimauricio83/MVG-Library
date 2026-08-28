@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.35.7">
+<link rel="stylesheet" href="styles.css?v=6.36.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -450,10 +450,7 @@
        reshuffle without asking. -->
   <section class="media-strip" id="latestStrip" hidden>
     <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="latestCollapseBtn" aria-label="Expand or collapse">
-        <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">Latest Submissions</span>
-      </button>
+      <button type="button" class="media-strip-title media-strip-title-btn" id="latestTitleBtn">Latest Submissions</button>
       <button type="button" class="media-strip-play-all" id="latestPlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
@@ -478,10 +475,7 @@
 
   <section class="media-strip" id="featuredStrip" hidden>
     <div class="media-strip-head">
-      <button type="button" class="media-strip-collapse-btn" id="featuredCollapseBtn" aria-label="Expand or collapse">
-        <span class="media-strip-chevron">▾</span>
-        <span class="media-strip-title">Featured</span>
-      </button>
+      <button type="button" class="media-strip-title media-strip-title-btn" id="featuredTitleBtn">Featured</button>
       <button type="button" class="media-strip-play-all" id="featuredPlayAll">▶ Play All</button>
     </div>
     <div class="media-strip-body">
@@ -516,7 +510,7 @@
        instead of a blank page. -->
   <section class="media-strip" id="favoritesStrip" hidden>
     <div class="media-strip-head">
-      <span class="media-strip-title" id="favoritesTitle">Favorites</span>
+      <button type="button" class="media-strip-title media-strip-title-btn" id="favoritesTitle">Favorites</button>
       <button type="button" class="media-strip-play-all" id="favoritesPlayAll">▶ Play All</button>
       <div class="media-strip-head-actions">
         <button type="button" class="media-strip-play-all" id="favoritesShareBtn">Share Favorites</button>
@@ -660,6 +654,27 @@
   </section>
 
   <div class="results-layout">
+    <!-- Search-only bulk-select bar -- hidden until 1+ .thumb-select-checkbox
+         is checked (see updateSearchSelectionBar() in app.js). Doesn't need
+         extra view-gating CSS: it's only ever un-hidden while the checkboxes
+         it reflects (Search-results-only, see thumbSelectCheckboxHtml()) can
+         exist to be checked in the first place. -->
+    <div class="search-selection-bar" id="searchSelectionBar" hidden>
+      <span class="search-selection-count" id="searchSelectionCount"></span>
+      <button type="button" class="search-selection-btn" id="searchSelectAllBtn">Select all</button>
+      <button type="button" class="search-selection-btn" id="searchSelectClearBtn">Clear</button>
+      <div class="search-selection-actions-wrap">
+        <button type="button" class="search-selection-btn search-selection-actions-btn" id="searchSelectionActionsBtn" aria-haspopup="true" aria-expanded="false">Actions &#9662;</button>
+        <div class="search-selection-menu" id="searchSelectionMenu" hidden>
+          <button type="button" class="search-selection-menu-item" id="searchSelectionFavBtn">Add to Favorites</button>
+          <button type="button" class="search-selection-menu-item" id="searchSelectionAddPlaylistBtn">Add to Playlist…</button>
+          <button type="button" class="search-selection-menu-item" id="searchSelectionSaveNewBtn">Save as New Playlist…</button>
+          <button type="button" class="search-selection-menu-item" id="searchSelectionPlayBtn">Play Selected</button>
+          <button type="button" class="search-selection-menu-item search-selection-menu-item-admin" id="searchSelectionBulkEditBtn" hidden>Bulk Edit… (Admin)</button>
+          <button type="button" class="search-selection-menu-item search-selection-menu-item-admin search-selection-menu-item-danger" id="searchSelectionBulkDeleteBtn" hidden>Bulk Delete (Admin)</button>
+        </div>
+      </div>
+    </div>
     <main id="results" class="results">
       <div class="loading-state">
         <span class="spinner"></span>
@@ -812,7 +827,7 @@
     <button type="button" class="lightbox-close" id="recentModalClose" aria-label="Close">&times;</button>
     <div class="recent-body">
       <div class="recent-header">
-        <h2 class="recent-title">Recently Viewed</h2>
+        <h2 class="recent-title"><button type="button" class="recent-title-btn" id="recentTitleBtn">Recently Viewed</button></h2>
         <button type="button" class="media-strip-play-all" id="recentPlayAll">▶ Play All</button>
       </div>
       <div class="recent-list" id="recentList"></div>
@@ -1580,6 +1595,32 @@
   </div>
 </div>
 
+<!-- Admin-only: bulk-edit the currently-selected Search results (see
+     Selection bar's "Bulk Edit…" action, openBulkEditModal()/
+     submitBulkEdit() in app.js). Deliberately scoped to just the four
+     boolean flags (tri-state each: leave unchanged / on / off) plus
+     adding one genre to all -- the full edit form has ~18 free-text
+     fields, most of which aren't safe to apply identically across many
+     different rows at once. -->
+<div class="lightbox" id="bulkEditModal" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-panel bulk-edit-panel" role="dialog" aria-modal="true" aria-label="Bulk edit">
+    <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
+    <div class="lightbox-body">
+      <h2 class="lightbox-title" id="bulkEditTitle"></h2>
+      <p class="bulk-edit-hint">Leave a flag on "Don't change" to skip it for all selected entries.</p>
+      <div class="bulk-edit-flags" id="bulkEditFlags"></div>
+      <label class="bulk-edit-genre-label" for="bulkEditGenre">Add genre to all selected (optional)</label>
+      <input type="text" id="bulkEditGenre" placeholder="e.g. Pop">
+      <div class="bulk-edit-actions">
+        <button type="button" class="tv-exit-btn" id="bulkEditCancelBtn">Cancel</button>
+        <button type="button" class="media-strip-play-all" id="bulkEditSaveBtn">Save to all selected</button>
+      </div>
+      <p class="bulk-edit-status" id="bulkEditStatus" hidden></p>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -1587,6 +1628,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.35.7"></script>
+<script src="app.js?v=6.36.0"></script>
 </body>
 </html>

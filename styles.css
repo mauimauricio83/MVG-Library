@@ -1849,12 +1849,18 @@ html, body {
    row. Anything that should still hug the right edge (e.g. Favorites'
    Share button) gets margin-left:auto on its own wrapper instead -- see
    .media-strip-head-actions below. */
+/* Left padding dropped to 0 (was 14px, same as .media-strip-body below
+   it) so the title itself lines up flush with plain, unbordered sections
+   like Maui's Picks (.spotlight-sidebar-title, which has no card
+   chrome/padding of its own) instead of sitting ~15px further right.
+   .media-strip-body/.media-strip-track keep their own 14px inset for the
+   thumbnail row -- only the head's title/Play All row flushes left. */
 .media-strip-head {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  padding: 0 14px 8px;
+  padding: 0 14px 8px 0;
 }
 
 /* Unified with .spotlight-sidebar-title/.recent-title at 1.05rem (matches
@@ -1883,45 +1889,6 @@ html, body {
   padding: 0;
   font-family: inherit;
   cursor: pointer;
-}
-
-.media-strip-collapse-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-
-.media-strip-chevron {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  transition: transform 0.15s ease;
-}
-
-.media-strip.is-collapsed .media-strip-chevron {
-  transform: rotate(-90deg);
-}
-
-.media-strip.is-collapsed .media-strip-body {
-  display: none;
-}
-
-.media-strip.is-collapsed {
-  width: fit-content;
-  padding-bottom: 10px;
-}
-
-.media-strip.is-collapsed .media-strip-head {
-  justify-content: flex-start;
-  padding-bottom: 0;
-}
-
-.media-strip.is-collapsed .media-strip-play-all {
-  display: none;
 }
 
 .media-strip-play-all {
@@ -2143,6 +2110,33 @@ html, body {
 .thumb-add-btn:hover,
 .thumb-add-btn:focus-visible {
   background: var(--accent);
+}
+
+/* Bulk-select checkbox, Search results only (thumbSelectCheckboxHtml() in
+   app.js -- .result-card-thumb is its only call site, doesn't leak onto
+   media strips/TV Mode). Bottom-right, opposite corner from
+   .thumb-add-btn, same low-opacity-at-rest/full-on-hover language --
+   except a checked box stays fully opaque unconditionally, since a
+   selected item should read as selected without needing hover. */
+.thumb-select-checkbox {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.result-card:hover .thumb-select-checkbox,
+.thumb-select-checkbox:hover,
+.thumb-select-checkbox:focus-visible,
+.thumb-select-checkbox:checked {
+  opacity: 1;
 }
 
 .media-vote-btn:hover {
@@ -3750,13 +3744,174 @@ body.is-searching #viewersChoiceSection {
 
 .results-layout {
   display: flex;
-  align-items: flex-start;
+  /* Column, not row -- #searchSelectionBar (new) needs to stack above
+     #results, not sit beside it. Previously only ever had the one child
+     (#results), so this was a no-op change in practice until now. */
+  flex-direction: column;
+  align-items: stretch;
   gap: 20px;
 }
 
 .results-layout .results {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Bulk-select bar, Search results only -- hidden until 1+ result is
+   checked (see updateSearchSelectionBar() in app.js). */
+.search-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.search-selection-count {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-right: 4px;
+}
+
+.search-selection-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.search-selection-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.search-selection-actions-btn {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.search-selection-actions-wrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.search-selection-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.search-selection-menu-item {
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.search-selection-menu-item:hover {
+  background: var(--accent-soft);
+}
+
+.search-selection-menu-item-admin {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.search-selection-menu-item-danger {
+  color: #e0245e;
+}
+
+.search-selection-menu-item-danger:hover {
+  background: rgba(224, 36, 94, 0.12);
+}
+
+/* Admin bulk-edit modal (#bulkEditModal) -- see the HTML comment above it
+   in index.html for scope reasoning (4 tri-state flags + one genre, not
+   the full ~18-field edit form). */
+.bulk-edit-panel {
+  max-width: 420px;
+}
+
+.bulk-edit-hint {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  margin: 0 0 16px;
+}
+
+.bulk-edit-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.bulk-edit-flag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bulk-edit-flag-row select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.bulk-edit-genre-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+#bulkEditGenre {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+.bulk-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.bulk-edit-status {
+  margin: 12px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
 }
 
 /* A plain section (like Latest Submissions/Featured) now, not a sticky
@@ -7427,6 +7582,23 @@ body.is-searching #viewersChoiceSection {
   margin: 0;
   font-size: 1.05rem;
   color: var(--brand-yellow);
+}
+
+/* Buttons don't inherit their parent's font by default (browsers give
+   them their own UI font) -- explicit size/weight/color needed here,
+   matching .recent-title's own, since font-family:inherit alone (the
+   pattern used for .media-strip-title-btn etc.) isn't enough once the
+   button is nested inside the heading rather than being the heading
+   itself. Opens the same as Play All, same as every other section title. */
+.recent-title-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
 }
 
 .recent-list {

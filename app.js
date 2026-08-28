@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.35.7"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.36.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -116,6 +116,25 @@
     loadingBannerText: document.getElementById("loadingBannerText"),
     loadingBannerPercent: document.getElementById("loadingBannerPercent"),
     results: document.getElementById("results"),
+    searchSelectionBar: document.getElementById("searchSelectionBar"),
+    searchSelectionCount: document.getElementById("searchSelectionCount"),
+    searchSelectAllBtn: document.getElementById("searchSelectAllBtn"),
+    searchSelectClearBtn: document.getElementById("searchSelectClearBtn"),
+    searchSelectionActionsBtn: document.getElementById("searchSelectionActionsBtn"),
+    searchSelectionMenu: document.getElementById("searchSelectionMenu"),
+    searchSelectionFavBtn: document.getElementById("searchSelectionFavBtn"),
+    searchSelectionAddPlaylistBtn: document.getElementById("searchSelectionAddPlaylistBtn"),
+    searchSelectionSaveNewBtn: document.getElementById("searchSelectionSaveNewBtn"),
+    searchSelectionPlayBtn: document.getElementById("searchSelectionPlayBtn"),
+    searchSelectionBulkEditBtn: document.getElementById("searchSelectionBulkEditBtn"),
+    searchSelectionBulkDeleteBtn: document.getElementById("searchSelectionBulkDeleteBtn"),
+    bulkEditModal: document.getElementById("bulkEditModal"),
+    bulkEditTitle: document.getElementById("bulkEditTitle"),
+    bulkEditFlags: document.getElementById("bulkEditFlags"),
+    bulkEditGenre: document.getElementById("bulkEditGenre"),
+    bulkEditCancelBtn: document.getElementById("bulkEditCancelBtn"),
+    bulkEditSaveBtn: document.getElementById("bulkEditSaveBtn"),
+    bulkEditStatus: document.getElementById("bulkEditStatus"),
     search: document.getElementById("search"),
     tabs: Array.prototype.slice.call(document.querySelectorAll(".tab")),
     jumpTop: document.getElementById("jumpNavTop"),
@@ -189,8 +208,11 @@
     myQueueTitleBtn: document.getElementById("myQueueTitleBtn"),
     myQueuePlayAll: document.getElementById("myQueuePlayAll"),
     featuredPlayAll: document.getElementById("featuredPlayAll"),
+    featuredTitleBtn: document.getElementById("featuredTitleBtn"),
     latestPlayAll: document.getElementById("latestPlayAll"),
+    latestTitleBtn: document.getElementById("latestTitleBtn"),
     recentPlayAll: document.getElementById("recentPlayAll"),
+    recentTitleBtn: document.getElementById("recentTitleBtn"),
     favoritesPlayAll: document.getElementById("favoritesPlayAll"),
     favoritesTitle: document.getElementById("favoritesTitle"),
     favoritesShareBtn: document.getElementById("favoritesShareBtn"),
@@ -200,8 +222,6 @@
     recentModal: document.getElementById("recentModal"),
     recentModalClose: document.getElementById("recentModalClose"),
     recentList: document.getElementById("recentList"),
-    latestCollapseBtn: document.getElementById("latestCollapseBtn"),
-    featuredCollapseBtn: document.getElementById("featuredCollapseBtn"),
     latestSeeMoreBtn: document.getElementById("latestSeeMoreBtn"),
     latestLoadMoreBtn: document.getElementById("latestLoadMoreBtn"),
     featuredSeeMoreBtn: document.getElementById("featuredSeeMoreBtn"),
@@ -858,6 +878,7 @@
   function closeAllModalsHard() {
     closeLightbox();
     closePlaylistPlayer();
+    closeBulkEditModal();
     closeDmThread();
     closeTVModal();
     closeSubmitModal();
@@ -1089,6 +1110,12 @@
       large: false,
       player: null
     },
+    // Bulk-select checkboxes on Search result cards (see
+    // thumbSelectCheckboxHtml()/updateSearchSelectionBar()). A Set of
+    // rowNums, not reset on filter/search changes -- refining a search
+    // while curating a set shouldn't silently drop earlier picks just
+    // because they scrolled out of view.
+    searchSelection: new Set(),
     isAdmin: false,
     viewAsNormie: loadAdminNormiePref(), // per-device pref, see adminUiActive()
     // Site-wide (not per-device) homepage section toggles -- see
@@ -1356,34 +1383,6 @@
     return state.isAdmin && !state.viewAsNormie;
   }
 
-  // All four media strips are collapsible; each picks its own default via
-  // the defaultCollapsed param below -- Recently Viewed/Favorites start
-  // collapsed (secondary, personalized content), Latest/Featured start
-  // expanded (primary content most visitors want to see right away).
-  function loadCollapsedPref(key, defaultCollapsed) {
-    try {
-      var raw = localStorage.getItem(key);
-      return raw === null ? defaultCollapsed : raw === "true";
-    } catch (e) {
-      return defaultCollapsed;
-    }
-  }
-
-  function saveCollapsedPref(key, collapsed) {
-    try {
-      localStorage.setItem(key, collapsed ? "true" : "false");
-    } catch (e) {}
-  }
-
-  function setupCollapsibleStrip(sectionEl, toggleBtn, prefKey, defaultCollapsed) {
-    var collapsed = loadCollapsedPref(prefKey, defaultCollapsed);
-    sectionEl.classList.toggle("is-collapsed", collapsed);
-    toggleBtn.addEventListener("click", function () {
-      collapsed = !collapsed;
-      sectionEl.classList.toggle("is-collapsed", collapsed);
-      saveCollapsedPref(prefKey, collapsed);
-    });
-  }
 
   // Favorites/recently-viewed are localStorage-first (instant, works
   // signed-out) and pushed to Firestore too when signed in, so they sync
@@ -1739,6 +1738,26 @@
     savePlaylists(list);
     pushToFirestore();
     return nowIn;
+  }
+
+  // Bulk variant for the Search Selection bar -- only ever ADDS rows
+  // (skips ones already present), never removes, unlike
+  // togglePlaylistEntry()'s single-row toggle. A mixed "3 of these 12 are
+  // already in the playlist" selection has no sensible single toggle
+  // direction, so bulk add is deliberately one-way.
+  function bulkAddRowsToPlaylist(id, rowNums) {
+    var list = loadPlaylists();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        rowNums.forEach(function (n) {
+          if (list[i].rowNums.indexOf(n) === -1) list[i].rowNums.push(n);
+        });
+        list[i].updatedAt = Date.now();
+        break;
+      }
+    }
+    savePlaylists(list);
+    pushToFirestore();
   }
 
   function loadRecentlyViewed() {
@@ -2646,11 +2665,10 @@
     myQueueStrip.render(myQueuePool);
   }
 
-  setupCollapsibleStrip(els.latestStrip, els.latestCollapseBtn, "mvg-latest-collapsed", false);
-  setupCollapsibleStrip(els.featuredStrip, els.featuredCollapseBtn, "mvg-featured-collapsed", false);
-  // My Queue deliberately has no collapse feature -- its title is a
-  // button that opens the playlist player instead (see openMyQueuePlayer()
-  // near the Playlists page code), same as its Play All.
+  // Every homepage strip's title is a button that does the same thing as
+  // its own Play All (see the els.*PlayAll/els.*TitleBtn pairs wired
+  // together further down, near startTVMode()/openMyQueuePlayer()) --
+  // none of them have a collapse feature.
   els.myQueueTitleBtn.addEventListener("click", openMyQueuePlayer);
 
   // Desktop-only: the gallery grid is capped to ~2 rows by default (see
@@ -2955,8 +2973,12 @@
     els.playlistPlayerPanel.classList.remove("size-large");
     els.playlistPlayerShuffleBtn.setAttribute("aria-pressed", "false");
     els.playlistPlayerRailName.innerHTML = (playlist.id === MY_QUEUE_ID ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(playlist.name);
-    els.playlistPlayerRenameBtn.hidden = playlist.id === MY_QUEUE_ID;
-    els.playlistPlayerDeleteBtn.hidden = playlist.id === MY_QUEUE_ID;
+    // No id (an ephemeral, non-persisted selection -- see "Play Selected"
+    // in the Search bulk-selection bar) can't be renamed/deleted any more
+    // than My Queue can.
+    var playlistIsFixed = !playlist.id || playlist.id === MY_QUEUE_ID;
+    els.playlistPlayerRenameBtn.hidden = playlistIsFixed;
+    els.playlistPlayerDeleteBtn.hidden = playlistIsFixed;
     els.playlistPlayerModal.hidden = false;
     lockBodyScroll();
     pushModalHistory();
@@ -3205,6 +3227,11 @@
   // lightbox's + button, TV Mode's + button) rather than building a new
   // popover per video.
   var addPlaylistRowNum = null;
+  // Set (not null) while the popover is open in bulk mode -- see
+  // openAddToPlaylistPopoverBulk(), triggered by the Search Selection
+  // bar's "Add to Playlist" action. Mutually exclusive with
+  // addPlaylistRowNum; whichever open*() call ran last owns the popover.
+  var addPlaylistBulkRowNums = null;
 
   function renderAddPlaylistList() {
     var list = loadPlaylistsForDisplay();
@@ -3213,7 +3240,12 @@
       return;
     }
     els.addPlaylistList.innerHTML = list.map(function (p) {
-      var inIt = p.rowNums.indexOf(addPlaylistRowNum) !== -1;
+      // Bulk mode: checkmark only when EVERY selected row is already in
+      // this playlist -- a partial match has no single "in it or not"
+      // answer, so it reads as unchecked rather than guessing.
+      var inIt = addPlaylistBulkRowNums
+        ? addPlaylistBulkRowNums.every(function (n) { return p.rowNums.indexOf(n) !== -1; })
+        : p.rowNums.indexOf(addPlaylistRowNum) !== -1;
       var isQueue = p.id === MY_QUEUE_ID;
       var nameHtml = (isQueue ? ICON_QUEUE_CLOCK + " " : "") + escapeHtml(p.name);
       return '<button type="button" class="add-playlist-item' + (inIt ? " is-in" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
@@ -3236,6 +3268,17 @@
     return '<button type="button" class="thumb-add-btn" data-add-rownum="' + escapeHtml(rowNum) + '" title="Add to playlist" aria-label="Add to playlist">+</button>';
   }
 
+  // Search-results-only bulk-select checkbox -- see renderEntry() (the
+  // only call site; NOT added to thumbAddBtnHtml()'s other homes in media
+  // strips/TV Mode/etc.). A real <input type="checkbox"> rather than a
+  // button, for native checked-state/keyboard support. Bottom-right,
+  // opposite corner from .thumb-add-btn, same low-opacity-at-rest styling
+  // (see styles.css).
+  function thumbSelectCheckboxHtml(rowNum) {
+    return '<input type="checkbox" class="thumb-select-checkbox" data-select-rownum="' + escapeHtml(rowNum) + '" aria-label="Select"' +
+      (state.searchSelection.has(rowNum) ? " checked" : "") + ">";
+  }
+
   // Call at the top of any card container's delegated click handler --
   // returns true (caller should return early) if the click was this button,
   // false otherwise. Centralizes the one line of actual logic so every
@@ -3250,6 +3293,24 @@
 
   function openAddToPlaylistPopover(rowNum, anchorEl) {
     addPlaylistRowNum = rowNum;
+    addPlaylistBulkRowNums = null;
+    renderAddPlaylistList();
+    els.addPlaylistNewName.value = "";
+    els.addPlaylistPopover.hidden = false;
+    var rect = anchorEl.getBoundingClientRect();
+    var popW = 260;
+    var left = Math.min(rect.left, window.innerWidth - popW - 8);
+    els.addPlaylistPopover.style.top = (rect.bottom + 8) + "px";
+    els.addPlaylistPopover.style.left = Math.max(8, left) + "px";
+  }
+
+  // Bulk variant for the Search Selection bar's "Add to Playlist" action --
+  // same popover shell, but every add below only ever ADDS rows (never
+  // toggles one back out), since a mixed "some already in" selection has
+  // no sensible single toggle direction.
+  function openAddToPlaylistPopoverBulk(rowNums, anchorEl) {
+    addPlaylistRowNum = null;
+    addPlaylistBulkRowNums = rowNums;
     renderAddPlaylistList();
     els.addPlaylistNewName.value = "";
     els.addPlaylistPopover.hidden = false;
@@ -3263,6 +3324,7 @@
   function closeAddToPlaylistPopover() {
     els.addPlaylistPopover.hidden = true;
     addPlaylistRowNum = null;
+    addPlaylistBulkRowNums = null;
   }
 
   // Re-renders whichever playlist-driven UI is currently visible after an
@@ -3276,16 +3338,26 @@
 
   els.addPlaylistList.addEventListener("click", function (e) {
     var item = e.target.closest(".add-playlist-item");
-    if (!item || !addPlaylistRowNum) return;
-    togglePlaylistEntry(item.getAttribute("data-id"), addPlaylistRowNum);
+    if (!item) return;
+    if (addPlaylistBulkRowNums) {
+      bulkAddRowsToPlaylist(item.getAttribute("data-id"), addPlaylistBulkRowNums);
+    } else {
+      if (!addPlaylistRowNum) return;
+      togglePlaylistEntry(item.getAttribute("data-id"), addPlaylistRowNum);
+    }
     renderAddPlaylistList();
     refreshPlaylistUIAfterChange();
   });
 
   els.addPlaylistCreateBtn.addEventListener("click", function () {
     var name = els.addPlaylistNewName.value.trim();
-    if (!name || !addPlaylistRowNum) return;
-    createPlaylist(name, [addPlaylistRowNum]);
+    if (!name) return;
+    if (addPlaylistBulkRowNums) {
+      createPlaylist(name, addPlaylistBulkRowNums);
+    } else {
+      if (!addPlaylistRowNum) return;
+      createPlaylist(name, [addPlaylistRowNum]);
+    }
     els.addPlaylistNewName.value = "";
     renderAddPlaylistList();
     refreshPlaylistUIAfterChange();
@@ -3305,7 +3377,8 @@
         node.id === "addPlaylistPopover" ||
         node.classList.contains("lightbox-playlist-btn") ||
         node.classList.contains("thumb-add-btn") ||
-        node.id === "tvPlaylistBtn"
+        node.id === "tvPlaylistBtn" ||
+        node.id === "searchSelectionAddPlaylistBtn"
       );
     });
     if (insideTrigger) return;
@@ -6923,21 +6996,24 @@
     updateTVPowerSwitch(true);
   }
 
-  els.featuredPlayAll.addEventListener("click", function () {
-    startTVMode(featuredPool.filter(function (r) { return hasVideo(r); }));
-  });
+  // Every strip's title does the same thing as its own Play All -- see
+  // the *TitleBtn bindings above and the HTML comment near
+  // openMyQueuePlayer()/els.myQueueTitleBtn.
+  function playAllFeatured() { startTVMode(featuredPool.filter(function (r) { return hasVideo(r); })); }
+  els.featuredPlayAll.addEventListener("click", playAllFeatured);
+  els.featuredTitleBtn.addEventListener("click", playAllFeatured);
 
-  els.latestPlayAll.addEventListener("click", function () {
-    startTVMode(latestPool.filter(function (r) { return hasVideo(r); }));
-  });
+  function playAllLatest() { startTVMode(latestPool.filter(function (r) { return hasVideo(r); })); }
+  els.latestPlayAll.addEventListener("click", playAllLatest);
+  els.latestTitleBtn.addEventListener("click", playAllLatest);
 
-  els.recentPlayAll.addEventListener("click", function () {
-    startTVMode(recentPool.filter(function (r) { return hasVideo(r); }));
-  });
+  function playAllRecent() { startTVMode(recentPool.filter(function (r) { return hasVideo(r); })); }
+  els.recentPlayAll.addEventListener("click", playAllRecent);
+  els.recentTitleBtn.addEventListener("click", playAllRecent);
 
-  els.favoritesPlayAll.addEventListener("click", function () {
-    startTVMode(favoritesPool.filter(function (r) { return hasVideo(r); }));
-  });
+  function playAllFavorites() { startTVMode(favoritesPool.filter(function (r) { return hasVideo(r); })); }
+  els.favoritesPlayAll.addEventListener("click", playAllFavorites);
+  els.favoritesTitle.addEventListener("click", playAllFavorites);
 
   els.myQueuePlayAll.addEventListener("click", openMyQueuePlayer);
 
@@ -13129,7 +13205,7 @@
 
     return (
       '<li class="result-card" data-row="' + escapeHtml(row.rowNum) + '" role="button" tabindex="0" aria-haspopup="dialog">' +
-      '<div class="result-card-thumb">' + thumb + thumbAddBtnHtml(row.rowNum) + "</div>" +
+      '<div class="result-card-thumb">' + thumb + thumbAddBtnHtml(row.rowNum) + thumbSelectCheckboxHtml(row.rowNum) + "</div>" +
       '<div class="result-card-info">' +
       '<div class="result-card-song">' + escapeHtml(row.song || "(untitled)") + newBadge + "</div>" +
       (sub.length ? '<div class="result-card-artist">' + sub.join(" &middot; ") + "</div>" : "") +
@@ -13308,6 +13384,12 @@
 
   els.results.addEventListener("click", function (e) {
     if (handleThumbAddBtnClick(e)) return;
+    // The checkbox handles its own click/toggle natively -- its own
+    // "change" listener (setupSearchSelection() below) does the actual
+    // selection-state work. Without this guard, the click would also
+    // bubble into handleEntryActivate() below and open the lightbox
+    // behind whatever the checkbox just did.
+    if (e.target.closest(".thumb-select-checkbox")) return;
     if (e.target.closest(".clear-filters-btn")) {
       clearAllFilters();
       render();
@@ -13320,16 +13402,283 @@
 
   els.results.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    // The + button handles its own Enter/Space activation natively (it's a
-    // real <button>, nested inside .result-card for positioning) -- without
-    // this guard, the keydown here would ALSO fire handleEntryActivate() on
-    // the same keypress, opening the lightbox behind the popover.
-    if (e.target.closest(".thumb-add-btn")) return;
+    // The + button and the checkbox both handle their own Enter/Space
+    // activation natively (real focusable elements nested inside
+    // .result-card for positioning) -- without this guard, the keydown
+    // here would ALSO fire handleEntryActivate() on the same keypress,
+    // opening the lightbox behind whichever one the keypress was for.
+    if (e.target.closest(".thumb-add-btn") || e.target.closest(".thumb-select-checkbox")) return;
     var row = e.target.closest(".result-card");
     if (row) {
       e.preventDefault();
       handleEntryActivate(row);
     }
+  });
+
+  // ---- Search bulk selection --------------------------------------------
+  // Checkboxes on Search result thumbnails (thumbSelectCheckboxHtml(),
+  // added in renderEntry()) feed state.searchSelection, a Set of rowNums.
+  // The Selection bar (#searchSelectionBar) appears once 1+ is checked,
+  // offering bulk actions.
+
+  function updateSearchSelectionBar() {
+    var n = state.searchSelection.size;
+    els.searchSelectionBar.hidden = n === 0;
+    els.searchSelectionCount.textContent = n + (n === 1 ? " selected" : " selected");
+    els.searchSelectionBulkEditBtn.hidden = !adminUiActive();
+    els.searchSelectionBulkDeleteBtn.hidden = !adminUiActive();
+  }
+
+  function clearSearchSelection() {
+    state.searchSelection.clear();
+    Array.prototype.forEach.call(els.results.querySelectorAll(".thumb-select-checkbox"), function (cb) {
+      cb.checked = false;
+    });
+    updateSearchSelectionBar();
+  }
+
+  els.results.addEventListener("change", function (e) {
+    var cb = e.target.closest(".thumb-select-checkbox");
+    if (!cb) return;
+    var rowNum = cb.getAttribute("data-select-rownum");
+    if (cb.checked) state.searchSelection.add(rowNum);
+    else state.searchSelection.delete(rowNum);
+    updateSearchSelectionBar();
+  });
+
+  // "Currently rendered only" -- exactly the checkboxes that exist in the
+  // DOM right now, not every row matching the search across scroll/chunks
+  // not yet rendered (see renderSectionsChunked()).
+  els.searchSelectAllBtn.addEventListener("click", function () {
+    Array.prototype.forEach.call(els.results.querySelectorAll(".thumb-select-checkbox"), function (cb) {
+      cb.checked = true;
+      state.searchSelection.add(cb.getAttribute("data-select-rownum"));
+    });
+    updateSearchSelectionBar();
+  });
+
+  els.searchSelectClearBtn.addEventListener("click", clearSearchSelection);
+
+  function closeSearchSelectionMenu() {
+    els.searchSelectionMenu.hidden = true;
+    els.searchSelectionActionsBtn.setAttribute("aria-expanded", "false");
+  }
+
+  els.searchSelectionActionsBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var willOpen = els.searchSelectionMenu.hidden;
+    if (willOpen) {
+      els.searchSelectionMenu.hidden = false;
+      els.searchSelectionActionsBtn.setAttribute("aria-expanded", "true");
+    } else {
+      closeSearchSelectionMenu();
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (els.searchSelectionMenu.hidden) return;
+    if (e.target.closest("#searchSelectionActionsBtn") || e.target.closest("#searchSelectionMenu")) return;
+    closeSearchSelectionMenu();
+  });
+
+  // Favorites/playlists mutations below are all localStorage-first
+  // (instant, work signed out), same as their single-row equivalents --
+  // one pushToFirestore() at the end per action, not one per row.
+  els.searchSelectionFavBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    var favs = loadFavorites();
+    var changed = false;
+    rowNums.forEach(function (n) {
+      if (favs.indexOf(n) === -1) { favs.push(n); changed = true; }
+    });
+    if (changed) { saveFavorites(favs); pushToFirestore(); renderFavoritesStrip(state.rows); }
+    closeSearchSelectionMenu();
+    clearSearchSelection();
+  });
+
+  els.searchSelectionAddPlaylistBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    closeSearchSelectionMenu();
+    openAddToPlaylistPopoverBulk(rowNums, els.searchSelectionAddPlaylistBtn);
+  });
+
+  els.searchSelectionSaveNewBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    closeSearchSelectionMenu();
+    var name = window.prompt("Save these " + rowNums.length + " selected as a playlist named:");
+    if (name === null) return;
+    createPlaylist(name, rowNums);
+    refreshPlaylistUIAfterChange();
+    clearSearchSelection();
+  });
+
+  els.searchSelectionPlayBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    closeSearchSelectionMenu();
+    openPlaylistPlayer({ id: null, name: "Selected videos", rowNums: rowNums });
+    clearSearchSelection();
+  });
+
+  // ---- Admin bulk edit ---------------------------------------------------
+  // Deliberately scoped to just the four boolean flags (tri-state: leave
+  // unchanged / on / off) plus adding one genre -- the full admin edit
+  // form has ~18 free-text fields, most of which aren't safe to apply
+  // identically across many different rows at once. Writes a MINIMAL
+  // per-row merge doc (only the fields actually changed, via
+  // FieldValue.arrayUnion() for the genre so no per-row read is needed
+  // first) -- unlike the single-entry edit form's full-field overwrite,
+  // this never touches anything not explicitly set here.
+  var BULK_EDIT_FLAGS = [
+    { key: "feature", label: "Featured" },
+    { key: "spotlight", label: "Spotlight" },
+    { key: "sponsored", label: "Sponsored" },
+    { key: "backdoor", label: "Backdoor" }
+  ];
+
+  function openBulkEditModal() {
+    var n = state.searchSelection.size;
+    els.bulkEditTitle.textContent = "Bulk Edit " + n + (n === 1 ? " entry" : " entries");
+    els.bulkEditFlags.innerHTML = BULK_EDIT_FLAGS.map(function (f) {
+      return '<div class="bulk-edit-flag-row"><span>' + escapeHtml(f.label) + "</span>" +
+        '<select data-flag="' + f.key + '">' +
+        '<option value="">Don\'t change</option>' +
+        '<option value="on">Turn on</option>' +
+        '<option value="off">Turn off</option>' +
+        "</select></div>";
+    }).join("");
+    els.bulkEditGenre.value = "";
+    els.bulkEditStatus.hidden = true;
+    els.bulkEditSaveBtn.disabled = false;
+    els.bulkEditModal.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeBulkEditModal() {
+    if (els.bulkEditModal.hidden) return;
+    els.bulkEditModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.searchSelectionBulkEditBtn.addEventListener("click", function () {
+    closeSearchSelectionMenu();
+    openBulkEditModal();
+  });
+
+  els.bulkEditCancelBtn.addEventListener("click", dismissTopModal);
+  els.bulkEditModal.addEventListener("click", function (e) {
+    if (e.target.closest(".lightbox-close") || e.target.closest(".lightbox-backdrop")) dismissTopModal();
+  });
+
+  els.bulkEditSaveBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    if (!rowNums.length) return;
+
+    var flagChanges = {};
+    Array.prototype.forEach.call(els.bulkEditFlags.querySelectorAll("select"), function (sel) {
+      var v = sel.value;
+      if (v) flagChanges[sel.getAttribute("data-flag")] = v === "on";
+    });
+    var genre = els.bulkEditGenre.value.trim();
+
+    if (!Object.keys(flagChanges).length && !genre) {
+      els.bulkEditStatus.textContent = "Nothing to change -- pick a flag or a genre first.";
+      els.bulkEditStatus.hidden = false;
+      return;
+    }
+
+    els.bulkEditSaveBtn.disabled = true;
+    els.bulkEditStatus.textContent = "Saving to " + rowNums.length + " entries…";
+    els.bulkEditStatus.hidden = false;
+
+    var doc = {};
+    Object.keys(flagChanges).forEach(function (k) { doc[k] = flagChanges[k]; });
+    if (genre) doc.genres = firebase.firestore.FieldValue.arrayUnion(genre);
+
+    var chunks = [];
+    for (var i = 0; i < rowNums.length; i += BULK_BATCH_SIZE) chunks.push(rowNums.slice(i, i + BULK_BATCH_SIZE));
+    var chain = Promise.resolve();
+    chunks.forEach(function (chunk) {
+      chain = chain.then(function () {
+        var batch = db.batch();
+        chunk.forEach(function (rowNum) { batch.set(db.collection("videos").doc(rowNum), doc, { merge: true }); });
+        return batch.commit();
+      });
+    });
+
+    chain.then(function () {
+      // Reflect the change in the local catalog immediately, same fields
+      // only -- no need to re-fetch every row just to show the flags/
+      // genre update in Search results right away.
+      var rowNumSet = {};
+      rowNums.forEach(function (n) { rowNumSet[n] = true; });
+      state.rows.forEach(function (r) {
+        if (!rowNumSet[r.rowNum]) return;
+        Object.keys(flagChanges).forEach(function (k) { r[k] = flagChanges[k]; });
+        if (genre && (r.genres || []).indexOf(genre) === -1) r.genres = (r.genres || []).concat([genre]);
+      });
+      saveCache(state.rows);
+      render();
+      return publishSnapshot();
+    }).then(function (result) {
+      els.bulkEditStatus.textContent = "Saved and published " + result.count + " entries to the live site.";
+      clearSearchSelection();
+      setTimeout(dismissTopModal, 1200);
+    }).catch(function (err) {
+      console.error("Bulk edit failed:", err);
+      els.bulkEditStatus.textContent = "Something went wrong: " + err.message;
+      els.bulkEditSaveBtn.disabled = false;
+    });
+  });
+
+  // ---- Admin bulk delete --------------------------------------------------
+  els.searchSelectionBulkDeleteBtn.addEventListener("click", function () {
+    var rowNums = Array.from(state.searchSelection);
+    if (!rowNums.length) return;
+    closeSearchSelectionMenu();
+    if (!window.confirm("Delete " + rowNums.length + " entries? This can't be undone.")) return;
+
+    var chunks = [];
+    for (var i = 0; i < rowNums.length; i += BULK_BATCH_SIZE) chunks.push(rowNums.slice(i, i + BULK_BATCH_SIZE));
+    var chain = Promise.resolve();
+    chunks.forEach(function (chunk) {
+      chain = chain.then(function () {
+        var batch = db.batch();
+        chunk.forEach(function (rowNum) { batch.delete(db.collection("videos").doc(rowNum)); });
+        return batch.commit();
+      });
+    });
+
+    chain.then(function () {
+      var rowNumSet = {};
+      rowNums.forEach(function (n) { rowNumSet[n] = true; });
+      state.rows = state.rows.filter(function (r) { return !rowNumSet[r.rowNum]; });
+      rowNums.forEach(function (n) { removeAdminRowLocal(n); });
+      saveCache(state.rows);
+      buildCategoryChips(state.rows);
+      updateCategoryChipsActive();
+      buildYearOptions(state.rows);
+      els.yearFilter.value = state.year;
+      buildGenreOptions(state.rows);
+      els.genreFilter.value = state.genre;
+      buildCountryOptions(state.rows);
+      els.countryFilter.value = state.country;
+      updateSubtitleStats(state.rows);
+      state.recentSet = computeRecentSet(state.rows);
+      renderLatestStrip(state.rows);
+      renderFeaturedStrip(state.rows);
+      renderRecentList(state.rows);
+      renderFavoritesStrip(state.rows);
+      renderSpotlightSidebar(state.rows);
+      renderExtraPicksSections(state.rows);
+      renderDiscoverSection(state.rows);
+      render();
+      clearSearchSelection();
+      return publishSnapshot();
+    }).catch(function (err) {
+      console.error("Bulk delete failed:", err);
+      alert("Something went wrong deleting those entries: " + err.message);
+    });
   });
 
   function setActiveTab(view) {
