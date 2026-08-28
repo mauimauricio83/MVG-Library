@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.1 — current
+## v6.36.2 — current
+- Fixed the Search "Selection" bar (Select all/Clear/Actions) staying visible on the homepage after navigating away from Search with items still checked -- it now correctly hides once you've left Search, even if the selection itself wasn't cleared.
+
+## v6.36.1
 - Removed My Queue's card border/background -- it was reading as a box overlapping the "My Queue" title.
 - Made every yellow section title bigger again (My Queue, Latest, Featured, Favorites, Discover, Maui's Picks, Recently Viewed, Playlists, Profiles): 1.05rem -> 1.25rem.
 - Search results now render in a 2-column grid on wide screens instead of a single narrow list, and added a toggle (next to the A-Z jump nav) to switch to a thumbnail-only grid view -- both choices persist across visits.

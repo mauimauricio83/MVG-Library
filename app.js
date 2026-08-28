@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.36.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.36.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -8328,6 +8328,7 @@
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
+    updateSearchSelectionBar();
   }
 
   setMobileView("home");
@@ -8366,6 +8367,7 @@
     document.body.classList.toggle("desktop-view-favorites", view === "favorites");
     document.body.classList.toggle("desktop-view-playlists", view === "playlists");
     document.body.classList.toggle("desktop-view-profiles", view === "profiles");
+    updateSearchSelectionBar();
   }
 
   els.sidebarHomeBtn.addEventListener("click", function () {
@@ -13448,7 +13450,14 @@
 
   function updateSearchSelectionBar() {
     var n = state.searchSelection.size;
-    els.searchSelectionBar.hidden = n === 0;
+    // Selections persist across a search refinement (see thumbSelectCheckboxHtml
+    // above) but shouldn't keep showing the bar once you've navigated away from
+    // Search entirely -- #results itself has no view-gating CSS on desktop (the
+    // full catalog sits below the homepage strips even on Home), so "are we
+    // actually searching" has to be read from the view state / query, not from
+    // #results' own visibility.
+    var inSearch = document.body.classList.contains("desktop-view-search") || document.body.classList.contains("mobile-view-search") || !!state.query;
+    els.searchSelectionBar.hidden = n === 0 || !inSearch;
     els.searchSelectionCount.textContent = n + (n === 1 ? " selected" : " selected");
     els.searchSelectionBulkEditBtn.hidden = !adminUiActive();
     els.searchSelectionBulkDeleteBtn.hidden = !adminUiActive();
