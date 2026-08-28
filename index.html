@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.36.6">
+<link rel="stylesheet" href="styles.css?v=6.37.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -174,6 +174,14 @@
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 5.9"/><path d="M18.5 14a5.5 5.5 0 0 1 3.5 5.9"/></svg></span>
       <span class="header-links-label">Profiles</span>
       <span class="profile-requests-badge" id="sidebarProfilesBadge" hidden>0</span>
+    </button>
+    <!-- Admin-only, mirrors #openAdminBtn's hidden-unless-adminUiActive()
+         pattern (see app.js's onAuthStateChanged) -- a non-admin never
+         sees this button and can't reach the page it links to. -->
+    <button type="button" class="submit-link header-account-btn" id="sidebarThumbCheckBtn" data-nav-mode="watch" hidden>
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m3 16 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L21 15"/></svg></span>
+      <span class="header-links-label">Thumbnail Check</span>
+      <span class="profile-requests-badge" id="sidebarThumbCheckBadge" hidden>0</span>
     </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn" data-nav-mode="watch">
@@ -659,6 +667,27 @@
     </form>
   </section>
 
+  <!-- Admin-only maintenance page: reached via the sidebar's Thumbnail
+       Check link, itself hidden unless adminUiActive() (see app.js) --
+       same pattern as Playlists/Profiles. "Scan for broken thumbnails"
+       checks every entry's actual thumbnail image against a known
+       fingerprint for YouTube's "no thumbnail available" placeholder
+       (and flags any Vimeo entry missing its cached vimeoThumb), so a
+       flagged entry can be excluded from Discover (see sampleDiscoverRows())
+       and fixed here without digging through the whole catalog by eye. -->
+  <section class="media-strip" id="thumbCheckPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">Thumbnail Check</span>
+      <div class="media-strip-head-actions">
+        <button type="button" class="media-strip-play-all" id="thumbCheckScanBtn">Scan for broken thumbnails</button>
+      </div>
+    </div>
+    <p class="thumb-check-hint">Entries whose thumbnail image is missing or broken -- these are excluded from Discover until fixed. Scanning checks the whole catalog and can take a few minutes; anything already flagged always shows below regardless.</p>
+    <p class="admin-status" id="thumbCheckStatus" hidden></p>
+    <div class="thumb-check-grid" id="thumbCheckGrid"></div>
+    <p class="admin-empty" id="thumbCheckEmpty" hidden>No broken thumbnails on record. Run a scan to check for new ones.</p>
+  </section>
+
   <div class="results-layout">
     <!-- Search-only bulk-select bar -- hidden until 1+ .thumb-select-checkbox
          is checked (see updateSearchSelectionBar() in app.js). Doesn't need
@@ -804,6 +833,23 @@
       <div class="tv-fs-root" id="tvFsRoot">
         <section class="video-embed" id="videoEmbed">
           <div class="video-embed-box" id="videoEmbedBox"></div>
+          <!-- Easter egg -- a draggable horseshoe magnet, no label or hint of
+               what it does. Drag it over the static/"channel ready" screen
+               (see tvStaticMarkup()/tvMagnetPosOverCanvas() in app.js) and
+               it distorts the noise like a real magnet held against a CRT,
+               with a low hum. Positioned relative to #videoEmbed (the
+               screen itself), not the whole modal, and stays put across
+               armed <-> playing (only #videoEmbedBox's content is swapped)
+               and into fullscreen (#videoEmbed is part of what actually
+               goes fullscreen, see #tvFsRoot's own comment above). -->
+          <button type="button" class="tv-magnet" id="tvMagnetBtn" aria-label="?" title="">
+            <svg class="tv-magnet-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M14 6h8v18a6 6 0 0 1-12 0V6Z" fill="#c23b3b" stroke="#7a1f1f" stroke-width="2"/>
+              <path d="M26 6h8v18a6 6 0 0 1-12 0V6Z" fill="#b0b4bb" stroke="#6b6e74" stroke-width="2"/>
+              <rect x="10" y="2" width="8" height="6" rx="1" fill="#dcdfe3" stroke="#6b6e74" stroke-width="2"/>
+              <rect x="30" y="2" width="8" height="6" rx="1" fill="#dcdfe3" stroke="#6b6e74" stroke-width="2"/>
+            </svg>
+          </button>
         </section>
         <div class="tv-seek-row" id="tvSeekRow" hidden>
           <span class="tv-seek-time" id="tvSeekTime">0:00 / 0:00</span>
@@ -1635,6 +1681,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.36.6"></script>
+<script src="app.js?v=6.37.0"></script>
 </body>
 </html>

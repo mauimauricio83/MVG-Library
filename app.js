@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.36.6"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.37.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -183,6 +183,7 @@
     tvSeekTime: document.getElementById("tvSeekTime"),
     tvReportLink: document.getElementById("tvReportLink"),
     tvPowerSwitch: document.getElementById("tvPowerSwitch"),
+    tvMagnetBtn: document.getElementById("tvMagnetBtn"),
     tvAdminEditBtn: document.getElementById("tvAdminEditBtn"),
     tvAdminDeleteBtn: document.getElementById("tvAdminDeleteBtn"),
     tvAdminCoverBtn: document.getElementById("tvAdminCoverBtn"),
@@ -305,6 +306,13 @@
     addPlaylistNewName: document.getElementById("addPlaylistNewName"),
     addPlaylistCreateBtn: document.getElementById("addPlaylistCreateBtn"),
     sidebarProfilesBtn: document.getElementById("sidebarProfilesBtn"),
+    sidebarThumbCheckBtn: document.getElementById("sidebarThumbCheckBtn"),
+    sidebarThumbCheckBadge: document.getElementById("sidebarThumbCheckBadge"),
+    thumbCheckPage: document.getElementById("thumbCheckPage"),
+    thumbCheckScanBtn: document.getElementById("thumbCheckScanBtn"),
+    thumbCheckStatus: document.getElementById("thumbCheckStatus"),
+    thumbCheckGrid: document.getElementById("thumbCheckGrid"),
+    thumbCheckEmpty: document.getElementById("thumbCheckEmpty"),
     navModeWatchBtn: document.getElementById("navModeWatchBtn"),
     navModeConnectBtn: document.getElementById("navModeConnectBtn"),
     profilesPage: document.getElementById("profilesPage"),
@@ -2100,6 +2108,7 @@
     renderMyQueueStrip();
     seedDefaultPlaylists(state.rows);
     renderSidebarPlaylists();
+    updateThumbCheckBadge();
     startViewersChoice();
     renderDiscoverSection(state.rows);
     render();
@@ -2894,6 +2903,13 @@
     renderPlaylistsPage();
     setDesktopView("playlists");
     setMobileView("playlists");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.sidebarThumbCheckBtn.addEventListener("click", function () {
+    renderThumbCheckPage();
+    setDesktopView("thumbcheck");
+    setMobileView("thumbcheck");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -4632,10 +4648,10 @@
   var DISCOVER_PREFERRED_RATIO = 0.7;
 
   function sampleDiscoverRows(count) {
-    var pool = state.rows.filter(function (r) { return hasVideo(r) && !discoverShownSet[r.rowNum]; });
+    var pool = state.rows.filter(function (r) { return hasVideo(r) && !r.brokenThumb && !discoverShownSet[r.rowNum]; });
     if (pool.length < count) {
       discoverShownSet = {};
-      pool = state.rows.filter(function (r) { return hasVideo(r); });
+      pool = state.rows.filter(function (r) { return hasVideo(r) && !r.brokenThumb; });
     }
 
     var preferred = loadPreferredGenres();
@@ -5546,6 +5562,7 @@
     // stacking below it -- see .tv-side-panel-slot in styles.css.
     els.tvSidePanelSlot.appendChild(els.tvSidePanel);
     enterTVFilterMode();
+    resetTVMagnetPosition();
     els.tvModal.hidden = false;
     applyTVSidePanelControlsLayout();
     els.tvModal.querySelector(".lightbox-panel").scrollTop = 0;
@@ -5588,6 +5605,12 @@
     // actually resolves, doesn't need to be awaited here.
     if (document.fullscreenElement === els.tvFsRoot) document.exitFullscreen().catch(function () {});
     if (state.tv.active) teardownTV();
+    // Belt-and-suspenders alongside stopArmedStaticNoise()'s own
+    // setTVMagnetHum(false) -- suspends the AudioContext outright (not
+    // just gain-to-0) so nothing keeps ticking in the background once TV
+    // Mode is fully closed.
+    setTVMagnetHum(false);
+    if (tvMagnetAudioCtx && tvMagnetAudioCtx.state === "running") tvMagnetAudioCtx.suspend().catch(function () {});
     els.videoBox.innerHTML = "";
     state.tvCustomPool = null;
     state.tvCustomPlaylistId = null;
@@ -5608,13 +5631,11 @@
   // viewer presses play -- static/noise standing in for the picked video's
   // thumbnail, title and artist deliberately withheld until they commit to
   // watching, TV-channel-surfing style rather than announcing what's next.
+  // No in-screen play button -- the physical power switch (#tvPowerSwitch)
+  // is the only way to start playback, matching a real TV's one control.
   function tvStaticMarkup() {
     return '<div class="tv-static-wrap">' +
       '<canvas class="tv-static-noise"></canvas>' +
-      '<button type="button" class="tv-static-play" id="tvArmedPlayBtn" aria-label="Play">' +
-        '<span class="tv-static-play-icon">▶</span>' +
-      "</button>" +
-      '<p class="tv-static-hint">Tap to play</p>' +
     "</div>";
   }
 
@@ -5633,20 +5654,67 @@
   // (see startStaticNoise()) and scaled up via CSS with image-rendering:
   // pixelated, so the chunky pixels themselves read as analog grain
   // instead of blurring into a smooth gradient.
-  function renderStaticNoiseFrame(canvas) {
+  //
+  // `magnet`, when given ({x, y} in this canvas's own pixel space), draws a
+  // swirling, color-separated distortion around that point instead of plain
+  // gray noise -- the easter-egg magnet's effect (see tvMagnetPosOverCanvas()/
+  // #tvMagnetBtn below). True per-pixel noise has no spatial structure to
+  // "warp" the way a real CRT's electron beam does, so this fakes the same
+  // read (a rainbow vortex fading back to static at the edges) by mapping
+  // hue directly to angle/distance/time instead of actually distorting
+  // coordinates -- visually equivalent, much cheaper than a real field warp.
+  function renderStaticNoiseFrame(canvas, magnet) {
     var ctx = canvas.getContext("2d");
     if (!ctx) return;
     var w = canvas.width, h = canvas.height;
     var imageData = ctx.createImageData(w, h);
     var buf = imageData.data;
-    for (var i = 0; i < buf.length; i += 4) {
-      var v = (Math.random() * 256) | 0;
-      buf[i] = v;
-      buf[i + 1] = v;
-      buf[i + 2] = v;
-      buf[i + 3] = 255;
+    var radius = magnet ? Math.min(w, h) * 0.5 : 0;
+    var t = magnet ? Date.now() / 1000 : 0;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var dx = magnet ? x - magnet.x : 0;
+        var dy = magnet ? y - magnet.y : 0;
+        var dist = magnet ? Math.sqrt(dx * dx + dy * dy) : Infinity;
+        if (magnet && dist < radius) {
+          var falloff = 1 - dist / radius;
+          var angle = Math.atan2(dy, dx) + falloff * 7 + t * 2.4;
+          var hue = (((angle * 180 / Math.PI) + falloff * 260 + t * 110) % 360 + 360) % 360;
+          var light = 0.3 + Math.random() * 0.4 * (0.35 + falloff);
+          var rgb = hslToRgb(hue / 360, 0.8, light);
+          buf[i] = rgb[0];
+          buf[i + 1] = rgb[1];
+          buf[i + 2] = rgb[2];
+        } else {
+          var v = (Math.random() * 256) | 0;
+          buf[i] = v;
+          buf[i + 1] = v;
+          buf[i + 2] = v;
+        }
+        buf[i + 3] = 255;
+      }
     }
     ctx.putImageData(imageData, 0, 0);
+  }
+
+  function hslToRgb(h, s, l) {
+    if (s === 0) { var g = Math.round(l * 255); return [g, g, g]; }
+    function hue2rgb(p, q, tt) {
+      if (tt < 0) tt += 1;
+      if (tt > 1) tt -= 1;
+      if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+      if (tt < 1 / 2) return q;
+      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+      return p;
+    }
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    var p = 2 * l - q;
+    return [
+      Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+      Math.round(hue2rgb(p, q, h) * 255),
+      Math.round(hue2rgb(p, q, h - 1 / 3) * 255)
+    ];
   }
 
   // ~15fps, not 60 -- real analog static has a coarse, chaotic flicker
@@ -5657,13 +5725,140 @@
   // player, showChannelTuningFlash()'s own timeout) -- nothing here can
   // detect that on its own, an interval left running against a detached
   // canvas would just be silent wasted work, not a visible bug, so it's
-  // easy to forget.
+  // easy to forget. Also drives the magnet easter egg's per-frame check
+  // (tvMagnetPosOverCanvas()) -- any static canvas, armed screen or tuning
+  // flash alike, responds if the magnet happens to be sitting over it.
   function startStaticNoise(canvas) {
     canvas.width = 120;
     canvas.height = 90;
-    renderStaticNoiseFrame(canvas);
-    var timer = setInterval(function () { renderStaticNoiseFrame(canvas); }, 1000 / 15);
-    return function stopStaticNoise() { clearInterval(timer); };
+    function tick() {
+      var magnet = tvMagnetPosOverCanvas(canvas);
+      renderStaticNoiseFrame(canvas, magnet);
+      setTVMagnetHum(magnet ? magnet.intensity : 0);
+    }
+    tick();
+    var timer = setInterval(tick, 1000 / 15);
+    return function stopStaticNoise() {
+      clearInterval(timer);
+      setTVMagnetHum(false);
+    };
+  }
+
+  // ---- TV Mode easter egg: the draggable magnet ---------------------------
+  // No label, no hint (see #tvMagnetBtn's aria-label="?" in index.html) --
+  // drag it over the static/"channel ready" screen and it visually distorts
+  // like a real magnet held against a CRT (renderStaticNoiseFrame() above),
+  // plus a low synthesized hum. Position tracking is plain pointer events
+  // (not the HTML5 drag-and-drop API, which fights position:absolute +
+  // continuous real-time movement over a <canvas>); setPointerCapture keeps
+  // move/up events firing on the button itself even once the pointer leaves
+  // its bounds mid-drag.
+  var tvMagnetDrag = null;
+
+  function resetTVMagnetPosition() {
+    els.tvMagnetBtn.style.left = "";
+    els.tvMagnetBtn.style.top = "";
+    els.tvMagnetBtn.style.right = "";
+    els.tvMagnetBtn.style.bottom = "";
+  }
+
+  els.tvMagnetBtn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    var rect = els.tvMagnetBtn.getBoundingClientRect();
+    tvMagnetDrag = { offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+    els.tvMagnetBtn.setPointerCapture(e.pointerId);
+  });
+
+  els.tvMagnetBtn.addEventListener("pointermove", function (e) {
+    if (!tvMagnetDrag) return;
+    // position:fixed -- clamp against the viewport (or the fullscreen
+    // element's own bounds once fullscreen, same rect either way since
+    // getBoundingClientRect() on a fullscreened element reports 0,0 to its
+    // full size) rather than any particular ancestor, matching "drag it
+    // anywhere across the page," not just within the video screen.
+    var bounds = els.tvFsRoot.getBoundingClientRect();
+    var w = els.tvMagnetBtn.offsetWidth, h = els.tvMagnetBtn.offsetHeight;
+    var left = e.clientX - tvMagnetDrag.offsetX;
+    var top = e.clientY - tvMagnetDrag.offsetY;
+    left = Math.max(bounds.left, Math.min(left, bounds.right - w));
+    top = Math.max(bounds.top, Math.min(top, bounds.bottom - h));
+    els.tvMagnetBtn.style.left = left + "px";
+    els.tvMagnetBtn.style.top = top + "px";
+    els.tvMagnetBtn.style.right = "auto";
+    els.tvMagnetBtn.style.bottom = "auto";
+  });
+
+  function endTVMagnetDrag(e) {
+    tvMagnetDrag = null;
+    try { els.tvMagnetBtn.releasePointerCapture(e.pointerId); } catch (err) {}
+  }
+  els.tvMagnetBtn.addEventListener("pointerup", endTVMagnetDrag);
+  els.tvMagnetBtn.addEventListener("pointercancel", endTVMagnetDrag);
+
+  // Checked every static-noise tick (see startStaticNoise() above), not just
+  // while actively dragging -- letting go of the magnet directly on top of
+  // the static should keep the effect running, same as a real magnet just
+  // resting there. Returns null if the magnet's center isn't over this
+  // particular canvas right now, otherwise {x, y} (canvas-local pixel
+  // coordinates, in the canvas's own small 120x90 backing resolution --
+  // where the visual swirl centers) and `intensity` (0..1, how close the
+  // magnet is to the screen's own center vs its edge -- 1 dead center,
+  // fading to 0 approaching the edge) -- the hum's volume follows this,
+  // see setTVMagnetHum() below.
+  function tvMagnetPosOverCanvas(canvas) {
+    if (!canvas || !canvas.isConnected || els.tvMagnetBtn.hidden || els.tvModal.hidden) return null;
+    var magRect = els.tvMagnetBtn.getBoundingClientRect();
+    var canRect = canvas.getBoundingClientRect();
+    if (!canRect.width || !canRect.height) return null;
+    var mcx = magRect.left + magRect.width / 2;
+    var mcy = magRect.top + magRect.height / 2;
+    if (mcx < canRect.left || mcx > canRect.right || mcy < canRect.top || mcy > canRect.bottom) return null;
+    var x = (mcx - canRect.left) / canRect.width * canvas.width;
+    var y = (mcy - canRect.top) / canRect.height * canvas.height;
+    var distFromCenter = Math.sqrt(Math.pow(x - canvas.width / 2, 2) + Math.pow(y - canvas.height / 2, 2));
+    var maxDist = Math.min(canvas.width, canvas.height) / 2;
+    return { x: x, y: y, intensity: Math.max(0, 1 - distFromCenter / maxDist) };
+  }
+
+  // Synthesized, not a sound file -- a low sawtooth with a slow LFO wobble
+  // on its frequency, the closest cheap approximation of the buzzing hum a
+  // real magnet induces in a CRT's coils. Built lazily on first use (a
+  // user gesture -- dragging the magnet -- so autoplay-policy-safe) and
+  // just gained up/down afterward rather than recreated each time.
+  // `intensity` (0..1, see tvMagnetPosOverCanvas() above) scales the
+  // volume continuously -- loudest with the magnet centered on the screen,
+  // fading out as it's dragged toward the edge, silent once it's off the
+  // static entirely.
+  var tvMagnetAudioCtx = null, tvMagnetOsc = null, tvMagnetGain = null;
+  var TV_MAGNET_MAX_GAIN = 0.05;
+
+  function setTVMagnetHum(intensity) {
+    intensity = Math.max(0, Math.min(1, intensity || 0));
+    if (intensity > 0 && !tvMagnetAudioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      tvMagnetAudioCtx = new Ctx();
+      tvMagnetOsc = tvMagnetAudioCtx.createOscillator();
+      tvMagnetOsc.type = "sawtooth";
+      tvMagnetOsc.frequency.value = 55;
+      var lfo = tvMagnetAudioCtx.createOscillator();
+      lfo.frequency.value = 6;
+      var lfoGain = tvMagnetAudioCtx.createGain();
+      lfoGain.gain.value = 4;
+      lfo.connect(lfoGain);
+      lfoGain.connect(tvMagnetOsc.frequency);
+      lfo.start();
+      tvMagnetGain = tvMagnetAudioCtx.createGain();
+      tvMagnetGain.gain.value = 0;
+      tvMagnetOsc.connect(tvMagnetGain);
+      tvMagnetGain.connect(tvMagnetAudioCtx.destination);
+      tvMagnetOsc.start();
+    }
+    if (!tvMagnetAudioCtx) return;
+    if (intensity > 0 && tvMagnetAudioCtx.state === "suspended") tvMagnetAudioCtx.resume();
+    var now = tvMagnetAudioCtx.currentTime;
+    tvMagnetGain.gain.cancelScheduledValues(now);
+    tvMagnetGain.gain.linearRampToValueAtTime(intensity * TV_MAGNET_MAX_GAIN, now + 0.12);
   }
 
   function shuffle(arr) {
@@ -6889,6 +7084,7 @@
     history.replaceState(history.state, "", location.pathname + location.search + "#tv-channel");
     els.tvPowerSwitch.hidden = true; // no pause on a shared channel -- always on
     els.tvSkipBtn.hidden = true;     // skipping would only diverge this viewer from everyone else
+    els.tvMagnetBtn.hidden = true;
 
     subscribeChannelDoc();
     if (state.channel.doc) resyncChannelIfNeeded();
@@ -6958,6 +7154,7 @@
     stopArmedStaticNoise = startStaticNoise(els.videoBox.querySelector(".tv-static-noise"));
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(false);
+    els.tvMagnetBtn.hidden = false; // only meaningful over the static screen -- gone once something's actually playing
   }
 
   function playArmedTV() {
@@ -6971,6 +7168,7 @@
     showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
+    els.tvMagnetBtn.hidden = true;
   }
 
   // Used by "Play All" (Featured/Latest/Recently Viewed/Favorites), which
@@ -6996,6 +7194,7 @@
     showTVControls();
     els.tvPowerSwitch.hidden = false;
     updateTVPowerSwitch(true);
+    els.tvMagnetBtn.hidden = true;
   }
 
   // Every strip's title does the same thing as its own Play All -- see
@@ -7018,10 +7217,6 @@
   els.favoritesTitle.addEventListener("click", playAllFavorites);
 
   els.myQueuePlayAll.addEventListener("click", openMyQueuePlayer);
-
-  els.videoBox.addEventListener("click", function (e) {
-    if (e.target.closest("#tvArmedPlayBtn")) playArmedTV();
-  });
 
   // Skip/Report issue/Exit live beside Clear filters (in
   // .filters-toggle-row) rather than in a player overlay bar -- easier to
@@ -8325,6 +8520,7 @@
     // highlight.
     document.body.classList.toggle("mobile-view-playlists", view === "playlists");
     document.body.classList.toggle("mobile-view-profiles", view === "profiles");
+    document.body.classList.toggle("mobile-view-thumbcheck", view === "thumbcheck");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -8367,6 +8563,7 @@
     document.body.classList.toggle("desktop-view-favorites", view === "favorites");
     document.body.classList.toggle("desktop-view-playlists", view === "playlists");
     document.body.classList.toggle("desktop-view-profiles", view === "profiles");
+    document.body.classList.toggle("desktop-view-thumbcheck", view === "thumbcheck");
     updateSearchSelectionBar();
   }
 
@@ -8672,6 +8869,7 @@
   function refreshAdminUiVisibility() {
     els.openAdminBtn.hidden = !adminUiActive();
     els.topBarAdminBtn.hidden = !adminUiActive();
+    els.sidebarThumbCheckBtn.hidden = !adminUiActive();
     if (els.tvAdminEditBtn) els.tvAdminEditBtn.hidden = !adminUiActive();
     if (els.tvAdminDeleteBtn) els.tvAdminDeleteBtn.hidden = !adminUiActive();
     if (els.tvAdminCoverBtn) els.tvAdminCoverBtn.hidden = !adminUiActive();
@@ -10933,6 +11131,11 @@
           spotlight: !!d.spotlight,
           sponsored: !!d.sponsored,
           backdoor: !!d.backdoor,
+          // Set by runThumbCheckScan()/recheckSingleThumb() below -- excluded
+          // from Discover's random pool (see sampleDiscoverRows()) until
+          // fixed, surfaced for review on the admin-only Thumbnail Check
+          // page instead.
+          brokenThumb: !!d.brokenThumb,
           // Epoch millis, when known -- powers the age-bucketed Latest
           // Submissions sampling (see ageBucketSample()). Only set via
           // FieldValue.serverTimestamp() on new-doc creation, so older/
@@ -10973,6 +11176,183 @@
       });
     });
   }
+
+  // ---- Thumbnail Check (admin-only maintenance page) ---------------------
+  // YouTube returns one fixed, byte-identical placeholder image (a gray
+  // rounded box with an ellipsis, "no thumbnail available") for any video ID
+  // whose thumbnail doesn't exist -- confirmed by fetching mqdefault.jpg for
+  // two different nonexistent IDs and comparing hashes; both come back
+  // identical. That determinism is what makes automatic detection reliable:
+  // hash the fetched bytes and compare against this one known value, rather
+  // than guessing from pixel content (which risks false positives on
+  // legitimately plain/gray thumbnails).
+  var YT_NO_THUMB_SHA256 = "20e9aab22032d85684d7d916a1013f7c577a132a5b10ea3fd3578e8d0b28a711";
+
+  function sha256Hex(buffer) {
+    return crypto.subtle.digest("SHA-256", buffer).then(function (hash) {
+      var bytes = new Uint8Array(hash);
+      var hex = "";
+      for (var i = 0; i < bytes.length; i++) {
+        var h = bytes[i].toString(16);
+        hex += h.length === 1 ? "0" + h : h;
+      }
+      return hex;
+    });
+  }
+
+  // "Broken thumbnail" covers three cases: no video link at all (nothing to
+  // derive a thumbnail from), a Vimeo entry that never got its oEmbed thumb
+  // cached (see fetchVimeoThumbnail()), or a YouTube entry whose mqdefault.jpg
+  // hashes to the known placeholder above. A fetch/network hiccup resolves
+  // to "not broken" rather than flagging it -- a transient failure here
+  // shouldn't wrongly pull a fine video out of Discover.
+  function checkRowThumbBroken(row) {
+    var ref = getRowVideoRef(row);
+    if (!ref) return Promise.resolve(true);
+    if (ref.provider === "vimeo") return Promise.resolve(!row.vimeoThumb);
+    return fetch("https://i.ytimg.com/vi/" + ref.id + "/mqdefault.jpg")
+      .then(function (res) { return res.ok ? res.arrayBuffer() : null; })
+      .then(function (buf) { return buf ? sha256Hex(buf).then(function (hex) { return hex === YT_NO_THUMB_SHA256; }) : false; })
+      .catch(function () { return false; });
+  }
+
+  // Runs `worker` over `items` with at most `limit` in flight at once --
+  // scanning ~13k thumbnails one at a time would take far too long, but
+  // firing all of them simultaneously would be an unreasonable burst against
+  // i.ytimg.com. onProgress fires after each completion (done, total).
+  function runWithConcurrency(items, limit, worker, onProgress) {
+    return new Promise(function (resolve) {
+      if (!items.length) { resolve([]); return; }
+      var results = new Array(items.length);
+      var next = 0;
+      var doneCount = 0;
+      function pump() {
+        if (next >= items.length) return;
+        var i = next++;
+        worker(items[i], i).then(function (r) {
+          results[i] = r;
+          doneCount++;
+          if (onProgress) onProgress(doneCount, items.length);
+          if (doneCount === items.length) resolve(results);
+          else pump();
+        });
+      }
+      for (var k = 0; k < Math.min(limit, items.length); k++) pump();
+    });
+  }
+
+  function writeThumbCheckFlags(changed) {
+    if (!changed.length) return Promise.resolve();
+    var chunks = [];
+    for (var i = 0; i < changed.length; i += BULK_BATCH_SIZE) chunks.push(changed.slice(i, i + BULK_BATCH_SIZE));
+    var chain = Promise.resolve();
+    chunks.forEach(function (chunk) {
+      chain = chain.then(function () {
+        var batch = db.batch();
+        chunk.forEach(function (c) {
+          batch.set(db.collection("videos").doc(c.rowNum), { brokenThumb: c.broken ? true : firebase.firestore.FieldValue.delete() }, { merge: true });
+        });
+        return batch.commit();
+      });
+    });
+    return chain;
+  }
+
+  function updateThumbCheckBadge() {
+    var n = state.rows.filter(function (r) { return r.brokenThumb; }).length;
+    els.sidebarThumbCheckBadge.hidden = n === 0;
+    els.sidebarThumbCheckBadge.textContent = n > 99 ? "99+" : String(n);
+  }
+
+  function thumbCheckItemHtml(row) {
+    var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
+    var thumb = videoThumbImgHtml(row, thumbAlt);
+    return (
+      '<div class="thumb-check-item">' +
+      '<div class="thumb-check-item-thumb">' + (thumb || '<span class="thumb-check-item-noimg">No thumbnail</span>') + "</div>" +
+      '<div class="thumb-check-item-info">' +
+      '<div class="thumb-check-item-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
+      '<div class="thumb-check-item-artist">' + escapeHtml(row.artist || "") + (row.director ? " &middot; Dir. " + escapeHtml(row.director) : "") + "</div>" +
+      "</div>" +
+      '<div class="thumb-check-item-actions">' +
+      '<button type="button" class="admin-row-btn" data-recheck-row="' + escapeHtml(row.rowNum) + '">Recheck</button>' +
+      '<button type="button" class="admin-row-btn" data-fix-row="' + escapeHtml(row.rowNum) + '">Fix entry</button>' +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderThumbCheckPage() {
+    var rows = state.rows.filter(function (r) { return r.brokenThumb; });
+    els.thumbCheckEmpty.hidden = !!rows.length;
+    els.thumbCheckGrid.innerHTML = rows.map(thumbCheckItemHtml).join("");
+    updateThumbCheckBadge();
+  }
+
+  function recheckSingleThumb(rowNum) {
+    var row = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+    if (!row) return;
+    var btn = els.thumbCheckGrid.querySelector('[data-recheck-row="' + rowNum + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+    checkRowThumbBroken(row).then(function (broken) {
+      row.brokenThumb = broken;
+      return writeThumbCheckFlags([{ rowNum: rowNum, broken: broken }]);
+    }).then(function () {
+      saveCache(state.rows);
+      renderThumbCheckPage();
+      return publishSnapshot();
+    }).catch(function (err) {
+      console.error("Thumbnail recheck failed:", err);
+      if (btn) { btn.disabled = false; btn.textContent = "Recheck"; }
+    });
+  }
+
+  els.thumbCheckGrid.addEventListener("click", function (e) {
+    var fixBtn = e.target.closest("[data-fix-row]");
+    if (fixBtn) { openAdminEditForRow(fixBtn.getAttribute("data-fix-row")); return; }
+    var recheckBtn = e.target.closest("[data-recheck-row]");
+    if (recheckBtn) recheckSingleThumb(recheckBtn.getAttribute("data-recheck-row"));
+  });
+
+  var thumbCheckScanning = false;
+  els.thumbCheckScanBtn.addEventListener("click", function () {
+    if (thumbCheckScanning) return;
+    thumbCheckScanning = true;
+    els.thumbCheckScanBtn.disabled = true;
+    els.thumbCheckStatus.hidden = false;
+    els.thumbCheckStatus.className = "admin-status";
+    var candidates = state.rows;
+    els.thumbCheckStatus.textContent = "Scanning 0 / " + candidates.length + "…";
+    runWithConcurrency(candidates, 24, checkRowThumbBroken, function (done, total) {
+      els.thumbCheckStatus.textContent = "Scanning " + done + " / " + total + "…";
+    }).then(function (results) {
+      var changed = [];
+      candidates.forEach(function (row, i) {
+        var broken = !!results[i];
+        if (!!row.brokenThumb !== broken) {
+          row.brokenThumb = broken;
+          changed.push({ rowNum: row.rowNum, broken: broken });
+        }
+      });
+      els.thumbCheckStatus.textContent = "Saving " + changed.length + " change(s)…";
+      return writeThumbCheckFlags(changed);
+    }).then(function () {
+      saveCache(state.rows);
+      return publishSnapshot();
+    }).then(function () {
+      thumbCheckScanning = false;
+      els.thumbCheckScanBtn.disabled = false;
+      renderThumbCheckPage();
+      var brokenCount = state.rows.filter(function (r) { return r.brokenThumb; }).length;
+      els.thumbCheckStatus.textContent = "Scan complete — " + brokenCount + " broken thumbnail" + (brokenCount === 1 ? "" : "s") + " found.";
+    }).catch(function (err) {
+      console.error("Thumbnail scan failed:", err);
+      thumbCheckScanning = false;
+      els.thumbCheckScanBtn.disabled = false;
+      els.thumbCheckStatus.textContent = "Scan failed: " + err.message;
+      els.thumbCheckStatus.className = "admin-status is-error";
+    });
+  });
 
   // ---- Bulk import/upsert ---------------------------------------------
   // Header-row-driven paste: columns are matched by name (via the same
@@ -13948,6 +14328,8 @@
         applyAdminNormieToggle();
         els.openAdminBtn.hidden = !adminUiActive();
         els.topBarAdminBtn.hidden = !adminUiActive();
+        els.sidebarThumbCheckBtn.hidden = !adminUiActive();
+        updateThumbCheckBadge();
         if (state.isAdmin) applyAdminDeepLink();
         // Covers the case where the board was opened before this admin
         // check resolved -- openMsgBoard() itself only starts the mod
@@ -13959,12 +14341,14 @@
         els.adminNormieRow.hidden = true;
         els.openAdminBtn.hidden = true;
         els.topBarAdminBtn.hidden = true;
+        els.sidebarThumbCheckBtn.hidden = true;
       });
     } else {
       state.isAdmin = false;
       els.adminNormieRow.hidden = true;
       els.openAdminBtn.hidden = true;
       els.topBarAdminBtn.hidden = true;
+      els.sidebarThumbCheckBtn.hidden = true;
       showVoterName = false;
       currentUsername = null;
       usernamePromptShown = false;

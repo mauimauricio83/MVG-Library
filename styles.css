@@ -2482,6 +2482,35 @@ body.is-searching #viewersChoiceSection {
     display: none;
   }
 
+  /* Thumbnail Check: admin-only maintenance page (broken-thumbnail scan +
+     review gallery), reached via the sidebar's Thumbnail Check link, which
+     calls setDesktopView("thumbcheck") -- same pattern as Playlists/Profiles
+     above. The sidebar link itself stays hidden for non-admins (see
+     adminUiActive() in app.js), so this view is unreachable for them
+     regardless. */
+  body.desktop-view-thumbcheck #thumbCheckPage {
+    display: block;
+  }
+
+  body.desktop-view-thumbcheck .about-strip,
+  body.desktop-view-thumbcheck #myQueueStrip,
+  body.desktop-view-thumbcheck #spotlightSidebar,
+  body.desktop-view-thumbcheck #blogLatestSidebar,
+  body.desktop-view-thumbcheck .ad-placeholder,
+  body.desktop-view-thumbcheck #latestStrip,
+  body.desktop-view-thumbcheck #videoEmbed,
+  body.desktop-view-thumbcheck #featuredStrip,
+  body.desktop-view-thumbcheck #discoverSection,
+  body.desktop-view-thumbcheck #viewersChoiceSection,
+  body.desktop-view-thumbcheck .controls,
+  body.desktop-view-thumbcheck #filtersGroup,
+  body.desktop-view-thumbcheck #jumpNavTop,
+  body.desktop-view-thumbcheck #status,
+  body.desktop-view-thumbcheck .results-layout,
+  body.desktop-view-thumbcheck #jumpNavBottom {
+    display: none;
+  }
+
 }
 
 .controls {
@@ -3293,33 +3322,6 @@ body.is-searching #viewersChoiceSection {
   image-rendering: pixelated;
 }
 
-.tv-static-play {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 68px;
-  height: 68px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #18181b;
-  cursor: pointer;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-}
-
-.tv-static-play:hover {
-  background: #fff;
-}
-
-.tv-static-play-icon {
-  font-size: 1.5rem;
-  margin-left: 4px; /* optically center the ▶ glyph, which has its own left-side bearing */
-}
-
 /* Brief static/tuning flash shown over the player whenever Channel Mode
    switches tracks (see loadChannelTrackAt() in app.js) -- reuses the same
    noise texture as the "channel ready" armed screen above, just as a
@@ -3339,19 +3341,6 @@ body.is-searching #viewersChoiceSection {
   0% { opacity: 1; }
   65% { opacity: 1; }
   100% { opacity: 0; }
-}
-
-.tv-static-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 14px;
-  margin: 0;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .info-tip {
@@ -5008,6 +4997,43 @@ body.is-searching #viewersChoiceSection {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+}
+
+/* Easter egg -- see #tvMagnetBtn's HTML comment. Deliberately unlabeled
+   (aria-label="?", empty title -- no tooltip hint) so finding out what it
+   does is the whole point. Drag handling is pointer-events based (see the
+   pointerdown/pointermove listeners on #tvMagnetBtn in app.js), not native
+   HTML5 drag-and-drop, since that API fights position:fixed + real-time
+   dragging over a <canvas>. Fixed to the corner of the whole TV Mode
+   viewport (not just the screen), draggable anywhere across it -- still
+   lives in the DOM inside #videoEmbed, but position:fixed makes that
+   irrelevant to where it renders. Fixed-position elements nested inside
+   the actual fullscreened element (#tvFsRoot, see its own comment) stay
+   pinned to that element's bounds once fullscreen is entered, so this
+   still tracks correctly there too. */
+.tv-magnet {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  border: none;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5));
+}
+
+.tv-magnet:active {
+  cursor: grabbing;
+}
+
+.tv-magnet-icon {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 /* Pinned to column 1 explicitly -- without this, grid auto-placement
@@ -7347,6 +7373,84 @@ body.is-searching #viewersChoiceSection {
   color: #c4293f;
 }
 
+/* Thumbnail Check page (#thumbCheckPage) -- admin-only maintenance gallery,
+   see runThumbCheckScan()/renderThumbCheckPage() in app.js. */
+.thumb-check-hint {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 8px 0 4px;
+  max-width: 70ch;
+}
+
+.thumb-check-grid {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.thumb-check-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.thumb-check-item:last-child {
+  border-bottom: none;
+}
+
+.thumb-check-item-thumb {
+  flex: 0 0 120px;
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  display: grid;
+  place-items: center;
+}
+
+.thumb-check-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-check-item-noimg {
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.thumb-check-item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.thumb-check-item-song {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumb-check-item-artist {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumb-check-item-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
 .admin-form {
   max-height: 100%;
   overflow-y: auto;
@@ -8791,6 +8895,25 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.mobile-view-profiles #profilesPage {
+    display: block;
+  }
+
+  /* Thumbnail Check view: admin-only, no bottom-nav slot of its own
+     (reached via the hamburger menu's link, itself hidden for non-admins)
+     -- same pattern as Playlists/Profiles above. */
+  body.mobile-view-thumbcheck #myQueueStrip,
+  body.mobile-view-thumbcheck #spotlightSidebar,
+  body.mobile-view-thumbcheck #blogLatestSidebar,
+  body.mobile-view-thumbcheck #latestStrip,
+  body.mobile-view-thumbcheck .ad-placeholder,
+  body.mobile-view-thumbcheck #videoEmbed,
+  body.mobile-view-thumbcheck #featuredStrip,
+  body.mobile-view-thumbcheck #discoverSection,
+  body.mobile-view-thumbcheck #viewersChoiceSection {
+    display: none;
+  }
+
+  body.mobile-view-thumbcheck #thumbCheckPage {
     display: block;
   }
 

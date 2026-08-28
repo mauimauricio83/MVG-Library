@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.6 — current
+## v6.37.0 — current
+- Added Thumbnail Check, an admin-only maintenance page (sidebar, hidden for non-admins): "Scan for broken thumbnails" checks every entry's actual thumbnail image against YouTube's known "no thumbnail available" placeholder (confirmed byte-identical for any nonexistent video ID, so this is exact detection, not a guess) and flags any Vimeo entry missing its cached thumbnail. Flagged entries are excluded from Discover until fixed, and show up in a review gallery with Fix/Recheck actions.
+- TV Mode: removed the in-screen "Tap to play" button on the armed/static screen -- the physical ON/OFF power switch is now the only way to start playback.
+- TV Mode easter egg: a small, unlabeled draggable magnet sits in the corner while a channel is armed (gone once something's actually playing). Drag it onto the static and it distorts the noise into a swirling, color-separated vortex like a real magnet held against a CRT, with a synthesized low hum that gets louder the closer it sits to the center of the screen and fades out toward the edges.
+
+## v6.36.6
 - Admin Bulk Import now warns when a pasted row has a malformed/unescaped quote character that could have silently merged it with the next row (this is exactly what happened with a recent "Uyku Pansiyon" submission, which quietly dropped the row after it -- see Papa Parse's own internal quote-parsing errors, previously discarded). The preview now flags "Possible malformed quotes near pasted row N" so this gets caught before committing, not after.
 
 ## v6.36.5
