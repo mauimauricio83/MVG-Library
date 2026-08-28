@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.37.1 — current
+## v6.37.2 — current
+- Thumbnail Check's results now load from a live Firestore query instead of the published catalog snapshot -- the snapshot file is intentionally cached for 5 minutes (for every other visitor's sake), which meant a scan's results could appear to vanish if you navigated away and back, or refreshed, before that cache window passed. Scan/Recheck/Fix all read and write against the live data now, so results are immediately and durably visible no matter when you come back to the page.
+
+## v6.37.1
 - Fixed the TV Mode magnet easter egg's icon -- it was a bar magnet, not an actual horseshoe. Now a proper U-shaped red horseshoe with silver pole tips.
 
 ## v6.37.0

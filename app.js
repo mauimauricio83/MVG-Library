@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.37.1"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.37.2"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11282,23 +11282,59 @@
     );
   }
 
+  // Reads straight from Firestore's live `videos` collection (admin-only,
+  // per firestore.rules -- fine here since this whole page already is)
+  // rather than filtering state.rows (built from the published snapshot,
+  // see publishSnapshot()). The snapshot file carries a 5-minute HTTP
+  // cache-control for every OTHER visitor's sake, which previously meant a
+  // scan's results could vanish on the very next reload/revisit until that
+  // cache window passed -- a live query has no such lag, so results are
+  // immediately and durably visible regardless of when you come back.
+  function fetchBrokenThumbRows() {
+    return db.collection("videos").where("brokenThumb", "==", true).get().then(function (snap) {
+      return snap.docs.map(function (doc) {
+        var d = doc.data();
+        if (!d.rowNum) d.rowNum = doc.id;
+        return d;
+      });
+    });
+  }
+
   function renderThumbCheckPage() {
-    var rows = state.rows.filter(function (r) { return r.brokenThumb; });
-    els.thumbCheckEmpty.hidden = !!rows.length;
-    els.thumbCheckGrid.innerHTML = rows.map(thumbCheckItemHtml).join("");
-    updateThumbCheckBadge();
+    els.thumbCheckGrid.innerHTML = '<p class="admin-empty">Loading…</p>';
+    els.thumbCheckEmpty.hidden = true;
+    fetchBrokenThumbRows().then(function (rows) {
+      els.thumbCheckEmpty.hidden = !!rows.length;
+      els.thumbCheckGrid.innerHTML = rows.length ? rows.map(thumbCheckItemHtml).join("") : "";
+    }).catch(function (err) {
+      console.error("Loading Thumbnail Check failed:", err);
+      els.thumbCheckGrid.innerHTML = '<p class="admin-empty">Couldn’t load: ' + escapeHtml(err.message) + "</p>";
+    });
   }
 
   function recheckSingleThumb(rowNum) {
-    var row = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
-    if (!row) return;
     var btn = els.thumbCheckGrid.querySelector('[data-recheck-row="' + rowNum + '"]');
     if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
-    checkRowThumbBroken(row).then(function (broken) {
-      row.brokenThumb = broken;
+    var brokenResult;
+    db.collection("videos").doc(rowNum).get().then(function (doc) {
+      if (!doc.exists) return Promise.resolve(false);
+      var row = doc.data();
+      row.rowNum = rowNum;
+      return checkRowThumbBroken(row);
+    }).then(function (broken) {
+      brokenResult = broken;
       return writeThumbCheckFlags([{ rowNum: rowNum, broken: broken }]);
     }).then(function () {
-      saveCache(state.rows);
+      // Also patch state.rows/cache if that row happens to be loaded, so
+      // the rest of the site (Discover in particular) reflects the change
+      // immediately in this session -- purely a nice-to-have, the gallery
+      // itself no longer depends on this for correctness (see
+      // fetchBrokenThumbRows() above).
+      var cached = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+      if (cached) {
+        cached.brokenThumb = brokenResult;
+        saveCache(state.rows);
+      }
       renderThumbCheckPage();
       return publishSnapshot();
     }).catch(function (err) {
