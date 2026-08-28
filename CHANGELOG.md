@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.38.1 — current
+## v6.38.2 — current
+- Thumbnail Check results now cap at 60% width on desktop instead of stretching the full page -- rows were reading as mostly empty space, with the action buttons a long way from the title/thumbnail they belong to.
+
+## v6.38.1
 - Fixed Thumbnail Check's biggest bug: fixing or rechecking any single entry re-rendered the whole gallery, which silently wiped out every OTHER row's already-loaded "Find replacement" search results -- including ones a "Find replacements for all" batch had already spent API quota fetching. Fixing/rechecking a row now only removes that one row's card; every other row's loaded candidates are left alone.
 - Find replacement candidates: hovering a result now shows the full title + channel as a tooltip (titles were often cut off, making it hard to judge a match), thumbnails are larger, and each result has a separate "open in new tab" link so you can verify the actual video before picking it.
 - Added a Delete button to the individual entry edit form (previously delete was lightbox-only) -- for when a flagged entry's video is genuinely gone and there's nothing to replace it with.

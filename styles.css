@@ -7382,10 +7382,22 @@ body.is-searching #viewersChoiceSection {
   max-width: 70ch;
 }
 
+/* Capped well short of the full page width -- on a wide desktop screen,
+   letting each row stretch edge-to-edge put the action buttons (Recheck/
+   Find replacement/Edit manually) a long way from the title/thumbnail they
+   belong to, and made every row read as mostly empty space. Left uncapped
+   below 900px so mobile/tablet still get the full width they need. */
 .thumb-check-grid {
   display: flex;
   flex-direction: column;
   margin-top: 10px;
+  max-width: 60%;
+}
+
+@media (max-width: 900px) {
+  .thumb-check-grid {
+    max-width: 100%;
+  }
 }
 
 .thumb-check-item {
