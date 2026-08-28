@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.38.3 — current
+## v6.38.4 — current
+- Fixed poor "Find replacement" search relevance: the query was one bare "Artist Song" string, which let the YouTube API match on individual common words instead of the actual artist/title -- e.g. "The Hearing George as a Boy" surfaced hearing-aid ads and Peppa Pig episodes about George's hearing, nothing related to the band. Now sends artist and song as two separate quoted exact phrases; confirmed live, the real video is now the #1 result.
+
+## v6.38.3
 - Thumbnail Check: added a Delete button next to Recheck/Find replacement/Edit manually on each row, for deleting a dead entry straight from the gallery instead of opening the edit form first. Drops just that one row (same as fixing/rechecking), leaving every other row's loaded search results untouched.
 
 ## v6.38.2

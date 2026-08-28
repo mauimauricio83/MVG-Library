@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.38.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.38.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11271,7 +11271,16 @@
   function thumbCheckItemHtml(row) {
     var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
     var thumb = videoThumbImgHtml(row, thumbAlt);
-    var query = ((row.artist || "") + " " + (row.song || "")).trim();
+    // Quoting each field separately (exact-phrase search, per YouTube Data
+    // API's own q-parameter syntax) instead of one bare "Artist Song"
+    // string measurably fixes relevance: an unquoted query lets the API
+    // match on individual common words -- e.g. "The Hearing George as a
+    // Boy" surfaced hearing-aid ads and Peppa Pig episodes about George's
+    // hearing, nothing related to the actual band. Quoted as "The Hearing"
+    // "George as a Boy", the real video is result #1. Confirmed against
+    // the live API, not just theory.
+    var query = thumbCheckSearchQuery(row);
+    var label = ((row.artist || "") + " — " + (row.song || "")).trim();
     return (
       '<div class="thumb-check-item">' +
       '<div class="thumb-check-item-main">' +
@@ -11284,7 +11293,7 @@
       '<button type="button" class="admin-row-btn" data-recheck-row="' + escapeHtml(row.rowNum) + '">Recheck</button>' +
       '<button type="button" class="admin-row-btn" data-search-row="' + escapeHtml(row.rowNum) + '" data-query="' + escapeHtml(query) + '">Find replacement</button>' +
       '<button type="button" class="admin-row-btn" data-fix-row="' + escapeHtml(row.rowNum) + '">Edit manually</button>' +
-      '<button type="button" class="admin-row-btn admin-row-btn-danger" data-delete-row="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml(query || "this entry") + '">Delete</button>' +
+      '<button type="button" class="admin-row-btn admin-row-btn-danger" data-delete-row="' + escapeHtml(row.rowNum) + '" data-label="' + escapeHtml(label || "this entry") + '">Delete</button>' +
       "</div>" +
       "</div>" +
       '<div class="thumb-check-item-candidates" hidden></div>' +
@@ -11392,6 +11401,16 @@
       console.error("Thumbnail recheck failed:", err);
       if (btn) { btn.disabled = false; btn.textContent = "Recheck"; }
     });
+  }
+
+  // Each field quoted separately -- see the comment at its call site
+  // (thumbCheckItemHtml()) for why. `row` needn't be a full doc, just
+  // needs artist/song.
+  function thumbCheckSearchQuery(row) {
+    var parts = [];
+    if (row.artist) parts.push('"' + row.artist + '"');
+    if (row.song) parts.push('"' + row.song + '"');
+    return parts.join(" ");
   }
 
   // ---- "Find replacement" -- YouTube search for a broken entry ----------
