@@ -14,8 +14,8 @@
 <meta name="description" content="Complete reference documentation for every feature on MVG Library — browsing, TV Mode, trading cards, playlists, voting, and more.">
 <meta name="robots" content="index, follow">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="styles.css?v=6.36.4">
-<link rel="stylesheet" href="hub.css?v=6.36.4">
+<link rel="stylesheet" href="styles.css?v=6.36.5">
+<link rel="stylesheet" href="hub.css?v=6.36.5">
 <style>
   /* Same reasoning as support.html/news.html/privacy.html: .hub-page
      carries its own max-width/padding for the reading width, so .app's
@@ -23,7 +23,7 @@
      would otherwise double up with it. Widened past the usual 760px --
      this page is reference documentation with tables, not an article. */
   .app { padding: 0; }
-  .hub-page.manual-page { max-width: 900px; }
+  .hub-page.manual-page { max-width: 1040px; }
 
   .manual-eyebrow {
     font-size: 0.78rem;
@@ -34,7 +34,9 @@
     margin: 0 0 6px;
   }
 
-  /* Table of contents */
+  /* Table of contents -- stacked above the content by default (mobile,
+     and any viewport too narrow for a side rail), becomes a sticky rail
+     alongside the content once there's room (see .manual-body below). */
   .manual-toc {
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -80,6 +82,30 @@
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
     flex: 0 0 auto;
+  }
+
+  /* Sticky rail layout: the same .manual-toc, just repositioned to sit
+     alongside .manual-content and stay in view while scrolling, instead
+     of scrolling away with the intro once you're deep into the doc. */
+  @media (min-width: 900px) {
+    .manual-body {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
+    }
+
+    .manual-toc {
+      position: sticky;
+      top: 88px;
+      max-height: calc(100vh - 108px);
+      overflow-y: auto;
+      margin-bottom: 0;
+    }
+
+    .manual-toc ol {
+      columns: 1;
+    }
   }
 
   /* Sections */
@@ -234,13 +260,15 @@
 </head>
 <body>
 <div class="shell">
-<script src="site-nav.js?v=6.36.4"></script>
+<script src="site-nav.js?v=6.36.5"></script>
 <div class="app">
 <div class="hub-page manual-page">
 
 <p class="manual-eyebrow">Reference Manual</p>
-<h1>MVG Library Manual</h1>
+<h1 id="top">MVG Library Manual</h1>
 <p class="hub-intro">Complete documentation of every viewer-facing feature on MVG Library — a music-video credits database, TV-style viewing experience, and personal library.</p>
+
+<div class="manual-body">
 
 <nav class="manual-toc" aria-label="Manual contents">
   <p class="manual-toc-title">Contents</p>
@@ -267,6 +295,8 @@
     <li><a href="#index"><span class="n">20</span> Full Control Index</a></li>
   </ol>
 </nav>
+
+<div class="manual-content">
 
 <section class="manual-section" id="accounts">
   <div class="manual-section-head"><span class="manual-num">01</span><h2>Accounts &amp; Sync</h2></div>
@@ -639,6 +669,9 @@
   </div>
   <a class="manual-back-to-top" href="#top">Back to top ↑</a>
 </section>
+
+</div>
+</div>
 
 </div>
 </div>

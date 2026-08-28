@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.36.4 — current
+## v6.36.5 — current
+- The Manual page's table of contents is now a sticky rail alongside the content on wide screens (matching the standalone reference version) instead of a static box you scroll away from -- stays in view the whole time you're reading. Falls back to the original stacked layout on narrow/mobile screens.
+
+## v6.36.4
 - Added a full Manual page (manual.html) -- complete reference documentation for every viewer-facing feature (Accounts, Browsing/Search, the Homepage, the lightbox, Trading Cards, TV Mode, My Queue, Favorites, Playlists, Recently Viewed, Bulk Selection, Voting, Submitting, Connect/Profiles, the Message Board, Settings, Genre Preferences, and more), with a table of contents and a full control index. Linked in the footer between RSS and Feedback. Uses the same sidebar/header chrome as news.html/support.html/privacy.html (via site-nav.js), just widened for its reference tables.
 
 ## v6.36.3
