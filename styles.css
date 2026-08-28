@@ -2382,7 +2382,7 @@ body.is-searching #viewersChoiceSection {
      hides the Home-only sections instead. */
   body:not(.desktop-view-search) .controls,
   body:not(.desktop-view-search) #filtersGroup,
-  body:not(.desktop-view-search) #jumpNavTop {
+  body:not(.desktop-view-search) .jumpnav-row {
     display: none;
   }
 
@@ -3768,6 +3768,10 @@ body.is-searching #viewersChoiceSection {
 
 /* Bulk-select bar, Search results only -- hidden until 1+ result is
    checked (see updateSearchSelectionBar() in app.js). */
+.search-selection-bar[hidden] {
+  display: none;
+}
+
 .search-selection-bar {
   display: flex;
   align-items: center;
@@ -4517,6 +4521,19 @@ body.is-searching #viewersChoiceSection {
 #results.view-grid .result-card-song {
   white-space: normal;
   font-size: 0.85rem;
+}
+
+/* Grid view reads as one unified gallery, not letter-by-letter sections --
+   each .group still exists in the DOM (render() groups by letter/director/
+   etc regardless of view), just drop the per-group heading and spacing so
+   consecutive groups' card grids flow together seamlessly instead of
+   reading as separate sections. */
+#results.view-grid .group-heading {
+  display: none;
+}
+
+#results.view-grid .group {
+  margin-bottom: 14px;
 }
 
 .result-card-meta {
@@ -8676,7 +8693,7 @@ body.is-searching #viewersChoiceSection {
   .filters-toggle-row,
   .filters-row,
   #status,
-  #jumpNavTop,
+  .jumpnav-row,
   .results-layout,
   #jumpNavBottom {
     display: none;
@@ -8713,7 +8730,7 @@ body.is-searching #viewersChoiceSection {
     display: flex;
   }
 
-  body.mobile-view-search #jumpNavTop {
+  body.mobile-view-search .jumpnav-row {
     display: flex;
   }
 
