@@ -7390,14 +7390,20 @@ body.is-searching #viewersChoiceSection {
 
 .thumb-check-item {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 10px;
   padding: 10px 4px;
   border-bottom: 1px solid var(--border);
 }
 
 .thumb-check-item:last-child {
   border-bottom: none;
+}
+
+.thumb-check-item-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .thumb-check-item-thumb {
@@ -7449,6 +7455,73 @@ body.is-searching #viewersChoiceSection {
   flex: 0 0 auto;
   display: flex;
   gap: 8px;
+}
+
+/* "Find replacement" results -- see runThumbCheckReplacementSearch()/
+   applyThumbCheckReplacement() in app.js. Each candidate is a full
+   thumbnail + title + channel button; clicking one writes it straight to
+   the entry's youtube field, rechecks, and drops the row out of the list
+   once its thumbnail actually resolves. */
+.thumb-check-item-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 134px;
+}
+
+@media (max-width: 560px) {
+  .thumb-check-item-candidates {
+    padding-left: 0;
+  }
+}
+
+.thumb-check-candidate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.thumb-check-candidate:hover {
+  border-color: var(--accent);
+}
+
+.thumb-check-candidate img {
+  flex: 0 0 64px;
+  width: 64px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 5px;
+  background: #000;
+}
+
+.thumb-check-candidate-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.thumb-check-candidate-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumb-check-candidate-channel {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-form {

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.37.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.37.3"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -11267,8 +11267,10 @@
   function thumbCheckItemHtml(row) {
     var thumbAlt = escapeHtml((row.song || "Untitled") + (row.artist ? " — " + row.artist : ""));
     var thumb = videoThumbImgHtml(row, thumbAlt);
+    var query = ((row.artist || "") + " " + (row.song || "")).trim();
     return (
       '<div class="thumb-check-item">' +
+      '<div class="thumb-check-item-main">' +
       '<div class="thumb-check-item-thumb">' + (thumb || '<span class="thumb-check-item-noimg">No thumbnail</span>') + "</div>" +
       '<div class="thumb-check-item-info">' +
       '<div class="thumb-check-item-song">' + escapeHtml(row.song || "(untitled)") + "</div>" +
@@ -11276,8 +11278,11 @@
       "</div>" +
       '<div class="thumb-check-item-actions">' +
       '<button type="button" class="admin-row-btn" data-recheck-row="' + escapeHtml(row.rowNum) + '">Recheck</button>' +
-      '<button type="button" class="admin-row-btn" data-fix-row="' + escapeHtml(row.rowNum) + '">Fix entry</button>' +
+      '<button type="button" class="admin-row-btn" data-search-row="' + escapeHtml(row.rowNum) + '" data-query="' + escapeHtml(query) + '">Find replacement</button>' +
+      '<button type="button" class="admin-row-btn" data-fix-row="' + escapeHtml(row.rowNum) + '">Edit manually</button>' +
       "</div>" +
+      "</div>" +
+      '<div class="thumb-check-item-candidates" hidden></div>' +
       "</div>"
     );
   }
@@ -11343,11 +11348,102 @@
     });
   }
 
+  // ---- "Find replacement" -- YouTube search for a broken entry ----------
+  // The two usual causes of a broken thumbnail here are a bad video ID or
+  // the original upload having been taken down and re-uploaded elsewhere --
+  // both mean the *correct* video is unknowable without a search, and a
+  // script guessing wrong (a cover, a lyric video, a fan reupload) would
+  // silently corrupt a real entry. So this stays a human-in-the-loop pick,
+  // not a one-click auto-fix: search, show candidates, admin clicks the
+  // right one. Client-side key -- restricted (HTTP referrer + API
+  // restriction) in Cloud Console rather than secret, same trust model as
+  // the Firebase config above; this project has no server layer to proxy
+  // it through.
+  var YOUTUBE_SEARCH_API_KEY = "AIzaSyBCjFAxZEVXdDWC_HLQnZCV0ihXW-B2eBk";
+
+  function searchYouTubeCandidates(query) {
+    var url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=" +
+      encodeURIComponent(query) + "&key=" + YOUTUBE_SEARCH_API_KEY;
+    return fetch(url).then(function (res) {
+      if (!res.ok) {
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          throw new Error((body.error && body.error.message) || ("HTTP " + res.status));
+        });
+      }
+      return res.json();
+    }).then(function (data) {
+      return (data.items || []).map(function (item) {
+        return {
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          channel: item.snippet.channelTitle,
+          thumb: item.snippet.thumbnails.default.url
+        };
+      });
+    });
+  }
+
+  function runThumbCheckReplacementSearch(btn) {
+    var query = btn.getAttribute("data-query");
+    var panel = btn.closest(".thumb-check-item").querySelector(".thumb-check-item-candidates");
+    panel.hidden = false;
+    panel.innerHTML = '<p class="admin-empty">Searching…</p>';
+    btn.disabled = true;
+    searchYouTubeCandidates(query).then(function (candidates) {
+      btn.disabled = false;
+      if (!candidates.length) { panel.innerHTML = '<p class="admin-empty">No results.</p>'; return; }
+      var rowNum = btn.getAttribute("data-search-row");
+      panel.innerHTML = candidates.map(function (c) {
+        return '<button type="button" class="thumb-check-candidate" data-use-candidate="1" data-row="' + escapeHtml(rowNum) + '" data-video-id="' + escapeHtml(c.videoId) + '">' +
+          '<img src="' + escapeHtml(c.thumb) + '" alt="" loading="lazy">' +
+          '<span class="thumb-check-candidate-info">' +
+          '<span class="thumb-check-candidate-title">' + escapeHtml(c.title) + '</span>' +
+          '<span class="thumb-check-candidate-channel">' + escapeHtml(c.channel) + '</span>' +
+          "</span>" +
+          "</button>";
+      }).join("");
+    }).catch(function (err) {
+      console.error("YouTube search failed:", err);
+      btn.disabled = false;
+      panel.innerHTML = '<p class="admin-empty">Search failed: ' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
+  function applyThumbCheckReplacement(btn) {
+    var rowNum = btn.getAttribute("data-row");
+    var videoId = btn.getAttribute("data-video-id");
+    var panel = btn.closest(".thumb-check-item-candidates");
+    panel.innerHTML = '<p class="admin-empty">Saving…</p>';
+    var newUrl = "https://www.youtube.com/watch?v=" + videoId;
+    db.collection("videos").doc(rowNum).set({ youtube: newUrl }, { merge: true }).then(function () {
+      return checkRowThumbBroken({ youtube: newUrl });
+    }).then(function (stillBroken) {
+      return writeThumbCheckFlags([{ rowNum: rowNum, broken: stillBroken }]).then(function () { return stillBroken; });
+    }).then(function (stillBroken) {
+      var cached = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+      if (cached) { cached.youtube = newUrl; cached.brokenThumb = stillBroken; saveCache(state.rows); }
+      return publishSnapshot().then(function () { return stillBroken; });
+    }).then(function (stillBroken) {
+      if (stillBroken) {
+        panel.innerHTML = '<p class="admin-empty">Saved, but the thumbnail still isn’t loading — try another result, or fix it manually.</p>';
+      } else {
+        renderThumbCheckPage(); // fixed -- this row drops out of the live list entirely
+      }
+    }).catch(function (err) {
+      console.error("Applying replacement failed:", err);
+      panel.innerHTML = '<p class="admin-empty">Save failed: ' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
   els.thumbCheckGrid.addEventListener("click", function (e) {
     var fixBtn = e.target.closest("[data-fix-row]");
     if (fixBtn) { openAdminEditForRow(fixBtn.getAttribute("data-fix-row")); return; }
     var recheckBtn = e.target.closest("[data-recheck-row]");
-    if (recheckBtn) recheckSingleThumb(recheckBtn.getAttribute("data-recheck-row"));
+    if (recheckBtn) { recheckSingleThumb(recheckBtn.getAttribute("data-recheck-row")); return; }
+    var searchBtn = e.target.closest("[data-search-row]");
+    if (searchBtn) { runThumbCheckReplacementSearch(searchBtn); return; }
+    var useBtn = e.target.closest("[data-use-candidate]");
+    if (useBtn) applyThumbCheckReplacement(useBtn);
   });
 
   var thumbCheckScanning = false;
