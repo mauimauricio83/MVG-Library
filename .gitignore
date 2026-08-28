@@ -3,3 +3,6 @@ node_modules/
 .env
 scripts/.env
 firebase-debug.log
+MVG_logo_proto.png
+VOTE_RETIREMENT_PLAN.md
+VOTING_FEATURE_EXPLAINER.md
