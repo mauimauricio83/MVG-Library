@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.37.3">
+<link rel="stylesheet" href="styles.css?v=6.38.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -679,11 +679,19 @@
     <div class="media-strip-head">
       <span class="media-strip-title">Thumbnail Check</span>
       <div class="media-strip-head-actions">
+        <button type="button" class="admin-row-btn" id="thumbCheckScanRecentBtn">Scan latest 100</button>
         <button type="button" class="media-strip-play-all" id="thumbCheckScanBtn">Scan for broken thumbnails</button>
       </div>
     </div>
-    <p class="thumb-check-hint">Entries whose thumbnail image is missing or broken -- these are excluded from Discover until fixed. Scanning checks the whole catalog and can take a few minutes; anything already flagged always shows below regardless.</p>
+    <p class="thumb-check-hint">Entries whose thumbnail image is missing or broken -- these are excluded from Discover until fixed. "Scan latest 100" checks only the most recently added entries (seconds, not minutes) -- good for a quick sanity check after new submissions. "Scan for broken thumbnails" checks the whole catalog and can take a few minutes. Anything already flagged always shows below regardless of which you run.</p>
     <p class="admin-status" id="thumbCheckStatus" hidden></p>
+    <!-- Runs "Find replacement" for every entry currently listed below (up
+         to 100 at a time) instead of clicking it one by one -- pre-loads
+         every candidate list so you can just scroll and pick. Never applies
+         anything on its own; see #thumbCheckSearchAllBtn's own hidden
+         attribute below (only shown once there's something to search --
+         see renderThumbCheckPage() in app.js). -->
+    <button type="button" class="admin-row-btn" id="thumbCheckSearchAllBtn" hidden>Find replacements for all (up to 100)</button>
     <div class="thumb-check-grid" id="thumbCheckGrid"></div>
     <p class="admin-empty" id="thumbCheckEmpty" hidden>No broken thumbnails on record. Run a scan to check for new ones.</p>
   </section>
@@ -1682,6 +1690,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.37.3"></script>
+<script src="app.js?v=6.38.0"></script>
 </body>
 </html>

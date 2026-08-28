@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.37.3 — current
+## v6.38.0 — current
+- Thumbnail Check: added "Scan latest 100" -- checks only the most recently added entries (seconds, not minutes) as a quick sanity check, alongside the existing full-catalog scan.
+- Thumbnail Check: added "Find replacements for all" -- runs the YouTube search for every listed entry (up to 100) in one click instead of one at a time, pre-loading every candidate list so fixing becomes scroll-and-pick per row. Still never applies anything automatically -- confirms the API quota cost (100 units per search) before running, since 100 entries is effectively a full day's free quota in one click.
+
+## v6.37.3
 - Thumbnail Check: added "Find replacement" -- since a broken thumbnail is usually a bad video ID or the original having been re-uploaded elsewhere, this runs a YouTube search (artist + song) and shows candidate results right in the gallery. Clicking one writes it to the entry, rechecks, and drops the row out of the list once it's actually fixed. Deliberately not fully automatic -- picking the correct video (vs. a cover, lyric video, or fan reupload) still needs a human glance, this just removes the copy/paste/reopen-the-form busywork around it.
 
 ## v6.37.2

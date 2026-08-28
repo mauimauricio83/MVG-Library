@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.37.3"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.38.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -310,6 +310,8 @@
     sidebarThumbCheckBadge: document.getElementById("sidebarThumbCheckBadge"),
     thumbCheckPage: document.getElementById("thumbCheckPage"),
     thumbCheckScanBtn: document.getElementById("thumbCheckScanBtn"),
+    thumbCheckScanRecentBtn: document.getElementById("thumbCheckScanRecentBtn"),
+    thumbCheckSearchAllBtn: document.getElementById("thumbCheckSearchAllBtn"),
     thumbCheckStatus: document.getElementById("thumbCheckStatus"),
     thumbCheckGrid: document.getElementById("thumbCheckGrid"),
     thumbCheckEmpty: document.getElementById("thumbCheckEmpty"),
@@ -11308,9 +11310,11 @@
   function renderThumbCheckPage() {
     els.thumbCheckGrid.innerHTML = '<p class="admin-empty">Loading…</p>';
     els.thumbCheckEmpty.hidden = true;
+    els.thumbCheckSearchAllBtn.hidden = true;
     fetchBrokenThumbRows().then(function (rows) {
       els.thumbCheckEmpty.hidden = !!rows.length;
       els.thumbCheckGrid.innerHTML = rows.length ? rows.map(thumbCheckItemHtml).join("") : "";
+      els.thumbCheckSearchAllBtn.hidden = !rows.length;
     }).catch(function (err) {
       console.error("Loading Thumbnail Check failed:", err);
       els.thumbCheckGrid.innerHTML = '<p class="admin-empty">Couldn’t load: ' + escapeHtml(err.message) + "</p>";
@@ -11383,13 +11387,16 @@
     });
   }
 
+  // Returns the search promise (rather than firing-and-forgetting it) so
+  // the bulk "Find replacements" flow below can run these with bounded
+  // concurrency and know when a batch has actually finished.
   function runThumbCheckReplacementSearch(btn) {
     var query = btn.getAttribute("data-query");
     var panel = btn.closest(".thumb-check-item").querySelector(".thumb-check-item-candidates");
     panel.hidden = false;
     panel.innerHTML = '<p class="admin-empty">Searching…</p>';
     btn.disabled = true;
-    searchYouTubeCandidates(query).then(function (candidates) {
+    return searchYouTubeCandidates(query).then(function (candidates) {
       btn.disabled = false;
       if (!candidates.length) { panel.innerHTML = '<p class="admin-empty">No results.</p>'; return; }
       var rowNum = btn.getAttribute("data-search-row");
@@ -11446,14 +11453,56 @@
     if (useBtn) applyThumbCheckReplacement(useBtn);
   });
 
+  // Runs "Find replacement" for every listed entry (up to 100) instead of
+  // clicking it row by row -- still never applies anything on its own,
+  // just pre-loads every candidate list so picking the right one is a
+  // scroll-and-click per row rather than search-then-scroll-then-click.
+  // Each search.list call costs 100 YouTube Data API quota units (10,000/
+  // day free) -- 100 of them is effectively a whole day's quota in one
+  // click, so this confirms the real count and cost before running.
+  els.thumbCheckSearchAllBtn.addEventListener("click", function () {
+    var searchBtns = Array.prototype.slice.call(els.thumbCheckGrid.querySelectorAll("[data-search-row]")).slice(0, 100);
+    if (!searchBtns.length) return;
+    var units = searchBtns.length * 100;
+    if (!window.confirm(
+      "Search YouTube for all " + searchBtns.length + " entries shown? This uses about " + units +
+      " of your daily API quota units (10,000/day on the free tier)."
+    )) return;
+    els.thumbCheckSearchAllBtn.disabled = true;
+    els.thumbCheckSearchAllBtn.textContent = "Searching 0 / " + searchBtns.length + "…";
+    var done = 0;
+    runWithConcurrency(searchBtns, 5, function (btn) {
+      return runThumbCheckReplacementSearch(btn).then(function () {
+        done++;
+        els.thumbCheckSearchAllBtn.textContent = "Searching " + done + " / " + searchBtns.length + "…";
+      });
+    }).then(function () {
+      els.thumbCheckSearchAllBtn.disabled = false;
+      els.thumbCheckSearchAllBtn.textContent = "Find replacements for all (up to 100)";
+    });
+  });
+
+  // Newest-first by createdAt (only set via FieldValue.serverTimestamp() on
+  // new-doc creation, see publishSnapshot()'s own comment on that field) --
+  // rows without it (older/imported entries that pre-date timestamp
+  // tracking) sort to the end rather than being excluded outright, so a
+  // catalog that's mostly untimestamped still returns *some* 100 rows
+  // instead of an empty set.
+  function pickMostRecentRows(rows, n) {
+    return rows.slice().sort(function (a, b) {
+      var at = a.createdAt || 0, bt = b.createdAt || 0;
+      return bt - at;
+    }).slice(0, n);
+  }
+
   var thumbCheckScanning = false;
-  els.thumbCheckScanBtn.addEventListener("click", function () {
+  function runThumbCheckScan(candidates, btn) {
     if (thumbCheckScanning) return;
     thumbCheckScanning = true;
     els.thumbCheckScanBtn.disabled = true;
+    els.thumbCheckScanRecentBtn.disabled = true;
     els.thumbCheckStatus.hidden = false;
     els.thumbCheckStatus.className = "admin-status";
-    var candidates = state.rows;
     els.thumbCheckStatus.textContent = "Scanning 0 / " + candidates.length + "…";
     runWithConcurrency(candidates, 24, checkRowThumbBroken, function (done, total) {
       els.thumbCheckStatus.textContent = "Scanning " + done + " / " + total + "…";
@@ -11467,23 +11516,34 @@
         }
       });
       els.thumbCheckStatus.textContent = "Saving " + changed.length + " change(s)…";
-      return writeThumbCheckFlags(changed);
-    }).then(function () {
+      return writeThumbCheckFlags(changed).then(function () { return changed.length; });
+    }).then(function (changedCount) {
       saveCache(state.rows);
-      return publishSnapshot();
-    }).then(function () {
+      return publishSnapshot().then(function () { return changedCount; });
+    }).then(function (changedCount) {
       thumbCheckScanning = false;
       els.thumbCheckScanBtn.disabled = false;
+      els.thumbCheckScanRecentBtn.disabled = false;
       renderThumbCheckPage();
-      var brokenCount = state.rows.filter(function (r) { return r.brokenThumb; }).length;
-      els.thumbCheckStatus.textContent = "Scan complete — " + brokenCount + " broken thumbnail" + (brokenCount === 1 ? "" : "s") + " found.";
+      var newlyBroken = candidates.filter(function (r) { return r.brokenThumb; }).length;
+      els.thumbCheckStatus.textContent = "Scan complete (" + candidates.length + " checked, " + changedCount + " changed) — " +
+        newlyBroken + " broken thumbnail" + (newlyBroken === 1 ? "" : "s") + " among them.";
     }).catch(function (err) {
       console.error("Thumbnail scan failed:", err);
       thumbCheckScanning = false;
       els.thumbCheckScanBtn.disabled = false;
+      els.thumbCheckScanRecentBtn.disabled = false;
       els.thumbCheckStatus.textContent = "Scan failed: " + err.message;
       els.thumbCheckStatus.className = "admin-status is-error";
     });
+  }
+
+  els.thumbCheckScanBtn.addEventListener("click", function () {
+    runThumbCheckScan(state.rows);
+  });
+
+  els.thumbCheckScanRecentBtn.addEventListener("click", function () {
+    runThumbCheckScan(pickMostRecentRows(state.rows, 100));
   });
 
   // ---- Bulk import/upsert ---------------------------------------------
