@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.38.4 — current
+## v6.39.0 — current
+- Added Member Management, an admin-only page (sidebar, hidden for non-admins) listing every account that's ever signed in, with search and per-member actions: Restrict/Unrestrict (mutes site-wide -- comments, profiles, DMs, message board, edit suggestions, same mechanism the message board's own moderation already used), Ban/Unban (same, plus deletes their existing messages), Unjoin (removes their Profiles/Connect directory listing), and Message (queues an email via a new `mail` collection for the Trigger Email extension -- not sent until that extension is installed and configured with an SMTP relay). Backed by a new `members/{uid}` collection, kept current automatically as people sign in, with a one-time "Backfill from Auth" for accounts that signed in before this existed (new `backfillMembers` Cloud Function -- needs a separate `firebase deploy --only functions,firestore:rules`, not part of this site push).
+
+## v6.38.4
 - Fixed poor "Find replacement" search relevance: the query was one bare "Artist Song" string, which let the YouTube API match on individual common words instead of the actual artist/title -- e.g. "The Hearing George as a Boy" surfaced hearing-aid ads and Peppa Pig episodes about George's hearing, nothing related to the band. Now sends artist and song as two separate quoted exact phrases; confirmed live, the real video is now the #1 result.
 
 ## v6.38.3

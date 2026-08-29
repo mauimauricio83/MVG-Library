@@ -47,6 +47,37 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
+    // Member directory for the admin Member Management page -- one doc per
+    // account that has ever signed in. Populated two ways: (1) every client
+    // self-writes its own doc on each session (see captureMemberRecord() in
+    // app.js) so any account that's ever signed in is captured going
+    // forward, and (2) functions/index.js's backfillMembers (Admin SDK,
+    // bypasses these rules entirely) does a one-time sweep of every
+    // existing Firebase Auth account, since Auth's own user list can't be
+    // read from client code at all -- this is the only way to catch
+    // accounts that signed in before this feature existed and never came
+    // back. Admin-only read (this is a full member list, not something a
+    // regular user should be able to enumerate).
+    match /members/{uid} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if request.auth != null &&
+        (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // Outbound admin-to-member email -- write-only queue for the Trigger
+    // Email extension (its own service account writes the delivery status
+    // back onto the doc and sends via the configured SMTP relay; that
+    // happens through the Admin SDK too, so it isn't blocked by "no read"
+    // here). See Member Management's "Message" action in app.js.
+    match /mail/{id} {
+      allow read: if false;
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow update, delete: if false;
+    }
+
     // Username claim registry -- doc ID is the lowercased username, so
     // "Maui" and "maui" collide (case-insensitive uniqueness). Claiming/
     // releasing one always happens inside a client-side transaction
@@ -127,7 +158,12 @@ service cloud.firestore {
     // something signed-out visitors browse.
     match /profiles/{uid} {
       allow read: if request.auth != null;
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      // Self-delete ("leave the Profiles directory" from Settings), or an
+      // admin removing someone else's listing -- see Member Management's
+      // "Unjoin" action in app.js.
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
       allow create, update: if request.auth != null && request.auth.uid == uid &&
         !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) &&
         request.resource.data.displayName is string &&

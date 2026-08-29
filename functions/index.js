@@ -30,6 +30,7 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
 const crypto = require("crypto");
 
 initializeApp();
@@ -309,6 +310,49 @@ exports.onUsernameWritten = onDocumentWritten("usernames/{usernameKey}", async (
     display: after.display || key,
     flaggedAt: FieldValue.serverTimestamp()
   });
+});
+
+// ---- Member Management ------------------------------------------------
+// members/{uid} is kept current going forward by every client self-writing
+// its own doc each session (see captureMemberRecord() in app.js) -- but
+// that only ever captures accounts from the day that shipped onward.
+// Firebase Auth's own user list has no client-readable equivalent (no
+// Admin SDK in the browser), so an admin-only, one-time-or-rerunnable sweep
+// through the Auth user list via the Admin SDK is the only way to backfill
+// every account that signed in before this feature existed and never
+// returned. Merge-writes (never clobbers restricted/banned status or an
+// earlier createdAt a self-write might have already set) in chunked
+// batches (500-write cap per Firestore batch).
+exports.backfillMembers = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const adminDoc = await db.collection("admins").doc(request.auth.uid).get();
+  if (!adminDoc.exists) throw new HttpsError("permission-denied", "Admin only.");
+
+  const auth = getAuth();
+  let written = 0;
+  let pageToken;
+  do {
+    const page = await auth.listUsers(1000, pageToken);
+    for (let i = 0; i < page.users.length; i += 500) {
+      const chunk = page.users.slice(i, i + 500);
+      const batch = db.batch();
+      chunk.forEach((u) => {
+        batch.set(db.collection("members").doc(u.uid), {
+          email: u.email || null,
+          displayName: u.displayName || null,
+          photoURL: u.photoURL || null,
+          createdAt: u.metadata.creationTime ? new Date(u.metadata.creationTime) : FieldValue.serverTimestamp(),
+          lastSignInAt: u.metadata.lastSignInTime ? new Date(u.metadata.lastSignInTime) : null
+        }, { merge: true });
+      });
+      await batch.commit();
+      written += chunk.length;
+    }
+    pageToken = page.pageToken;
+  } while (pageToken);
+
+  return { ok: true, written };
 });
 
 // ---- Prepaid vote credits (Lemon Squeezy) -----------------------------

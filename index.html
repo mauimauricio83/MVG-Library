@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.38.4">
+<link rel="stylesheet" href="styles.css?v=6.39.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -182,6 +182,12 @@
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m3 16 4.5-4.5a2 2 0 0 1 2.8 0L15 16"/><path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L21 15"/></svg></span>
       <span class="header-links-label">Thumbnail Check</span>
       <span class="profile-requests-badge" id="sidebarThumbCheckBadge" hidden>0</span>
+    </button>
+    <!-- Admin-only, same hidden-unless-adminUiActive() pattern as
+         #sidebarThumbCheckBtn just above. -->
+    <button type="button" class="submit-link header-account-btn" id="sidebarMembersBtn" data-nav-mode="watch" hidden>
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span class="header-links-label">Members</span>
     </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn" data-nav-mode="watch">
@@ -695,6 +701,54 @@
     <div class="thumb-check-grid" id="thumbCheckGrid"></div>
     <p class="admin-empty" id="thumbCheckEmpty" hidden>No broken thumbnails on record. Run a scan to check for new ones.</p>
   </section>
+
+  <!-- Admin-only, same pattern as #thumbCheckPage above -- reached via the
+       sidebar's Members link, itself hidden unless adminUiActive(). One row
+       per members/{uid} doc (see renderMembersPage() in app.js): kept
+       current going forward by every client self-writing its own doc on
+       sign-in (captureMemberRecord()), backfilled once via the
+       backfillMembers Cloud Function for accounts that signed in before
+       this page existed. Restrict/Ban reuse the exact mutedUsers/
+       bannedUsers collections the message board's own moderation already
+       writes -- same effect everywhere (comments, profiles, DMs, message
+       board), just a second place to reach it from. -->
+  <section class="media-strip" id="membersPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">Members</span>
+      <div class="media-strip-head-actions">
+        <button type="button" class="admin-row-btn" id="membersBackfillBtn">Backfill from Auth</button>
+      </div>
+    </div>
+    <p class="thumb-check-hint">Every account that has ever signed in. New accounts are captured automatically the moment they sign in; "Backfill from Auth" does a one-time sweep (safe to re-run) to also catch accounts that signed in before this page existed and never came back.</p>
+    <input type="search" class="admin-search" id="membersSearchInput" placeholder="Search name or email…">
+    <p class="admin-status" id="membersStatus" hidden></p>
+    <div class="members-grid" id="membersGrid"></div>
+    <p class="admin-empty" id="membersEmpty" hidden>No members on record yet -- try Backfill from Auth.</p>
+  </section>
+
+  <!-- Compose-email panel for Member Management's "Message" action --
+       queues a doc in mail/{autoId} for the Trigger Email Firebase
+       Extension to actually send (that extension has to be installed and
+       configured with an SMTP relay separately -- see sendMemberEmail() in
+       app.js for what happens if it isn't). -->
+  <div class="lightbox" id="memberEmailModal" hidden>
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-panel settings-panel" role="dialog" aria-modal="true" aria-label="Message member">
+      <button type="button" class="lightbox-close" id="memberEmailClose" aria-label="Close">&times;</button>
+      <form class="submit-form" id="memberEmailForm">
+        <h2 class="submit-form-title">Message <span id="memberEmailToName"></span></h2>
+        <p class="submit-form-intro" id="memberEmailToAddress"></p>
+        <label>Subject<span class="submit-required">*</span>
+          <input type="text" id="memberEmailSubject" maxlength="200" required>
+        </label>
+        <label>Message<span class="submit-required">*</span>
+          <textarea id="memberEmailBody" rows="6" maxlength="4000" required></textarea>
+        </label>
+        <button type="submit" class="submit-form-btn" id="memberEmailSendBtn">Send</button>
+        <p class="admin-status" id="memberEmailStatus" hidden></p>
+      </form>
+    </div>
+  </div>
 
   <div class="results-layout">
     <!-- Search-only bulk-select bar -- hidden until 1+ .thumb-select-checkbox
@@ -1697,6 +1751,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.38.4"></script>
+<script src="app.js?v=6.39.0"></script>
 </body>
 </html>

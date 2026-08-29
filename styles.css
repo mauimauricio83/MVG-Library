@@ -2511,6 +2511,32 @@ body.is-searching #viewersChoiceSection {
     display: none;
   }
 
+  /* Members: admin-only maintenance page, reached via the sidebar's
+     Members link, which calls setDesktopView("members") -- same pattern as
+     Thumbnail Check just above. */
+  body.desktop-view-members #membersPage {
+    display: block;
+  }
+
+  body.desktop-view-members .about-strip,
+  body.desktop-view-members #myQueueStrip,
+  body.desktop-view-members #spotlightSidebar,
+  body.desktop-view-members #blogLatestSidebar,
+  body.desktop-view-members .ad-placeholder,
+  body.desktop-view-members #latestStrip,
+  body.desktop-view-members #videoEmbed,
+  body.desktop-view-members #featuredStrip,
+  body.desktop-view-members #discoverSection,
+  body.desktop-view-members #viewersChoiceSection,
+  body.desktop-view-members .controls,
+  body.desktop-view-members #filtersGroup,
+  body.desktop-view-members #jumpNavTop,
+  body.desktop-view-members #status,
+  body.desktop-view-members .results-layout,
+  body.desktop-view-members #jumpNavBottom {
+    display: none;
+  }
+
 }
 
 .controls {
@@ -7469,6 +7495,110 @@ body.is-searching #viewersChoiceSection {
   gap: 8px;
 }
 
+/* Member Management page (#membersPage) -- see renderMembersPage() in
+   app.js. Same 60%-width-on-desktop treatment as Thumbnail Check's own
+   grid, for the same reason (rows were reading as mostly empty space,
+   action buttons a long way from the name they belong to). */
+#membersSearchInput {
+  display: block;
+  width: 100%;
+  max-width: 60%;
+  margin: 10px 0;
+}
+
+@media (max-width: 900px) {
+  #membersSearchInput {
+    max-width: 100%;
+  }
+}
+
+.members-grid {
+  display: flex;
+  flex-direction: column;
+  max-width: 60%;
+}
+
+@media (max-width: 900px) {
+  .members-grid {
+    max-width: 100%;
+  }
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.member-row:last-child {
+  border-bottom: none;
+}
+
+.member-avatar {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+
+.member-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.member-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-email {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-meta {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.member-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.member-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.member-badge-restricted {
+  background: rgba(245, 227, 0, 0.16);
+  color: var(--brand-yellow);
+}
+
+.member-badge-banned {
+  background: rgba(224, 36, 94, 0.14);
+  color: #e0245e;
+}
+
 /* "Find replacement" results -- see runThumbCheckReplacementSearch()/
    applyThumbCheckReplacement() in app.js. Each candidate is a full
    thumbnail + title + channel button; clicking one writes it straight to
@@ -9032,6 +9162,25 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.mobile-view-thumbcheck #thumbCheckPage {
+    display: block;
+  }
+
+  /* Members view: admin-only, no bottom-nav slot of its own (reached via
+     the hamburger menu's link, itself hidden for non-admins) -- same
+     pattern as Thumbnail Check above. */
+  body.mobile-view-members #myQueueStrip,
+  body.mobile-view-members #spotlightSidebar,
+  body.mobile-view-members #blogLatestSidebar,
+  body.mobile-view-members #latestStrip,
+  body.mobile-view-members .ad-placeholder,
+  body.mobile-view-members #videoEmbed,
+  body.mobile-view-members #featuredStrip,
+  body.mobile-view-members #discoverSection,
+  body.mobile-view-members #viewersChoiceSection {
+    display: none;
+  }
+
+  body.mobile-view-members #membersPage {
     display: block;
   }
 

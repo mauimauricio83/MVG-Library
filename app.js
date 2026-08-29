@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.38.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.39.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -308,6 +308,22 @@
     sidebarProfilesBtn: document.getElementById("sidebarProfilesBtn"),
     sidebarThumbCheckBtn: document.getElementById("sidebarThumbCheckBtn"),
     sidebarThumbCheckBadge: document.getElementById("sidebarThumbCheckBadge"),
+    sidebarMembersBtn: document.getElementById("sidebarMembersBtn"),
+    membersPage: document.getElementById("membersPage"),
+    membersBackfillBtn: document.getElementById("membersBackfillBtn"),
+    membersSearchInput: document.getElementById("membersSearchInput"),
+    membersStatus: document.getElementById("membersStatus"),
+    membersGrid: document.getElementById("membersGrid"),
+    membersEmpty: document.getElementById("membersEmpty"),
+    memberEmailModal: document.getElementById("memberEmailModal"),
+    memberEmailClose: document.getElementById("memberEmailClose"),
+    memberEmailForm: document.getElementById("memberEmailForm"),
+    memberEmailToName: document.getElementById("memberEmailToName"),
+    memberEmailToAddress: document.getElementById("memberEmailToAddress"),
+    memberEmailSubject: document.getElementById("memberEmailSubject"),
+    memberEmailBody: document.getElementById("memberEmailBody"),
+    memberEmailSendBtn: document.getElementById("memberEmailSendBtn"),
+    memberEmailStatus: document.getElementById("memberEmailStatus"),
     thumbCheckPage: document.getElementById("thumbCheckPage"),
     thumbCheckScanBtn: document.getElementById("thumbCheckScanBtn"),
     thumbCheckScanRecentBtn: document.getElementById("thumbCheckScanRecentBtn"),
@@ -892,6 +908,7 @@
     closeLightbox();
     closePlaylistPlayer();
     closeBulkEditModal();
+    closeMemberEmailModal();
     closeDmThread();
     closeTVModal();
     closeSubmitModal();
@@ -2913,6 +2930,14 @@
     renderThumbCheckPage();
     setDesktopView("thumbcheck");
     setMobileView("thumbcheck");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.sidebarMembersBtn.addEventListener("click", function () {
+    if (state.isAdmin) startMsgBoardModListeners(); // restricted/banned status, same live sets the message board panel uses
+    renderMembersPage();
+    setDesktopView("members");
+    setMobileView("members");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -8524,6 +8549,7 @@
     document.body.classList.toggle("mobile-view-playlists", view === "playlists");
     document.body.classList.toggle("mobile-view-profiles", view === "profiles");
     document.body.classList.toggle("mobile-view-thumbcheck", view === "thumbcheck");
+    document.body.classList.toggle("mobile-view-members", view === "members");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -8567,6 +8593,7 @@
     document.body.classList.toggle("desktop-view-playlists", view === "playlists");
     document.body.classList.toggle("desktop-view-profiles", view === "profiles");
     document.body.classList.toggle("desktop-view-thumbcheck", view === "thumbcheck");
+    document.body.classList.toggle("desktop-view-members", view === "members");
     updateSearchSelectionBar();
   }
 
@@ -8873,6 +8900,7 @@
     els.openAdminBtn.hidden = !adminUiActive();
     els.topBarAdminBtn.hidden = !adminUiActive();
     els.sidebarThumbCheckBtn.hidden = !adminUiActive();
+    els.sidebarMembersBtn.hidden = !adminUiActive();
     if (els.tvAdminEditBtn) els.tvAdminEditBtn.hidden = !adminUiActive();
     if (els.tvAdminDeleteBtn) els.tvAdminDeleteBtn.hidden = !adminUiActive();
     if (els.tvAdminCoverBtn) els.tvAdminCoverBtn.hidden = !adminUiActive();
@@ -11616,6 +11644,249 @@
 
   els.thumbCheckScanRecentBtn.addEventListener("click", function () {
     runThumbCheckScan(pickMostRecentRows(state.rows, 100));
+  });
+
+  // ---- Member Management (admin-only) ------------------------------------
+  // members/{uid} is the account directory this page lists: kept current
+  // going forward by every client self-writing its own doc each session
+  // (captureMemberRecord(), called from onAuthStateChanged below), and
+  // backfilled once -- safe to re-run -- via the backfillMembers Cloud
+  // Function for accounts that signed in before this existed (see
+  // firestore.rules/functions/index.js for why only a Function, with
+  // Admin SDK access to the real Auth user list, can do that part).
+  // Restrict/Ban write to the exact same mutedUsers/bannedUsers collections
+  // the message board's own moderation panel already uses (see
+  // startMsgBoardModListeners()/msgBoardMutedSet/msgBoardBannedSet above)
+  // -- same effect everywhere those are checked (comments, profiles, DMs,
+  // message board, edit suggestions), just reachable from here too.
+
+  function captureMemberRecord(user) {
+    var ref = db.collection("members").doc(user.uid);
+    ref.get().then(function (doc) {
+      var patch = {
+        email: user.email || null,
+        displayName: user.displayName || null,
+        photoURL: user.photoURL || null,
+        lastSignInAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      // Only ever set once -- a repeat visitor's session shouldn't reset
+      // their join date to today. If backfillMembers already created this
+      // doc from Auth's real creationTime, that's respected too (merge
+      // just leaves createdAt untouched here since it's omitted).
+      if (!doc.exists) patch.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      return ref.set(patch, { merge: true });
+    }).catch(function (err) {
+      console.error("Capturing member record failed:", err);
+    });
+  }
+
+  var memberList = [];
+
+  function formatMemberDate(ts) {
+    if (!ts || !ts.toDate) return "—";
+    return ts.toDate().toLocaleDateString();
+  }
+
+  function memberRowHtml(m) {
+    var name = m.displayName || m.email || "(no name)";
+    var muted = !!msgBoardMutedSet[m.uid];
+    var banned = !!msgBoardBannedSet[m.uid];
+    var badges = "";
+    if (banned) badges += ' <span class="member-badge member-badge-banned">Banned</span>';
+    else if (muted) badges += ' <span class="member-badge member-badge-restricted">Restricted</span>';
+    return (
+      '<div class="member-row">' +
+      '<img class="member-avatar" src="' + escapeHtml(m.photoURL || "") + '" alt="" loading="lazy">' +
+      '<div class="member-info">' +
+      '<div class="member-name">' + escapeHtml(name) + badges + "</div>" +
+      '<div class="member-email">' + escapeHtml(m.email || "") + "</div>" +
+      '<div class="member-meta">Joined ' + formatMemberDate(m.createdAt) + " &middot; Last seen " + formatMemberDate(m.lastSignInAt) + "</div>" +
+      "</div>" +
+      '<div class="member-actions">' +
+      '<button type="button" class="admin-row-btn" data-member-restrict="' + escapeHtml(m.uid) + '" data-name="' + escapeHtml(name) + '">' + (muted ? "Unrestrict" : "Restrict") + "</button>" +
+      '<button type="button" class="admin-row-btn admin-row-btn-danger" data-member-ban="' + escapeHtml(m.uid) + '" data-name="' + escapeHtml(name) + '">' + (banned ? "Unban" : "Ban") + "</button>" +
+      '<button type="button" class="admin-row-btn" data-member-unjoin="' + escapeHtml(m.uid) + '" data-name="' + escapeHtml(name) + '">Unjoin</button>' +
+      (m.email ? '<button type="button" class="admin-row-btn" data-member-message="' + escapeHtml(m.uid) + '" data-name="' + escapeHtml(name) + '" data-email="' + escapeHtml(m.email) + '">Message</button>' : "") +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderMembersFiltered() {
+    var term = els.membersSearchInput.value.trim().toLowerCase();
+    var rows = !term ? memberList : memberList.filter(function (m) {
+      return (m.displayName || "").toLowerCase().indexOf(term) !== -1 ||
+        (m.email || "").toLowerCase().indexOf(term) !== -1;
+    });
+    els.membersEmpty.hidden = !!rows.length;
+    els.membersGrid.innerHTML = rows.map(memberRowHtml).join("");
+  }
+
+  // Capped at the 500 most recently active accounts -- Firestore has no
+  // real full-text search, and pulling every account ever for a search box
+  // isn't worth it at this site's scale. Search filters within this loaded
+  // set (client-side, see renderMembersFiltered() above), not the whole
+  // collection.
+  function renderMembersPage() {
+    els.membersGrid.innerHTML = '<p class="admin-empty">Loading…</p>';
+    els.membersEmpty.hidden = true;
+    db.collection("members").orderBy("lastSignInAt", "desc").limit(500).get().then(function (snap) {
+      memberList = snap.docs.map(function (doc) {
+        var d = doc.data();
+        d.uid = doc.id;
+        return d;
+      });
+      renderMembersFiltered();
+    }).catch(function (err) {
+      console.error("Loading members failed:", err);
+      els.membersGrid.innerHTML = '<p class="admin-empty">Couldn’t load: ' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
+  els.membersSearchInput.addEventListener("input", renderMembersFiltered);
+
+  function setMemberRestricted(uid, name, restrict) {
+    var ref = db.collection("mutedUsers").doc(uid);
+    var p = restrict
+      ? ref.set({ mutedAt: firebase.firestore.FieldValue.serverTimestamp(), mutedBy: currentUser.uid, name: name })
+      : ref.delete();
+    return p.then(function () { renderMembersFiltered(); }).catch(function (err) {
+      console.error((restrict ? "Restrict" : "Unrestrict") + " failed:", err);
+      alert((restrict ? "Restrict" : "Unrestrict") + " failed: " + err.message);
+    });
+  }
+
+  function setMemberBanned(uid, name, ban) {
+    var ref = db.collection("bannedUsers").doc(uid);
+    if (!ban) {
+      return ref.delete().then(function () { renderMembersFiltered(); }).catch(function (err) {
+        console.error("Unban failed:", err);
+        alert("Unban failed: " + err.message);
+      });
+    }
+    if (!window.confirm("Ban " + name + "? This also deletes all of their existing messages.")) return;
+    ref.set({
+      bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      bannedBy: currentUser.uid,
+      name: name
+    }).then(function () {
+      return db.collection("messages").where("authorUid", "==", uid).get();
+    }).then(function (snap) {
+      if (snap.empty) return;
+      var batch = db.batch();
+      snap.forEach(function (doc) { batch.delete(doc.ref); });
+      return batch.commit();
+    }).then(function () {
+      renderMembersFiltered();
+    }).catch(function (err) {
+      console.error("Ban failed:", err);
+      alert("Ban failed: " + err.message);
+    });
+  }
+
+  // "Unjoin" -- removes the member's Profiles/Connect directory listing
+  // (same end state as them deleting it themselves in Settings), not their
+  // whole account. Silently no-ops if they never had a profile in the
+  // first place (nothing to remove).
+  function unjoinMember(uid, name) {
+    if (!window.confirm("Remove " + name + "'s Profiles directory listing? They can create a new one anytime by re-joining.")) return;
+    db.collection("profiles").doc(uid).delete().then(function () {
+      els.membersStatus.hidden = false;
+      els.membersStatus.className = "admin-status";
+      els.membersStatus.textContent = "Removed " + name + " from the Profiles directory.";
+    }).catch(function (err) {
+      console.error("Unjoin failed:", err);
+      alert("Unjoin failed: " + err.message);
+    });
+  }
+
+  els.membersGrid.addEventListener("click", function (e) {
+    var restrictBtn = e.target.closest("[data-member-restrict]");
+    if (restrictBtn) {
+      var rUid = restrictBtn.getAttribute("data-member-restrict");
+      setMemberRestricted(rUid, restrictBtn.getAttribute("data-name"), !msgBoardMutedSet[rUid]);
+      return;
+    }
+    var banBtn = e.target.closest("[data-member-ban]");
+    if (banBtn) {
+      var bUid = banBtn.getAttribute("data-member-ban");
+      setMemberBanned(bUid, banBtn.getAttribute("data-name"), !msgBoardBannedSet[bUid]);
+      return;
+    }
+    var unjoinBtn = e.target.closest("[data-member-unjoin]");
+    if (unjoinBtn) { unjoinMember(unjoinBtn.getAttribute("data-member-unjoin"), unjoinBtn.getAttribute("data-name")); return; }
+    var messageBtn = e.target.closest("[data-member-message]");
+    if (messageBtn) openMemberEmailModal(messageBtn.getAttribute("data-name"), messageBtn.getAttribute("data-email"));
+  });
+
+  els.membersBackfillBtn.addEventListener("click", function () {
+    els.membersBackfillBtn.disabled = true;
+    els.membersStatus.hidden = false;
+    els.membersStatus.className = "admin-status";
+    els.membersStatus.textContent = "Backfilling from Auth…";
+    functionsClient.httpsCallable("backfillMembers")({}).then(function (result) {
+      els.membersBackfillBtn.disabled = false;
+      var written = (result.data && result.data.written) || 0;
+      els.membersStatus.textContent = "Backfill complete — " + written + " account(s) synced.";
+      renderMembersPage();
+    }).catch(function (err) {
+      console.error("Backfill failed:", err);
+      els.membersBackfillBtn.disabled = false;
+      els.membersStatus.textContent = "Backfill failed: " + err.message;
+      els.membersStatus.className = "admin-status is-error";
+    });
+  });
+
+  // ---- Message a member --------------------------------------------------
+  // Queues a doc in mail/{autoId} for the Trigger Email Firebase Extension
+  // to actually pick up and send -- that extension has to be installed and
+  // configured with an SMTP relay separately (see firestore.rules) for
+  // delivery to actually happen; this always successfully queues the doc
+  // either way, it just won't be sent until that's set up.
+  function openMemberEmailModal(name, email) {
+    els.memberEmailForm.reset();
+    els.memberEmailForm.setAttribute("data-to-email", email);
+    els.memberEmailToName.textContent = name;
+    els.memberEmailToAddress.textContent = email;
+    els.memberEmailStatus.hidden = true;
+    els.memberEmailSendBtn.disabled = false;
+    els.memberEmailModal.hidden = false;
+    lockBodyScroll();
+    pushModalHistory();
+  }
+
+  function closeMemberEmailModal() {
+    if (els.memberEmailModal.hidden) return;
+    els.memberEmailModal.hidden = true;
+    unlockBodyScroll();
+  }
+
+  els.memberEmailClose.addEventListener("click", function () { history.back(); });
+
+  els.memberEmailForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var to = els.memberEmailForm.getAttribute("data-to-email");
+    var subject = els.memberEmailSubject.value.trim();
+    var body = els.memberEmailBody.value.trim();
+    if (!to || !subject || !body) return;
+    els.memberEmailSendBtn.disabled = true;
+    db.collection("mail").add({
+      to: [to],
+      message: { subject: subject, text: body },
+      sentBy: currentUser.uid,
+      sentAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      els.memberEmailStatus.hidden = false;
+      els.memberEmailStatus.className = "admin-status";
+      els.memberEmailStatus.textContent = "Queued. Actual delivery depends on the Trigger Email extension being installed and configured with an SMTP relay.";
+      setTimeout(function () { history.back(); }, 1600);
+    }).catch(function (err) {
+      console.error("Queuing email failed:", err);
+      els.memberEmailSendBtn.disabled = false;
+      els.memberEmailStatus.hidden = false;
+      els.memberEmailStatus.className = "admin-status is-error";
+      els.memberEmailStatus.textContent = "Failed: " + err.message;
+    });
   });
 
   // ---- Bulk import/upsert ---------------------------------------------
@@ -14593,6 +14864,7 @@
       els.headerAvatar.src = user.photoURL || "";
       els.headerUserName.textContent = user.displayName || user.email || "";
       syncFromFirestore();
+      captureMemberRecord(user);
       db.collection("admins").doc(user.uid).get().then(function (doc) {
         state.isAdmin = doc.exists;
         els.adminNormieRow.hidden = !state.isAdmin;
@@ -14600,6 +14872,7 @@
         els.openAdminBtn.hidden = !adminUiActive();
         els.topBarAdminBtn.hidden = !adminUiActive();
         els.sidebarThumbCheckBtn.hidden = !adminUiActive();
+        els.sidebarMembersBtn.hidden = !adminUiActive();
         updateThumbCheckBadge();
         if (state.isAdmin) applyAdminDeepLink();
         // Covers the case where the board was opened before this admin
@@ -14613,6 +14886,7 @@
         els.openAdminBtn.hidden = true;
         els.topBarAdminBtn.hidden = true;
         els.sidebarThumbCheckBtn.hidden = true;
+        els.sidebarMembersBtn.hidden = true;
       });
     } else {
       state.isAdmin = false;
@@ -14620,6 +14894,7 @@
       els.openAdminBtn.hidden = true;
       els.topBarAdminBtn.hidden = true;
       els.sidebarThumbCheckBtn.hidden = true;
+      els.sidebarMembersBtn.hidden = true;
       showVoterName = false;
       currentUsername = null;
       usernamePromptShown = false;
