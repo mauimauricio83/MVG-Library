@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.39.2"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.39.4"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -5205,7 +5205,12 @@
     var fine = state.tvYearGranularity === "years";
     els.tvYearDialRing.classList.toggle("is-fine", fine);
     var n = buckets.length;
-    var radius = fine ? 46 : 42; // percent of the ring's own box -- fine ticks sit closer to the drawn circle's edge
+    // Percent of the ring's own box -- fine ticks sit closer to the drawn
+    // circle's edge. Pulled in slightly (was 46/42) so the desktop-bigger
+    // ring (see .tv-year-dial-ring's min-width:641px override in
+    // styles.css) doesn't push tick buttons past the 280px side-panel
+    // column's edge -- the column width itself is unchanged.
+    var radius = fine ? 43 : 39;
     var ticksHtml = "";
     buckets.forEach(function (b, i) {
       var angleDeg = n ? -90 - (360 / n) * i : -90; // start at 12 o'clock, go counter-clockwise

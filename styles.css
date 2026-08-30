@@ -2920,41 +2920,48 @@ body.is-searching #viewersChoiceSection {
    bumped by the same ~30% so proportions stay consistent, not just the
    ring's own max-width. */
 @media (min-width: 641px) {
+  /* Not the full 30% (273px) -- the side panel's own column is a fixed
+     280px (see .tv-fs-root:has(.tv-side-panel-slot:not(:empty)) below),
+     and tick buttons sit near the ring's outer edge, so a 273px ring plus
+     their own width pushed past the column and got clipped. 250px plus the
+     tightened tick radius above (see renderTVYearDial() in app.js) is the
+     largest size that stays clear of the column edge with the "Years"
+     granularity's 80+ ticks, the tightest case. */
   .tv-year-dial-ring {
-    max-width: 273px;
+    max-width: 250px;
   }
 
   .tv-year-tick {
-    width: 44px;
-    height: 44px;
-    font-size: 0.78rem;
+    width: 40px;
+    height: 40px;
+    font-size: 0.75rem;
   }
 
   .tv-year-tick-fine {
-    width: 34px;
-    height: 39px;
+    width: 30px;
+    height: 35px;
   }
 
   .tv-year-tick-mark {
-    width: 3px;
-    height: 13px;
+    width: 2.5px;
+    height: 12px;
   }
 
   .tv-year-tick-fine.is-active .tv-year-tick-mark {
-    height: 17px;
+    height: 15px;
   }
 
   .tv-year-dial-center {
-    width: 125px;
-    height: 125px;
+    width: 114px;
+    height: 114px;
   }
 
   .tv-year-dial-center-label {
-    font-size: 0.94rem;
+    font-size: 0.86rem;
   }
 
   .tv-year-dial-center-count {
-    font-size: 0.81rem;
+    font-size: 0.74rem;
   }
 }
 
@@ -3576,13 +3583,13 @@ body.is-searching #viewersChoiceSection {
 .tv-widen-btn,
 .tv-playlist-btn {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   line-height: 1;
   cursor: pointer;
 }

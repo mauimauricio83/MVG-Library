@@ -2,7 +2,11 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.39.2 — current
+## v6.39.4 — current
+- Fixed the Era dial's "Years" granularity (80+ ticks) getting cropped against the side panel's edge, a regression from v6.39.2's dial size increase -- the panel's own column width is fixed, so it was the tick buttons themselves overflowing it. Pulled ticks closer to the dial's center (radius 46/42% -> 43/39%) and settled the ring at a size that comfortably clears the column at that tightest case, rather than the full 30% from before -- still meaningfully bigger than the original, just no longer clipped.
+- TV Mode: Favorite/Add to playlist/Info/Widen buttons bigger too (28px -> 36px), matching v6.39.2's playback controls size increase.
+
+## v6.39.2
 - TV Mode: shrunk genre tile text (0.82rem -> 0.7rem) so labels like "R&B/Soul/Funk" and "Electronic/Dance" no longer crop.
 - TV Mode: Era dial ~30% bigger (ring, tick buttons, center hub, and their text all scaled together) -- desktop only, mobile unchanged.
 - TV Mode: playback controls (Prev/Play-Pause/Next/Mute) bigger (28px -> 36px, larger icons) to better match the visual weight of the 4:3/CC buttons next to them.
