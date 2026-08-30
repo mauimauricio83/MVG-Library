@@ -403,6 +403,18 @@
     <loc>https://themusicvideoguy.com/directors/bogdan-paun/</loc>
   </url>
   <url>
+    <loc>https://themusicvideoguy.com/directors/robby-starbuck/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/directors/anthony-mandler/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/directors/benny-boom/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/directors/jae-synth/</loc>
+  </url>
+  <url>
     <loc>https://themusicvideoguy.com/directors/martin-kahan/</loc>
   </url>
   <url>
@@ -682,9 +694,6 @@
     <loc>https://themusicvideoguy.com/directors/ian-cooper/</loc>
   </url>
   <url>
-    <loc>https://themusicvideoguy.com/directors/jae-synth/</loc>
-  </url>
-  <url>
     <loc>https://themusicvideoguy.com/directors/k-ji-morimoto/</loc>
   </url>
   <url>
@@ -853,9 +862,6 @@
     <loc>https://themusicvideoguy.com/directors/dale-resteghini/</loc>
   </url>
   <url>
-    <loc>https://themusicvideoguy.com/directors/benny-boom/</loc>
-  </url>
-  <url>
     <loc>https://themusicvideoguy.com/directors/lynn-fox/</loc>
   </url>
   <url>
@@ -875,9 +881,6 @@
   </url>
   <url>
     <loc>https://themusicvideoguy.com/directors/brian-beletic/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/directors/anthony-mandler/</loc>
   </url>
   <url>
     <loc>https://themusicvideoguy.com/directors/ben-mor/</loc>
@@ -1606,9 +1609,6 @@
     <loc>https://themusicvideoguy.com/directors/chris-sweeney/</loc>
   </url>
   <url>
-    <loc>https://themusicvideoguy.com/directors/robby-starbuck/</loc>
-  </url>
-  <url>
     <loc>https://themusicvideoguy.com/directors/ryan-patrick/</loc>
   </url>
   <url>
@@ -1982,6 +1982,9 @@
   </url>
   <url>
     <loc>https://themusicvideoguy.com/directors/gizem-guvendag/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/directors/boas-otto-psylo/</loc>
   </url>
   <url>
     <loc>https://themusicvideoguy.com/directors/</loc>
@@ -4465,6 +4468,9 @@
     <loc>https://themusicvideoguy.com/artists/us-2-evil-0/</loc>
   </url>
   <url>
+    <loc>https://themusicvideoguy.com/artists/psylo/</loc>
+  </url>
+  <url>
     <loc>https://themusicvideoguy.com/artists/</loc>
   </url>
   <url>
@@ -4805,6 +4811,9 @@
   </url>
   <url>
     <loc>https://themusicvideoguy.com/videos/boyz-ii-men-i-ll-make-love-to-you/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/8-58-ft-cillian-murphy-the-clock/</loc>
   </url>
   <url>
     <loc>https://themusicvideoguy.com/videos/radiohead-paranoid-android/</loc>
@@ -7796,6 +7805,24 @@
   </url>
   <url>
     <loc>https://themusicvideoguy.com/videos/akon-lonely/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/akon-one-in-the-chamber/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/akon-right-now/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/akon-so-blue/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/akon-eminem-smack-that/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/akon-lil-wayne-jeezy-i-m-so-paid/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/aktual-exclusive/</loc>
   </url>
   <url>
     <loc>https://themusicvideoguy.com/videos/al-namrood-bat-al-tha-ar-nar-muheja/</loc>
@@ -36421,24 +36448,6 @@
     <loc>https://themusicvideoguy.com/videos/the-whispers-rock-steady/</loc>
   </url>
   <url>
-    <loc>https://themusicvideoguy.com/videos/8-58-ft-cillian-murphy-the-clock/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/videos/akon-right-now/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/videos/akon-so-blue/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/videos/akon-eminem-smack-that/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/videos/akon-lil-wayne-jeezy-i-m-so-paid/</loc>
-  </url>
-  <url>
-    <loc>https://themusicvideoguy.com/videos/aktual-exclusive/</loc>
-  </url>
-  <url>
     <loc>https://themusicvideoguy.com/videos/the-who-happy-jack/</loc>
   </url>
   <url>
@@ -42161,6 +42170,36 @@
   </url>
   <url>
     <loc>https://themusicvideoguy.com/videos/dunya-solmus-guller/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/psylo-walk-long/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/psylo-moonchild/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/psylo-magic/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/bitz-n-piecez-peppa-peppa-what/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/hardeep-singh-boi-hardy-phonebooth/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/judah-sandhy-baby-breath/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/chuengue-frames/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/post-fiction-feel-alive/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/post-fiction-play-yourself/</loc>
+  </url>
+  <url>
+    <loc>https://themusicvideoguy.com/videos/life-rips-possession/</loc>
   </url>
   <url>
     <loc>https://themusicvideoguy.com/news.html</loc>
