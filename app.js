@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.39.4"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.40.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -95,6 +95,25 @@
     song: "entry.332338301",
     youtube: "entry.234972007"
   };
+
+  // Fire-and-forget alongside the Google Form (which keeps working exactly
+  // as before -- this never blocks or delays it opening) -- lets the new
+  // admin Reports page show an at-a-glance list without leaving the site
+  // to check the Form's spreadsheet. Reporting doesn't require sign-in,
+  // same as the Form itself, so reporterUid is nullable.
+  function writeReportRecord(rowNum) {
+    var row = state.rows.filter(function (r) { return r.rowNum === rowNum; })[0];
+    db.collection("reports").add({
+      rowNum: rowNum,
+      artist: (row && row.artist) || "",
+      song: (row && row.song) || "",
+      reporterUid: currentUser ? currentUser.uid : null,
+      status: "open",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function (err) {
+      console.error("Logging report failed:", err);
+    });
+  }
 
   function reportFormUrl(row) {
     var params = new URLSearchParams();
@@ -332,6 +351,13 @@
     memberEmailBody: document.getElementById("memberEmailBody"),
     memberEmailSendBtn: document.getElementById("memberEmailSendBtn"),
     memberEmailStatus: document.getElementById("memberEmailStatus"),
+    sidebarReportsBtn: document.getElementById("sidebarReportsBtn"),
+    sidebarReportsBadge: document.getElementById("sidebarReportsBadge"),
+    reportsGrid: document.getElementById("reportsGrid"),
+    reportsEmpty: document.getElementById("reportsEmpty"),
+    sidebarActivityLogBtn: document.getElementById("sidebarActivityLogBtn"),
+    activityLogGrid: document.getElementById("activityLogGrid"),
+    activityLogEmpty: document.getElementById("activityLogEmpty"),
     thumbCheckPage: document.getElementById("thumbCheckPage"),
     thumbCheckScanBtn: document.getElementById("thumbCheckScanBtn"),
     thumbCheckScanRecentBtn: document.getElementById("thumbCheckScanRecentBtn"),
@@ -2946,6 +2972,20 @@
     renderMembersPage();
     setDesktopView("members");
     setMobileView("members");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.sidebarReportsBtn.addEventListener("click", function () {
+    renderReportsPage();
+    setDesktopView("reports");
+    setMobileView("reports");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  els.sidebarActivityLogBtn.addEventListener("click", function () {
+    renderActivityLogPage();
+    setDesktopView("activitylog");
+    setMobileView("activitylog");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -6220,6 +6260,7 @@
   // of armTV/playArmedTV/advanceTV/refreshTVPoolIfActive funnel through).
   function updateTVTrackDetails(row) {
     els.tvReportLink.href = reportFormUrl(row);
+    els.tvReportLink.setAttribute("data-rownum", row.rowNum);
     var fav = isFavorite(row.rowNum);
     els.tvFavBtn.classList.toggle("is-active", fav);
     els.tvFavBtn.textContent = fav ? "♥" : "♡";
@@ -6556,6 +6597,30 @@
     return formatMsgBoardTime(date);
   }
 
+  // Shared by both comment lists (TV channel + lightbox, see
+  // renderTVChannelCommentList()/renderCommentList()) -- Restrict/Ban
+  // straight from a comment instead of having to go find the same person
+  // in the Message Board panel. Same gating as that panel's own Mute/Ban
+  // buttons: admin only, never on your own comment. Reuses
+  // setMemberRestricted()/setMemberBanned() (Member Management), the same
+  // functions the Message Board panel itself now calls -- one
+  // implementation, three entry points. State (Restrict vs. Unrestrict,
+  // Ban vs. Unban) reads from msgBoardMutedSet/msgBoardBannedSet, kept
+  // live by startMsgBoardModListeners() -- called here too (idempotent)
+  // so those sets are populated even if the admin never opened the
+  // Message Board panel this session.
+  function commentModButtonsHtml(d) {
+    if (!adminUiActive() || !d.authorUid || d.authorUid === currentUser.uid) return "";
+    startMsgBoardModListeners();
+    var isMuted = !!msgBoardMutedSet[d.authorUid];
+    var isBanned = !!msgBoardBannedSet[d.authorUid];
+    var nameAttr = escapeHtml(d.authorName || "");
+    return (
+      '<button type="button" class="comment-mod-btn' + (isMuted ? " is-active" : "") + '" data-mod-restrict-uid="' + escapeHtml(d.authorUid) + '" data-mod-name="' + nameAttr + '">' + (isMuted ? "Unrestrict" : "Restrict") + "</button>" +
+      '<button type="button" class="comment-mod-btn comment-mod-btn-danger' + (isBanned ? " is-active" : "") + '" data-mod-ban-uid="' + escapeHtml(d.authorUid) + '" data-mod-name="' + nameAttr + '">' + (isBanned ? "Unban" : "Ban") + "</button>"
+    );
+  }
+
   function renderTVChannelCommentList(docs, airingStartedAt) {
     var listEl = document.getElementById("tvChannelCommentList");
     if (!listEl) return; // switched tracks/tabs while this snapshot was in flight
@@ -6573,7 +6638,7 @@
         '<div class="comment-item-meta">' +
           '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
           '<span class="comment-item-time">' + escapeHtml(when) + "</span>" +
-          deleteBtn +
+          '<span class="comment-item-actions">' + commentModButtonsHtml(d) + deleteBtn + "</span>" +
         "</div>" +
         '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
       "</div>";
@@ -6620,10 +6685,25 @@
     var deleteBtn = e.target.closest("#tvChannelComments .comment-delete-btn");
     if (deleteBtn) {
       if (!window.confirm("Delete this comment?")) return;
-      db.collection("comments").doc(deleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+      var tvDeleteCommentId = deleteBtn.getAttribute("data-commentid");
+      db.collection("comments").doc(tvDeleteCommentId).delete().then(function () {
+        logAdminAction("delete-comment", "comment " + tvDeleteCommentId);
+      }).catch(function (err) {
         console.error("Deleting comment failed:", err);
         alert("Couldn't delete that comment -- please try again.");
       });
+      return;
+    }
+    var restrictBtn = e.target.closest("#tvChannelComments [data-mod-restrict-uid]");
+    if (restrictBtn) {
+      var rUid = restrictBtn.getAttribute("data-mod-restrict-uid");
+      setMemberRestricted(rUid, restrictBtn.getAttribute("data-mod-name"), !msgBoardMutedSet[rUid]);
+      return;
+    }
+    var banBtn = e.target.closest("#tvChannelComments [data-mod-ban-uid]");
+    if (banBtn) {
+      var bUid = banBtn.getAttribute("data-mod-ban-uid");
+      setMemberBanned(bUid, banBtn.getAttribute("data-mod-name"), !msgBoardBannedSet[bUid]);
     }
   });
 
@@ -6995,6 +7075,12 @@
   els.tvCcBtn.addEventListener("click", function () { setTVCaptions(!state.tv.ccEnabled); });
 
   els.tvShareBtn.addEventListener("click", function () { handleShareButtonClick(els.tvShareBtn); });
+
+  // Doesn't preventDefault -- the link's own target="_blank" navigation
+  // (opening the Google Form) proceeds exactly as before this was added.
+  els.tvReportLink.addEventListener("click", function () {
+    writeReportRecord(els.tvReportLink.getAttribute("data-rownum"));
+  });
 
   // Carries the viewer's own volume/mute choice over to a (re)used or
   // freshly created player -- called from every branch of loadTVTrack()/
@@ -7415,7 +7501,7 @@
         '<div class="comment-item-meta">' +
           '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
           '<span class="comment-item-time">' + escapeHtml(when) + "</span>" +
-          deleteBtn +
+          '<span class="comment-item-actions">' + commentModButtonsHtml(d) + deleteBtn + "</span>" +
         "</div>" +
         '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
       "</div>";
@@ -8484,26 +8570,18 @@
       return;
     }
 
+    // Restrict/Ban here delegate to setMemberRestricted()/setMemberBanned()
+    // (Member Management, further down this file -- function declarations
+    // are hoisted, so the call site above the definition is fine) instead
+    // of duplicating the mutedUsers/bannedUsers write logic a second time.
+    // The onSnapshot listeners just above (startMsgBoardModListeners())
+    // already re-render this message list whenever those collections
+    // change, so no extra glue is needed here beyond the call itself.
     var muteBtn = e.target.closest(".msgboard-admin-mute");
     if (muteBtn) {
       var muteUid = muteBtn.getAttribute("data-uid");
       var muteName = muteBtn.getAttribute("data-name") || "";
-      var muteRef = db.collection("mutedUsers").doc(muteUid);
-      if (msgBoardMutedSet[muteUid]) {
-        muteRef.delete().catch(function (err) {
-          console.error("Unmute failed:", err);
-          alert("Unmute failed: " + err.message);
-        });
-      } else {
-        muteRef.set({
-          mutedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          mutedBy: currentUser.uid,
-          name: muteName
-        }).catch(function (err) {
-          console.error("Mute failed:", err);
-          alert("Mute failed: " + err.message);
-        });
-      }
+      setMemberRestricted(muteUid, muteName, !msgBoardMutedSet[muteUid]);
       return;
     }
 
@@ -8511,31 +8589,10 @@
     if (banBtn) {
       var banUid = banBtn.getAttribute("data-uid");
       var banName = banBtn.getAttribute("data-name") || "";
-      var banRef = db.collection("bannedUsers").doc(banUid);
-      if (msgBoardBannedSet[banUid]) {
-        banRef.delete().catch(function (err) {
-          console.error("Unban failed:", err);
-          alert("Unban failed: " + err.message);
-        });
-        return;
-      }
-      if (!window.confirm("Ban " + banName + "? This also deletes all of their existing messages.")) return;
-      banRef.set({
-        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        bannedBy: currentUser.uid,
-        name: banName
-      }).then(function () {
-        return db.collection("messages").where("authorUid", "==", banUid).get();
-      }).then(function (snap) {
-        if (snap.empty) return;
-        var batch = db.batch();
-        snap.forEach(function (doc) { batch.delete(doc.ref); });
-        return batch.commit();
-      }).catch(function (err) {
-        console.error("Ban failed:", err);
-        alert("Ban failed: " + err.message);
-      });
+      setMemberBanned(banUid, banName, !msgBoardBannedSet[banUid]);
+      return;
     }
+
   });
 
   // Two mutually-exclusive mobile views (see styles.css): Home (browse --
@@ -8563,6 +8620,8 @@
     document.body.classList.toggle("mobile-view-profiles", view === "profiles");
     document.body.classList.toggle("mobile-view-thumbcheck", view === "thumbcheck");
     document.body.classList.toggle("mobile-view-members", view === "members");
+    document.body.classList.toggle("mobile-view-reports", view === "reports");
+    document.body.classList.toggle("mobile-view-activitylog", view === "activitylog");
     bottomNavViewButtons.forEach(function (entry) {
       entry.btn.classList.toggle("is-active", entry.view === view);
     });
@@ -8607,6 +8666,8 @@
     document.body.classList.toggle("desktop-view-profiles", view === "profiles");
     document.body.classList.toggle("desktop-view-thumbcheck", view === "thumbcheck");
     document.body.classList.toggle("desktop-view-members", view === "members");
+    document.body.classList.toggle("desktop-view-reports", view === "reports");
+    document.body.classList.toggle("desktop-view-activitylog", view === "activitylog");
     updateSearchSelectionBar();
   }
 
@@ -8914,6 +8975,8 @@
     els.topBarAdminBtn.hidden = !adminUiActive();
     els.sidebarThumbCheckBtn.hidden = !adminUiActive();
     els.sidebarMembersBtn.hidden = !adminUiActive();
+    els.sidebarReportsBtn.hidden = !adminUiActive();
+    els.sidebarActivityLogBtn.hidden = !adminUiActive();
     if (els.tvAdminEditBtn) els.tvAdminEditBtn.hidden = !adminUiActive();
     if (els.tvAdminDeleteBtn) els.tvAdminDeleteBtn.hidden = !adminUiActive();
     if (els.tvAdminCoverBtn) els.tvAdminCoverBtn.hidden = !adminUiActive();
@@ -10999,6 +11062,7 @@
   function deleteRowByAdmin(rowNum, label, closeModalFn) {
     if (!window.confirm('Delete "' + label + '"? This can\'t be undone.')) return;
     db.collection("videos").doc(rowNum).delete().then(function () {
+      logAdminAction("delete-video", label, { rowNum: rowNum });
       closeModalFn();
       removeRowAndRerender(rowNum);
       removeAdminRowLocal(rowNum);
@@ -11758,12 +11822,34 @@
 
   els.membersSearchInput.addEventListener("input", renderMembersFiltered);
 
+  // Fire-and-forget audit trail for the admin actions that change/remove
+  // someone else's stuff (mute/ban/unjoin/delete). Never blocks or fails
+  // the action it's logging -- a write to adminActions failing shouldn't
+  // undo or hold up the thing that already happened.
+  function logAdminAction(action, targetLabel, extra) {
+    if (!currentUser) return;
+    var doc = {
+      action: action,
+      actorUid: currentUser.uid,
+      actorName: currentUser.displayName || currentUser.email || "",
+      targetLabel: targetLabel || "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (extra) for (var k in extra) doc[k] = extra[k];
+    db.collection("adminActions").add(doc).catch(function (err) {
+      console.error("Logging admin action failed:", err);
+    });
+  }
+
   function setMemberRestricted(uid, name, restrict) {
     var ref = db.collection("mutedUsers").doc(uid);
     var p = restrict
       ? ref.set({ mutedAt: firebase.firestore.FieldValue.serverTimestamp(), mutedBy: currentUser.uid, name: name })
       : ref.delete();
-    return p.then(function () { renderMembersFiltered(); }).catch(function (err) {
+    return p.then(function () {
+      logAdminAction(restrict ? "restrict" : "unrestrict", name, { targetUid: uid });
+      renderMembersFiltered();
+    }).catch(function (err) {
       console.error((restrict ? "Restrict" : "Unrestrict") + " failed:", err);
       alert((restrict ? "Restrict" : "Unrestrict") + " failed: " + err.message);
     });
@@ -11772,7 +11858,10 @@
   function setMemberBanned(uid, name, ban) {
     var ref = db.collection("bannedUsers").doc(uid);
     if (!ban) {
-      return ref.delete().then(function () { renderMembersFiltered(); }).catch(function (err) {
+      return ref.delete().then(function () {
+        logAdminAction("unban", name, { targetUid: uid });
+        renderMembersFiltered();
+      }).catch(function (err) {
         console.error("Unban failed:", err);
         alert("Unban failed: " + err.message);
       });
@@ -11790,6 +11879,7 @@
       snap.forEach(function (doc) { batch.delete(doc.ref); });
       return batch.commit();
     }).then(function () {
+      logAdminAction("ban", name, { targetUid: uid });
       renderMembersFiltered();
     }).catch(function (err) {
       console.error("Ban failed:", err);
@@ -11804,6 +11894,7 @@
   function unjoinMember(uid, name) {
     if (!window.confirm("Remove " + name + "'s Profiles directory listing? They can create a new one anytime by re-joining.")) return;
     db.collection("profiles").doc(uid).delete().then(function () {
+      logAdminAction("unjoin", name, { targetUid: uid });
       els.membersStatus.hidden = false;
       els.membersStatus.className = "admin-status";
       els.membersStatus.textContent = "Removed " + name + " from the Profiles directory.";
@@ -11901,6 +11992,107 @@
       els.memberEmailStatus.textContent = "Failed: " + err.message;
     });
   });
+
+  // ---- Reports queue ------------------------------------------------------
+  // Alongside the existing Google Form report link, which keeps working
+  // unchanged -- reporting also drops a lightweight record here (see
+  // writeReportRecord()) so there's an at-a-glance admin list without
+  // leaving the site.
+  function updateReportsBadge() {
+    db.collection("reports").where("status", "==", "open").get().then(function (snap) {
+      var n = snap.size;
+      els.sidebarReportsBadge.hidden = n === 0;
+      els.sidebarReportsBadge.textContent = n > 99 ? "99+" : String(n);
+    }).catch(function (err) {
+      console.error("Reports badge count failed:", err);
+    });
+  }
+
+  function reportRowHtml(r) {
+    var label = ((r.artist || "") + (r.artist && r.song ? " — " : "") + (r.song || "")).trim() || "(untitled entry)";
+    return (
+      '<div class="report-row">' +
+      '<div class="report-info">' +
+      '<div class="report-title">' + escapeHtml(label) + "</div>" +
+      '<div class="report-meta">Row ' + escapeHtml(r.rowNum || "") + " &middot; Reported " + formatMemberDate(r.createdAt) + "</div>" +
+      "</div>" +
+      '<div class="report-actions">' +
+      '<button type="button" class="admin-row-btn" data-report-edit="' + escapeHtml(r.rowNum || "") + '">Edit entry</button>' +
+      '<button type="button" class="admin-row-btn" data-report-resolve="' + escapeHtml(r.id) + '">Resolve</button>' +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderReportsPage() {
+    els.reportsGrid.innerHTML = '<p class="admin-empty">Loading…</p>';
+    els.reportsEmpty.hidden = true;
+    db.collection("reports").where("status", "==", "open").orderBy("createdAt", "desc").limit(200).get().then(function (snap) {
+      var rows = snap.docs.map(function (doc) {
+        var d = doc.data();
+        d.id = doc.id;
+        return d;
+      });
+      els.reportsEmpty.hidden = !!rows.length;
+      els.reportsGrid.innerHTML = rows.map(reportRowHtml).join("");
+      updateReportsBadge();
+    }).catch(function (err) {
+      console.error("Loading reports failed:", err);
+      els.reportsGrid.innerHTML = '<p class="admin-empty">Couldn’t load: ' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
+  els.reportsGrid.addEventListener("click", function (e) {
+    var editBtn = e.target.closest("[data-report-edit]");
+    if (editBtn) {
+      var rowNum = editBtn.getAttribute("data-report-edit");
+      if (rowNum) openAdminEditForRow(rowNum);
+      return;
+    }
+    var resolveBtn = e.target.closest("[data-report-resolve]");
+    if (resolveBtn) {
+      var reportId = resolveBtn.getAttribute("data-report-resolve");
+      db.collection("reports").doc(reportId).update({ status: "resolved" }).then(function () {
+        renderReportsPage();
+      }).catch(function (err) {
+        console.error("Resolving report failed:", err);
+        alert("Couldn't resolve that report: " + err.message);
+      });
+    }
+  });
+
+  // ---- Activity log ---------------------------------------------------
+  // Read-only trail of who did what -- written by logAdminAction() (and
+  // news.html's local logBlogAdminAction()) at every restrict/ban/unjoin/
+  // delete site. Nothing here is actionable, just a record.
+  function activityLogRowHtml(a) {
+    var actionLabels = {
+      restrict: "Restricted", unrestrict: "Unrestricted", ban: "Banned", unban: "Unbanned",
+      unjoin: "Unjoined", "delete-video": "Deleted entry", "delete-comment": "Deleted comment"
+    };
+    var label = actionLabels[a.action] || a.action;
+    return (
+      '<div class="activity-log-row">' +
+      '<div class="activity-log-info">' +
+      '<div class="activity-log-action">' + escapeHtml(label) + " — " + escapeHtml(a.targetLabel || "") + "</div>" +
+      '<div class="activity-log-meta">' + escapeHtml(a.actorName || "") + " &middot; " + formatMemberDate(a.createdAt) + "</div>" +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderActivityLogPage() {
+    els.activityLogGrid.innerHTML = '<p class="admin-empty">Loading…</p>';
+    els.activityLogEmpty.hidden = true;
+    db.collection("adminActions").orderBy("createdAt", "desc").limit(200).get().then(function (snap) {
+      var rows = snap.docs.map(function (doc) { return doc.data(); });
+      els.activityLogEmpty.hidden = !!rows.length;
+      els.activityLogGrid.innerHTML = rows.map(activityLogRowHtml).join("");
+    }).catch(function (err) {
+      console.error("Loading activity log failed:", err);
+      els.activityLogGrid.innerHTML = '<p class="admin-empty">Couldn’t load: ' + escapeHtml(err.message) + "</p>";
+    });
+  }
 
   // ---- Bulk import/upsert ---------------------------------------------
   // Header-row-driven paste: columns are matched by name (via the same
@@ -13927,7 +14119,7 @@
     }
     menu.dataset.forBtn = btn.getAttribute("data-rownum");
     menu.innerHTML =
-      '<a href="' + escapeHtml(btn.getAttribute("data-report-url")) + '" target="_blank" rel="noopener noreferrer" class="lightbox-report-menu-item">Report a problem</a>' +
+      '<a href="' + escapeHtml(btn.getAttribute("data-report-url")) + '" target="_blank" rel="noopener noreferrer" class="lightbox-report-menu-item lightbox-report-form-link" data-rownum="' + escapeHtml(btn.getAttribute("data-rownum")) + '">Report a problem</a>' +
       '<button type="button" class="lightbox-report-menu-item lightbox-suggest-edit-item" data-rownum="' + escapeHtml(btn.getAttribute("data-rownum")) + '">Suggest an edit</button>';
     menu.hidden = false;
     var rect = btn.getBoundingClientRect();
@@ -13947,6 +14139,14 @@
     if (suggestItem) {
       hideLightboxReportMenu();
       openSuggestEditModal(suggestItem.getAttribute("data-rownum"));
+      return;
+    }
+    var reportFormLink = e.target.closest(".lightbox-report-form-link");
+    if (reportFormLink) {
+      // Doesn't preventDefault -- the link's own target="_blank" navigation
+      // (opening the Google Form) proceeds exactly as before this was added.
+      writeReportRecord(reportFormLink.getAttribute("data-rownum"));
+      hideLightboxReportMenu();
       return;
     }
     if (e.target.closest(".lightbox-report-menu-item")) { hideLightboxReportMenu(); return; }
@@ -14085,10 +14285,25 @@
     var commentDeleteBtn = e.target.closest(".comment-delete-btn");
     if (commentDeleteBtn) {
       if (!window.confirm("Delete this comment?")) return;
-      db.collection("comments").doc(commentDeleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+      var lbDeleteCommentId = commentDeleteBtn.getAttribute("data-commentid");
+      db.collection("comments").doc(lbDeleteCommentId).delete().then(function () {
+        logAdminAction("delete-comment", "comment " + lbDeleteCommentId);
+      }).catch(function (err) {
         console.error("Deleting comment failed:", err);
         alert("Couldn't delete that comment -- please try again.");
       });
+      return;
+    }
+    var commentRestrictBtn = e.target.closest("[data-mod-restrict-uid]");
+    if (commentRestrictBtn) {
+      var commentRestrictUid = commentRestrictBtn.getAttribute("data-mod-restrict-uid");
+      setMemberRestricted(commentRestrictUid, commentRestrictBtn.getAttribute("data-mod-name"), !msgBoardMutedSet[commentRestrictUid]);
+      return;
+    }
+    var commentBanBtn = e.target.closest("[data-mod-ban-uid]");
+    if (commentBanBtn) {
+      var commentBanUid = commentBanBtn.getAttribute("data-mod-ban-uid");
+      setMemberBanned(commentBanUid, commentBanBtn.getAttribute("data-mod-name"), !msgBoardBannedSet[commentBanUid]);
     }
   });
 
@@ -14886,7 +15101,10 @@
         els.topBarAdminBtn.hidden = !adminUiActive();
         els.sidebarThumbCheckBtn.hidden = !adminUiActive();
         els.sidebarMembersBtn.hidden = !adminUiActive();
+        els.sidebarReportsBtn.hidden = !adminUiActive();
+        els.sidebarActivityLogBtn.hidden = !adminUiActive();
         updateThumbCheckBadge();
+        updateReportsBadge();
         if (state.isAdmin) applyAdminDeepLink();
         // Covers the case where the board was opened before this admin
         // check resolved -- openMsgBoard() itself only starts the mod
@@ -14900,6 +15118,8 @@
         els.topBarAdminBtn.hidden = true;
         els.sidebarThumbCheckBtn.hidden = true;
         els.sidebarMembersBtn.hidden = true;
+        els.sidebarReportsBtn.hidden = true;
+        els.sidebarActivityLogBtn.hidden = true;
       });
     } else {
       state.isAdmin = false;
@@ -14908,6 +15128,8 @@
       els.topBarAdminBtn.hidden = true;
       els.sidebarThumbCheckBtn.hidden = true;
       els.sidebarMembersBtn.hidden = true;
+      els.sidebarReportsBtn.hidden = true;
+      els.sidebarActivityLogBtn.hidden = true;
       showVoterName = false;
       currentUsername = null;
       usernamePromptShown = false;

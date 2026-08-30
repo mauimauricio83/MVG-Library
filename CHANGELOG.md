@@ -2,7 +2,15 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.39.4 — current
+## v6.40.0 — current
+- Added admin powers spanning four areas, all reusing the existing `mutedUsers`/`bannedUsers` moderation primitives:
+  - Consolidated the Message Board panel's restrict/ban logic (previously a separate inline implementation) to call the same `setMemberRestricted`/`setMemberBanned` functions Member Management uses -- no behavior change, just one implementation instead of two.
+  - Comments can now be restricted/banned inline, without leaving the lightbox, TV Mode, or a blog post: Restrict/Ban buttons next to Delete on every comment (never shown on your own), wired to the same consolidated functions above (blog comments use a local equivalent, since `news.html` is a separate script that can't call into `app.js`).
+  - New in-app **Reports** queue (admin-only sidebar page) alongside the existing "Report an issue" Google Form -- the Form still works exactly as before, but reporting also drops a lightweight record into a new `reports` collection so open reports are visible at a glance, with Resolve and "Edit entry" actions per row.
+  - New in-app **Activity Log** (admin-only sidebar page): a reverse-chronological trail of restrict/unrestrict/ban/unban/unjoin/delete-video/delete-comment actions, written from every one of those call sites (Member Management, Message Board panel, comment moderation, and video/entry deletes) to a new `adminActions` collection.
+  - New Firestore rules for `reports/{id}` (public create, admin-only read/status-only update) and `adminActions/{id}` (admin-only read/create, immutable) -- needs `firebase deploy --only firestore:rules,firestore:indexes`.
+
+## v6.39.4
 - Fixed the Era dial's "Years" granularity (80+ ticks) getting cropped against the side panel's edge, a regression from v6.39.2's dial size increase -- the panel's own column width is fixed, so it was the tick buttons themselves overflowing it. Pulled ticks closer to the dial's center (radius 46/42% -> 43/39%) and settled the ring at a size that comfortably clears the column at that tightest case, rather than the full 30% from before -- still meaningfully bigger than the original, just no longer clipped.
 - TV Mode: Favorite/Add to playlist/Info/Widen buttons bigger too (28px -> 36px), matching v6.39.2's playback controls size increase.
 

@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=6.39.4">
+<link rel="stylesheet" href="styles.css?v=6.40.0">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8223299314215910" crossorigin="anonymous"></script>
 <style>
   :root {
@@ -475,7 +475,7 @@
 <body>
 
 <div class="shell">
-<script src="site-nav.js?v=6.39.4"></script>
+<script src="site-nav.js?v=6.40.0"></script>
 <div class="app">
 
 <main id="blogMain">
@@ -704,15 +704,80 @@
       var deleteBtn = isAdmin
         ? '<button type="button" class="comment-delete-btn" data-commentid="' + doc.id + '" aria-label="Delete comment" title="Delete comment">&times;</button>'
         : "";
+      // One-directional (Restrict/Ban only, no Unrestrict/Unban here) --
+      // this page doesn't keep a live mutedUsers/bannedUsers listener the
+      // way app.js's Message Board panel does, so it has no "currently
+      // restricted?" state to toggle against. Undo from Member Management
+      // or the Message Board panel on the main site instead. See
+      // setBlogCommenterMuted()/setBlogCommenterBanned() below -- same
+      // mutedUsers/bannedUsers collections and fields app.js writes, just
+      // a separate script scope so it can't call app.js's functions
+      // directly.
+      var modBtns = (isAdmin && d.authorUid && (!currentUser || d.authorUid !== currentUser.uid))
+        ? '<button type="button" class="comment-mod-btn" data-mod-restrict-uid="' + escapeHtml(d.authorUid) + '" data-mod-name="' + escapeHtml(d.authorName || "") + '">Restrict</button>' +
+          '<button type="button" class="comment-mod-btn comment-mod-btn-danger" data-mod-ban-uid="' + escapeHtml(d.authorUid) + '" data-mod-name="' + escapeHtml(d.authorName || "") + '">Ban</button>'
+        : "";
       return '<div class="comment-item">' +
         '<div class="comment-item-meta">' +
           '<span class="comment-item-author">' + escapeHtml(d.authorName || "Anonymous") + "</span>" +
           '<span class="comment-item-time">' + escapeHtml(formatCommentTime(d.createdAt)) + "</span>" +
-          deleteBtn +
+          '<span class="comment-item-actions">' + modBtns + deleteBtn + "</span>" +
         "</div>" +
         '<div class="comment-item-text">' + escapeHtml(d.text || "") + "</div>" +
       "</div>";
     }).join("");
+  }
+
+  // Local duplicate of app.js's logAdminAction -- this page has its own
+  // script/closure and can't call across files.
+  function logBlogAdminAction(action, targetLabel, extra) {
+    if (!currentUser) return;
+    var doc = {
+      action: action,
+      actorUid: currentUser.uid,
+      actorName: currentUser.displayName || currentUser.email || "",
+      targetLabel: targetLabel || "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (extra) for (var k in extra) doc[k] = extra[k];
+    db.collection("adminActions").add(doc).catch(function (err) {
+      console.error("Logging admin action failed:", err);
+    });
+  }
+
+  function setBlogCommenterMuted(uid, name) {
+    if (!window.confirm("Restrict " + name + " site-wide? They won't be able to post comments, messages, or profiles anywhere on the site. Undo from Member Management or the Message Board panel on the main site.")) return;
+    db.collection("mutedUsers").doc(uid).set({
+      mutedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      mutedBy: currentUser.uid,
+      name: name
+    }).then(function () {
+      logBlogAdminAction("restrict", name, { targetUid: uid });
+    }).catch(function (err) {
+      console.error("Restrict failed:", err);
+      alert("Restrict failed: " + err.message);
+    });
+  }
+
+  function setBlogCommenterBanned(uid, name) {
+    if (!window.confirm("Ban " + name + "? This also deletes all of their existing messages. Undo from Member Management or the Message Board panel on the main site.")) return;
+    db.collection("bannedUsers").doc(uid).set({
+      bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      bannedBy: currentUser.uid,
+      name: name
+    }).then(function () {
+      return db.collection("messages").where("authorUid", "==", uid).get();
+    }).then(function (snap) {
+      if (snap.empty) return;
+      var batch = db.batch();
+      snap.forEach(function (doc) { batch.delete(doc.ref); });
+      return batch.commit();
+    }).then(function () {
+      logBlogAdminAction("ban", name, { targetUid: uid });
+    }).catch(function (err) {
+      console.error("Ban failed:", err);
+      alert("Ban failed: " + err.message);
+    });
   }
 
   function startCommentsListener(slug) {
@@ -923,10 +988,23 @@
     var deleteBtn = e.target.closest(".comment-delete-btn");
     if (deleteBtn) {
       if (!window.confirm("Delete this comment?")) return;
-      db.collection("blogComments").doc(deleteBtn.getAttribute("data-commentid")).delete().catch(function (err) {
+      var blogDeleteCommentId = deleteBtn.getAttribute("data-commentid");
+      db.collection("blogComments").doc(blogDeleteCommentId).delete().then(function () {
+        logBlogAdminAction("delete-comment", "comment " + blogDeleteCommentId);
+      }).catch(function (err) {
         console.error("Deleting comment failed:", err);
         alert("Couldn't delete that comment -- please try again.");
       });
+      return;
+    }
+    var restrictBtn = e.target.closest("[data-mod-restrict-uid]");
+    if (restrictBtn) {
+      setBlogCommenterMuted(restrictBtn.getAttribute("data-mod-restrict-uid"), restrictBtn.getAttribute("data-mod-name"));
+      return;
+    }
+    var banBtn = e.target.closest("[data-mod-ban-uid]");
+    if (banBtn) {
+      setBlogCommenterBanned(banBtn.getAttribute("data-mod-ban-uid"), banBtn.getAttribute("data-mod-name"));
     }
   });
 

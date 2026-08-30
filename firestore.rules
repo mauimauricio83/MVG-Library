@@ -465,6 +465,43 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Lightweight record dropped alongside the "Report an issue" Google
+    // Form link (writeReportRecord() in app.js) so admins have an in-app
+    // queue without leaving the site -- the Form itself is unaffected either
+    // way. Reporting doesn't require sign-in, so reporterUid may be null.
+    match /reports/{id} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create: if request.resource.data.rowNum is string &&
+        request.resource.data.artist is string &&
+        request.resource.data.artist.size() <= 200 &&
+        request.resource.data.song is string &&
+        request.resource.data.song.size() <= 200 &&
+        request.resource.data.status == "open" &&
+        (request.resource.data.reporterUid == null ||
+          request.resource.data.reporterUid == request.auth.uid);
+      // Only an admin can respond, and only status may change.
+      allow update: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        request.resource.data.rowNum == resource.data.rowNum &&
+        request.resource.data.status == "resolved";
+      allow delete: if false;
+    }
+
+    // Admin action audit trail -- written by logAdminAction() (app.js) /
+    // logBlogAdminAction() (news.html) at every restrict/ban/unjoin/delete
+    // site. Admin-only in both directions; nothing here is ever edited or
+    // removed once written.
+    match /adminActions/{id} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
     // Open "vote for your favorite video" -- any catalog entry is eligible,
     // not a curated shortlist (an earlier admin-picks-5-per-round design was
     // replaced with this before ever going live), and votes are repeatable

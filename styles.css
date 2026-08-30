@@ -2537,6 +2537,56 @@ body.is-searching #viewersChoiceSection {
     display: none;
   }
 
+  /* Reports: admin-only, reached via the sidebar's Reports link, which
+     calls setDesktopView("reports") -- same pattern as Members above. */
+  body.desktop-view-reports #reportsPage {
+    display: block;
+  }
+
+  body.desktop-view-reports .about-strip,
+  body.desktop-view-reports #myQueueStrip,
+  body.desktop-view-reports #spotlightSidebar,
+  body.desktop-view-reports #blogLatestSidebar,
+  body.desktop-view-reports .ad-placeholder,
+  body.desktop-view-reports #latestStrip,
+  body.desktop-view-reports #videoEmbed,
+  body.desktop-view-reports #featuredStrip,
+  body.desktop-view-reports #discoverSection,
+  body.desktop-view-reports #viewersChoiceSection,
+  body.desktop-view-reports .controls,
+  body.desktop-view-reports #filtersGroup,
+  body.desktop-view-reports #jumpNavTop,
+  body.desktop-view-reports #status,
+  body.desktop-view-reports .results-layout,
+  body.desktop-view-reports #jumpNavBottom {
+    display: none;
+  }
+
+  /* Activity Log: admin-only, reached via the sidebar's Activity Log link,
+     which calls setDesktopView("activitylog") -- same pattern as above. */
+  body.desktop-view-activitylog #activityLogPage {
+    display: block;
+  }
+
+  body.desktop-view-activitylog .about-strip,
+  body.desktop-view-activitylog #myQueueStrip,
+  body.desktop-view-activitylog #spotlightSidebar,
+  body.desktop-view-activitylog #blogLatestSidebar,
+  body.desktop-view-activitylog .ad-placeholder,
+  body.desktop-view-activitylog #latestStrip,
+  body.desktop-view-activitylog #videoEmbed,
+  body.desktop-view-activitylog #featuredStrip,
+  body.desktop-view-activitylog #discoverSection,
+  body.desktop-view-activitylog #viewersChoiceSection,
+  body.desktop-view-activitylog .controls,
+  body.desktop-view-activitylog #filtersGroup,
+  body.desktop-view-activitylog #jumpNavTop,
+  body.desktop-view-activitylog #status,
+  body.desktop-view-activitylog .results-layout,
+  body.desktop-view-activitylog #jumpNavBottom {
+    display: none;
+  }
+
 }
 
 .controls {
@@ -6482,8 +6532,18 @@ body.is-searching #viewersChoiceSection {
   font-size: 0.72rem;
 }
 
-.comment-delete-btn {
+/* Wraps the admin-only mod buttons (see commentModButtonsHtml() in app.js)
+   and Delete together so they move as one unit -- margin-left:auto lives
+   here now, not on .comment-delete-btn itself, since Restrict/Ban can
+   render before it and need to be pushed right along with it. */
+.comment-item-actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comment-delete-btn {
   border: none;
   background: none;
   color: var(--text-faint);
@@ -6494,6 +6554,39 @@ body.is-searching #viewersChoiceSection {
 
 .comment-delete-btn:hover {
   color: var(--accent);
+}
+
+.comment-mod-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.comment-mod-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-mod-btn.is-active {
+  border-color: var(--brand-yellow);
+  color: var(--brand-yellow);
+}
+
+.comment-mod-btn-danger:hover {
+  border-color: #e0245e;
+  color: #e0245e;
+}
+
+.comment-mod-btn-danger.is-active {
+  border-color: #e0245e;
+  background: #e0245e;
+  color: #fff;
 }
 
 .comment-item-text {
@@ -7649,6 +7742,63 @@ body.is-searching #viewersChoiceSection {
 .member-badge-banned {
   background: rgba(224, 36, 94, 0.14);
   color: #e0245e;
+}
+
+/* Reports and Activity Log pages -- same row/list shape as Member
+   Management's .members-grid/.member-row above, reused rather than
+   redefined. */
+.reports-grid,
+.activity-log-grid {
+  display: flex;
+  flex-direction: column;
+  max-width: 60%;
+}
+
+@media (max-width: 900px) {
+  .reports-grid,
+  .activity-log-grid {
+    max-width: 100%;
+  }
+}
+
+.report-row,
+.activity-log-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-row:last-child,
+.activity-log-row:last-child {
+  border-bottom: none;
+}
+
+.report-info,
+.activity-log-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.report-title,
+.activity-log-action {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-meta,
+.activity-log-meta {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.report-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
 }
 
 /* "Find replacement" results -- see runThumbCheckReplacementSearch()/
@@ -9233,6 +9383,40 @@ body.is-searching #viewersChoiceSection {
   }
 
   body.mobile-view-members #membersPage {
+    display: block;
+  }
+
+  /* Reports view: admin-only, no bottom-nav slot -- same pattern above. */
+  body.mobile-view-reports #myQueueStrip,
+  body.mobile-view-reports #spotlightSidebar,
+  body.mobile-view-reports #blogLatestSidebar,
+  body.mobile-view-reports #latestStrip,
+  body.mobile-view-reports .ad-placeholder,
+  body.mobile-view-reports #videoEmbed,
+  body.mobile-view-reports #featuredStrip,
+  body.mobile-view-reports #discoverSection,
+  body.mobile-view-reports #viewersChoiceSection {
+    display: none;
+  }
+
+  body.mobile-view-reports #reportsPage {
+    display: block;
+  }
+
+  /* Activity Log view: admin-only, no bottom-nav slot -- same pattern. */
+  body.mobile-view-activitylog #myQueueStrip,
+  body.mobile-view-activitylog #spotlightSidebar,
+  body.mobile-view-activitylog #blogLatestSidebar,
+  body.mobile-view-activitylog #latestStrip,
+  body.mobile-view-activitylog .ad-placeholder,
+  body.mobile-view-activitylog #videoEmbed,
+  body.mobile-view-activitylog #featuredStrip,
+  body.mobile-view-activitylog #discoverSection,
+  body.mobile-view-activitylog #viewersChoiceSection {
+    display: none;
+  }
+
+  body.mobile-view-activitylog #activityLogPage {
     display: block;
   }
 

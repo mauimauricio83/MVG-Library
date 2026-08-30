@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.39.4">
+<link rel="stylesheet" href="styles.css?v=6.40.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -188,6 +188,18 @@
     <button type="button" class="submit-link header-account-btn" id="sidebarMembersBtn" data-nav-mode="watch" hidden>
       <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
       <span class="header-links-label">Members</span>
+    </button>
+    <!-- Admin-only, same hidden-unless-adminUiActive() pattern as
+         #sidebarThumbCheckBtn/#sidebarMembersBtn above. -->
+    <button type="button" class="submit-link header-account-btn" id="sidebarReportsBtn" data-nav-mode="watch" hidden>
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <span class="header-links-label">Reports</span>
+      <span class="profile-requests-badge" id="sidebarReportsBadge" hidden>0</span>
+    </button>
+    <!-- Admin-only, same pattern as the others above. -->
+    <button type="button" class="submit-link header-account-btn" id="sidebarActivityLogBtn" data-nav-mode="watch" hidden>
+      <span class="header-links-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></span>
+      <span class="header-links-label">Activity Log</span>
     </button>
     <span class="header-links-sep sidebar-page-link">·</span>
     <button type="button" class="submit-link header-account-btn" id="openSubmitBtn" data-nav-mode="watch">
@@ -724,6 +736,37 @@
     <p class="admin-status" id="membersStatus" hidden></p>
     <div class="members-grid" id="membersGrid"></div>
     <p class="admin-empty" id="membersEmpty" hidden>No members on record yet -- try Backfill from Auth.</p>
+  </section>
+
+  <!-- Admin-only, same pattern as #thumbCheckPage/#membersPage -- reached
+       via the sidebar's Reports link. Rows come from reports/{id}, written
+       automatically alongside the existing "Report an issue"/"Report
+       issue" Google Form links (see writeReportRecord() in app.js) --
+       reporting still opens the Form exactly as before, this is a second,
+       in-app place to see the same reports at a glance without leaving
+       the site. -->
+  <section class="media-strip" id="reportsPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">Reports</span>
+    </div>
+    <p class="thumb-check-hint">Entries flagged via "Report an issue" -- these also still go to the Google Form as before, this is just a faster way to see what's been reported without leaving the site.</p>
+    <div class="reports-grid" id="reportsGrid"></div>
+    <p class="admin-empty" id="reportsEmpty" hidden>No open reports.</p>
+  </section>
+
+  <!-- Admin-only, same pattern as the pages above -- reached via the
+       sidebar's Activity Log link. Rows come from adminActions/{id},
+       written by logAdminAction() alongside every restrict/ban/unjoin/
+       delete action across Member Management, the Message Board panel,
+       comment moderation, and video/entry deletes -- a single place to
+       see who did what, when, now that those actions happen from three
+       different admin surfaces. Read-only, no actions on this page. -->
+  <section class="media-strip" id="activityLogPage" hidden>
+    <div class="media-strip-head">
+      <span class="media-strip-title">Activity Log</span>
+    </div>
+    <div class="activity-log-grid" id="activityLogGrid"></div>
+    <p class="admin-empty" id="activityLogEmpty" hidden>No admin activity on record yet.</p>
   </section>
 
   <!-- Compose-email panel for Member Management's "Message" action --
@@ -1751,6 +1794,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.39.4"></script>
+<script src="app.js?v=6.40.0"></script>
 </body>
 </html>
