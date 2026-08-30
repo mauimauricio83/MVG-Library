@@ -2913,6 +2913,51 @@ body.is-searching #viewersChoiceSection {
   color: var(--text-muted);
 }
 
+/* Era dial ~30% bigger, desktop only -- mobile keeps the base sizing above
+   as-is (screen real estate is tighter there, and it wasn't part of the
+   ask). Every piece that doesn't already scale with the ring's own
+   percent-based sizing (tick buttons, the center hub, their text) is
+   bumped by the same ~30% so proportions stay consistent, not just the
+   ring's own max-width. */
+@media (min-width: 641px) {
+  .tv-year-dial-ring {
+    max-width: 273px;
+  }
+
+  .tv-year-tick {
+    width: 44px;
+    height: 44px;
+    font-size: 0.78rem;
+  }
+
+  .tv-year-tick-fine {
+    width: 34px;
+    height: 39px;
+  }
+
+  .tv-year-tick-mark {
+    width: 3px;
+    height: 13px;
+  }
+
+  .tv-year-tick-fine.is-active .tv-year-tick-mark {
+    height: 17px;
+  }
+
+  .tv-year-dial-center {
+    width: 125px;
+    height: 125px;
+  }
+
+  .tv-year-dial-center-label {
+    font-size: 0.94rem;
+  }
+
+  .tv-year-dial-center-count {
+    font-size: 0.81rem;
+  }
+}
+
 /* Colorful tappable tiles standing in for the Genre dropdown while in TV
    Mode (see renderTVGenreGrid() in app.js) -- a "browse by vibe" pick fits
    channel-surfing better than a precise <select>. :not([hidden]) guards
@@ -2939,7 +2984,7 @@ body.is-searching #viewersChoiceSection {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 8px 10px;
   cursor: pointer;
@@ -4705,13 +4750,13 @@ body.is-searching #viewersChoiceSection {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
 }

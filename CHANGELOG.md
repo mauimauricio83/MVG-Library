@@ -2,7 +2,12 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.39.1 — current
+## v6.39.2 — current
+- TV Mode: shrunk genre tile text (0.82rem -> 0.7rem) so labels like "R&B/Soul/Funk" and "Electronic/Dance" no longer crop.
+- TV Mode: Era dial ~30% bigger (ring, tick buttons, center hub, and their text all scaled together) -- desktop only, mobile unchanged.
+- TV Mode: playback controls (Prev/Play-Pause/Next/Mute) bigger (28px -> 36px, larger icons) to better match the visual weight of the 4:3/CC buttons next to them.
+
+## v6.39.1
 - **Fixed a regression from v6.39.0**: the lightbox video player was invisible (audio still played) for every video. Root cause: `els.lightboxPanel` was looked up with a bare `document.querySelector(".lightbox-panel")` -- a shared styling class used by many modals -- and the new Member Management "Message" modal happened to land earlier in the HTML with that same class, so the query silently started returning ITS hidden, zero-size panel instead of the real video lightbox's. The PIP video frame's clip-path math used that panel's rect to clip the video against the lightbox's visible bounds, and against a zero-height panel that clipped the whole video away. Fixed by giving the real lightbox panel a unique ID and querying by that instead, which also makes this whole class of bug impossible going forward regardless of how many other modals reuse `.lightbox-panel`.
 
 ## v6.39.0
