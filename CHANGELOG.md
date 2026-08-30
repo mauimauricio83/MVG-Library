@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.39.0 — current
+## v6.39.1 — current
+- **Fixed a regression from v6.39.0**: the lightbox video player was invisible (audio still played) for every video. Root cause: `els.lightboxPanel` was looked up with a bare `document.querySelector(".lightbox-panel")` -- a shared styling class used by many modals -- and the new Member Management "Message" modal happened to land earlier in the HTML with that same class, so the query silently started returning ITS hidden, zero-size panel instead of the real video lightbox's. The PIP video frame's clip-path math used that panel's rect to clip the video against the lightbox's visible bounds, and against a zero-height panel that clipped the whole video away. Fixed by giving the real lightbox panel a unique ID and querying by that instead, which also makes this whole class of bug impossible going forward regardless of how many other modals reuse `.lightbox-panel`.
+
+## v6.39.0
 - Added Member Management, an admin-only page (sidebar, hidden for non-admins) listing every account that's ever signed in, with search and per-member actions: Restrict/Unrestrict (mutes site-wide -- comments, profiles, DMs, message board, edit suggestions, same mechanism the message board's own moderation already used), Ban/Unban (same, plus deletes their existing messages), Unjoin (removes their Profiles/Connect directory listing), and Message (queues an email via a new `mail` collection for the Trigger Email extension -- not sent until that extension is installed and configured with an SMTP relay). Backed by a new `members/{uid}` collection, kept current automatically as people sign in, with a one-time "Backfill from Auth" for accounts that signed in before this existed (new `backfillMembers` Cloud Function -- needs a separate `firebase deploy --only functions,firestore:rules`, not part of this site push).
 
 ## v6.38.4

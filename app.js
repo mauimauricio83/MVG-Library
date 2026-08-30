@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.39.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.39.1"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -201,7 +201,15 @@
     tvYearDragLabel: document.getElementById("tvYearDragLabel"),
     tvCustomPane: document.getElementById("tvCustomPane"),
     lightbox: document.getElementById("lightbox"),
-    lightboxPanel: document.querySelector(".lightbox-panel"),
+    // Was document.querySelector(".lightbox-panel") -- a bare class query,
+    // fragile the moment any OTHER modal reusing that same shared styling
+    // class landed earlier in the DOM (which #memberEmailModal did,
+    // breaking this silently: syncLightboxDockPosition()'s clip-path math
+    // read that wrong, hidden, zero-size panel's rect and clipped the real
+    // video invisible while it kept playing audio). getElementById is
+    // unambiguous regardless of how many other .lightbox-panel elements
+    // exist or where they sit in the document.
+    lightboxPanel: document.getElementById("lightboxPanel"),
     lightboxContent: document.getElementById("lightboxContent"),
     tvPanel: document.querySelector("#tvModal .lightbox-panel"),
     latestStrip: document.getElementById("latestStrip"),
