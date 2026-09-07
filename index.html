@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=6.40.0">
+<link rel="stylesheet" href="styles.css?v=6.41.0">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -1080,6 +1080,16 @@
             <button type="button" class="settings-theme-btn" data-visibility-choice="hide">Hide</button>
           </div>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Entries without a video link</div>
+            <div class="settings-row-hint">Applies to Latest Submissions and Discover only -- search and curated lists (Maui's Picks, My Queue, etc.) are unaffected either way.</div>
+          </div>
+          <div class="settings-theme-toggle" id="adminUnplayableToggle" role="group" aria-label="Entries without a video link visibility">
+            <button type="button" class="settings-theme-btn" data-visibility-choice="show">Show</button>
+            <button type="button" class="settings-theme-btn" data-visibility-choice="hide">Hide</button>
+          </div>
+        </div>
         <p class="admin-status" id="adminHomepageTogglesStatus" hidden></p>
         <p class="admin-status" id="adminLandingStatus" hidden></p>
       </div>
@@ -1794,6 +1804,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="app.js?v=6.40.0"></script>
+<script src="app.js?v=6.41.0"></script>
 </body>
 </html>

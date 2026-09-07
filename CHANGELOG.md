@@ -2,7 +2,10 @@
 
 Informal version history for MVG Library, reconstructed from git log. No strict semver enforcement — major bumps mark genuine breaking/architectural changes, minor bumps mark additive features.
 
-## v6.40.0 — current
+## v6.41.0 — current
+- Added a site-wide "Entries without a video link" toggle (Settings, admin-only), same show/hide pattern as Viewer's Choice/Featured -- when set to Hide (the default), entries with neither a YouTube nor Vimeo link are excluded from Latest Submissions on the homepage. Discover already excluded them unconditionally (pre-existing behavior, unrelated to this toggle). Search and curated lists (Maui's Picks, My Queue, and any other custom list) are unaffected either way, by design. Double-checked TV Mode and every other shuffle/random-playback pool builder (`startTVMode`, `armTV`, `refreshTVPoolIfActive`, Channel Mode shuffling) -- all already excluded unplayable entries via the existing `hasVideo()` check, no gaps found there.
+
+## v6.40.0
 - Added admin powers spanning four areas, all reusing the existing `mutedUsers`/`bannedUsers` moderation primitives:
   - Consolidated the Message Board panel's restrict/ban logic (previously a separate inline implementation) to call the same `setMemberRestricted`/`setMemberBanned` functions Member Management uses -- no behavior change, just one implementation instead of two.
   - Comments can now be restricted/banned inline, without leaving the lightbox, TV Mode, or a blog post: Restrict/Ban buttons next to Delete on every comment (never shown on your own), wired to the same consolidated functions above (blog comments use a local equivalent, since `news.html` is a separate script that can't call into `app.js`).

@@ -1,7 +1,7 @@
 ﻿(function () {
   "use strict";
 
-  var APP_VERSION = "6.40.0"; // bump alongside CHANGELOG.md on each meaningful commit
+  var APP_VERSION = "6.41.0"; // bump alongside CHANGELOG.md on each meaningful commit
 
   var DEFAULT_TITLE = document.title;
 
@@ -583,6 +583,7 @@
     adminGoPublishBtn: document.getElementById("adminGoPublishBtn"),
     adminViewersChoiceToggle: document.getElementById("adminViewersChoiceToggle"),
     adminFeaturedToggle: document.getElementById("adminFeaturedToggle"),
+    adminUnplayableToggle: document.getElementById("adminUnplayableToggle"),
     adminHomepageTogglesStatus: document.getElementById("adminHomepageTogglesStatus"),
     adminLandingStatus: document.getElementById("adminLandingStatus"),
     adminForm: document.getElementById("adminForm"),
@@ -657,6 +658,7 @@
     var n = parseInt(row.rowNum, 10);
     if (isNaN(n) || n < LATEST_MIN_ROWNUM) return false;
     if (row.backdoor) return false;
+    if (state.hideUnplayableEntries && !hasVideo(row)) return false;
     return true;
   }
   var SPOTLIGHT_COUNT = 5; // desktop shows all 5; mobile caps the visible count via CSS (see .spotlight-card:nth-child)
@@ -1188,6 +1190,7 @@
     // future page load.
     hideViewersChoice: false,
     hideFeatured: false,
+    hideUnplayableEntries: true, // default on until siteConfig loads -- see startSiteConfigListener()
     adminRows: [],
     adminBulkParsed: [],
     // { feature, spotlight } of the row currently loaded into the admin
@@ -4646,9 +4649,13 @@
       var data = doc.exists ? doc.data() : {};
       state.hideViewersChoice = !!data.hideViewersChoice;
       state.hideFeatured = !!data.hideFeatured;
+      state.hideUnplayableEntries = data.hideUnplayableEntries !== false;
       applySiteConfigToggles();
       renderViewersChoice(viewersChoiceLastEntries);
-      if (state.rows.length) renderFeaturedStrip(state.rows);
+      if (state.rows.length) {
+        renderFeaturedStrip(state.rows);
+        renderLatestStrip(state.rows);
+      }
     }, function (err) {
       console.error("Site config load failed:", err);
     });
@@ -9003,6 +9010,9 @@
     Array.prototype.forEach.call(els.adminFeaturedToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
       btn.classList.toggle("is-active", (btn.getAttribute("data-visibility-choice") === "hide") === state.hideFeatured);
     });
+    Array.prototype.forEach.call(els.adminUnplayableToggle.querySelectorAll(".settings-theme-btn"), function (btn) {
+      btn.classList.toggle("is-active", (btn.getAttribute("data-visibility-choice") === "hide") === state.hideUnplayableEntries);
+    });
   }
 
   function saveSiteConfig(patch) {
@@ -9029,6 +9039,15 @@
     state.hideFeatured = btn.getAttribute("data-visibility-choice") === "hide";
     applySiteConfigToggles();
     saveSiteConfig({ hideFeatured: state.hideFeatured });
+  });
+
+  els.adminUnplayableToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest(".settings-theme-btn");
+    if (!btn) return;
+    state.hideUnplayableEntries = btn.getAttribute("data-visibility-choice") === "hide";
+    applySiteConfigToggles();
+    saveSiteConfig({ hideUnplayableEntries: state.hideUnplayableEntries });
+    if (state.rows.length) renderLatestStrip(state.rows);
   });
 
   function applyVoterNameToggle() {
